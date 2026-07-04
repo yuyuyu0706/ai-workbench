@@ -1,0 +1,16 @@
+{
+  "name": "ai-workbench",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.28.1",
+  "engines": {
+    "node": ">=20.20.0",
+    "pnpm": ">=10.28.1"
+  },
+  "scripts": {
+    "dev": "pnpm --recursive --if-present dev",
+    "build": "pnpm --recursive --if-present build",
+    "test": "pnpm --recursive --if-present test",
+    "lint": "pnpm --recursive --if-present lint"
+  }
+}
