@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    name: Install and build
+    name: Quality and build
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -38,6 +38,12 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Format check
+        run: pnpm format:check
 
       - name: Build workspace
         run: pnpm build

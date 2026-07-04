@@ -40,6 +40,27 @@ pnpm --filter prompt-trail dev
 
 どちらも Vite 開発サーバーを起動します。既定 URL は `http://localhost:5173/` です。ポートが使われている場合は Vite が代替ポートを表示するため、ログの `Local:` に表示された URL をブラウザで開いてください。停止は `Ctrl+C` です。
 
+## 静的品質チェック
+
+PromptTrail の TypeScript / TSX は、root の ESLint Flat Config で確認します。React Hooks と React Fast Refresh の基本ルールも対象です。
+
+```bash
+pnpm --filter prompt-trail lint
+```
+
+Workspace 全体の品質ゲートとしては、リポジトリルートで次を実行します。
+
+```bash
+pnpm lint
+pnpm format:check
+```
+
+整形差分を直す場合のみ、ローカルで次を実行します。CI は自動修正せず、Lint と Format Check の違反を失敗として表示します。
+
+```bash
+pnpm format
+```
+
 ## Build と preview
 
 PromptTrail 単体の build は次で確認します。
@@ -82,6 +103,8 @@ Playwright はこの段階では恒久依存として追加しません。スク
 - **Node.js が古い**: root `.nvmrc` の `20.20.0` 以上に切り替え、`node --version` を確認します。
 - **`pnpm install --frozen-lockfile` が lockfile 差異で失敗する**: `pnpm-lock.yaml` と `package.json` の差異を確認します。依存更新が必要な場合は別テーマとして理由を明確にします。
 - **npm registry に接続できない**: エラーに表示される接続先、HTTP status、プロキシ設定、ネットワーク制約を確認します。
+- **Lint が失敗する**: `pnpm --filter prompt-trail lint` の出力を確認し、TypeScript / TSX の未使用変数、React Hooks、React Fast Refresh の指摘を warning も含めて解消します。
+- **Format Check が失敗する**: root で `pnpm format:check` の対象ファイルを確認し、必要に応じて `pnpm format` を実行して差分をレビューします。CI では自動整形しません。
 - **5173 / 4173 が使えない**: Vite が代替ポートを表示します。固定ポート設定は導入せず、ログに出た URL を開きます。
 
 ## 現在の状態
