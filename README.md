@@ -28,6 +28,8 @@ pnpm dev
 
 ## コマンドの使い分け
 
+品質ゲートの実行順序、変更種別ごとの PR 前確認、失敗時プレイブック、main ブランチ保護の推奨は [品質ゲートと開発運用](docs/development/quality-gates.md) を正本とします。この README は日常的に使うコマンドへの入口です。
+
 ルートコマンドは Workspace 全体の標準入口です。今後アプリやパッケージが増えた場合も、各 Workspace パッケージに同名スクリプトがあれば集約実行します。
 
 ```bash
@@ -48,9 +50,18 @@ pnpm --filter prompt-trail build
 pnpm --filter prompt-trail preview
 pnpm --filter prompt-trail test
 pnpm --filter prompt-trail test:watch
-pnpm --filter prompt-trail test:e2e:install
-pnpm --filter prompt-trail test:e2e
 ```
+
+## PR 前の最小確認
+
+変更種別ごとのローカル確認は次を目安にします。PR CI ではすべての PR に対して Install、Lint、Format Check、Unit Test、Chromium 導入、E2E、Build を実行します。詳細な判断基準は [品質ゲートと開発運用](docs/development/quality-gates.md) を参照してください。
+
+| 変更種別                                | PR 前の最小確認                                                              |
+| --------------------------------------- | ---------------------------------------------------------------------------- |
+| 文書のみ                                | `pnpm format:check`                                                          |
+| TypeScript / React / CSS                | `pnpm lint`、`pnpm format:check`、`pnpm test`、`pnpm build`                  |
+| 画面表示・HTML・Vite・Playwright 設定   | `pnpm lint`、`pnpm format:check`、`pnpm test`、`pnpm test:e2e`、`pnpm build` |
+| `package.json` / lockfile / CI workflow | `pnpm install --frozen-lockfile`、全品質ゲート                               |
 
 ## 静的品質チェック
 
@@ -76,8 +87,6 @@ PromptTrail は Vitest と React Testing Library を使い、Node.js 上の jsdo
 pnpm test
 pnpm --filter prompt-trail test
 pnpm --filter prompt-trail test:watch
-pnpm --filter prompt-trail test:e2e:install
-pnpm --filter prompt-trail test:e2e
 ```
 
 - `pnpm test`: Workspace 全体の標準テスト入口です。CI ではこのコマンドを 1 回実行します。
@@ -159,3 +168,4 @@ pnpm test:e2e
 - [Functional Requirements](docs/product/prompt-trail/functional-requirements.md)
 - [Roadmap](docs/product/prompt-trail/roadmap.md)
 - [Architecture Decision Records](docs/adr/)
+- [Quality Gates and Development Operations](docs/development/quality-gates.md)
