@@ -13,7 +13,8 @@
     "test": "pnpm --recursive --if-present test",
     "lint": "pnpm --recursive --if-present lint",
     "format": "prettier . --write",
-    "format:check": "prettier . --check"
+    "format:check": "prettier . --check",
+    "test:e2e": "pnpm --recursive --if-present test:e2e"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
