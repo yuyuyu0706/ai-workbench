@@ -60,6 +60,7 @@ export interface ArchivableEntity {
 
 export interface GlobalScope {
   readonly scope: 'global';
+  readonly projectId?: never;
 }
 
 export interface ProjectScope {
