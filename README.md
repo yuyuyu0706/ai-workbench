@@ -35,6 +35,8 @@ pnpm dev
 pnpm build
 pnpm test
 pnpm lint
+pnpm format
+pnpm format:check
 ```
 
 PromptTrail だけを対象にする場合は `--filter prompt-trail` を使います。アプリ単体の開発・検証ではこちらを使うと対象が明確になります。
@@ -44,6 +46,22 @@ pnpm --filter prompt-trail dev
 pnpm --filter prompt-trail build
 pnpm --filter prompt-trail preview
 ```
+
+## 静的品質チェック
+
+ESLint と Prettier は、ローカル開発と CI で同じ結果になる静的品質ゲートとして扱います。CI では自動修正を行わず、違反があれば Lint または Format Check の独立ステップを失敗させます。
+
+```bash
+pnpm lint
+pnpm format:check
+pnpm format
+pnpm --filter prompt-trail lint
+```
+
+- `pnpm lint`: Workspace 全体の標準 Lint 入口です。各パッケージの `lint` スクリプトを集約し、warning も失敗として扱います。
+- `pnpm --filter prompt-trail lint`: PromptTrail 単体の TypeScript / TSX を ESLint Flat Config で確認します。
+- `pnpm format:check`: Prettier 対象ファイルの整形差分を検出します。CI ではこの確認だけを実行し、書き換えません。
+- `pnpm format`: ローカルで Prettier 対象ファイルを整形します。Format Check で失敗した場合は、差分を確認したうえで実行してください。
 
 ## Build と production preview
 
@@ -81,6 +99,8 @@ Playwright は現時点では恒久依存として追加しません。スクリ
 - **Node.js のバージョンが違う**: `.nvmrc` を参照し、利用している Node.js を `20.20.0` 以上に切り替えます。
 - **lockfile 差異で install が失敗する**: 標準は `pnpm install --frozen-lockfile` です。依存更新が必要な場合は、本テーマとは別に理由を明確にして `pnpm-lock.yaml` を更新します。
 - **npm registry に接続できない**: `pnpm install --frozen-lockfile` のエラーに出る接続先、HTTP status、プロキシ設定、ネットワーク制約を確認します。依存追加や lockfile 更新で回避しないでください。
+- **Lint が失敗する**: `pnpm lint` または `pnpm --filter prompt-trail lint` を実行し、未使用変数、React Hooks ルール、React Fast Refresh ルールの指摘を確認します。warning も失敗として扱うため、警告を残さず修正します。
+- **Format Check が失敗する**: `pnpm format:check` の出力で対象ファイルを確認し、ローカルで `pnpm format` を実行してから差分をレビューします。CI では `prettier --write` を実行しません。
 - **ポート競合**: Vite が `Port 5173 is in use, trying another one...` のように代替ポートを表示します。固定ポート設定は導入せず、ログに表示された URL を開きます。
 
 ## 構成

@@ -4,13 +4,13 @@
 
 ## 全体像
 
-| Phase | 名称 | 目的 |
-| --- | --- | --- |
-| Phase 0 | Foundation | AI Workbench 基盤と PromptTrail の開発起動 |
-| Phase 1 | Library | Project・Prompt・Context を再利用資産として管理 |
-| Phase 2 | Recipe Builder | Prompt と Context を組み立て、出力可能にする |
-| Phase 3 | Run & Trail | Run 履歴と Chat／Issue／PR リンクを追跡する |
-| Phase 4 | GitHub Integration | GitHub 連携と AI Workbench 拡張準備 |
+| Phase   | 名称               | 目的                                            |
+| ------- | ------------------ | ----------------------------------------------- |
+| Phase 0 | Foundation         | AI Workbench 基盤と PromptTrail の開発起動      |
+| Phase 1 | Library            | Project・Prompt・Context を再利用資産として管理 |
+| Phase 2 | Recipe Builder     | Prompt と Context を組み立て、出力可能にする    |
+| Phase 3 | Run & Trail        | Run 履歴と Chat／Issue／PR リンクを追跡する     |
+| Phase 4 | GitHub Integration | GitHub 連携と AI Workbench 拡張準備             |
 
 **MVP 到達点は Phase 3 完了時点**です。Phase 4 は MVP 後の拡張として、GitHub API 連携、Issue／PR 状態取得、Link 補完などを扱います。
 

@@ -11,6 +11,17 @@
     "dev": "pnpm --recursive --if-present dev",
     "build": "pnpm --recursive --if-present build",
     "test": "pnpm --recursive --if-present test",
-    "lint": "pnpm --recursive --if-present lint"
+    "lint": "pnpm --recursive --if-present lint",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.6.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "prettier": "^3.9.4",
+    "typescript-eslint": "^8.62.1"
   }
 }
