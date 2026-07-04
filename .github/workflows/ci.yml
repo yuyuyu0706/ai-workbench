@@ -45,5 +45,8 @@ jobs:
       - name: Format check
         run: pnpm format:check
 
+      - name: Test
+        run: pnpm test
+
       - name: Build workspace
         run: pnpm build

@@ -61,6 +61,22 @@ pnpm format:check
 pnpm format
 ```
 
+## Unit / Component Test
+
+PromptTrail の Unit / Component Test は Vitest と React Testing Library で実行します。テスト環境は jsdom で、共通 setup により jest-dom matcher とテスト後の DOM cleanup を有効にしています。初期テストは Welcome Page のスモークテストのみを対象にし、実ブラウザ E2E、カバレッジ、snapshot、API mock、IndexedDB mock は扱いません。
+
+```bash
+pnpm --filter prompt-trail test
+pnpm --filter prompt-trail test:watch
+pnpm test
+```
+
+- `pnpm --filter prompt-trail test`: PromptTrail 単体の CI 向け非 watch 実行です。
+- `pnpm --filter prompt-trail test:watch`: ローカル開発向けの watch 実行です。CI では使用しません。
+- `pnpm test`: root から Workspace 全体のテストを実行する標準入口です。
+
+テストが失敗した場合は、まず失敗メッセージに出ている role、heading、text が現在の Welcome Page の利用者向け表示と一致するか確認します。意図した表示変更であれば、CSS class、実装配列、snapshot ではなく、利用者が認識するアクセシブルな DOM に基づいて期待値を更新してください。依存や jsdom setup の問題が疑われる場合は、`pnpm install --frozen-lockfile` と `pnpm --filter prompt-trail test` を再実行して切り分けます。
+
 ## Build と preview
 
 PromptTrail 単体の build は次で確認します。
@@ -105,6 +121,7 @@ Playwright はこの段階では恒久依存として追加しません。スク
 - **npm registry に接続できない**: エラーに表示される接続先、HTTP status、プロキシ設定、ネットワーク制約を確認します。
 - **Lint が失敗する**: `pnpm --filter prompt-trail lint` の出力を確認し、TypeScript / TSX の未使用変数、React Hooks、React Fast Refresh の指摘を warning も含めて解消します。
 - **Format Check が失敗する**: root で `pnpm format:check` の対象ファイルを確認し、必要に応じて `pnpm format` を実行して差分をレビューします。CI では自動整形しません。
+- **Test が失敗する**: `pnpm --filter prompt-trail test` の失敗箇所を確認し、Welcome Page の見出し、管理モデル、`Local first`、`Phase 0` が現在の表示と一致するか確認します。ローカルで継続的に確認する場合だけ `pnpm --filter prompt-trail test:watch` を使います。
 - **5173 / 4173 が使えない**: Vite が代替ポートを表示します。固定ポート設定は導入せず、ログに出た URL を開きます。
 
 ## 現在の状態
