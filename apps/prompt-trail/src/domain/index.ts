@@ -24,3 +24,19 @@ export { PROMPT_KINDS, PROMPT_STATUSES } from './prompt';
 
 export type { Context, ContextKind, ContextStatus } from './context';
 export { CONTEXT_KINDS, CONTEXT_STATUSES } from './context';
+
+export type { Recipe } from './recipe';
+
+export type {
+  ContextSnapshot,
+  JsonPrimitive,
+  JsonValue,
+  PromptSnapshot,
+  Run,
+  RunEvaluation,
+  RunStatus,
+} from './run';
+export { RUN_EVALUATIONS, RUN_STATUSES } from './run';
+
+export type { Link, LinkRole, LinkType } from './link';
+export { LINK_ROLES, LINK_TYPES } from './link';
