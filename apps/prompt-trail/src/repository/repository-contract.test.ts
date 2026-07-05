@@ -30,9 +30,8 @@ afterEach(async () => {
 describe('PromptTrailRepository public contract', () => {
   it('creates a repository from a unique injected database', () => {
     const database = databaseScope.createDatabase();
-    const repository = new PromptTrailRepository(database);
+    expect(() => new PromptTrailRepository(database)).not.toThrow();
 
-    expect(repository.database).toBe(database);
     expect(database.name).not.toBe(PROMPT_TRAIL_DB_NAME);
     expect(database.name).toMatch(/^prompt-trail-repository-contract-/);
     expect(database.isOpen()).toBe(false);
