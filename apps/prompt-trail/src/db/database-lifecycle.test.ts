@@ -1,29 +1,15 @@
 import Dexie from 'dexie';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { createDatabaseTestScope } from '../test/database-test-utils';
+
 import {
-  createPromptTrailDatabase,
   PROMPT_TRAIL_DB_NAME,
   PROMPT_TRAIL_SCHEMA_VERSION,
   PROMPT_TRAIL_STORE_NAMES,
-  type PromptTrailDatabase,
 } from './index';
 
-const trackedDatabases = new Set<PromptTrailDatabase>();
-
-function createUniqueLifecycleDatabase(): PromptTrailDatabase {
-  const database = createPromptTrailDatabase(
-    `prompt-trail-lifecycle-${crypto.randomUUID()}`,
-  );
-
-  trackedDatabases.add(database);
-
-  return database;
-}
-
-function untrackDatabase(database: PromptTrailDatabase): void {
-  trackedDatabases.delete(database);
-}
+const databaseScope = createDatabaseTestScope('lifecycle');
 
 async function waitForTransaction(transaction: IDBTransaction): Promise<void> {
   await new Promise<void>((resolve, reject) => {
@@ -40,20 +26,12 @@ function toArray(list: DOMStringList): string[] {
 }
 
 afterEach(async () => {
-  const databases = [...trackedDatabases];
-  trackedDatabases.clear();
-
-  await Promise.all(
-    databases.map(async (database) => {
-      database.close();
-      await database.delete();
-    }),
-  );
+  await databaseScope.cleanup();
 });
 
 describe('PromptTrailDatabase lifecycle', () => {
   it('initializes schema v1 in native IndexedDB when opened', async () => {
-    const database = createUniqueLifecycleDatabase();
+    const database = databaseScope.createDatabase();
 
     expect(database.name).not.toBe(PROMPT_TRAIL_DB_NAME);
     expect(database.name).toMatch(/^prompt-trail-lifecycle-/);
@@ -89,7 +67,7 @@ describe('PromptTrailDatabase lifecycle', () => {
   });
 
   it('closes and deletes an opened test database without leaving state behind', async () => {
-    const database = createUniqueLifecycleDatabase();
+    const database = databaseScope.createDatabase();
     const { name } = database;
 
     expect(name).not.toBe(PROMPT_TRAIL_DB_NAME);
@@ -102,14 +80,14 @@ describe('PromptTrailDatabase lifecycle', () => {
     expect(database.isOpen()).toBe(false);
 
     await database.delete();
-    untrackDatabase(database);
+    databaseScope.releaseDatabase(database);
 
     expect(await Dexie.exists(name)).toBe(false);
   });
 
   it('creates a unique database name for each tracked lifecycle database', () => {
-    const firstDatabase = createUniqueLifecycleDatabase();
-    const secondDatabase = createUniqueLifecycleDatabase();
+    const firstDatabase = databaseScope.createDatabase();
+    const secondDatabase = databaseScope.createDatabase();
 
     expect(firstDatabase.name).not.toBe(secondDatabase.name);
     expect(firstDatabase.name).not.toBe(PROMPT_TRAIL_DB_NAME);
