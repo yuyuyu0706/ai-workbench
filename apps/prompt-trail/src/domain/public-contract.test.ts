@@ -12,24 +12,37 @@ import {
   RUN_STATUSES,
 } from './index';
 import type {
+  ArchivableEntity,
   AssetScope,
+  BaseEntity,
   Context,
   ContextId,
+  ContextKind,
   ContextSnapshot,
+  JsonPrimitive,
+  JsonValue,
+  ContextStatus,
   EntityId,
   GlobalScope,
   Link,
   LinkId,
+  LinkRole,
+  LinkType,
   Project,
   ProjectId,
   ProjectScope,
   Prompt,
+  PromptKind,
   PromptId,
   PromptSnapshot,
+  PromptStatus,
+  PromptTrailEntityKind,
   Recipe,
   RecipeId,
   Run,
+  RunEvaluation,
   RunId,
+  RunStatus,
   UtcDateTimeString,
 } from './index';
 
@@ -99,7 +112,10 @@ describe('Prompt Trail domain public contract', () => {
 
   it('exposes asset scopes, IDs, models, and snapshots as public types', () => {
     type PublicContract = {
+      readonly entityKind: PromptTrailEntityKind;
       readonly entityId: EntityId<'project'>;
+      readonly baseEntity: BaseEntity<'project'>;
+      readonly archivableEntity: ArchivableEntity;
       readonly projectId: ProjectId;
       readonly promptId: PromptId;
       readonly contextId: ContextId;
@@ -107,15 +123,25 @@ describe('Prompt Trail domain public contract', () => {
       readonly runId: RunId;
       readonly linkId: LinkId;
       readonly utc: UtcDateTimeString;
+      readonly jsonPrimitive: JsonPrimitive;
+      readonly jsonValue: JsonValue;
       readonly globalScope: GlobalScope;
       readonly projectScope: ProjectScope;
       readonly assetScope: AssetScope;
       readonly project: Project;
       readonly prompt: Prompt;
+      readonly promptKind: PromptKind;
+      readonly promptStatus: PromptStatus;
       readonly context: Context;
+      readonly contextKind: ContextKind;
+      readonly contextStatus: ContextStatus;
       readonly recipe: Recipe;
       readonly run: Run;
+      readonly runStatus: RunStatus;
+      readonly runEvaluation: RunEvaluation;
       readonly link: Link;
+      readonly linkType: LinkType;
+      readonly linkRole: LinkRole;
       readonly promptSnapshot: PromptSnapshot;
       readonly contextSnapshot: ContextSnapshot;
     };
