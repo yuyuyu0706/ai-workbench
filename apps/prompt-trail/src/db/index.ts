@@ -4,3 +4,4 @@ export {
   PROMPT_TRAIL_STORE_NAMES,
 } from './metadata';
 export type { PromptTrailStoreName } from './metadata';
+export { PromptTrailDatabase, createPromptTrailDatabase } from './database';
