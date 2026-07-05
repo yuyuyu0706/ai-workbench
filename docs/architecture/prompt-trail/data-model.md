@@ -1,6 +1,6 @@
 # Prompt Trail Data Model
 
-Prompt Trail は、AI への依頼から成果までの Trail を Project、Prompt、Context、Recipe、Run、Link の 6 モデルで構造化します。この文書は、全モデルで共有するエンティティ規約と、知識資産の基礎となる Project、Prompt、Context の最小ドメイン契約を記録します。
+Prompt Trail は、AI への依頼から成果までの Trail を Project、Prompt、Context、Recipe、Run、Link の 6 モデルで構造化します。この文書は、全モデルで共有するエンティティ規約と、Project、Prompt、Context、Recipe、Run、Link の最小ドメイン契約を記録します。
 
 ## 共通エンティティ種別
 
@@ -105,20 +105,70 @@ Context は背景、制約、設計原則などを表す再利用可能な Markd
 
 `ContextKind` は初期候補として `project-overview`、`technical-architecture`、`development-rules`、`glossary`、`output-rules`、`other` だけを許容します。`ContextStatus` は `enabled`、`disabled` だけを許容します。これらは型と `as const` の公開定数として提供しますが、表示ラベル、多言語化、並び順はここでは扱いません。
 
+## Recipe モデル
+
+Recipe は Project 配下で再利用する、Prompt 1 件と Context 0 件以上の組合せです。`BaseEntity<'recipe'>` を合成し、Prompt／Context の本文・状態・scope は複製せず、常に可変参照として保持します。
+
+| Field         | Type                   | Meaning                                                              |
+| ------------- | ---------------------- | -------------------------------------------------------------------- |
+| `projectId`   | `ProjectId`            | Recipe を所有する Project です。                                     |
+| `title`       | `string`               | Recipe のタイトルです。                                              |
+| `description` | `string \| null`       | Recipe の説明です。未設定時は `null` です。                          |
+| `promptId`    | `PromptId`             | Recipe が参照する Prompt です。必ず 1 件だけ保持します。             |
+| `contextIds`  | `readonly ContextId[]` | Recipe が参照する Context の順序付き配列です。未選択時は空配列です。 |
+
+`contextIds` の配列順は、後続の最終 Prompt 組み立て時に Context を適用する順序です。Recipe は再利用可能な作業パターンを表すため、参照先 Prompt／Context が更新されると、次回以降の実行では更新後の資産を参照します。
+
+## Run モデル
+
+Run は Recipe から作成される実行記録であり、`BaseEntity<'run'>` と `ArchivableEntity` を合成します。Recipe が可変参照を保持するのに対し、Run は実行時点の Prompt／Context、入力値、最終 Prompt を固定保存する証跡です。
+
+| Field              | Type                                             | Meaning                                                                            |
+| ------------------ | ------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| `projectId`        | `ProjectId`                                      | Run が所属する Project です。                                                      |
+| `recipeId`         | `RecipeId`                                       | Run の作成元 Recipe です。                                                         |
+| `promptSnapshot`   | `PromptSnapshot`                                 | 実行時点の Prompt ID、タイトル、Markdown 本文を固定保存します。                    |
+| `contextSnapshots` | `readonly ContextSnapshot[]`                     | 実行時点の Context ID、タイトル、Markdown 本文を Recipe の適用順で固定保存します。 |
+| `inputValues`      | `{ readonly [variableName: string]: JsonValue }` | Recipe 変数名をキーにした JSON 互換値の辞書です。未入力時は空オブジェクトです。    |
+| `finalPrompt`      | `string`                                         | 実行時に組み立てられた最終依頼本文です。                                           |
+| `status`           | `RunStatus`                                      | Run の進行状態です。                                                               |
+| `evaluation`       | `RunEvaluation \| null`                          | Run の評価です。未評価時は `null` です。                                           |
+| `improvementNote`  | `string \| null`                                 | 改善メモです。未設定時は `null` です。                                             |
+| `archivedAt`       | `UtcDateTimeString \| null`                      | Run を履歴化する日時です。未アーカイブ時は `null` です。                           |
+
+`PromptSnapshot` は `promptId`、`title`、`body` を持ち、`ContextSnapshot` は `contextId`、`title`、`body` を持ちます。これにより、元の Prompt／Context が更新、無効化、論理削除されても、過去 Run の依頼内容を再現できます。`contextSnapshots` の配列順は Recipe で選択された Context 適用順を保持します。
+
+`RunStatus` は初期候補として `draft`、`prepared`、`executed`、`in-progress`、`done` だけを許容します。アーカイブ状態は `status` に `archived` を追加せず、`archivedAt` だけで表します。`RunEvaluation` は `good`、`needs-improvement`、`failed` だけを許容し、未評価は `null` で表します。
+
+## Link モデル
+
+Link は Run に直接所属する Trail 関係データです。単なる URL 配列ではなく、Chat、Issue、Pull Request、Commit、Release などを type／role 付きで辿れるようにします。`BaseEntity<'link'>` を合成し、登録日時は `createdAt` を利用します。
+
+| Field        | Type             | Meaning                                                         |
+| ------------ | ---------------- | --------------------------------------------------------------- |
+| `runId`      | `RunId`          | Link が所属する Run です。                                      |
+| `url`        | `string`         | 外部または内部成果への URL です。                               |
+| `title`      | `string \| null` | Link のタイトルです。未設定時は `null` です。                   |
+| `type`       | `LinkType`       | Link 対象の種別です。                                           |
+| `role`       | `LinkRole`       | Trail 上での役割です。                                          |
+| `summary`    | `string \| null` | Link 内容の要約です。未設定時は `null` です。                   |
+| `externalId` | `string \| null` | GitHub 番号や外部システム ID などです。未設定時は `null` です。 |
+
+`LinkType` は `chat`、`issue`、`pull-request`、`commit`、`release`、`document`、`external` だけを許容します。`LinkRole` は `source`、`reference`、`execution`、`output`、`result` だけを許容します。URL 自動判別、GitHub API 連携、外部ステータス同期、最終確認日時はここでは扱いません。
+
 ## 保存表現の null / array 規約
 
 永続化済みエンティティでは、単一の任意値は `null` で表し、`undefined` は保存表現に使いません。複数値は、値がない場合も `null` ではなく空配列で表します。
 
-Project の `description` と `repositoryUrl` は単一任意値として `null` を許容します。Project、Prompt、Context の `tags` は、値がない場合も空配列です。Prompt／Context の `scope: "global"` では `projectId` を持たず、`scope: "project"` では `projectId` を必須にすることで、保存表現で `undefined` に意味を持たせない共通規約と整合させます。
+Project の `description` と `repositoryUrl`、Recipe の `description`、Run の `evaluation` と `improvementNote`、Link の `title`、`summary`、`externalId` は単一任意値として `null` を許容します。Project、Prompt、Context の `tags`、Recipe の `contextIds`、Run の `contextSnapshots` は、値がない場合も空配列です。Run の `inputValues` は未入力時に空オブジェクトです。Prompt／Context の `scope: "global"` では `projectId` を持たず、`scope: "project"` では `projectId` を必須にすることで、保存表現で `undefined` に意味を持たせない共通規約と整合させます。
 
 この規約により IndexedDB、Export / Import、将来の同期処理で欠損値の意味を揃えます。
 
 ## 意図的な未確定事項
 
-本 Issue では Project、Prompt、Context の知識資産モデルだけを確定し、次の事項は後続 Issue で扱います。
+本 Issue では Project、Prompt、Context、Recipe、Run、Link のドメイン契約を確定し、次の事項は後続 Issue で扱います。
 
-- Recipe、Run、Link の個別属性・状態値・参照関係・Snapshot
-- Recipe 専用の Context 適用範囲、Context 差し込み順、Prompt 変数の解析・入力形式・必須チェック・初期値
+- Recipe 専用の Context 適用範囲、Prompt 変数の解析・入力形式・必須チェック・初期値
 - Prompt 版管理、複製履歴、Prompt 派生元、Context の文字数・推定トークン数、URL 形式検証、タグの重複除去・大小文字正規化
 - ID 生成処理、Entity Factory、DB auto increment、意味付き ID
 - Dexie schema、IndexedDB `version(1)`、テーブル、索引、DB 初期化
