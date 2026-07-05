@@ -241,3 +241,60 @@ Project archive 後に配下資産、Recipe、Run をどの画面で閲覧する
 - Dexie schema、IndexedDB `version(1)`、テーブル、索引、DB 初期化
 - Repository / Storage、保存・取得・更新・soft delete の実装
 - React Router、CRUD 画面、Dashboard、サンプルデータ、Export / Import、同期、認証
+
+## P0-3-1 公開契約の統合記録
+
+P0-3-1 の完了時点では、`apps/prompt-trail/src/domain/index.ts` を Prompt Trail ドメインの唯一の公開入口とします。後続の UI、Dexie schema、Repository、外部 API 連携の実装は、個別モデルファイルへの深い import を増やさず、この入口から必要な型と公開定数を参照します。`index.ts` は UI、Dexie、Repository、外部 API を import せず、ドメインモデルと公開定数だけを再公開する境界として維持します。
+
+### モデル関係図
+
+```mermaid
+flowchart LR
+  Project --> Recipe
+  Project --> Run
+  Prompt -. "1件を参照" .-> Recipe
+  Context -. "順序付きで参照" .-> Recipe
+  Recipe --> Run
+  Run --> PromptSnapshot
+  Run --> ContextSnapshots
+  Run --> Link
+```
+
+Recipe は Project 配下の作業パターンとして、Prompt 1 件と Context 0 件以上への可変参照を保持します。Prompt／Context の本文、状態、scope は Recipe に複製しないため、次回以降の Run 作成では参照先資産の最新状態を利用します。
+
+Run は Recipe から作成される固定証跡です。実行時点の `PromptSnapshot`、順序付きの `ContextSnapshot`、`inputValues`、`finalPrompt` を Run レコードに保持し、元の Prompt／Context が更新、deprecated／disabled、soft delete されても過去 Run の内容を再現できるようにします。
+
+Link は Run に直接所属する Trail 関係データです。Link 自身に `projectId` は持たせず、Project 所属は `Link -> Run -> Project` で辿ります。Project は Recipe と Run の所有境界であり、Prompt／Context は `AssetScope` により global asset または project asset として扱います。
+
+### 公開 API 一覧
+
+`apps/prompt-trail/src/domain/index.ts` は、次の公開面を集約します。default export、Factory、ID 生成、runtime validator、Repository 型、Dexie 型、UI 専用型は公開契約に含めません。
+
+| 区分           | 公開対象                                                                                                                                                                          | 主な後続利用                                                                                  |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| 共通規約       | `PromptTrailEntityKind`、`EntityId`、各モデル ID、`UtcDateTimeString`、`BaseEntity`、`ArchivableEntity`、`AssetScope`、`GlobalScope`、`ProjectScope`、`PROMPT_TRAIL_ENTITY_KINDS` | P0-3-2 の Store 名・主キー・索引、P0-3-3 の scope／参照整合、P0-4／P0-5 の通常取得条件        |
+| 6 モデル       | `Project`、`Prompt`、`Context`、`Recipe`、`Run`、`Link`                                                                                                                           | P0-3-2 の保存境界、P0-3-3 の Repository 入出力、P0-4／P0-5 の画面モデル                       |
+| 実行証跡       | `PromptSnapshot`、`ContextSnapshot`、`JsonPrimitive`、`JsonValue`                                                                                                                 | P0-3-2 の Run 埋め込み保存、P0-3-3 の Run 作成検証、Phase 2／Phase 3 の Trail 再現            |
+| 種別・状態定数 | Prompt／Context／Run／Link の kind、status、evaluation、type、role の型と公開定数                                                                                                 | P0-3-2 の保存値、P0-3-3 の候補抽出、P0-4／P0-5 の一覧・選択 UI、Phase 2／Phase 3 の Link 分類 |
+
+後続工程ごとの参照範囲は次のとおりです。
+
+- P0-3-2 は、6 モデル、ID 型、Store 名、主キー、v1 最小インデックス、保存境界を参照します。
+- P0-3-3 は、6 モデル、scope、参照整合、不変条件、通常取得条件、soft delete 契約を参照します。
+- P0-4／P0-5 は、通常取得用のモデル、状態、一覧順を参照します。
+- Phase 2／Phase 3 は、Recipe の可変参照、Run Snapshot、Link type／role を参照します。
+
+### P0-3-2 への引継ぎチェック
+
+P0-3-2 の Dexie schema v1 実装では、次の事項を確認します。
+
+- Project、Prompt、Context、Recipe、Run、Link の 6 Store を作り、主キーは各モデルの `id` とします。
+- v1 では既存の「永続化マッピング v1」に記録した最小インデックスだけを追加します。
+- `Recipe.contextIds` は順序を保つ埋め込み配列であり、Context 参照の中間 Store は作りません。
+- Run の `promptSnapshot`、`contextSnapshots`、`inputValues`、`finalPrompt` は Run レコードに埋め込みます。
+- Link は独立 Store とし、Project 所属は `Link -> Run -> Project` で辿ります。
+- Dexie schema に外部キー制約、参照整合検証、自動カスケード削除を期待しません。
+- `deletedAt`／`archivedAt` のように `null` を持つライフサイクル項目は、索引だけに依存して通常取得を完結させず、取得起点と後段フィルタの組合せで扱います。
+- 参照整合、通常取得条件、soft delete は P0-3-3 の Repository／Storage アクセス層で実装します。
+- 物理削除と自動カスケード削除は行わず、Trail の復元可能性を優先します。
+- schema version 1 では、タグ、Markdown 本文、URL、外部 ID、kind、summary、Snapshot 内部項目の索引、複合索引、検索最適化を追加しません。
