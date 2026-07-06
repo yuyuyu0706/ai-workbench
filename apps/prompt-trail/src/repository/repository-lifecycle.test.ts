@@ -276,6 +276,12 @@ describe('PromptTrailRepository cross-store lifecycle integration', () => {
     const archivedRun: Run = { ...originalRun, updatedAt: T7, archivedAt: T7 };
 
     await repository.saveRun(archivedRun);
+    await expect(repository.getLink(originalLink.id)).resolves.toEqual(
+      originalLink,
+    );
+    await expect(repository.listActiveLinks(originalRun.id)).resolves.toEqual([
+      originalLink,
+    ]);
 
     const deletedRecipe = await repository.softDeleteRecipe(
       trail.recipe.id,
@@ -285,6 +291,17 @@ describe('PromptTrailRepository cross-store lifecycle integration', () => {
       trail.project.id,
       T6,
     );
+
+    await expect(repository.getRun(originalRun.id)).resolves.toEqual(
+      archivedRun,
+    );
+    await expect(repository.getLink(originalLink.id)).resolves.toEqual(
+      originalLink,
+    );
+    await expect(repository.listActiveLinks(originalRun.id)).resolves.toEqual([
+      originalLink,
+    ]);
+
     const deletedRun = await repository.softDeleteRun(originalRun.id, T8);
     const deletedLink = await repository.softDeleteLink(originalLink.id, T8);
 
