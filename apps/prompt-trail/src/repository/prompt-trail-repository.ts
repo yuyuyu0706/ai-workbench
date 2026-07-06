@@ -8,8 +8,12 @@ import type {
   ProjectId,
   Prompt,
   PromptId,
+  Link,
+  LinkId,
   Recipe,
   RecipeId,
+  Run,
+  RunId,
   UtcDateTimeString,
 } from '../domain';
 
@@ -197,6 +201,166 @@ export class PromptTrailRepository {
       deletedAt,
       'Recipe',
     );
+  }
+
+  async saveRun(run: Run): Promise<Run> {
+    await this.database.transaction(
+      'rw',
+      this.database.projects,
+      this.database.recipes,
+      this.database.runs,
+      async () => {
+        await this.ensureRunReferencesAvailable(run);
+        await this.database.runs.put(run);
+      },
+    );
+
+    return run;
+  }
+
+  async getRun(runId: RunId): Promise<Run | null> {
+    return (await this.database.runs.get(runId)) ?? null;
+  }
+
+  async listActiveRuns(projectId: ProjectId): Promise<readonly Run[]> {
+    const runs = await this.database.runs
+      .orderBy('updatedAt')
+      .reverse()
+      .toArray();
+
+    return runs.filter(
+      (run) =>
+        run.projectId === projectId &&
+        run.deletedAt === null &&
+        run.archivedAt === null,
+    );
+  }
+
+  async softDeleteRun(
+    runId: RunId,
+    deletedAt: UtcDateTimeString,
+  ): Promise<Run> {
+    return this.softDeleteEntity(this.database.runs, runId, deletedAt, 'Run');
+  }
+
+  async saveLink(link: Link): Promise<Link> {
+    await this.database.transaction(
+      'rw',
+      this.database.runs,
+      this.database.links,
+      async () => {
+        await this.ensureLinkReferencesAvailable(link);
+        await this.database.links.put(link);
+      },
+    );
+
+    return link;
+  }
+
+  async getLink(linkId: LinkId): Promise<Link | null> {
+    return (await this.database.links.get(linkId)) ?? null;
+  }
+
+  async listActiveLinks(runId: RunId): Promise<readonly Link[]> {
+    const links = await this.database.links.orderBy('createdAt').toArray();
+
+    return links.filter(
+      (link) => link.runId === runId && link.deletedAt === null,
+    );
+  }
+
+  async softDeleteLink(
+    linkId: LinkId,
+    deletedAt: UtcDateTimeString,
+  ): Promise<Link> {
+    return this.softDeleteEntity(
+      this.database.links,
+      linkId,
+      deletedAt,
+      'Link',
+    );
+  }
+
+  private async ensureRunReferencesAvailable(run: Run): Promise<void> {
+    const project = await this.database.projects.get(run.projectId);
+
+    if (project === undefined) {
+      throw new PromptTrailRepositoryError(
+        'reference-not-found',
+        `Project not found: ${run.projectId}`,
+      );
+    }
+
+    if (project.deletedAt !== null) {
+      throw new PromptTrailRepositoryError(
+        'reference-unavailable',
+        `Project is unavailable: ${run.projectId}`,
+      );
+    }
+
+    const recipe = await this.database.recipes.get(run.recipeId);
+
+    if (recipe === undefined) {
+      throw new PromptTrailRepositoryError(
+        'reference-not-found',
+        `Recipe not found: ${run.recipeId}`,
+      );
+    }
+
+    if (recipe.deletedAt !== null) {
+      throw new PromptTrailRepositoryError(
+        'reference-unavailable',
+        `Recipe is unavailable: ${run.recipeId}`,
+      );
+    }
+
+    if (run.projectId !== recipe.projectId) {
+      throw new PromptTrailRepositoryError(
+        'project-mismatch',
+        `Run belongs to another project than recipe: ${run.id}`,
+      );
+    }
+
+    if (run.promptSnapshot.promptId !== recipe.promptId) {
+      throw new PromptTrailRepositoryError(
+        'snapshot-mismatch',
+        `Run prompt snapshot does not match recipe: ${run.id}`,
+      );
+    }
+
+    if (run.contextSnapshots.length !== recipe.contextIds.length) {
+      throw new PromptTrailRepositoryError(
+        'snapshot-mismatch',
+        `Run context snapshots do not match recipe: ${run.id}`,
+      );
+    }
+
+    for (const [index, contextId] of recipe.contextIds.entries()) {
+      if (run.contextSnapshots[index]?.contextId !== contextId) {
+        throw new PromptTrailRepositoryError(
+          'snapshot-mismatch',
+          `Run context snapshots do not match recipe order: ${run.id}`,
+        );
+      }
+    }
+  }
+
+  private async ensureLinkReferencesAvailable(link: Link): Promise<void> {
+    const run = await this.database.runs.get(link.runId);
+
+    if (run === undefined) {
+      throw new PromptTrailRepositoryError(
+        'reference-not-found',
+        `Run not found: ${link.runId}`,
+      );
+    }
+
+    if (run.deletedAt !== null) {
+      throw new PromptTrailRepositoryError(
+        'reference-unavailable',
+        `Run is unavailable: ${link.runId}`,
+      );
+    }
   }
 
   private async ensureRecipeReferencesAvailable(recipe: Recipe): Promise<void> {
