@@ -13,7 +13,10 @@ import type {
 } from '../domain';
 import { createDatabaseTestScope } from '../test/database-test-utils';
 
-import { PromptTrailRepository } from './index';
+import {
+  PromptTrailRepository,
+  type PromptTrailRepositoryErrorCode,
+} from './index';
 
 const databaseScope = createDatabaseTestScope('recipe-repository');
 
@@ -103,6 +106,13 @@ function buildRecipe(overrides: Partial<Recipe> = {}): Recipe {
   };
 }
 
+function expectedRepositoryError(code: PromptTrailRepositoryErrorCode) {
+  return {
+    name: 'PromptTrailRepositoryError',
+    code,
+  };
+}
+
 describe('PromptTrailRepository recipe persistence', () => {
   it('saves and gets recipes with global and same-project scoped references while preserving context order', async () => {
     const database = databaseScope.createDatabase();
@@ -127,6 +137,46 @@ describe('PromptTrailRepository recipe persistence', () => {
 
     await expect(repository.saveRecipe(recipe)).resolves.toEqual(recipe);
     await expect(repository.getRecipe(recipe.id)).resolves.toEqual(recipe);
+  });
+
+  it('saves recipes that reference draft prompts and global-only prompt/context sets', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    const project = buildProject();
+    const draftPrompt = buildPrompt({
+      id: promptId('prompt-draft'),
+      status: 'draft',
+    });
+    const globalPrompt = buildPrompt({ id: promptId('prompt-global') });
+    const globalContext = buildContext({ id: contextId('context-global') });
+    const draftRecipe = buildRecipe({
+      id: recipeId('recipe-draft-prompt'),
+      promptId: draftPrompt.id,
+      contextIds: [],
+    });
+    const globalOnlyRecipe = buildRecipe({
+      id: recipeId('recipe-global-only'),
+      promptId: globalPrompt.id,
+      contextIds: [globalContext.id],
+    });
+
+    await repository.saveProject(project);
+    await repository.savePrompt(draftPrompt);
+    await repository.savePrompt(globalPrompt);
+    await repository.saveContext(globalContext);
+
+    await expect(repository.saveRecipe(draftRecipe)).resolves.toEqual(
+      draftRecipe,
+    );
+    await expect(repository.getRecipe(draftRecipe.id)).resolves.toEqual(
+      draftRecipe,
+    );
+    await expect(repository.saveRecipe(globalOnlyRecipe)).resolves.toEqual(
+      globalOnlyRecipe,
+    );
+    await expect(repository.getRecipe(globalOnlyRecipe.id)).resolves.toEqual(
+      globalOnlyRecipe,
+    );
   });
 
   it('allows recipes for archived projects', async () => {
@@ -244,9 +294,9 @@ describe('PromptTrailRepository recipe persistence', () => {
     ] as const;
 
     for (const [recipe, code] of cases) {
-      await expect(repository.saveRecipe(recipe)).rejects.toMatchObject({
-        code,
-      });
+      await expect(repository.saveRecipe(recipe)).rejects.toMatchObject(
+        expectedRepositoryError(code),
+      );
       await expect(repository.getRecipe(recipe.id)).resolves.toBe(null);
     }
   });
@@ -268,16 +318,6 @@ describe('PromptTrailRepository recipe persistence', () => {
       scope: 'project',
       projectId: otherProject.id,
     });
-    const invalidPrompt = {
-      ...buildPrompt({ id: promptId('prompt-invalid-scope') }),
-      scope: 'global',
-      projectId: project.id,
-    } as unknown as Prompt;
-    const invalidContext = {
-      ...buildContext({ id: contextId('context-invalid-scope') }),
-      scope: 'project',
-      projectId: null,
-    } as unknown as Context;
 
     await repository.saveProject(project);
     await repository.saveProject(otherProject);
@@ -285,49 +325,167 @@ describe('PromptTrailRepository recipe persistence', () => {
     await repository.savePrompt(projectPrompt);
     await repository.saveContext(context);
     await repository.saveContext(projectContext);
-    await database.prompts.put(invalidPrompt);
-    await database.contexts.put(invalidContext);
+    const duplicateContextRecipe = buildRecipe({
+      id: recipeId('recipe-duplicate-context'),
+      contextIds: [context.id, context.id],
+    });
+    const promptMismatchRecipe = buildRecipe({
+      id: recipeId('recipe-prompt-mismatch'),
+      promptId: projectPrompt.id,
+    });
+    const contextMismatchRecipe = buildRecipe({
+      id: recipeId('recipe-context-mismatch'),
+      contextIds: [projectContext.id],
+    });
 
     await expect(
-      repository.saveRecipe(
-        buildRecipe({
-          id: recipeId('recipe-duplicate-context'),
-          contextIds: [context.id, context.id],
-        }),
-      ),
-    ).rejects.toMatchObject({ code: 'duplicate-context-id' });
+      repository.saveRecipe(duplicateContextRecipe),
+    ).rejects.toMatchObject(expectedRepositoryError('duplicate-context-id'));
+    await expect(repository.getRecipe(duplicateContextRecipe.id)).resolves.toBe(
+      null,
+    );
     await expect(
-      repository.saveRecipe(
-        buildRecipe({
-          id: recipeId('recipe-prompt-mismatch'),
-          promptId: projectPrompt.id,
-        }),
-      ),
-    ).rejects.toMatchObject({ code: 'project-mismatch' });
+      repository.saveRecipe(promptMismatchRecipe),
+    ).rejects.toMatchObject(expectedRepositoryError('project-mismatch'));
+    await expect(repository.getRecipe(promptMismatchRecipe.id)).resolves.toBe(
+      null,
+    );
     await expect(
-      repository.saveRecipe(
-        buildRecipe({
-          id: recipeId('recipe-context-mismatch'),
-          contextIds: [projectContext.id],
-        }),
-      ),
-    ).rejects.toMatchObject({ code: 'project-mismatch' });
-    await expect(
-      repository.saveRecipe(
-        buildRecipe({
-          id: recipeId('recipe-prompt-scope'),
-          promptId: invalidPrompt.id,
-        }),
-      ),
-    ).rejects.toMatchObject({ code: 'scope-mismatch' });
-    await expect(
-      repository.saveRecipe(
-        buildRecipe({
-          id: recipeId('recipe-context-scope'),
-          contextIds: [invalidContext.id],
-        }),
-      ),
-    ).rejects.toMatchObject({ code: 'scope-mismatch' });
+      repository.saveRecipe(contextMismatchRecipe),
+    ).rejects.toMatchObject(expectedRepositoryError('project-mismatch'));
+    await expect(repository.getRecipe(contextMismatchRecipe.id)).resolves.toBe(
+      null,
+    );
+  });
+
+  it('rejects malformed referenced prompt and context scopes without writing failed recipes', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    const project = buildProject();
+    const prompt = buildPrompt();
+    const context = buildContext();
+    const projectPromptWithoutProjectId = buildPrompt({
+      id: promptId('prompt-project-without-project-id'),
+      scope: 'project',
+    });
+    const projectContextWithoutProjectId = buildContext({
+      id: contextId('context-project-without-project-id'),
+      scope: 'project',
+    });
+    // IndexedDB境界のruntime検証を確認する意図で、型システムを迂回した不正形状を渡す。
+    const promptWithUnknownScope = {
+      ...buildPrompt({ id: promptId('prompt-unknown-scope') }),
+      scope: 'workspace',
+      projectId: project.id,
+    } as unknown as Prompt;
+    // IndexedDB境界のruntime検証を確認する意図で、型システムを迂回した不正形状を渡す。
+    const promptWithUndefinedProjectId = {
+      ...buildPrompt({ id: promptId('prompt-undefined-project-id') }),
+      scope: 'project',
+      projectId: undefined,
+    } as unknown as Prompt;
+    // IndexedDB境界のruntime検証を確認する意図で、型システムを迂回した不正形状を渡す。
+    const promptWithNumericProjectId = {
+      ...buildPrompt({ id: promptId('prompt-numeric-project-id') }),
+      scope: 'project',
+      projectId: 123,
+    } as unknown as Prompt;
+    // IndexedDB境界のruntime検証を確認する意図で、型システムを迂回した不正形状を渡す。
+    const promptWithGlobalUndefinedProjectId = {
+      ...buildPrompt({ id: promptId('prompt-global-undefined-project-id') }),
+      projectId: undefined,
+    } as unknown as Prompt;
+    // IndexedDB境界のruntime検証を確認する意図で、型システムを迂回した不正形状を渡す。
+    const contextWithUnknownScope = {
+      ...buildContext({ id: contextId('context-unknown-scope') }),
+      scope: 'workspace',
+      projectId: project.id,
+    } as unknown as Context;
+    // IndexedDB境界のruntime検証を確認する意図で、型システムを迂回した不正形状を渡す。
+    const contextWithUndefinedProjectId = {
+      ...buildContext({ id: contextId('context-undefined-project-id') }),
+      scope: 'project',
+      projectId: undefined,
+    } as unknown as Context;
+    // IndexedDB境界のruntime検証を確認する意図で、型システムを迂回した不正形状を渡す。
+    const contextWithNumericProjectId = {
+      ...buildContext({ id: contextId('context-numeric-project-id') }),
+      scope: 'project',
+      projectId: 123,
+    } as unknown as Context;
+    // IndexedDB境界のruntime検証を確認する意図で、型システムを迂回した不正形状を渡す。
+    const contextWithGlobalUndefinedProjectId = {
+      ...buildContext({ id: contextId('context-global-undefined-project-id') }),
+      projectId: undefined,
+    } as unknown as Context;
+
+    await repository.saveProject(project);
+    await repository.savePrompt(prompt);
+    await repository.saveContext(context);
+    await database.prompts.bulkPut([
+      projectPromptWithoutProjectId,
+      promptWithUnknownScope,
+      promptWithUndefinedProjectId,
+      promptWithNumericProjectId,
+      promptWithGlobalUndefinedProjectId,
+    ]);
+    await database.contexts.bulkPut([
+      projectContextWithoutProjectId,
+      contextWithUnknownScope,
+      contextWithUndefinedProjectId,
+      contextWithNumericProjectId,
+      contextWithGlobalUndefinedProjectId,
+    ]);
+
+    const cases = [
+      buildRecipe({
+        id: recipeId('recipe-prompt-project-without-project-id'),
+        promptId: projectPromptWithoutProjectId.id,
+      }),
+      buildRecipe({
+        id: recipeId('recipe-prompt-unknown-scope'),
+        promptId: promptWithUnknownScope.id,
+      }),
+      buildRecipe({
+        id: recipeId('recipe-prompt-undefined-project-id'),
+        promptId: promptWithUndefinedProjectId.id,
+      }),
+      buildRecipe({
+        id: recipeId('recipe-prompt-numeric-project-id'),
+        promptId: promptWithNumericProjectId.id,
+      }),
+      buildRecipe({
+        id: recipeId('recipe-prompt-global-undefined-project-id'),
+        promptId: promptWithGlobalUndefinedProjectId.id,
+      }),
+      buildRecipe({
+        id: recipeId('recipe-context-project-without-project-id'),
+        contextIds: [projectContextWithoutProjectId.id],
+      }),
+      buildRecipe({
+        id: recipeId('recipe-context-unknown-scope'),
+        contextIds: [contextWithUnknownScope.id],
+      }),
+      buildRecipe({
+        id: recipeId('recipe-context-undefined-project-id'),
+        contextIds: [contextWithUndefinedProjectId.id],
+      }),
+      buildRecipe({
+        id: recipeId('recipe-context-numeric-project-id'),
+        contextIds: [contextWithNumericProjectId.id],
+      }),
+      buildRecipe({
+        id: recipeId('recipe-context-global-undefined-project-id'),
+        contextIds: [contextWithGlobalUndefinedProjectId.id],
+      }),
+    ];
+
+    for (const recipe of cases) {
+      await expect(repository.saveRecipe(recipe)).rejects.toMatchObject(
+        expectedRepositoryError('scope-mismatch'),
+      );
+      await expect(repository.getRecipe(recipe.id)).resolves.toBe(null);
+    }
   });
 
   it('rolls back failed upserts and keeps an existing recipe unchanged', async () => {
@@ -348,7 +506,7 @@ describe('PromptTrailRepository recipe persistence', () => {
     await repository.saveRecipe(existingRecipe);
 
     await expect(repository.saveRecipe(invalidUpsert)).rejects.toMatchObject({
-      code: 'reference-not-found',
+      ...expectedRepositoryError('reference-not-found'),
     });
     await expect(repository.getRecipe(existingRecipe.id)).resolves.toEqual(
       existingRecipe,
@@ -457,6 +615,6 @@ describe('PromptTrailRepository recipe persistence', () => {
         recipeId('missing'),
         utc('2026-07-06T09:00:00.000Z'),
       ),
-    ).rejects.toMatchObject({ code: 'reference-not-found' });
+    ).rejects.toMatchObject(expectedRepositoryError('reference-not-found'));
   });
 });
