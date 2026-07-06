@@ -1,5 +1,15 @@
+import type { Table } from 'dexie';
+
 import type { PromptTrailDatabase } from '../db';
-import type { Project, ProjectId, UtcDateTimeString } from '../domain';
+import type {
+  Context,
+  ContextId,
+  Project,
+  ProjectId,
+  Prompt,
+  PromptId,
+  UtcDateTimeString,
+} from '../domain';
 
 import { PromptTrailRepositoryError } from './errors';
 
@@ -52,5 +62,181 @@ export class PromptTrailRepository {
     await this.database.projects.put(deletedProject);
 
     return deletedProject;
+  }
+
+  async savePrompt(prompt: Prompt): Promise<Prompt> {
+    await this.database.transaction(
+      'rw',
+      this.database.projects,
+      this.database.prompts,
+      async () => {
+        await this.ensureValidAssetScope(prompt);
+        await this.database.prompts.put(prompt);
+      },
+    );
+
+    return prompt;
+  }
+
+  async getPrompt(promptId: PromptId): Promise<Prompt | null> {
+    return (await this.database.prompts.get(promptId)) ?? null;
+  }
+
+  async listActivePrompts(projectId?: ProjectId): Promise<readonly Prompt[]> {
+    const prompts = await this.database.prompts
+      .orderBy('updatedAt')
+      .reverse()
+      .toArray();
+
+    return prompts.filter(
+      (prompt) =>
+        prompt.deletedAt === null &&
+        prompt.status === 'active' &&
+        this.matchesRequestedScope(prompt, projectId),
+    );
+  }
+
+  async softDeletePrompt(
+    promptId: PromptId,
+    deletedAt: UtcDateTimeString,
+  ): Promise<Prompt> {
+    return this.softDeleteEntity(
+      this.database.prompts,
+      promptId,
+      deletedAt,
+      'Prompt',
+    );
+  }
+
+  async saveContext(context: Context): Promise<Context> {
+    await this.database.transaction(
+      'rw',
+      this.database.projects,
+      this.database.contexts,
+      async () => {
+        await this.ensureValidAssetScope(context);
+        await this.database.contexts.put(context);
+      },
+    );
+
+    return context;
+  }
+
+  async getContext(contextId: ContextId): Promise<Context | null> {
+    return (await this.database.contexts.get(contextId)) ?? null;
+  }
+
+  async listEnabledContexts(
+    projectId?: ProjectId,
+  ): Promise<readonly Context[]> {
+    const contexts = await this.database.contexts
+      .orderBy('updatedAt')
+      .reverse()
+      .toArray();
+
+    return contexts.filter(
+      (context) =>
+        context.deletedAt === null &&
+        context.status === 'enabled' &&
+        this.matchesRequestedScope(context, projectId),
+    );
+  }
+
+  async softDeleteContext(
+    contextId: ContextId,
+    deletedAt: UtcDateTimeString,
+  ): Promise<Context> {
+    return this.softDeleteEntity(
+      this.database.contexts,
+      contextId,
+      deletedAt,
+      'Context',
+    );
+  }
+
+  private async ensureValidAssetScope(
+    asset: Pick<Prompt | Context, 'scope'> &
+      Partial<Pick<Prompt | Context, 'projectId'>>,
+  ): Promise<void> {
+    if (asset.scope === 'global') {
+      if ('projectId' in asset) {
+        throw new PromptTrailRepositoryError(
+          'scope-mismatch',
+          'Global asset must not include projectId',
+        );
+      }
+
+      return;
+    }
+
+    if (
+      asset.scope !== 'project' ||
+      !('projectId' in asset) ||
+      typeof asset.projectId !== 'string'
+    ) {
+      throw new PromptTrailRepositoryError(
+        'scope-mismatch',
+        'Project asset must include a string projectId',
+      );
+    }
+
+    const project = await this.database.projects.get(asset.projectId);
+
+    if (project === undefined) {
+      throw new PromptTrailRepositoryError(
+        'reference-not-found',
+        `Project not found: ${asset.projectId}`,
+      );
+    }
+
+    if (project.deletedAt !== null) {
+      throw new PromptTrailRepositoryError(
+        'reference-unavailable',
+        `Project is unavailable: ${asset.projectId}`,
+      );
+    }
+  }
+
+  private matchesRequestedScope(
+    asset: Pick<Prompt | Context, 'scope'> &
+      Partial<Pick<Prompt | Context, 'projectId'>>,
+    projectId: ProjectId | undefined,
+  ): boolean {
+    if (asset.scope === 'global') {
+      return !('projectId' in asset);
+    }
+
+    return projectId !== undefined && asset.projectId === projectId;
+  }
+
+  private async softDeleteEntity<
+    Entity extends {
+      readonly id: Id;
+      readonly deletedAt: UtcDateTimeString | null;
+    },
+    Id,
+  >(
+    table: Table<Entity, Id>,
+    id: Id,
+    deletedAt: UtcDateTimeString,
+    entityName: string,
+  ): Promise<Entity> {
+    const entity = await table.get(id);
+
+    if (entity === undefined) {
+      throw new PromptTrailRepositoryError(
+        'reference-not-found',
+        `${entityName} not found: ${String(id)}`,
+      );
+    }
+
+    const deletedEntity: Entity = {
+      ...entity,
+      deletedAt,
+    };
+
+    await table.put(deletedEntity);
+
+    return deletedEntity;
   }
 }
