@@ -8,6 +8,8 @@ import type {
   ProjectId,
   Prompt,
   PromptId,
+  Recipe,
+  RecipeId,
   UtcDateTimeString,
 } from '../domain';
 
@@ -152,6 +154,156 @@ export class PromptTrailRepository {
       deletedAt,
       'Context',
     );
+  }
+
+  async saveRecipe(recipe: Recipe): Promise<Recipe> {
+    await this.database.transaction(
+      'rw',
+      this.database.projects,
+      this.database.prompts,
+      this.database.contexts,
+      this.database.recipes,
+      async () => {
+        await this.ensureRecipeReferencesAvailable(recipe);
+        await this.database.recipes.put(recipe);
+      },
+    );
+
+    return recipe;
+  }
+
+  async getRecipe(recipeId: RecipeId): Promise<Recipe | null> {
+    return (await this.database.recipes.get(recipeId)) ?? null;
+  }
+
+  async listActiveRecipes(projectId: ProjectId): Promise<readonly Recipe[]> {
+    const recipes = await this.database.recipes
+      .orderBy('updatedAt')
+      .reverse()
+      .toArray();
+
+    return recipes.filter(
+      (recipe) => recipe.projectId === projectId && recipe.deletedAt === null,
+    );
+  }
+
+  async softDeleteRecipe(
+    recipeId: RecipeId,
+    deletedAt: UtcDateTimeString,
+  ): Promise<Recipe> {
+    return this.softDeleteEntity(
+      this.database.recipes,
+      recipeId,
+      deletedAt,
+      'Recipe',
+    );
+  }
+
+  private async ensureRecipeReferencesAvailable(recipe: Recipe): Promise<void> {
+    const project = await this.database.projects.get(recipe.projectId);
+
+    if (project === undefined) {
+      throw new PromptTrailRepositoryError(
+        'reference-not-found',
+        `Project not found: ${recipe.projectId}`,
+      );
+    }
+
+    if (project.deletedAt !== null) {
+      throw new PromptTrailRepositoryError(
+        'reference-unavailable',
+        `Project is unavailable: ${recipe.projectId}`,
+      );
+    }
+
+    const prompt = await this.database.prompts.get(recipe.promptId);
+
+    if (prompt === undefined) {
+      throw new PromptTrailRepositoryError(
+        'reference-not-found',
+        `Prompt not found: ${recipe.promptId}`,
+      );
+    }
+
+    if (prompt.deletedAt !== null || prompt.status === 'deprecated') {
+      throw new PromptTrailRepositoryError(
+        'reference-unavailable',
+        `Prompt is unavailable: ${recipe.promptId}`,
+      );
+    }
+
+    this.ensureAssetMatchesRecipeProject(prompt, recipe.projectId);
+    this.ensureUniqueContextIds(recipe.contextIds);
+
+    for (const contextId of recipe.contextIds) {
+      const context = await this.database.contexts.get(contextId);
+
+      if (context === undefined) {
+        throw new PromptTrailRepositoryError(
+          'reference-not-found',
+          `Context not found: ${contextId}`,
+        );
+      }
+
+      if (context.deletedAt !== null || context.status !== 'enabled') {
+        throw new PromptTrailRepositoryError(
+          'reference-unavailable',
+          `Context is unavailable: ${contextId}`,
+        );
+      }
+
+      this.ensureAssetMatchesRecipeProject(context, recipe.projectId);
+    }
+  }
+
+  private ensureUniqueContextIds(contextIds: readonly ContextId[]): void {
+    const uniqueContextIds = new Set<ContextId>();
+
+    for (const contextId of contextIds) {
+      if (uniqueContextIds.has(contextId)) {
+        throw new PromptTrailRepositoryError(
+          'duplicate-context-id',
+          `Duplicate contextId: ${contextId}`,
+        );
+      }
+
+      uniqueContextIds.add(contextId);
+    }
+  }
+
+  private ensureAssetMatchesRecipeProject(
+    asset: Pick<Prompt | Context, 'id' | 'scope'> &
+      Partial<Pick<Prompt | Context, 'projectId'>>,
+    recipeProjectId: ProjectId,
+  ): void {
+    if (asset.scope === 'global') {
+      if ('projectId' in asset) {
+        throw new PromptTrailRepositoryError(
+          'scope-mismatch',
+          'Global asset must not include projectId',
+        );
+      }
+
+      return;
+    }
+
+    if (
+      asset.scope !== 'project' ||
+      !('projectId' in asset) ||
+      typeof asset.projectId !== 'string'
+    ) {
+      throw new PromptTrailRepositoryError(
+        'scope-mismatch',
+        'Project asset must include a string projectId',
+      );
+    }
+
+    if (asset.projectId !== recipeProjectId) {
+      throw new PromptTrailRepositoryError(
+        'project-mismatch',
+        `Project scoped asset belongs to another project: ${asset.id}`,
+      );
+    }
   }
 
   private async ensureValidAssetScope(
