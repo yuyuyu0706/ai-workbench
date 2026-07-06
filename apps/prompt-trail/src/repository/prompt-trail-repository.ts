@@ -169,10 +169,14 @@ export class PromptTrailRepository {
       return;
     }
 
-    if (asset.scope !== 'project' || asset.projectId === undefined) {
+    if (
+      asset.scope !== 'project' ||
+      !('projectId' in asset) ||
+      typeof asset.projectId !== 'string'
+    ) {
       throw new PromptTrailRepositoryError(
         'scope-mismatch',
-        'Project asset must include projectId',
+        'Project asset must include a string projectId',
       );
     }
 

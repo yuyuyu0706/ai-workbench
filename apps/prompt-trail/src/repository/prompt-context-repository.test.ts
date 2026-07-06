@@ -163,14 +163,34 @@ describe('PromptTrailRepository prompt and context persistence', () => {
       scope: 'project',
       projectId: deletedProject.id,
     });
+    // IndexedDB境界のruntime検証を確認する意図で、型システムを迂回した不正形状を渡す。
     const globalPromptWithProjectId = {
       ...buildPrompt({ id: promptId('prompt-global-with-project') }),
       projectId: projectId('project-leak'),
     } as unknown as Prompt;
+    // IndexedDB境界のruntime検証を確認する意図で、型システムを迂回した不正形状を渡す。
     const projectContextWithoutProjectId = {
       ...buildContext({ id: contextId('context-project-without-project') }),
       scope: 'project',
     } as unknown as Context;
+    // IndexedDB境界のruntime検証を確認する意図で、型システムを迂回した不正形状を渡す。
+    const nullProjectIdPrompt = {
+      ...buildPrompt({ id: promptId('prompt-null-project-id') }),
+      scope: 'project',
+      projectId: null,
+    } as unknown as Prompt;
+    // IndexedDB境界のruntime検証を確認する意図で、型システムを迂回した不正形状を渡す。
+    const numericProjectIdContext = {
+      ...buildContext({ id: contextId('context-numeric-project-id') }),
+      scope: 'project',
+      projectId: 123,
+    } as unknown as Context;
+    // IndexedDB境界のruntime検証を確認する意図で、型システムを迂回した不正形状を渡す。
+    const invalidScopePrompt = {
+      ...buildPrompt({ id: promptId('prompt-invalid-scope') }),
+      scope: 'workspace',
+      projectId: projectId('project-leak'),
+    } as unknown as Prompt;
 
     await expect(
       repository.savePrompt(missingProjectPrompt),
@@ -184,6 +204,17 @@ describe('PromptTrailRepository prompt and context persistence', () => {
     await expect(
       repository.saveContext(projectContextWithoutProjectId),
     ).rejects.toMatchObject({ code: 'scope-mismatch' });
+    await expect(
+      repository.savePrompt(nullProjectIdPrompt),
+    ).rejects.toMatchObject({ code: 'scope-mismatch' });
+    await expect(
+      repository.saveContext(numericProjectIdContext),
+    ).rejects.toMatchObject({ code: 'scope-mismatch' });
+    await expect(
+      repository.savePrompt(invalidScopePrompt),
+    ).rejects.toMatchObject({
+      code: 'scope-mismatch',
+    });
     await expect(repository.getPrompt(missingProjectPrompt.id)).resolves.toBe(
       null,
     );
@@ -196,6 +227,15 @@ describe('PromptTrailRepository prompt and context persistence', () => {
     await expect(
       repository.getContext(projectContextWithoutProjectId.id),
     ).resolves.toBe(null);
+    await expect(repository.getPrompt(nullProjectIdPrompt.id)).resolves.toBe(
+      null,
+    );
+    await expect(
+      repository.getContext(numericProjectIdContext.id),
+    ).resolves.toBe(null);
+    await expect(repository.getPrompt(invalidScopePrompt.id)).resolves.toBe(
+      null,
+    );
   });
 
   it('lists active prompts by requested scope in descending updatedAt order', async () => {
@@ -254,6 +294,9 @@ describe('PromptTrailRepository prompt and context persistence', () => {
       ].map((p) => repository.savePrompt(p)),
     );
 
+    await expect(repository.getPrompt(deprecatedPrompt.id)).resolves.toEqual(
+      deprecatedPrompt,
+    );
     await expect(repository.listActivePrompts()).resolves.toEqual([
       newerGlobal,
       olderGlobal,
@@ -315,6 +358,9 @@ describe('PromptTrailRepository prompt and context persistence', () => {
       ].map((c) => repository.saveContext(c)),
     );
 
+    await expect(repository.getContext(disabledContext.id)).resolves.toEqual(
+      disabledContext,
+    );
     await expect(repository.listEnabledContexts()).resolves.toEqual([
       newerGlobal,
       olderGlobal,
