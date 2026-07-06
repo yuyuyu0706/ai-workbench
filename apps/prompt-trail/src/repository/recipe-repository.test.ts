@@ -385,6 +385,12 @@ describe('PromptTrailRepository recipe persistence', () => {
       projectId: undefined,
     } as unknown as Prompt;
     // IndexedDB境界のruntime検証を確認する意図で、型システムを迂回した不正形状を渡す。
+    const promptWithNullProjectId = {
+      ...buildPrompt({ id: promptId('prompt-null-project-id') }),
+      scope: 'project',
+      projectId: null,
+    } as unknown as Prompt;
+    // IndexedDB境界のruntime検証を確認する意図で、型システムを迂回した不正形状を渡す。
     const promptWithNumericProjectId = {
       ...buildPrompt({ id: promptId('prompt-numeric-project-id') }),
       scope: 'project',
@@ -408,6 +414,12 @@ describe('PromptTrailRepository recipe persistence', () => {
       projectId: undefined,
     } as unknown as Context;
     // IndexedDB境界のruntime検証を確認する意図で、型システムを迂回した不正形状を渡す。
+    const contextWithNullProjectId = {
+      ...buildContext({ id: contextId('context-null-project-id') }),
+      scope: 'project',
+      projectId: null,
+    } as unknown as Context;
+    // IndexedDB境界のruntime検証を確認する意図で、型システムを迂回した不正形状を渡す。
     const contextWithNumericProjectId = {
       ...buildContext({ id: contextId('context-numeric-project-id') }),
       scope: 'project',
@@ -426,6 +438,7 @@ describe('PromptTrailRepository recipe persistence', () => {
       projectPromptWithoutProjectId,
       promptWithUnknownScope,
       promptWithUndefinedProjectId,
+      promptWithNullProjectId,
       promptWithNumericProjectId,
       promptWithGlobalUndefinedProjectId,
     ]);
@@ -433,6 +446,7 @@ describe('PromptTrailRepository recipe persistence', () => {
       projectContextWithoutProjectId,
       contextWithUnknownScope,
       contextWithUndefinedProjectId,
+      contextWithNullProjectId,
       contextWithNumericProjectId,
       contextWithGlobalUndefinedProjectId,
     ]);
@@ -449,6 +463,10 @@ describe('PromptTrailRepository recipe persistence', () => {
       buildRecipe({
         id: recipeId('recipe-prompt-undefined-project-id'),
         promptId: promptWithUndefinedProjectId.id,
+      }),
+      buildRecipe({
+        id: recipeId('recipe-prompt-null-project-id'),
+        promptId: promptWithNullProjectId.id,
       }),
       buildRecipe({
         id: recipeId('recipe-prompt-numeric-project-id'),
@@ -469,6 +487,10 @@ describe('PromptTrailRepository recipe persistence', () => {
       buildRecipe({
         id: recipeId('recipe-context-undefined-project-id'),
         contextIds: [contextWithUndefinedProjectId.id],
+      }),
+      buildRecipe({
+        id: recipeId('recipe-context-null-project-id'),
+        contextIds: [contextWithNullProjectId.id],
       }),
       buildRecipe({
         id: recipeId('recipe-context-numeric-project-id'),
