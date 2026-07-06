@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type {
+  Context,
   ContextId,
   Link,
   LinkId,
   Project,
   ProjectId,
+  Prompt,
   PromptId,
   Recipe,
   RecipeId,
@@ -75,6 +77,38 @@ function buildProject(overrides: Partial<Project> = {}): Project {
     repositoryUrl: null,
     ...overrides,
   };
+}
+
+function buildPrompt(overrides: Partial<Prompt> = {}): Prompt {
+  return {
+    id: promptId('prompt-1'),
+    createdAt: utc('2026-07-06T00:00:00.000Z'),
+    updatedAt: utc('2026-07-06T00:00:00.000Z'),
+    deletedAt: null,
+    scope: 'global',
+    title: 'Prompt 1',
+    body: 'Prompt body',
+    kind: 'codex-request',
+    status: 'active',
+    tags: ['prompt'],
+    ...overrides,
+  } as Prompt;
+}
+
+function buildContext(overrides: Partial<Context> = {}): Context {
+  return {
+    id: contextId('context-1'),
+    createdAt: utc('2026-07-06T00:00:00.000Z'),
+    updatedAt: utc('2026-07-06T00:00:00.000Z'),
+    deletedAt: null,
+    scope: 'global',
+    title: 'Context 1',
+    body: 'Context body',
+    kind: 'project-overview',
+    status: 'enabled',
+    tags: ['context'],
+    ...overrides,
+  } as Context;
 }
 
 function buildRecipe(overrides: Partial<Recipe> = {}): Recipe {
@@ -157,6 +191,34 @@ async function seedProjectRecipe(
   return { project, recipe };
 }
 
+async function seedProjectRecipeViaRepository(
+  repository: PromptTrailRepository,
+) {
+  const project = buildProject();
+  const prompt = buildPrompt({
+    title: 'Snapshot prompt',
+    body: 'Snapshot prompt body',
+  });
+  const firstContext = buildContext({
+    title: 'Context snapshot 1',
+    body: 'Context snapshot body 1',
+  });
+  const secondContext = buildContext({
+    id: contextId('context-2'),
+    title: 'Context snapshot 2',
+    body: 'Context snapshot body 2',
+  });
+  const recipe = buildRecipe();
+
+  await repository.saveProject(project);
+  await repository.savePrompt(prompt);
+  await repository.saveContext(firstContext);
+  await repository.saveContext(secondContext);
+  await repository.saveRecipe(recipe);
+
+  return { project, prompt, firstContext, secondContext, recipe };
+}
+
 describe('PromptTrailRepository run persistence', () => {
   it('saves, gets, lists, and soft deletes runs while preserving supplied trail fields', async () => {
     const database = databaseScope.createDatabase();
@@ -180,6 +242,89 @@ describe('PromptTrailRepository run persistence', () => {
       deletedAt,
     });
     await expect(repository.listActiveRuns(run.projectId)).resolves.toEqual([]);
+  });
+
+  it('keeps run snapshots independent after source assets and parents change through repository APIs', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    const { project, prompt, firstContext, secondContext, recipe } =
+      await seedProjectRecipeViaRepository(repository);
+    const run = buildRun({
+      inputValues: { feature: 'snapshot-independence', nested: { count: 2 } },
+      finalPrompt: 'Frozen final prompt with original prompt and contexts',
+    });
+
+    await repository.saveRun(run);
+
+    await repository.savePrompt({
+      ...prompt,
+      updatedAt: utc('2026-07-06T04:00:00.000Z'),
+      title: 'Updated prompt title',
+      body: 'Updated prompt body',
+      status: 'deprecated',
+    });
+    await repository.saveContext({
+      ...firstContext,
+      updatedAt: utc('2026-07-06T04:01:00.000Z'),
+      title: 'Updated context title',
+      body: 'Updated context body',
+      status: 'disabled',
+    });
+    await repository.saveContext({
+      ...secondContext,
+      updatedAt: utc('2026-07-06T04:02:00.000Z'),
+      title: 'Updated second context title',
+      body: 'Updated second context body',
+      status: 'disabled',
+    });
+    await repository.softDeletePrompt(
+      prompt.id,
+      utc('2026-07-06T05:00:00.000Z'),
+    );
+    await repository.softDeleteContext(
+      firstContext.id,
+      utc('2026-07-06T05:01:00.000Z'),
+    );
+    await repository.softDeleteContext(
+      secondContext.id,
+      utc('2026-07-06T05:02:00.000Z'),
+    );
+    await repository.softDeleteRecipe(
+      recipe.id,
+      utc('2026-07-06T05:03:00.000Z'),
+    );
+    await repository.softDeleteProject(
+      project.id,
+      utc('2026-07-06T05:04:00.000Z'),
+    );
+
+    await expect(repository.getRun(run.id)).resolves.toEqual(run);
+    await expect(repository.listActiveRuns(project.id)).resolves.toEqual([run]);
+
+    const deletedAt = utc('2026-07-06T06:00:00.000Z');
+    await expect(repository.softDeleteRun(run.id, deletedAt)).resolves.toEqual({
+      ...run,
+      deletedAt,
+    });
+    await expect(repository.getRun(run.id)).resolves.toEqual({
+      ...run,
+      deletedAt,
+    });
+  });
+
+  it('rejects runs with a missing recipe and leaves no failed entity behind', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    await repository.saveProject(buildProject());
+    const run = buildRun({
+      id: runId('run-missing-recipe'),
+      recipeId: recipeId('missing-recipe'),
+    });
+
+    await expect(repository.saveRun(run)).rejects.toMatchObject(
+      expectedRepositoryError('reference-not-found'),
+    );
+    await expect(repository.getRun(run.id)).resolves.toBeNull();
   });
 
   it('allows archived projects and rejects unavailable or mismatched run references without changing existing runs', async () => {
@@ -209,28 +354,47 @@ describe('PromptTrailRepository run persistence', () => {
       ...project,
       deletedAt: utc('2026-07-06T05:00:00.000Z'),
     });
-    await expect(
-      repository.saveRun(buildRun({ id: runId('run-deleted-project') })),
-    ).rejects.toMatchObject(expectedRepositoryError('reference-unavailable'));
+    const deletedProjectRun = buildRun({ id: runId('run-deleted-project') });
+    await expect(repository.saveRun(deletedProjectRun)).rejects.toMatchObject(
+      expectedRepositoryError('reference-unavailable'),
+    );
     await repository.saveProject(project);
     await database.recipes.put({
       ...recipe,
       deletedAt: utc('2026-07-06T06:00:00.000Z'),
     });
-    await expect(
-      repository.saveRun(buildRun({ id: runId('run-deleted-recipe') })),
-    ).rejects.toMatchObject(expectedRepositoryError('reference-unavailable'));
+    const deletedRecipeRun = buildRun({ id: runId('run-deleted-recipe') });
+    await expect(repository.saveRun(deletedRecipeRun)).rejects.toMatchObject(
+      expectedRepositoryError('reference-unavailable'),
+    );
     await database.recipes.put(recipe);
+    const missingProjectRecipeRun = buildRun({
+      id: runId('run-missing-project-recipe'),
+      projectId: projectId('other-project'),
+    });
     await expect(
-      repository.saveRun(buildRun({ projectId: projectId('other-project') })),
+      repository.saveRun(missingProjectRecipeRun),
     ).rejects.toMatchObject(expectedRepositoryError('reference-not-found'));
     await repository.saveProject(
       buildProject({ id: projectId('other-project') }),
     );
-    await expect(
-      repository.saveRun(buildRun({ projectId: projectId('other-project') })),
-    ).rejects.toMatchObject(expectedRepositoryError('project-mismatch'));
+    const projectMismatchRun = buildRun({
+      id: runId('run-project-mismatch'),
+      projectId: projectId('other-project'),
+    });
+    await expect(repository.saveRun(projectMismatchRun)).rejects.toMatchObject(
+      expectedRepositoryError('project-mismatch'),
+    );
 
+    await expect(
+      repository.getRun(runId('run-missing-project')),
+    ).resolves.toBeNull();
+    await expect(repository.getRun(deletedProjectRun.id)).resolves.toBeNull();
+    await expect(repository.getRun(deletedRecipeRun.id)).resolves.toBeNull();
+    await expect(
+      repository.getRun(missingProjectRecipeRun.id),
+    ).resolves.toBeNull();
+    await expect(repository.getRun(projectMismatchRun.id)).resolves.toBeNull();
     await expect(repository.getRun(existingRun.id)).resolves.toEqual(
       existingRun,
     );
@@ -290,6 +454,9 @@ describe('PromptTrailRepository run persistence', () => {
     }
 
     await expect(repository.getRun(runId('bad-prompt'))).resolves.toBeNull();
+    await expect(repository.getRun(runId('bad-count'))).resolves.toBeNull();
+    await expect(repository.getRun(runId('bad-id'))).resolves.toBeNull();
+    await expect(repository.getRun(runId('bad-order'))).resolves.toBeNull();
     await expect(repository.getRun(existingRun.id)).resolves.toEqual(
       existingRun,
     );
@@ -428,6 +595,9 @@ describe('PromptTrailRepository link persistence', () => {
 
     await expect(
       repository.getLink(linkId('missing-run-link')),
+    ).resolves.toBeNull();
+    await expect(
+      repository.getLink(linkId('deleted-run-link')),
     ).resolves.toBeNull();
     await expect(repository.getLink(existingLink.id)).resolves.toEqual(
       existingLink,
