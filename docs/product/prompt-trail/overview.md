@@ -80,4 +80,5 @@ MVP には次を含めます。
 
 - [Functional Requirements](functional-requirements.md)
 - [Roadmap](roadmap.md)
+- [Application Architecture](application-architecture.md)
 - [ADR 0001: AI Workbench Monorepo](../../adr/0001-ai-workbench-monorepo.md)
