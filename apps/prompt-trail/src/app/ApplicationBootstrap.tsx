@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 
+import { StateMessage } from '../components/ui';
 import { PromptTrailRepositoryProvider } from './PromptTrailRepositoryContext';
 import type { PromptTrailRuntime } from './prompt-trail-runtime';
 
@@ -38,11 +39,15 @@ export function ApplicationBootstrap({
   }, [runtime]);
 
   if (status === 'initializing') {
-    return <p>PromptTrailを起動しています...</p>;
+    return (
+      <StateMessage variant="loading" title="PromptTrailを起動しています..." />
+    );
   }
 
   if (status === 'failed') {
-    return <p role="alert">PromptTrailの起動に失敗しました。</p>;
+    return (
+      <StateMessage variant="error" title="PromptTrailの起動に失敗しました。" />
+    );
   }
 
   return (
