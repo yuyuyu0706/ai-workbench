@@ -1,5 +1,7 @@
 import { mountPromptTrailApplication } from './app/bootstrap';
+import './styles/tokens.css';
 import './styles/globals.css';
+import './styles/ui-primitives.css';
 import './styles/welcome-page.css';
 
 const rootElement = document.getElementById('root');

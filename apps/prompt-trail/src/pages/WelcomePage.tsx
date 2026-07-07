@@ -50,7 +50,7 @@ export function WelcomePage() {
         </div>
         <ul className="model-list" aria-label="PromptTrail management model">
           {trailModels.map((model) => (
-            <li className="model-card" key={model.name}>
+            <li className="pt-card model-card" key={model.name}>
               <h3>{model.name}</h3>
               <p>{model.description}</p>
             </li>
@@ -62,7 +62,7 @@ export function WelcomePage() {
         className="welcome-grid"
         aria-label="PromptTrail assumptions and current phase"
       >
-        <article className="info-card">
+        <article className="pt-card info-card">
           <p className="section-kicker">Local first</p>
           <h2>まずは手元の作業資産として安全に育てる</h2>
           <p>
@@ -70,7 +70,7 @@ export function WelcomePage() {
             共有や連携は、保存モデルと画面導線が定まった後続フェーズで検討します。
           </p>
         </article>
-        <article className="info-card phase-card">
+        <article className="pt-card info-card phase-card">
           <p className="section-kicker">Phase 0</p>
           <h2>現在地はアプリ基盤と初期画面の整備</h2>
           <p>
