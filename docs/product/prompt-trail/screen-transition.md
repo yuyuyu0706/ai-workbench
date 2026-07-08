@@ -1,0 +1,94 @@
+# PromptTrail Screen Structure and User Flow
+
+この資料は、PromptTrail の **画面構成・利用導線ドキュメント** です。狭義の画面遷移図ではなく、利用者から見える画面、画面責務、Prompt / Context / Recipe / Run の利用導線、画面構成イメージを整理するための正本として扱います。
+
+対象時点は P0-4-1 完了時点における、P0-4 以降の画面構成・利用導線の設計対象です。現在の実装は WelcomePage を表示する最小構成であり、Dashboard、Prompt Library、Context Library、Recipe Builder、Run Detail は後続の画面設計対象です。
+
+技術・責務境界、Runtime、Bootstrap、Provider、Repository、DB、Router、AppShell などの内部構造は [Application Architecture](application-architecture.md) を正本とし、本資料では主対象にしません。URL、route parameter、Router 契約、Not Found、直接 URL、戻る導線、到達・例外・復帰図の詳細は P0-4-2 以降で扱います。
+
+## 1. 画面構成・導線サマリ
+
+### 第1節 全体サマリ
+
+PromptTrail は、現行の入口である WelcomePage から、後続 P0-4 で整備する主要画面群へ拡張する想定です。主要画面は Dashboard、Prompt Library、Context Library、Recipe Builder、Run Detail で構成し、利用者が AI 作業を再開し、再利用資産を選び、実行単位を組み立て、結果を振り返る導線を支えます。
+
+![PromptTrail screen overview at phase 0](assets/screen-transition-overview-phase0.png)
+
+- **WelcomePage** は、P0-4-1 完了時点で表示される現行画面です。
+- **Dashboard** は、最近の Run、作業状況、再開ポイントを把握する入口です。
+- **Prompt Library** と **Context Library** は、固定の一本道ではなく並列に参照できる再利用資産の管理画面です。
+- **Recipe Builder** は、Prompt と Context を案件に合わせて組み立て、Run へつなげる画面です。
+- **Run Detail** は、実行記録、成果物、Link、評価、改善メモを確認・記録し、次の改善へ戻す画面です。
+- Browser は必要に応じて外部の器・入口として扱いますが、App / Router / AppShell などの画面を持たない内部コンポーネントは主ノードとして扱いません。
+
+### 第2節 コンセプト
+
+PromptTrail のコンセプトは、AI への依頼を一回限りのテキストとして消費するのではなく、再現性のある AI 作業資産として育てることです。Prompt、Context、Recipe、Run、成果・Link・評価を循環させ、次の依頼へ学びを反映することで、継続的に精度と再現性を高めます。
+
+![PromptTrail concept and improvement cycle at phase 0](assets/screen-concept-circle-phase0.png)
+
+- **依頼の型を管理する**: Prompt Library で、よく使う依頼テンプレートを蓄積・管理します。
+- **前提を管理する**: Context Library で、業界・顧客・制約などの前提情報を整理し、再利用できる資産として管理します。
+- **案件に合わせて組み立てる**: Recipe Builder で、Prompt と Context を組み合わせ、再現可能な手順である Recipe を構築します。
+- **Run / 実行記録を残す**: Recipe を実行し、入出力や条件を記録します。
+- **成果・Link・評価を確認する**: 成果物、関連リンク、評価を Run Detail 内で確認・記録します。
+- **Prompt / Context / Recipe を改善・派生する**: 気づきや評価をもとに、再利用資産を更新・派生します。
+- **次の依頼へつなげる**: 学びを資産に反映し、次回の依頼の精度と再現性を高めます。
+
+## 2. ワークフロー体系図
+
+PromptTrail のワークフローは、Prompt と Context を再利用資産として蓄積し、Recipe Builder で案件に合わせて組み立て、Run Detail で実行結果と成果へのつながりを記録する流れです。Prompt Library から Context Library へ進んで Recipe Builder に到達する固定の一本道ではなく、Prompt と Context を並列の資産として扱います。
+
+![PromptTrail screen transition workflow at phase 0](assets/screen-transition-workflow-phase0.png)
+
+- **Prompt Library** は、AI への依頼の型を管理します。
+- **Context Library** は、AI へ渡す背景・制約・前提を管理します。
+- **Recipe Builder** は、Prompt と Context を案件に合わせて組み立て、Recipe として保存し、実行準備へつなげます。
+- **Run Detail** は、実行記録、成果物、Link、評価を確認し、次の Prompt / Context / Recipe 改善へ戻すための記録領域を持ちます。
+- **Dashboard** は、最近の作業、Run、再開ポイント、未整理 Link を把握する入口です。
+
+## 3. 画面別役割整理
+
+| 画面            | 一言定義                                                | 解決する課題                           | 主な操作                                               | 関連資産                  |
+| --------------- | ------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------ | ------------------------- |
+| Dashboard       | 作業状況を把握し、次の行動へ進む入口                    | どの AI 作業を再開すべきか分からない   | 最近の Run 確認、作業再開、未整理 Link 確認            | Run / Recipe / Link       |
+| Prompt Library  | AI への依頼方法を再利用する場所                         | 良い依頼パターンを毎回作り直している   | 登録、検索、参照、改善、削除                           | Prompt                    |
+| Context Library | AI へ渡す背景・制約・前提を再利用するための資産管理画面 | 毎回同じ背景説明や制約を繰り返している | 登録、検索、参照、整理、削除                           | Context                   |
+| Recipe Builder  | Prompt と Context を組み合わせて依頼単位を作る場所      | 毎回ゼロから依頼を組み立てている       | Prompt 選択、Context 組み合わせ、Recipe 保存、実行準備 | Prompt / Context / Recipe |
+| Run Detail      | 実行結果と成果を振り返り、次へ改善する場所              | 何を使って何が得られたか追跡できない   | Snapshot 確認、成果物確認、Link 確認、評価、改善メモ   | Run / Link / Snapshot     |
+
+Context Library は、何でも保存するメモ帳ではなく、**AI へ渡す背景・制約・前提を再利用するための資産管理画面** として扱います。また、成果物・Link・評価は独立メニューではなく、Run Detail 内の確認・記録領域として扱います。
+
+## 4. 画面構成図
+
+以下の画面構成図は、P0-4 以降の設計検討素材です。利用者が見る一覧、カード、詳細パネル、入力領域、操作導線を確認するためのものであり、P0-4-3 の実装仕様を細部まで固定するものではありません。App、Router、Repository、DB、Provider などの内部構造は描きません。
+
+### Dashboard
+
+![PromptTrail dashboard screen design at phase 0](assets/screen-desgin-dashboard-phase0.png)
+
+### Prompt Library
+
+![PromptTrail prompt library screen design at phase 0](assets/screen-desgin-prompt-library-phase0.png)
+
+### Context Library
+
+![PromptTrail context library screen design at phase 0](assets/screen-desgin-contex-library-phase0.png)
+
+### Recipe Builder
+
+![PromptTrail recipe builder screen design at phase 0](assets/screen-desgin-recipe-builder-phase0.png)
+
+### Run Detail
+
+![PromptTrail run detail screen design at phase 0](assets/screen-desgin-run-detail-phase0.png)
+
+### 更新トリガー
+
+この資料は、次の変更が入ったときに更新を検討します。
+
+- Dashboard、Prompt Library、Context Library、Recipe Builder、Run Detail の主要画面責務が変わるとき。
+- Prompt / Context / Recipe / Run のワークフロー体系が変わるとき。
+- 画面構成イメージ、画面名、画面順序、画面内の主要領域が変わるとき。
+- Router / URL 契約が確定し、本資料の導線説明と差分が生じるとき。
+- Projects、Trail View、Settings を本資料の対象画面へ追加する判断が行われるとき。
