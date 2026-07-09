@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildRunDetailPath, routeIds, routePaths } from './routes';
+import {
+  buildRunDetailPath,
+  routeDefinitions,
+  routeIds,
+  routePaths,
+} from './routes';
 
 describe('route contract', () => {
   it('defines the PromptTrail screen paths in one route map', () => {
@@ -13,6 +18,38 @@ describe('route contract', () => {
       [routeIds.runDetail]: '/runs/:runId',
       [routeIds.notFound]: '*',
     });
+  });
+
+  it('keeps route definitions aligned with the route map and labels', () => {
+    expect(routeDefinitions).toEqual([
+      { id: routeIds.root, path: routePaths.root, label: 'Root' },
+      {
+        id: routeIds.dashboard,
+        path: routePaths.dashboard,
+        label: 'Dashboard',
+      },
+      {
+        id: routeIds.promptLibrary,
+        path: routePaths.promptLibrary,
+        label: 'Prompt Library',
+      },
+      {
+        id: routeIds.contextLibrary,
+        path: routePaths.contextLibrary,
+        label: 'Context Library',
+      },
+      {
+        id: routeIds.recipeBuilder,
+        path: routePaths.recipeBuilder,
+        label: 'Recipe Builder',
+      },
+      {
+        id: routeIds.runDetail,
+        path: routePaths.runDetail,
+        label: 'Run Detail',
+      },
+      { id: routeIds.notFound, path: routePaths.notFound, label: 'Not Found' },
+    ]);
   });
 
   it('builds URL-encoded Run Detail paths', () => {

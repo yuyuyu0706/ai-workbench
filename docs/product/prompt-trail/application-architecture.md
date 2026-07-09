@@ -1,6 +1,6 @@
 # PromptTrail Application Architecture
 
-このドキュメントは **P0-4-1 完了時点** の PromptTrail アプリケーション構造図を補足するものです。図を主情報とし、この Markdown では図の目的、読み方、現時点の境界と更新条件のみを簡潔に整理します。
+このドキュメントは **P0-4-2 完了時点** の PromptTrail アプリケーション構造を補足するものです。図は P0-4-1 時点の基盤構造を示し、この Markdown では P0-4-2 で追加された BrowserRouter、AppShell、AppRouter、主要 placeholder Pages を含む現行構成も整理します。
 
 ![PromptTrail application architecture at P0-4-1](assets/application-architecture-phase0.png)
 
@@ -16,7 +16,7 @@
 
 ## 現行の主導線
 
-P0-4-1 完了時点の起動から UI 表示までの主導線は次の通りです。
+P0-4-2 完了時点の起動から UI 表示までの主導線は次の通りです。
 
 ```text
 index.html
@@ -25,9 +25,13 @@ index.html
   → ApplicationBootstrap
   → PromptTrailRepositoryProvider
   → App
+  → BrowserRouter
+  → AppShell
+  → AppRouter
+  → Pages
 ```
 
-`main.tsx` は `#root` を取得し、`mountPromptTrailApplication()` を呼び出します。`mountPromptTrailApplication()` は Runtime を生成または受け取り、React root の中で `ApplicationBootstrap` と `App` を組み立てます。`ApplicationBootstrap` は Runtime の初期化状態を管理し、初期化完了後に `PromptTrailRepositoryProvider` へ同一 Repository instance を渡します。
+`main.tsx` は `#root` を取得し、`mountPromptTrailApplication()` を呼び出します。`mountPromptTrailApplication()` は Runtime を生成または受け取り、React root の中で `ApplicationBootstrap` と `App` を組み立てます。`ApplicationBootstrap` は Runtime の初期化状態を管理し、初期化完了後に `PromptTrailRepositoryProvider` へ同一 Repository instance を渡します。`App` は `BrowserRouter` 配下に `AppShell` と `AppRouter` を配置し、共通レイアウトと route ごとの placeholder Page を接続します。
 
 ## Runtime と Repository 公開境界
 
@@ -43,11 +47,11 @@ Runtime はアプリケーション起動時に単一の PromptTrail DB instance
 - **Repository／DB**: Dexie／IndexedDB を使った永続化、DB schema、Repository 公開契約、ドメインデータ操作を担う。
 - **共通 UI Foundation**: Button、PageHeader、StateMessage、デザイントークンなど、Page 実装から再利用する UI 基盤を担う。
 
-## 後続 P0-4 の予定領域
+## Router / AppShell / Pages
 
-Router、AppShell、主要 Pages は後続 P0-4 の予定領域です。P0-4-1 完了時点では、これらのアプリケーション構成要素は未実装であり、現在の `App` は WelcomePage を表示する最小構成です。
+P0-4-2 では、Router、AppShell、主要 Pages が UI 層の最小構成として実装されています。`AppShell` は header、global navigation、main 領域を持つ共通レイアウトです。`AppRouter` は `/` を `/dashboard` へ redirect し、`/dashboard`、`/prompts`、`/contexts`、`/recipes/builder`、`/runs/:runId`、未知 URL の各 route を placeholder Page に接続します。
 
-後続実装では、Router／AppShell／Pages も Repository 公開 API を利用する UI 層として扱い、Dexie／IndexedDB へ直接アクセスしない原則を維持します。
+Global Navigation は Dashboard、Prompt Library、Context Library、Recipe Builder の 4 項目に限定します。Run Detail と Not Found は常設ナビゲーションに含めず、どちらも Dashboard への明示的な復帰リンクを持ちます。Router／AppShell／Pages は Repository 公開 API を利用する UI 層として扱い、Dexie／IndexedDB へ直接アクセスしない原則を維持します。
 
 ## 更新トリガー
 
