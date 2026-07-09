@@ -40,6 +40,23 @@ test.describe('AppShell navigation', () => {
     }
   });
 
+  test('renders known routes from direct URLs', async ({ page }) => {
+    const knownRoutes = [
+      ['/dashboard', 'Dashboard'],
+      ['/prompts', 'Prompt Library'],
+      ['/contexts', 'Context Library'],
+      ['/recipes/builder', 'Recipe Builder'],
+    ] as const;
+
+    for (const [path, heading] of knownRoutes) {
+      await page.goto(path);
+      await expect(page).toHaveURL(new RegExp(`${path}$`));
+      await expect(
+        page.getByRole('heading', { level: 1, name: heading }),
+      ).toBeVisible();
+    }
+  });
+
   test('navigates between global navigation placeholders', async ({ page }) => {
     await page.goto('/dashboard');
 
@@ -63,6 +80,46 @@ test.describe('AppShell navigation', () => {
     await expect(page).toHaveURL(/\/recipes\/builder$/);
     await expect(
       page.getByRole('heading', { level: 1, name: 'Recipe Builder' }),
+    ).toBeVisible();
+  });
+
+  test('returns to Dashboard from run detail and keeps global navigation inactive', async ({
+    page,
+  }) => {
+    await page.goto('/runs/run-123');
+
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Run Detail' }),
+    ).toBeVisible();
+    await expect(
+      page.getByText('Run run-123 の詳細placeholderです。'),
+    ).toBeVisible();
+    await expect(page.locator('a[aria-current="page"]')).toHaveCount(0);
+
+    await page.getByRole('link', { name: 'Dashboardへ戻る' }).click();
+
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Dashboard' }),
+    ).toBeVisible();
+  });
+
+  test('returns to Dashboard from not found and keeps global navigation inactive', async ({
+    page,
+  }) => {
+    await page.goto('/unknown-route');
+
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Not Found' }),
+    ).toBeVisible();
+    await expect(page.getByText('未知のURLです。')).toBeVisible();
+    await expect(page.locator('a[aria-current="page"]')).toHaveCount(0);
+
+    await page.getByRole('link', { name: 'Dashboardへ戻る' }).click();
+
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Dashboard' }),
     ).toBeVisible();
   });
 });
