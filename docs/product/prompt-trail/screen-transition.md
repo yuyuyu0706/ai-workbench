@@ -10,15 +10,15 @@
 
 ### 第1節 全体サマリ
 
-PromptTrail は、現行の入口である WelcomePage から、後続 P0-4 で整備する主要画面群へ拡張する想定です。主要画面は Dashboard、Prompt Library、Context Library、Recipe Builder、Run Detail で構成し、利用者が AI 作業を再開し、再利用資産を選び、実行単位を組み立て、結果を振り返る導線を支えます。
+P0-4-2 時点の PromptTrail は、`/` から `/dashboard` へ redirect し、Dashboard を基本入口として利用者が AI 作業を再開する構成です。Dashboard、Prompt Library、Context Library、Recipe Builder、Run Detail、Not Found の各 placeholder は AppShell 配下で到達可能であり、共通のグローバルナビゲーションと復帰導線を通じて主要画面群へ移動できます。主要画面の本格 UI、実データ表示、Repository 連携は P0-4-3 以降で整備します。
 
 ![PromptTrail screen overview at phase 0](assets/screen-transition-overview-phase0.png)
 
-- **WelcomePage** は、P0-4-1 完了時点で表示される現行画面です。
-- **Dashboard** は、最近の Run、作業状況、再開ポイントを把握する入口です。
+- **Dashboard** は、`/dashboard` で表示される基本入口です。`/` からも redirect され、最近の Run、作業状況、再開ポイントを把握する入口として扱います。
 - **Prompt Library** と **Context Library** は、固定の一本道ではなく並列に参照できる再利用資産の管理画面です。
 - **Recipe Builder** は、Prompt と Context を案件に合わせて組み立て、Run へつなげる画面です。
 - **Run Detail** は、実行記録、成果物、Link、評価、改善メモを確認・記録し、次の改善へ戻す画面です。
+- **Not Found** は、未知 URL から Dashboard へ復帰するための recovery route です。
 - Browser は必要に応じて外部の器・入口として扱いますが、App / Router / AppShell などの画面を持たない内部コンポーネントは主ノードとして扱いません。
 
 ### 第2節 コンセプト
