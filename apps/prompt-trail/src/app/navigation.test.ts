@@ -58,7 +58,9 @@ describe('navigation contract', () => {
     expect(getActiveNavigationItemId('/recipes/builder')).toBe(
       routeIds.recipeBuilder,
     );
+    expect(getActiveNavigationItemId('/dashboard/')).toBe(routeIds.dashboard);
     expect(getActiveNavigationItemId('/runs/run-1')).toBeUndefined();
     expect(getActiveNavigationItemId('/unknown')).toBeUndefined();
+    expect(getActiveNavigationItemId('/')).toBeUndefined();
   });
 });

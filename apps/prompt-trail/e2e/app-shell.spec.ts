@@ -54,6 +54,11 @@ test.describe('AppShell navigation', () => {
       await expect(
         page.getByRole('heading', { level: 1, name: heading }),
       ).toBeVisible();
+      await expect(
+        page
+          .getByRole('navigation', { name: 'Global navigation' })
+          .locator('a[aria-current="page"]'),
+      ).toHaveAccessibleName(heading);
     }
   });
 
@@ -94,7 +99,11 @@ test.describe('AppShell navigation', () => {
     await expect(
       page.getByText('Run run-123 の詳細placeholderです。'),
     ).toBeVisible();
-    await expect(page.locator('a[aria-current="page"]')).toHaveCount(0);
+    await expect(
+      page
+        .getByRole('navigation', { name: 'Global navigation' })
+        .locator('a[aria-current="page"]'),
+    ).toHaveCount(0);
 
     await page.getByRole('link', { name: 'Dashboardへ戻る' }).click();
 
@@ -113,7 +122,11 @@ test.describe('AppShell navigation', () => {
       page.getByRole('heading', { level: 1, name: 'Not Found' }),
     ).toBeVisible();
     await expect(page.getByText('未知のURLです。')).toBeVisible();
-    await expect(page.locator('a[aria-current="page"]')).toHaveCount(0);
+    await expect(
+      page
+        .getByRole('navigation', { name: 'Global navigation' })
+        .locator('a[aria-current="page"]'),
+    ).toHaveCount(0);
 
     await page.getByRole('link', { name: 'Dashboardへ戻る' }).click();
 

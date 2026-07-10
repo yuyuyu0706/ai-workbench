@@ -2,23 +2,23 @@
 
 この資料は、PromptTrail の **画面構成・利用導線ドキュメント** です。狭義の画面遷移図ではなく、利用者から見える画面、画面責務、Prompt / Context / Recipe / Run の利用導線、画面構成イメージを整理するための正本として扱います。
 
-対象時点は P0-4-1 完了時点における、P0-4 以降の画面構成・利用導線の設計対象です。現在の実装は WelcomePage を表示する最小構成であり、Dashboard、Prompt Library、Context Library、Recipe Builder、Run Detail は後続の画面設計対象です。
+対象時点は P0-4-2 完了時点です。現在の実装は BrowserRouter、AppShell、AppRouter により、Dashboard、Prompt Library、Context Library、Recipe Builder、Run Detail、Not Found の placeholder へ到達できる最小構成です。主要画面の本格 UI、実データ表示、Repository 連携は P0-4-3 以降の画面設計対象です。
 
-技術・責務境界、Runtime、Bootstrap、Provider、Repository、DB、Router、AppShell などの内部構造は [Application Architecture](application-architecture.md) を正本とし、本資料では主対象にしません。URL、route parameter、Router 契約、Not Found、直接 URL、戻る導線、到達・例外・復帰図の詳細は P0-4-2 以降で扱います。
+技術・責務境界、Runtime、Bootstrap、Provider、Repository、DB、Router、AppShell などの内部構造は [Application Architecture](application-architecture.md) を正本とし、本資料では主対象にしません。URL、route parameter、Router 契約、Not Found、直接 URL、戻る導線、到達・例外・復帰図の詳細は本資料の Route Contract を正本として扱います。
 
 ## 1. 画面構成・導線サマリ
 
 ### 第1節 全体サマリ
 
-PromptTrail は、現行の入口である WelcomePage から、後続 P0-4 で整備する主要画面群へ拡張する想定です。主要画面は Dashboard、Prompt Library、Context Library、Recipe Builder、Run Detail で構成し、利用者が AI 作業を再開し、再利用資産を選び、実行単位を組み立て、結果を振り返る導線を支えます。
+P0-4-2 時点の PromptTrail は、`/` から `/dashboard` へ redirect し、Dashboard を基本入口として利用者が AI 作業を再開する構成です。AppShell 配下では Dashboard、Prompt Library、Context Library、Recipe Builder、Run Detail、Not Found の各 placeholder に到達でき、主要 4 画面のグローバルナビゲーションと Dashboard への復帰導線を通じて移動できます。主要画面の本格 UI、実データ表示、Repository 連携は P0-4-3 以降で整備します。
 
 ![PromptTrail screen overview at phase 0](assets/screen-transition-overview-phase0.png)
 
-- **WelcomePage** は、P0-4-1 完了時点で表示される現行画面です。
-- **Dashboard** は、最近の Run、作業状況、再開ポイントを把握する入口です。
+- **Dashboard** は、`/dashboard` で表示される基本入口です。`/` からも redirect され、最近の Run、作業状況、再開ポイントを把握する場所として扱います。
 - **Prompt Library** と **Context Library** は、固定の一本道ではなく並列に参照できる再利用資産の管理画面です。
 - **Recipe Builder** は、Prompt と Context を案件に合わせて組み立て、Run へつなげる画面です。
 - **Run Detail** は、実行記録、成果物、Link、評価、改善メモを確認・記録し、次の改善へ戻す画面です。
+- **Not Found** は、未知 URL から Dashboard へ復帰するための recovery route です。
 - Browser は必要に応じて外部の器・入口として扱いますが、App / Router / AppShell などの画面を持たない内部コンポーネントは主ノードとして扱いません。
 
 ### 第2節 コンセプト
@@ -89,7 +89,7 @@ P0-4-2 以降の Router / AppShell 実装は、画面構成・利用導線の正
 
 | route id         | path               | 画面             | ナビ表示 | 分類 / 備考                                                                      |
 | ---------------- | ------------------ | ---------------- | -------- | -------------------------------------------------------------------------------- |
-| `root`           | `/`                | redirect / alias | なし     | 将来的に `/dashboard` へ寄せる入口                                               |
+| `root`           | `/`                | redirect / alias | なし     | `/dashboard` へ redirect する入口                                                |
 | `dashboard`      | `/dashboard`       | Dashboard        | あり     | P0-4 以降の基本入口                                                              |
 | `promptLibrary`  | `/prompts`         | Prompt Library   | あり     | Prompt 資産管理                                                                  |
 | `contextLibrary` | `/contexts`        | Context Library  | あり     | Context 資産管理                                                                 |
@@ -99,7 +99,7 @@ P0-4-2 以降の Router / AppShell 実装は、画面構成・利用導線の正
 
 グローバルナビゲーション対象は Dashboard、Prompt Library、Context Library、Recipe Builder の 4 つに限定します。Run Detail は実行文脈にひもづく contextual route、Not Found は未知 URL からの recovery route として扱い、どちらも常設グローバルナビゲーションには含めません。
 
-アクティブナビ判定は、現在 URL が `/dashboard`、`/prompts`、`/contexts`、`/recipes/builder` のいずれかに一致するときだけ対応するグローバルナビを active とします。`/runs/:runId` と未知 URL は active nav なしとして扱います。
+アクティブナビ判定は、現在 URL が `/dashboard`、`/prompts`、`/contexts`、`/recipes/builder` のいずれかに一致するときだけ対応するグローバルナビを active とします。`/` は `/dashboard` へ redirect されます。`/runs/:runId` と未知 URL は active nav なしとして扱います。Run Detail と Not Found の復帰導線は `routePaths.dashboard` を参照した「Dashboardへ戻る」リンクで固定し、ブラウザ履歴や `navigate(-1)` には依存しません。
 
 ### 更新トリガー
 
