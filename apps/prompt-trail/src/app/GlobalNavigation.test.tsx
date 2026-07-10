@@ -51,4 +51,19 @@ describe('GlobalNavigation', () => {
       );
     },
   );
+
+  it.each([routePaths.root, '/runs/run-123', '/unknown-route'])(
+    'does not mark any global navigation item active for %s',
+    (pathname) => {
+      renderNavigation(pathname);
+
+      const navigation = screen.getByRole('navigation', {
+        name: 'Global navigation',
+      });
+
+      expect(
+        within(navigation).queryByRole('link', { current: 'page' }),
+      ).not.toBeInTheDocument();
+    },
+  );
 });

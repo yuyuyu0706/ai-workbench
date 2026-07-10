@@ -40,6 +40,9 @@ describe('AppRouter', () => {
 
     expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
     expect(
+      within(getGlobalNavigation()).getByRole('link', { current: 'page' }),
+    ).toHaveAccessibleName(heading);
+    expect(
       screen.getByText('P0-4-3で画面骨格を実装予定です。'),
     ).toBeInTheDocument();
   });
