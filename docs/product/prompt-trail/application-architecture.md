@@ -1,6 +1,6 @@
 # PromptTrail Application Architecture
 
-このドキュメントは **P0-4-2 完了時点** の PromptTrail アプリケーション構造を補足するものです。図は P0-4-1 時点の基盤構造を示し、この Markdown では P0-4-2 で追加された BrowserRouter、AppShell、AppRouter、主要 placeholder Pages を含む現行構成も整理します。
+このドキュメントは **P0-4-3 完了時点** の PromptTrail アプリケーション構造を補足するものです。図は P0-4-1 時点の基盤構造を示し、この Markdown では P0-4-2 で追加された BrowserRouter、AppShell、AppRouter と、P0-4-3 で整えた主要画面骨格・状態表示境界を含む現行構成も整理します。
 
 ![PromptTrail application architecture at P0-4-1](assets/application-architecture-phase0.png)
 
@@ -16,7 +16,7 @@
 
 ## 現行の主導線
 
-P0-4-2 完了時点の起動から UI 表示までの主導線は次の通りです。
+P0-4-3 完了時点の起動から UI 表示までの主導線は次の通りです。
 
 ```text
 index.html
@@ -31,7 +31,7 @@ index.html
   → Pages
 ```
 
-`main.tsx` は `#root` を取得し、`mountPromptTrailApplication()` を呼び出します。`mountPromptTrailApplication()` は Runtime を生成または受け取り、React root の中で `ApplicationBootstrap` と `App` を組み立てます。`ApplicationBootstrap` は Runtime の初期化状態を管理し、初期化完了後に `PromptTrailRepositoryProvider` へ同一 Repository instance を渡します。`App` は `BrowserRouter` 配下に `AppShell` と `AppRouter` を配置し、共通レイアウトと route ごとの placeholder Page を接続します。
+`main.tsx` は `#root` を取得し、`mountPromptTrailApplication()` を呼び出します。`mountPromptTrailApplication()` は Runtime を生成または受け取り、React root の中で `ApplicationBootstrap` と `App` を組み立てます。`ApplicationBootstrap` は Runtime の初期化状態を管理し、初期化完了後に `PromptTrailRepositoryProvider` へ同一 Repository instance を渡します。`App` は `BrowserRouter` 配下に `AppShell` と `AppRouter` を配置し、共通レイアウトと route ごとの Page Skeleton を接続します。
 
 ## Runtime と Repository 公開境界
 
@@ -45,7 +45,9 @@ Runtime はアプリケーション起動時に単一の PromptTrail DB instance
 - **Bootstrap**: Runtime 初期化の実行、起動中／失敗／準備完了の表示切り替え、準備完了後の Provider 配置を担う。
 - **Provider**: Runtime が公開する同一 Repository instance を React Context として UI に渡す境界を担う。
 - **Repository／DB**: Dexie／IndexedDB を使った永続化、DB schema、Repository 公開契約、ドメインデータ操作を担う。
-- **共通 UI Foundation**: Button、PageHeader、StateMessage、デザイントークンなど、Page 実装から再利用する UI 基盤を担う。
+- **Router / AppShell / Navigation**: URL 契約、root redirect、4 つのグローバルナビゲーション、contextual / recovery route の表示境界を担う。
+- **Pages**: `PageHeader`、`StateMessage`、`PageSection` を使い、Repository 連携前の静的な Page Start State と主要 section を提示する。
+- **共通 UI Foundation**: Button、PageHeader、PageSection、StateMessage、デザイントークンなど、Page 実装から再利用する UI 基盤を担う。
 
 ## 状態表示の責務境界
 
@@ -55,9 +57,24 @@ P0-4-3 時点では、状態表示を次の責務に分けます。`ApplicationB
 
 ## Router / AppShell / Pages
 
-P0-4-2 では、Router、AppShell、主要 Pages が UI 層の最小構成として実装されています。`AppShell` は header、global navigation、main 領域を持つ共通レイアウトです。`AppRouter` は `/` を `/dashboard` へ redirect し、`/dashboard`、`/prompts`、`/contexts`、`/recipes/builder`、`/runs/:runId`、未知 URL の各 route を placeholder Page に接続します。
+P0-4-3 完了時点では、Router、AppShell、主要 Pages が UI 層の画面骨格として実装されています。`AppShell` は header、global navigation、main 領域を持つ共通レイアウトです。`AppRouter` は `/` を `/dashboard` へ redirect し、`/dashboard`、`/prompts`、`/contexts`、`/recipes/builder`、`/runs/:runId`、未知 URL の各 route を `PageHeader`、`StateMessage`、`PageSection` 中心の Page へ接続します。
 
 Global Navigation は Dashboard、Prompt Library、Context Library、Recipe Builder の 4 項目に限定します。Run Detail と Not Found は常設ナビゲーションに含めず、どちらも Dashboard への明示的な復帰リンクを持ちます。Router／AppShell／Pages は Repository 公開 API を利用する UI 層として扱い、Dexie／IndexedDB へ直接アクセスしない原則を維持します。
+
+## P0-4-3 画面骨格の棚卸し
+
+P0-4-3 で確認済みの画面骨格は次の通りです。いずれも Repository から実データを取得せず、CRUD、検索、タグ、フィルタ、Recipe 保存、Run 実行を先取りしません。
+
+| 画面            | 役割                                                | 主要 section / 導線                                                                                               | 状態表示                                                                 |
+| --------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Dashboard       | AI 作業の再開入口                                   | 最近のRun、再開ポイント、未整理Link、次にやること                                                                 | `StateMessage variant="empty"` で Page Start State を示す                |
+| Prompt Library  | Prompt 資産の管理入口                               | Prompt資産、分類・検索予定、作成導線予定、Recipeへの接続                                                          | Repository 取得前の利用開始状態を示す                                    |
+| Context Library | AI へ渡す背景・制約・前提の資産管理入口             | Context資産、背景・制約・前提の整理、分類・検索予定、Recipeへの接続                                               | Repository 取得前の利用開始状態を示す                                    |
+| Recipe Builder  | Prompt と Context を組み立てる入口                  | Prompt選択、Context選択、Recipe組み立て、実行準備                                                                 | 保存・実行を動かさない静的骨格を示す                                     |
+| Run Detail      | Run の入力、成果物、評価を振り返る contextual route | 実行サマリ、使用したRecipe、Prompt Snapshot、Context Snapshot、成果物 / Link、評価、改善メモ、Dashboard復帰リンク | Run 直接 URL でも active nav を付けず、Page Start State と復帰導線を示す |
+| Not Found       | 未知 URL からの recovery route                      | Dashboard復帰リンク                                                                                               | `StateMessage variant="error"` で未知 URL を示し、active nav は付けない  |
+
+P0-4-4 へは、主要画面導線、direct URL / root redirect / unknown URL、Run Detail / Not Found の Dashboard 復帰、Global Navigation の active 判定、Page Skeleton と `StateMessage` の表示崩れ、P0-5 以降で Repository empty / failure state に差し替える観点を引き渡します。
 
 ## 更新トリガー
 

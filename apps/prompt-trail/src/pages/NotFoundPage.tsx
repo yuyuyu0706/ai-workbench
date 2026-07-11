@@ -5,7 +5,7 @@ import { PageHeader, StateMessage } from '../components/ui';
 
 export function NotFoundPage() {
   return (
-    <section className="placeholder-page">
+    <section className="prompt-trail-page">
       <PageHeader
         eyebrow="Not Found"
         title="Not Found"
@@ -16,7 +16,7 @@ export function NotFoundPage() {
         title="未知のURLです。"
         description="URLを確認するか、Dashboardへ戻ってPromptTrailの操作を続けてください。"
       />
-      <div className="placeholder-page__actions">
+      <div className="prompt-trail-page__actions">
         <Link
           className="pt-button pt-button--primary"
           to={routePaths.dashboard}
