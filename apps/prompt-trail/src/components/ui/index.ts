@@ -5,3 +5,4 @@ export {
   type StateMessageProps,
   type StateMessageVariant,
 } from './StateMessage';
+export { PageSection, type PageSectionProps } from './PageSection';
