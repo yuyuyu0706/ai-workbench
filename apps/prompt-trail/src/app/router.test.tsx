@@ -1,15 +1,31 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
 import { AppShell } from './AppShell';
 import { AppRouter } from './router';
 import { buildRunDetailPath, routePaths } from './routes';
 
-function renderRoute(pathname: string) {
+function LocationProbe({
+  onLocationChange,
+}: {
+  onLocationChange?: (pathname: string) => void;
+}) {
+  const { pathname } = useLocation();
+
+  onLocationChange?.(pathname);
+
+  return null;
+}
+
+function renderRoute(
+  pathname: string,
+  options: { onLocationChange?: (pathname: string) => void } = {},
+) {
   render(
     <MemoryRouter initialEntries={[pathname]}>
+      <LocationProbe onLocationChange={options.onLocationChange} />
       <AppShell>
         <AppRouter />
       </AppShell>
@@ -21,14 +37,43 @@ function getGlobalNavigation() {
   return screen.getByRole('navigation', { name: 'Global navigation' });
 }
 
+function expectOnlyActiveNavigationItem(accessibleName: string) {
+  const navigation = getGlobalNavigation();
+  const activeLinks = within(navigation).getAllByRole('link', {
+    current: 'page',
+  });
+
+  expect(activeLinks).toHaveLength(1);
+  expect(activeLinks[0]).toHaveAccessibleName(accessibleName);
+
+  for (const link of within(navigation).getAllByRole('link')) {
+    if (link === activeLinks[0]) {
+      continue;
+    }
+
+    expect(link).not.toHaveAttribute('aria-current');
+  }
+}
+
+function expectNoActiveNavigationItem() {
+  expect(
+    within(getGlobalNavigation()).queryByRole('link', { current: 'page' }),
+  ).toBeNull();
+}
+
 describe('AppRouter', () => {
-  it('redirects the root route to the dashboard skeleton', async () => {
-    renderRoute(routePaths.root);
+  it('redirects the root route to the dashboard skeleton and active navigation', async () => {
+    const visitedPathnames: string[] = [];
+    renderRoute(routePaths.root, {
+      onLocationChange: (pathname) => visitedPathnames.push(pathname),
+    });
 
     expect(
       await screen.findByRole('heading', { name: 'Dashboard' }),
     ).toBeInTheDocument();
     expect(screen.getByText('最近のRun')).toBeInTheDocument();
+    expectOnlyActiveNavigationItem('Dashboard');
+    expect(visitedPathnames.at(-1)).toBe(routePaths.dashboard);
   });
 
   it.each([
@@ -66,9 +111,7 @@ describe('AppRouter', () => {
       expect(
         screen.getByRole('heading', { name: heading }),
       ).toBeInTheDocument();
-      expect(
-        within(getGlobalNavigation()).getByRole('link', { current: 'page' }),
-      ).toHaveAccessibleName(heading);
+      expectOnlyActiveNavigationItem(heading);
       expect(screen.getByText(startMessage)).toBeInTheDocument();
       expect(screen.getByText(stateDescription)).toBeInTheDocument();
 
@@ -86,9 +129,7 @@ describe('AppRouter', () => {
     expect(
       screen.getByRole('heading', { name: 'Recipe Builder' }),
     ).toBeInTheDocument();
-    expect(
-      within(getGlobalNavigation()).getByRole('link', { current: 'page' }),
-    ).toHaveAccessibleName('Recipe Builder');
+    expectOnlyActiveNavigationItem('Recipe Builder');
     expect(
       screen.getByText('Recipeを組み立てる前の利用開始状態です。'),
     ).toBeInTheDocument();
@@ -145,10 +186,7 @@ describe('AppRouter', () => {
       ).toBeInTheDocument();
     }
 
-    const navigation = getGlobalNavigation();
-    expect(
-      within(navigation).queryByRole('link', { current: 'page' }),
-    ).toBeNull();
+    expectNoActiveNavigationItem();
 
     const dashboardLink = screen.getByRole('link', { name: 'Dashboardへ戻る' });
     expect(dashboardLink).toHaveAttribute('href', routePaths.dashboard);
@@ -169,10 +207,7 @@ describe('AppRouter', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('未知のURLです。')).toBeInTheDocument();
 
-    const navigation = getGlobalNavigation();
-    expect(
-      within(navigation).queryByRole('link', { current: 'page' }),
-    ).toBeNull();
+    expectNoActiveNavigationItem();
 
     const dashboardLink = screen.getByRole('link', { name: 'Dashboardへ戻る' });
     expect(dashboardLink).toHaveAttribute('href', routePaths.dashboard);
