@@ -40,13 +40,21 @@ export function ApplicationBootstrap({
 
   if (status === 'initializing') {
     return (
-      <StateMessage variant="loading" title="PromptTrailを起動しています..." />
+      <StateMessage
+        variant="loading"
+        title="PromptTrailを起動しています..."
+        description="Repositoryの初期化が完了するまで、画面側の利用開始状態は表示しません。"
+      />
     );
   }
 
   if (status === 'failed') {
     return (
-      <StateMessage variant="error" title="PromptTrailの起動に失敗しました。" />
+      <StateMessage
+        variant="error"
+        title="PromptTrailの起動に失敗しました。"
+        description="Repositoryの初期化に失敗したため、画面を表示できません。ページを再読み込みして再試行してください。"
+      />
     );
   }
 

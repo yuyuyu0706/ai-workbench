@@ -22,6 +22,11 @@ describe('ApplicationBootstrap', () => {
     expect(
       screen.getByText('PromptTrailを起動しています...'),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Repositoryの初期化が完了するまで、画面側の利用開始状態は表示しません。',
+      ),
+    ).toBeInTheDocument();
     expect(screen.queryByText('Application content')).not.toBeInTheDocument();
 
     expect(await screen.findByText('Application content')).toBeInTheDocument();
@@ -45,8 +50,10 @@ describe('ApplicationBootstrap', () => {
       </ApplicationBootstrap>,
     );
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'PromptTrailの起動に失敗しました。',
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('PromptTrailの起動に失敗しました。');
+    expect(alert).toHaveTextContent(
+      'Repositoryの初期化に失敗したため、画面を表示できません。ページを再読み込みして再試行してください。',
     );
     expect(screen.queryByText('Application content')).not.toBeInTheDocument();
 

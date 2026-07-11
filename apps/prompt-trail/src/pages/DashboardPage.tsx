@@ -32,8 +32,8 @@ export function DashboardPage() {
       />
       <StateMessage
         variant="empty"
-        title="ここからAI作業を再開するための静的な画面骨格です。"
-        description="現時点では実データを表示せず、P0-5以降でRepository経由のRun、Link、再開情報に置き換える予定です。"
+        title="AI作業を再開するための利用開始状態です。"
+        description="まだRepositoryから取得したRunやLinkがないため、画面の役割と次に確認する領域だけを静的に示します。P0-5以降でRepository連携後のempty stateへ置き換えます。"
       />
       <div className="prompt-trail-page__sections">
         {dashboardSections.map((section) => (

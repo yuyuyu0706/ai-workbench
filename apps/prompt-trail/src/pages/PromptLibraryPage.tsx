@@ -33,8 +33,8 @@ export function PromptLibraryPage() {
       />
       <StateMessage
         variant="empty"
-        title="まだPrompt資産は表示しません。"
-        description="この画面では、依頼テンプレートを蓄積する場所だけを静的に示します。実データ表示、作成、編集、検索はP0-5以降で扱います。"
+        title="Prompt資産を登録する前の利用開始状態です。"
+        description="まだRepositoryからPromptを取得しないため、依頼テンプレートを蓄積する場所だけを静的に示します。P0-5以降でRepository連携後のempty stateと作成導線へ置き換えます。"
       />
       <div className="prompt-trail-page__sections">
         {promptLibrarySections.map((section) => (

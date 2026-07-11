@@ -51,8 +51,8 @@ export function RunDetailPage() {
       />
       <StateMessage
         variant="empty"
-        title="現時点では実Run履歴を表示しません。"
-        description="P0-5以降でRepository経由のRun、Prompt Snapshot、Context Snapshot、成果物、評価の実データ表示へ置き換える予定です。"
+        title="Runを振り返る前の利用開始状態です。"
+        description="まだRepositoryからRun履歴を取得しないため、振り返りに必要な領域だけを静的に示します。P0-5以降でRepository連携後のempty / failure stateと実データ表示へ置き換えます。"
       />
       <div className="prompt-trail-page__sections">
         {runDetailSections.map((section) => (

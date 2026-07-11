@@ -47,6 +47,12 @@ Runtime はアプリケーション起動時に単一の PromptTrail DB instance
 - **Repository／DB**: Dexie／IndexedDB を使った永続化、DB schema、Repository 公開契約、ドメインデータ操作を担う。
 - **共通 UI Foundation**: Button、PageHeader、StateMessage、デザイントークンなど、Page 実装から再利用する UI 基盤を担う。
 
+## 状態表示の責務境界
+
+P0-4-3 時点では、状態表示を次の責務に分けます。`ApplicationBootstrap` は Runtime / Repository の初期化中と初期化失敗だけを扱い、初期化が完了するまで Page を描画しません。各 Page は Repository から実データを取得する前の **Page Start State** として、画面の目的、後続 Issue で置き換える領域、次の行動案内を `StateMessage variant="empty"` で示します。Router / Route は未知 URL と `/runs/:runId` の直接 URL を扱い、Dashboard への明示的な復帰導線を維持します。
+
+将来の Repository empty state / failure state は P0-5 以降で Repository API 経由の取得結果として扱います。現在の Page Start State は、Repository 連携後に 0 件だった状態や利用時失敗を本物のデータ状態として表示するものではありません。UI 層から Dexie Table、Dexie Query、native IndexedDB API を直接参照しない原則も維持します。
+
 ## Router / AppShell / Pages
 
 P0-4-2 では、Router、AppShell、主要 Pages が UI 層の最小構成として実装されています。`AppShell` は header、global navigation、main 領域を持つ共通レイアウトです。`AppRouter` は `/` を `/dashboard` へ redirect し、`/dashboard`、`/prompts`、`/contexts`、`/recipes/builder`、`/runs/:runId`、未知 URL の各 route を placeholder Page に接続します。
