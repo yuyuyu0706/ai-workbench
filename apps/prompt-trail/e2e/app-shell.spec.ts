@@ -21,7 +21,7 @@ test.describe('AppShell navigation', () => {
       page.getByRole('heading', { level: 1, name: 'Dashboard' }),
     ).toBeVisible();
     await expect(
-      page.getByText('ここからAI作業を再開するための静的な画面骨格です。'),
+      page.getByText('AI作業を再開するための利用開始状態です。'),
     ).toBeVisible();
     await expect(
       page.getByRole('heading', { level: 2, name: '最近のRun' }),
@@ -106,7 +106,7 @@ test.describe('AppShell navigation', () => {
       page.getByRole('heading', { level: 1, name: 'Run Detail' }),
     ).toBeVisible();
     await expect(
-      page.getByText('現時点では実Run履歴を表示しません。'),
+      page.getByText('Runを振り返る前の利用開始状態です。'),
     ).toBeVisible();
     await expect(
       page.getByRole('heading', { level: 2, name: '成果物 / Link' }),
