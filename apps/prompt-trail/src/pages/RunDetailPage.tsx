@@ -67,7 +67,7 @@ export function RunDetailPage() {
           </PageSection>
         ))}
       </div>
-      <div className="placeholder-page__actions">
+      <div className="prompt-trail-page__actions">
         <Link
           className="pt-button pt-button--secondary"
           to={routePaths.dashboard}
