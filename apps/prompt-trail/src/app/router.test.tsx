@@ -35,19 +35,22 @@ describe('AppRouter', () => {
     [
       routePaths.dashboard,
       'Dashboard',
-      'ここからAI作業を再開するための静的な画面骨格です。',
+      'AI作業を再開するための利用開始状態です。',
+      'まだRepositoryから取得したRunやLinkがないため、画面の役割と次に確認する領域だけを静的に示します。P0-5以降でRepository連携後のempty stateへ置き換えます。',
       ['最近のRun', '再開ポイント', '未整理Link', '次にやること'],
     ],
     [
       routePaths.promptLibrary,
       'Prompt Library',
-      'まだPrompt資産は表示しません。',
+      'Prompt資産を登録する前の利用開始状態です。',
+      'まだRepositoryからPromptを取得しないため、依頼テンプレートを蓄積する場所だけを静的に示します。P0-5以降でRepository連携後のempty stateと作成導線へ置き換えます。',
       ['Prompt資産', '分類・検索予定', '作成導線予定', 'Recipeへの接続'],
     ],
     [
       routePaths.contextLibrary,
       'Context Library',
-      'まだContext資産は表示しません。',
+      'Context資産を登録する前の利用開始状態です。',
+      'まだRepositoryからContextを取得しないため、AI作業へ渡す背景・制約・前提を整理する場所だけを静的に示します。P0-5以降でRepository連携後のempty stateと作成導線へ置き換えます。',
       [
         'Context資産',
         '背景・制約・前提の整理',
@@ -57,7 +60,7 @@ describe('AppRouter', () => {
     ],
   ])(
     'renders the static page skeleton for %s',
-    (pathname, heading, startMessage, sectionHeadings) => {
+    (pathname, heading, startMessage, stateDescription, sectionHeadings) => {
       renderRoute(pathname);
 
       expect(
@@ -67,6 +70,7 @@ describe('AppRouter', () => {
         within(getGlobalNavigation()).getByRole('link', { current: 'page' }),
       ).toHaveAccessibleName(heading);
       expect(screen.getByText(startMessage)).toBeInTheDocument();
+      expect(screen.getByText(stateDescription)).toBeInTheDocument();
 
       for (const sectionHeading of sectionHeadings) {
         expect(
@@ -86,7 +90,12 @@ describe('AppRouter', () => {
       within(getGlobalNavigation()).getByRole('link', { current: 'page' }),
     ).toHaveAccessibleName('Recipe Builder');
     expect(
-      screen.getByText('Recipe保存やRun実行はまだ行いません。'),
+      screen.getByText('Recipeを組み立てる前の利用開始状態です。'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'まだRepositoryからPromptやContextを取得しないため、AI作業を組み立てる静的な骨格だけを示します。Prompt選択、Context選択、保存、実行の実動作はP0-5以降で扱います。',
+      ),
     ).toBeInTheDocument();
 
     for (const sectionHeading of [
@@ -109,7 +118,12 @@ describe('AppRouter', () => {
       screen.getByRole('heading', { name: 'Run Detail' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText('現時点では実Run履歴を表示しません。'),
+      screen.getByText('Runを振り返る前の利用開始状態です。'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'まだRepositoryからRun履歴を取得しないため、振り返りに必要な領域だけを静的に示します。P0-5以降でRepository連携後のempty / failure stateと実データ表示へ置き換えます。',
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(

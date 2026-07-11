@@ -32,8 +32,8 @@ export function RecipeBuilderPage() {
       />
       <StateMessage
         variant="empty"
-        title="Recipe保存やRun実行はまだ行いません。"
-        description="この画面では、AI作業を組み立てるための静的な骨格だけを示します。Prompt選択、Context選択、保存、実行の実動作はP0-5以降で扱います。"
+        title="Recipeを組み立てる前の利用開始状態です。"
+        description="まだRepositoryからPromptやContextを取得しないため、AI作業を組み立てる静的な骨格だけを示します。Prompt選択、Context選択、保存、実行の実動作はP0-5以降で扱います。"
       />
       <div className="prompt-trail-page__sections">
         {recipeBuilderSections.map((section) => (

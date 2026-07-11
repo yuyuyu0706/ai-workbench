@@ -33,8 +33,8 @@ export function ContextLibraryPage() {
       />
       <StateMessage
         variant="empty"
-        title="まだContext資産は表示しません。"
-        description="この画面では、AI作業に渡す背景情報を整理する場所だけを静的に示します。実データ表示、作成、編集、検索はP0-5以降で扱います。"
+        title="Context資産を登録する前の利用開始状態です。"
+        description="まだRepositoryからContextを取得しないため、AI作業へ渡す背景・制約・前提を整理する場所だけを静的に示します。P0-5以降でRepository連携後のempty stateと作成導線へ置き換えます。"
       />
       <div className="prompt-trail-page__sections">
         {contextLibrarySections.map((section) => (
