@@ -10,7 +10,7 @@ const globalNavigationLinks = [
 const nonGlobalNavigationLabels = ['Run Detail', 'Not Found', 'Root'] as const;
 
 test.describe('AppShell navigation', () => {
-  test('redirects the root URL to the Dashboard placeholder with global navigation', async ({
+  test('redirects the root URL to the Dashboard skeleton with global navigation', async ({
     page,
   }) => {
     await page.goto('/');
@@ -21,7 +21,10 @@ test.describe('AppShell navigation', () => {
       page.getByRole('heading', { level: 1, name: 'Dashboard' }),
     ).toBeVisible();
     await expect(
-      page.getByText('P0-4-3で画面骨格を実装予定です。'),
+      page.getByText('ここからAI作業を再開するための静的な画面骨格です。'),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { level: 2, name: '最近のRun' }),
     ).toBeVisible();
 
     const navigation = page.getByRole('navigation', {
@@ -42,13 +45,13 @@ test.describe('AppShell navigation', () => {
 
   test('renders known routes from direct URLs', async ({ page }) => {
     const knownRoutes = [
-      ['/dashboard', 'Dashboard'],
-      ['/prompts', 'Prompt Library'],
-      ['/contexts', 'Context Library'],
-      ['/recipes/builder', 'Recipe Builder'],
+      ['/dashboard', 'Dashboard', '最近のRun'],
+      ['/prompts', 'Prompt Library', 'Prompt資産'],
+      ['/contexts', 'Context Library', 'Context資産'],
+      ['/recipes/builder', 'Recipe Builder', undefined],
     ] as const;
 
-    for (const [path, heading] of knownRoutes) {
+    for (const [path, heading, sectionHeading] of knownRoutes) {
       await page.goto(path);
       await expect(page).toHaveURL(new RegExp(`${path}$`));
       await expect(
@@ -59,10 +62,16 @@ test.describe('AppShell navigation', () => {
           .getByRole('navigation', { name: 'Global navigation' })
           .locator('a[aria-current="page"]'),
       ).toHaveAccessibleName(heading);
+
+      if (sectionHeading !== undefined) {
+        await expect(
+          page.getByRole('heading', { level: 2, name: sectionHeading }),
+        ).toBeVisible();
+      }
     }
   });
 
-  test('navigates between global navigation placeholders', async ({ page }) => {
+  test('navigates between global navigation pages', async ({ page }) => {
     await page.goto('/dashboard');
 
     const navigation = page.getByRole('navigation', {

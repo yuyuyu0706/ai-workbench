@@ -80,3 +80,13 @@
   display: flex;
   justify-content: center;
 }
+
+.prompt-trail-page {
+  display: grid;
+  gap: var(--pt-space-5);
+}
+
+.prompt-trail-page__sections {
+  display: grid;
+  gap: var(--pt-space-5);
+}

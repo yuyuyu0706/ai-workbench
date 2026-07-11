@@ -22,26 +22,69 @@ function getGlobalNavigation() {
 }
 
 describe('AppRouter', () => {
-  it('redirects the root route to the dashboard placeholder', async () => {
+  it('redirects the root route to the dashboard skeleton', async () => {
     renderRoute(routePaths.root);
 
     expect(
       await screen.findByRole('heading', { name: 'Dashboard' }),
     ).toBeInTheDocument();
+    expect(screen.getByText('最近のRun')).toBeInTheDocument();
   });
 
   it.each([
-    [routePaths.dashboard, 'Dashboard'],
-    [routePaths.promptLibrary, 'Prompt Library'],
-    [routePaths.contextLibrary, 'Context Library'],
-    [routePaths.recipeBuilder, 'Recipe Builder'],
-  ])('renders a minimal placeholder for %s', (pathname, heading) => {
-    renderRoute(pathname);
+    [
+      routePaths.dashboard,
+      'Dashboard',
+      'ここからAI作業を再開するための静的な画面骨格です。',
+      ['最近のRun', '再開ポイント', '未整理Link', '次にやること'],
+    ],
+    [
+      routePaths.promptLibrary,
+      'Prompt Library',
+      'まだPrompt資産は表示しません。',
+      ['Prompt資産', '分類・検索予定', '作成導線予定', 'Recipeへの接続'],
+    ],
+    [
+      routePaths.contextLibrary,
+      'Context Library',
+      'まだContext資産は表示しません。',
+      [
+        'Context資産',
+        '背景・制約・前提の整理',
+        '分類・検索予定',
+        'Recipeへの接続',
+      ],
+    ],
+  ])(
+    'renders the static page skeleton for %s',
+    (pathname, heading, startMessage, sectionHeadings) => {
+      renderRoute(pathname);
 
-    expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: heading }),
+      ).toBeInTheDocument();
+      expect(
+        within(getGlobalNavigation()).getByRole('link', { current: 'page' }),
+      ).toHaveAccessibleName(heading);
+      expect(screen.getByText(startMessage)).toBeInTheDocument();
+
+      for (const sectionHeading of sectionHeadings) {
+        expect(
+          screen.getByRole('heading', { level: 2, name: sectionHeading }),
+        ).toBeInTheDocument();
+      }
+    },
+  );
+
+  it('renders a minimal placeholder for recipe builder', () => {
+    renderRoute(routePaths.recipeBuilder);
+
+    expect(
+      screen.getByRole('heading', { name: 'Recipe Builder' }),
+    ).toBeInTheDocument();
     expect(
       within(getGlobalNavigation()).getByRole('link', { current: 'page' }),
-    ).toHaveAccessibleName(heading);
+    ).toHaveAccessibleName('Recipe Builder');
     expect(
       screen.getByText('P0-4-3で画面骨格を実装予定です。'),
     ).toBeInTheDocument();
