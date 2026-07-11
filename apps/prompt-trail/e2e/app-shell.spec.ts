@@ -48,7 +48,7 @@ test.describe('AppShell navigation', () => {
       ['/dashboard', 'Dashboard', '最近のRun'],
       ['/prompts', 'Prompt Library', 'Prompt資産'],
       ['/contexts', 'Context Library', 'Context資産'],
-      ['/recipes/builder', 'Recipe Builder', undefined],
+      ['/recipes/builder', 'Recipe Builder', 'Prompt選択'],
     ] as const;
 
     for (const [path, heading, sectionHeading] of knownRoutes) {
@@ -106,7 +106,10 @@ test.describe('AppShell navigation', () => {
       page.getByRole('heading', { level: 1, name: 'Run Detail' }),
     ).toBeVisible();
     await expect(
-      page.getByText('Run run-123 の詳細placeholderです。'),
+      page.getByText('現時点では実Run履歴を表示しません。'),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { level: 2, name: '成果物 / Link' }),
     ).toBeVisible();
     await expect(
       page

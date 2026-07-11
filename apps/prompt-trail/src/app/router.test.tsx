@@ -76,7 +76,7 @@ describe('AppRouter', () => {
     },
   );
 
-  it('renders a minimal placeholder for recipe builder', () => {
+  it('renders the static recipe builder skeleton', () => {
     renderRoute(routePaths.recipeBuilder);
 
     expect(
@@ -86,8 +86,19 @@ describe('AppRouter', () => {
       within(getGlobalNavigation()).getByRole('link', { current: 'page' }),
     ).toHaveAccessibleName('Recipe Builder');
     expect(
-      screen.getByText('P0-4-3で画面骨格を実装予定です。'),
+      screen.getByText('Recipe保存やRun実行はまだ行いません。'),
     ).toBeInTheDocument();
+
+    for (const sectionHeading of [
+      'Prompt選択',
+      'Context選択',
+      'Recipe組み立て',
+      '実行準備',
+    ]) {
+      expect(
+        screen.getByRole('heading', { level: 2, name: sectionHeading }),
+      ).toBeInTheDocument();
+    }
   });
 
   it('renders run detail from a direct URL with an explicit dashboard recovery link', async () => {
@@ -98,8 +109,27 @@ describe('AppRouter', () => {
       screen.getByRole('heading', { name: 'Run Detail' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText('Run run-123 の詳細placeholderです。'),
+      screen.getByText('現時点では実Run履歴を表示しません。'),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Run run-123 の入力、成果物、評価を含めて振り返る画面です。',
+      ),
+    ).toBeInTheDocument();
+
+    for (const sectionHeading of [
+      '実行サマリ',
+      '使用したRecipe',
+      'Prompt Snapshot',
+      'Context Snapshot',
+      '成果物 / Link',
+      '評価',
+      '改善メモ',
+    ]) {
+      expect(
+        screen.getByRole('heading', { level: 2, name: sectionHeading }),
+      ).toBeInTheDocument();
+    }
 
     const navigation = getGlobalNavigation();
     expect(
