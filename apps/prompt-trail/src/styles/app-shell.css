@@ -76,7 +76,8 @@
   gap: var(--pt-space-5);
 }
 
-.placeholder-page__actions {
+.placeholder-page__actions,
+.prompt-trail-page__actions {
   display: flex;
   justify-content: center;
 }
