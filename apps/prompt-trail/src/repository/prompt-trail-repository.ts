@@ -19,11 +19,58 @@ import type {
 
 import { PromptTrailRepositoryError } from './errors';
 
+export type TrailBundle = {
+  readonly project: Project;
+  readonly prompt: Prompt;
+  readonly context: Context;
+  readonly recipe: Recipe;
+  readonly run: Run;
+  readonly links: readonly Link[];
+};
+
 export class PromptTrailRepository {
   private readonly database: PromptTrailDatabase;
 
   constructor(database: PromptTrailDatabase) {
     this.database = database;
+  }
+
+  async insertTrailBundle(trailBundle: TrailBundle): Promise<TrailBundle> {
+    await this.database.transaction(
+      'rw',
+      [
+        this.database.projects,
+        this.database.prompts,
+        this.database.contexts,
+        this.database.recipes,
+        this.database.runs,
+        this.database.links,
+      ],
+      async () => {
+        await this.ensureBundleIdsAbsent(trailBundle);
+
+        await this.database.projects.add(trailBundle.project);
+
+        await this.ensureValidAssetScope(trailBundle.prompt);
+        await this.database.prompts.add(trailBundle.prompt);
+
+        await this.ensureValidAssetScope(trailBundle.context);
+        await this.database.contexts.add(trailBundle.context);
+
+        await this.ensureRecipeReferencesAvailable(trailBundle.recipe);
+        await this.database.recipes.add(trailBundle.recipe);
+
+        await this.ensureRunReferencesAvailable(trailBundle.run);
+        await this.database.runs.add(trailBundle.run);
+
+        for (const link of trailBundle.links) {
+          await this.ensureLinkReferencesAvailable(link);
+          await this.database.links.add(link);
+        }
+      },
+    );
+
+    return trailBundle;
   }
 
   async saveProject(project: Project): Promise<Project> {
@@ -279,6 +326,24 @@ export class PromptTrailRepository {
       deletedAt,
       'Link',
     );
+  }
+
+  private async ensureBundleIdsAbsent(trailBundle: TrailBundle): Promise<void> {
+    const existingIds = await Promise.all([
+      this.database.projects.get(trailBundle.project.id),
+      this.database.prompts.get(trailBundle.prompt.id),
+      this.database.contexts.get(trailBundle.context.id),
+      this.database.recipes.get(trailBundle.recipe.id),
+      this.database.runs.get(trailBundle.run.id),
+      ...trailBundle.links.map((link) => this.database.links.get(link.id)),
+    ]);
+
+    if (existingIds.some((entity) => entity !== undefined)) {
+      throw new PromptTrailRepositoryError(
+        'duplicate-id',
+        'Trail bundle contains an ID that already exists',
+      );
+    }
   }
 
   private async ensureRunReferencesAvailable(run: Run): Promise<void> {
