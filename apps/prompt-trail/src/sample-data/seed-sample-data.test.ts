@@ -91,6 +91,68 @@ describe('seedSampleData', () => {
     );
   });
 
+  it('reports conflict without repairing prompt ownership drift', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    const userProject = buildUserProject();
+
+    await seedSampleData(repository);
+    await repository.saveProject(userProject);
+    await database.prompts.update(sampleDataset.ids.prompt, {
+      projectId: userProject.id,
+    });
+
+    await expect(seedSampleData(repository)).resolves.toEqual({
+      status: 'conflict',
+      existingIds: [
+        sampleDataset.ids.project,
+        sampleDataset.ids.prompt,
+        sampleDataset.ids.context,
+        sampleDataset.ids.recipe,
+        sampleDataset.ids.run,
+        sampleDataset.ids.links.chat,
+        sampleDataset.ids.links.issue100,
+        sampleDataset.ids.links.pr101,
+      ],
+      missingIds: [],
+    });
+
+    await expect(
+      database.prompts.get(sampleDataset.ids.prompt),
+    ).resolves.toMatchObject({ projectId: userProject.id });
+  });
+
+  it('reports conflict without repairing context ownership drift', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    const userProject = buildUserProject();
+
+    await seedSampleData(repository);
+    await repository.saveProject(userProject);
+    await database.contexts.update(sampleDataset.ids.context, {
+      projectId: userProject.id,
+    });
+
+    await expect(seedSampleData(repository)).resolves.toEqual({
+      status: 'conflict',
+      existingIds: [
+        sampleDataset.ids.project,
+        sampleDataset.ids.prompt,
+        sampleDataset.ids.context,
+        sampleDataset.ids.recipe,
+        sampleDataset.ids.run,
+        sampleDataset.ids.links.chat,
+        sampleDataset.ids.links.issue100,
+        sampleDataset.ids.links.pr101,
+      ],
+      missingIds: [],
+    });
+
+    await expect(
+      database.contexts.get(sampleDataset.ids.context),
+    ).resolves.toMatchObject({ projectId: userProject.id });
+  });
+
   it('reports conflict without repairing partial sample data', async () => {
     const database = databaseScope.createDatabase();
     const repository = new PromptTrailRepository(database);

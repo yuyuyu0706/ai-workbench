@@ -119,8 +119,12 @@ function isCompleteSample(preflight: SamplePreflight): boolean {
     project.archivedAt === null &&
     prompt.deletedAt === null &&
     prompt.status === 'active' &&
+    prompt.scope === 'project' &&
+    prompt.projectId === project.id &&
     context.deletedAt === null &&
     context.status === 'enabled' &&
+    context.scope === 'project' &&
+    context.projectId === project.id &&
     recipe.deletedAt === null &&
     recipe.projectId === project.id &&
     recipe.promptId === prompt.id &&
