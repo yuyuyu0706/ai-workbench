@@ -11,3 +11,5 @@ export {
   sampleRecipe,
   sampleRun,
 } from './sample-dataset';
+export { seedSampleData } from './seed-sample-data';
+export type { SeedSampleDataResult } from './seed-sample-data';

@@ -6,6 +6,7 @@ export const PROMPT_TRAIL_REPOSITORY_ERROR_CODES = [
   'duplicate-context-id',
   'project-mismatch',
   'snapshot-mismatch',
+  'duplicate-id',
 ] as const;
 
 export type PromptTrailRepositoryErrorCode =

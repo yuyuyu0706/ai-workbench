@@ -20,6 +20,7 @@ const expectedErrorCodes = [
   'duplicate-context-id',
   'project-mismatch',
   'snapshot-mismatch',
+  'duplicate-id',
 ] as const satisfies readonly PromptTrailRepositoryErrorCode[];
 
 afterEach(async () => {
