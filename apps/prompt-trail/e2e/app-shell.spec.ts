@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 
 const globalNavigationLinks = [
   'Dashboard',
@@ -9,6 +9,51 @@ const globalNavigationLinks = [
 
 const nonGlobalNavigationLabels = ['Run Detail', 'Not Found', 'Root'] as const;
 
+const primaryRoutes = [
+  {
+    path: '/dashboard',
+    heading: 'Dashboard',
+    currentNavigationLabel: 'Dashboard',
+    startState: 'AI作業を再開するための利用開始状態です。',
+  },
+  {
+    path: '/prompts',
+    heading: 'Prompt Library',
+    currentNavigationLabel: 'Prompt Library',
+    startState: 'Prompt資産を登録する前の利用開始状態です。',
+  },
+  {
+    path: '/contexts',
+    heading: 'Context Library',
+    currentNavigationLabel: 'Context Library',
+    startState: 'Context資産を登録する前の利用開始状態です。',
+  },
+  {
+    path: '/recipes/builder',
+    heading: 'Recipe Builder',
+    currentNavigationLabel: 'Recipe Builder',
+    startState: 'Recipeを組み立てる前の利用開始状態です。',
+  },
+] as const;
+
+function getGlobalNavigation(page: Page) {
+  return page.getByRole('navigation', { name: 'Global navigation' });
+}
+
+async function expectHeading(page: Page, name: string) {
+  await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
+}
+
+async function expectCurrentNavigation(navigation: Locator, name: string) {
+  await expect(
+    navigation.locator('a[aria-current="page"]'),
+  ).toHaveAccessibleName(name);
+}
+
+async function expectNoCurrentNavigation(navigation: Locator) {
+  await expect(navigation.locator('a[aria-current="page"]')).toHaveCount(0);
+}
+
 test.describe('AppShell navigation', () => {
   test('redirects the root URL to the Dashboard skeleton with global navigation', async ({
     page,
@@ -17,9 +62,7 @@ test.describe('AppShell navigation', () => {
 
     await expect(page).toHaveTitle('PromptTrail');
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(
-      page.getByRole('heading', { level: 1, name: 'Dashboard' }),
-    ).toBeVisible();
+    await expectHeading(page, 'Dashboard');
     await expect(
       page.getByText('AI作業を再開するための利用開始状態です。'),
     ).toBeVisible();
@@ -27,10 +70,9 @@ test.describe('AppShell navigation', () => {
       page.getByRole('heading', { level: 2, name: '最近のRun' }),
     ).toBeVisible();
 
-    const navigation = page.getByRole('navigation', {
-      name: 'Global navigation',
-    });
+    const navigation = getGlobalNavigation(page);
     await expect(navigation).toBeVisible();
+    await expectCurrentNavigation(navigation, 'Dashboard');
 
     for (const label of globalNavigationLinks) {
       await expect(navigation.getByRole('link', { name: label })).toBeVisible();
@@ -43,86 +85,71 @@ test.describe('AppShell navigation', () => {
     }
   });
 
-  test('renders known routes from direct URLs', async ({ page }) => {
-    const knownRoutes = [
-      ['/dashboard', 'Dashboard', '最近のRun'],
-      ['/prompts', 'Prompt Library', 'Prompt資産'],
-      ['/contexts', 'Context Library', 'Context資産'],
-      ['/recipes/builder', 'Recipe Builder', 'Prompt選択'],
-    ] as const;
-
-    for (const [path, heading, sectionHeading] of knownRoutes) {
-      await page.goto(path);
-      await expect(page).toHaveURL(new RegExp(`${path}$`));
-      await expect(
-        page.getByRole('heading', { level: 1, name: heading }),
-      ).toBeVisible();
-      await expect(
-        page
-          .getByRole('navigation', { name: 'Global navigation' })
-          .locator('a[aria-current="page"]'),
-      ).toHaveAccessibleName(heading);
-
-      if (sectionHeading !== undefined) {
-        await expect(
-          page.getByRole('heading', { level: 2, name: sectionHeading }),
-        ).toBeVisible();
-      }
-    }
-  });
-
   test('navigates between global navigation pages', async ({ page }) => {
     await page.goto('/dashboard');
 
-    const navigation = page.getByRole('navigation', {
-      name: 'Global navigation',
-    });
+    const navigation = getGlobalNavigation(page);
 
-    await navigation.getByRole('link', { name: 'Prompt Library' }).click();
-    await expect(page).toHaveURL(/\/prompts$/);
-    await expect(
-      page.getByRole('heading', { level: 1, name: 'Prompt Library' }),
-    ).toBeVisible();
-
-    await navigation.getByRole('link', { name: 'Context Library' }).click();
-    await expect(page).toHaveURL(/\/contexts$/);
-    await expect(
-      page.getByRole('heading', { level: 1, name: 'Context Library' }),
-    ).toBeVisible();
-
-    await navigation.getByRole('link', { name: 'Recipe Builder' }).click();
-    await expect(page).toHaveURL(/\/recipes\/builder$/);
-    await expect(
-      page.getByRole('heading', { level: 1, name: 'Recipe Builder' }),
-    ).toBeVisible();
+    for (const { path, heading, currentNavigationLabel } of primaryRoutes) {
+      await navigation
+        .getByRole('link', { name: currentNavigationLabel })
+        .click();
+      await expect(page).toHaveURL(new RegExp(`${path}$`));
+      await expectHeading(page, heading);
+      await expectCurrentNavigation(navigation, currentNavigationLabel);
+    }
   });
 
-  test('returns to Dashboard from run detail and keeps global navigation inactive', async ({
+  test('renders primary pages from direct URLs', async ({ page }) => {
+    for (const {
+      path,
+      heading,
+      currentNavigationLabel,
+      startState,
+    } of primaryRoutes) {
+      await page.goto(path);
+
+      const navigation = getGlobalNavigation(page);
+
+      await expect(page).toHaveURL(new RegExp(`${path}$`));
+      await expectHeading(page, heading);
+      await expect(page.getByText(startState)).toBeVisible();
+      await expectCurrentNavigation(navigation, currentNavigationLabel);
+    }
+  });
+
+  test('renders run detail from a direct URL without active global navigation', async ({
     page,
   }) => {
-    await page.goto('/runs/run-123');
+    await page.goto('/runs/test-run');
 
-    await expect(
-      page.getByRole('heading', { level: 1, name: 'Run Detail' }),
-    ).toBeVisible();
+    await expect(page).toHaveURL(/\/runs\/test-run$/);
+    await expectHeading(page, 'Run Detail');
     await expect(
       page.getByText('Runを振り返る前の利用開始状態です。'),
     ).toBeVisible();
     await expect(
       page.getByRole('heading', { level: 2, name: '成果物 / Link' }),
     ).toBeVisible();
+    await expectNoCurrentNavigation(getGlobalNavigation(page));
+  });
+
+  test('returns to Dashboard from run detail and keeps global navigation inactive', async ({
+    page,
+  }) => {
+    await page.goto('/runs/test-run');
+
+    await expectHeading(page, 'Run Detail');
     await expect(
-      page
-        .getByRole('navigation', { name: 'Global navigation' })
-        .locator('a[aria-current="page"]'),
-    ).toHaveCount(0);
+      page.getByText('Runを振り返る前の利用開始状態です。'),
+    ).toBeVisible();
+    await expectNoCurrentNavigation(getGlobalNavigation(page));
 
     await page.getByRole('link', { name: 'Dashboardへ戻る' }).click();
 
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(
-      page.getByRole('heading', { level: 1, name: 'Dashboard' }),
-    ).toBeVisible();
+    await expectHeading(page, 'Dashboard');
+    await expectCurrentNavigation(getGlobalNavigation(page), 'Dashboard');
   });
 
   test('returns to Dashboard from not found and keeps global navigation inactive', async ({
@@ -130,21 +157,14 @@ test.describe('AppShell navigation', () => {
   }) => {
     await page.goto('/unknown-route');
 
-    await expect(
-      page.getByRole('heading', { level: 1, name: 'Not Found' }),
-    ).toBeVisible();
+    await expectHeading(page, 'Not Found');
     await expect(page.getByText('未知のURLです。')).toBeVisible();
-    await expect(
-      page
-        .getByRole('navigation', { name: 'Global navigation' })
-        .locator('a[aria-current="page"]'),
-    ).toHaveCount(0);
+    await expectNoCurrentNavigation(getGlobalNavigation(page));
 
     await page.getByRole('link', { name: 'Dashboardへ戻る' }).click();
 
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(
-      page.getByRole('heading', { level: 1, name: 'Dashboard' }),
-    ).toBeVisible();
+    await expectHeading(page, 'Dashboard');
+    await expectCurrentNavigation(getGlobalNavigation(page), 'Dashboard');
   });
 });
