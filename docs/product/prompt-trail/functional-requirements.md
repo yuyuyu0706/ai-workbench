@@ -341,16 +341,16 @@ Release v0.1.0
 
 ## 7. 画面構成
 
-| 画面            | 主な役割                                                   |
-| --------------- | ---------------------------------------------------------- |
-| Dashboard       | 最近利用したRecipe、進行中Run、未整理Linkを表示する        |
-| Projects        | Project一覧、作成、切替、アーカイブを行う                  |
-| Prompt Library  | Prompt検索、作成、編集、版管理を行う                       |
-| Context Library | Context登録、適用範囲設定、利用状況確認を行う              |
-| Recipe Builder  | Prompt・Context・変数を組み立てる                          |
-| Run Detail      | 実行内容、スナップショット、Link、評価、改善メモを確認する |
-| Trail View      | Chat、Issue、PR、Releaseの関係を確認する                   |
-| Settings        | データ出力、復元、将来のGitHub連携設定を行う               |
+| 画面            | 主な役割                                                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Dashboard       | 最近利用したRecipe、進行中Run、未整理Linkを表示する                                                                      |
+| Projects        | Project一覧、作成、切替、アーカイブを行う                                                                                |
+| Prompt Library  | Prompt検索、作成、編集、版管理を行う                                                                                     |
+| Context Library | Context登録、適用範囲設定、利用状況確認を行う                                                                            |
+| Recipe Builder  | Prompt・Context・変数を組み立てる                                                                                        |
+| Run Detail      | 実行内容、スナップショット、Link、評価、改善メモを確認する                                                               |
+| Trail View      | Chat、Issue、PR、Releaseの関係を確認する                                                                                 |
+| Settings        | Phase 1ではデータ出力・復元、Phase 4ではGitHub連携設定、Phase 5ではAccount / Plan / Administration関連設定を段階的に扱う |
 
 ---
 
@@ -374,19 +374,21 @@ Release v0.1.0
 
 ## 9. 実装ロードマップ
 
+詳細な実装順序とPhase 0のP0-1〜P0-6再同期は [Roadmap](roadmap.md) を正本とする。ここでは機能要件との対応を保つため、Phase 0〜5の要約を記載する。
+
 ### Phase 0：AI Workbench基盤・PromptTrailの起動
 
 **目的：** モノレポとアプリの技術基盤を作り、開発を継続できる状態にする。
 
-| 項目           | 内容                                                                         |
-| -------------- | ---------------------------------------------------------------------------- |
-| リポジトリ作成 | `ai-workbench` を新規作成する                                                |
-| Workspace構成  | pnpm Workspaceと`apps/prompt-trail`を作成する                                |
-| React基盤      | React + TypeScript + Viteで起動できるようにする                              |
-| 画面骨組み     | Dashboard、Library、Builder、Run Detailの基本導線を置く                      |
-| DB設計         | Project、Prompt、Context、Recipe、Run、Linkの型とIndexedDBスキーマを定義する |
-| 品質基盤       | ESLint、Prettier、Vitest、Playwright、GitHub Actionsを導入する               |
-| ドキュメント   | README、ADR、アーキテクチャ方針を整備する                                    |
+| 項目           | 内容                                                                                              |
+| -------------- | ------------------------------------------------------------------------------------------------- |
+| リポジトリ作成 | `ai-workbench` を新規作成する                                                                     |
+| Workspace構成  | pnpm Workspaceと`apps/prompt-trail`を作成する                                                     |
+| React基盤      | React + TypeScript + Viteで起動できるようにする                                                   |
+| 画面骨組み     | Dashboard、Prompt Library、Context Library、Recipe Builder、Run Detailの基本導線を置く            |
+| DB設計         | Project、Prompt、Context、Recipe、Run、Linkの型とIndexedDBスキーマを定義する                      |
+| 品質基盤       | ESLint、Prettier、Vitest、Playwright、GitHub Actionsを導入する                                    |
+| ドキュメント   | README、ADR、アーキテクチャ方針を整備し、P0-6でローカル開発手順と技術基盤図の整備対象を正式化する |
 
 **完了条件**
 
@@ -401,19 +403,21 @@ Release v0.1.0
 
 **目的：** 再利用する知識資産を登録・整理・検索できるようにする。
 
-| 項目         | 内容                                         |
-| ------------ | -------------------------------------------- |
-| Project管理  | 作成、編集、切替、アーカイブ                 |
-| Prompt管理   | 作成、編集、複製、タグ、状態管理             |
-| Context管理  | 作成、分類、適用範囲、有効・無効管理         |
-| 検索         | Prompt・Contextを検索・絞り込み              |
-| データ保護   | ソフトデリート、JSON出力・復元               |
-| 初期サンプル | Codex依頼、Issue作成、設計レビューの例を登録 |
+| 項目              | 内容                                                                      |
+| ----------------- | ------------------------------------------------------------------------- |
+| Project Workspace | 作成、編集、Current Project、切替、アーカイブ、左サイドバー型AppShell進化 |
+| Prompt管理        | 作成、編集、複製、タグ、状態管理、最小版管理                              |
+| Context管理       | 作成、分類、適用範囲、有効・無効管理                                      |
+| 検索              | Prompt・Contextを検索・絞り込み                                           |
+| データ保護        | ソフトデリート、JSON出力・復元、Settings最小骨格                          |
+| 初期サンプル      | Codex依頼、Issue作成、設計レビューの例を登録                              |
 
 **完了条件**
 
 - PromptとContextをProject別または共通資産として管理できる
-- キーワード・タグで必要な資産を探せる
+- Project WorkspaceとCurrent Projectにより作業対象を切り替えられる
+- キーワード・タグ・Projectで必要な資産を探せる
+- Promptの最小更新履歴を閲覧・復元できる
 - JSONバックアップと復元ができる
 
 ---
@@ -466,13 +470,14 @@ Phase 3完了時点で、PromptTrailを日常のAI活用・GitHub運用に投入
 
 ---
 
-### Phase 4：GitHub連携・AI Workbench拡張準備
+### Phase 4：GitHub Integration・AI Workbench拡張準備
 
 **目的：** GitHubとの接続を深め、成果追跡と将来の複数アプリ化に備える。
 
 | 項目           | 内容                                                 |
 | -------------- | ---------------------------------------------------- |
 | GitHub連携     | Issue、PR、Commitのタイトル・状態を取得する          |
+| Settings拡張   | GitHub Integration設定を扱う                         |
 | Link同期       | GitHub Linkの状態を手動または定期更新できる          |
 | Issue作成支援  | RecipeからGitHub Issueのタイトル・本文を生成する     |
 | PR状態表示     | Open / Merged / ClosedをRun画面に表示する            |
@@ -485,6 +490,22 @@ Phase 3完了時点で、PromptTrailを日常のAI活用・GitHub運用に投入
 - GitHubのIssue・PRをRunへ効率よく接続できる
 - Runから実装の進捗・結果を確認できる
 - 共通パッケージを作るべき重複があるか評価できる
+
+---
+
+### Phase 5：Productization & Administration
+
+**目的：** 個人向けローカルワークベンチから、複数の利用者像・契約・権限・習熟度に対応できるプロダクトへ拡張する。
+
+| 項目                     | 内容                                                                            |
+| ------------------------ | ------------------------------------------------------------------------------- |
+| Persona / Experience     | Simple / Standard / Advanced による段階的な体験設計                             |
+| Identity / Authorization | User / Account、Authentication、Admin、Member                                   |
+| Plan / Entitlement       | Guest / Plus / Pro、Feature Entitlement                                         |
+| Administration           | Admin Console、User management、Plan / feature management、Operational settings |
+| Settings拡張             | Account / Plan / Administration関連設定を扱う                                   |
+
+Guest / Plus / Pro と Admin / Member は同一Roleとして扱わない。Experienceによる表示制御、Plan / Entitlementによる利用可否、Authorization Roleによる管理権限を分離し、Progressive Disclosureを将来阻害しない設計方針を維持する。
 
 ---
 
