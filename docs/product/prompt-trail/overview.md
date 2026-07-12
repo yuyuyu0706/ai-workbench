@@ -72,9 +72,16 @@ MVP には次を含めます。
 - ChatGPT や Codex の直接実行。
 - GitHub API による Issue／PR 自動同期。
 - GitHub トークンの保存。
+- Account / Plan / Administration 関連設定。
+- Guest / Plus / Pro の Entitlement 制御。
+- Admin / Member の Authorization Role 制御。
 - 複数人リアルタイム共同編集。
 - クラウド同期。
 - RAG による Context 自動検索。
+
+## MVP 後のプロダクト拡張
+
+Phase 4ではGitHub Integrationを深め、Phase 5ではProductization & Administrationとして複数の利用者像・契約・権限・習熟度に対応する。Guest / Plus / ProのPlan / Entitlement、Admin / MemberのAuthorization Role、Simple / Standard / AdvancedのPersona / Experienceは別軸として扱い、Progressive Disclosureを将来阻害しない。
 
 ## 関連ドキュメント
 
