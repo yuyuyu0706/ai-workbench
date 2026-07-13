@@ -14,7 +14,7 @@ const primaryRoutes = [
     path: '/dashboard',
     heading: 'Dashboard',
     currentNavigationLabel: 'Dashboard',
-    startState: 'AI作業を再開するための利用開始状態です。',
+    startState: 'Repositoryに表示できるRunがまだありません。',
   },
   {
     path: '/prompts',
@@ -64,7 +64,7 @@ test.describe('AppShell navigation', () => {
     await expect(page).toHaveURL(/\/dashboard$/);
     await expectHeading(page, 'Dashboard');
     await expect(
-      page.getByText('AI作業を再開するための利用開始状態です。'),
+      page.getByText('Repositoryに表示できるRunがまだありません。'),
     ).toBeVisible();
     await expect(
       page.getByRole('heading', { level: 2, name: '最近のRun' }),

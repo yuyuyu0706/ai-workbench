@@ -18,7 +18,7 @@ const primaryPages = [
     heading: 'Dashboard',
     currentNavigationLabel: 'Dashboard',
     sectionHeading: '最近のRun',
-    startState: 'AI作業を再開するための利用開始状態です。',
+    startState: 'Repositoryに表示できるRunがまだありません。',
   },
   {
     path: '/prompts',

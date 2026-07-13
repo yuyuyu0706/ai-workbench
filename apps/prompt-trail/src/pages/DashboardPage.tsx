@@ -1,10 +1,23 @@
+import { useEffect, useState } from 'react';
+
+import { loadDashboardDataState, type DashboardDataState } from '../dashboard';
+import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageHeader, PageSection, StateMessage } from '../components/ui';
+
+const DASHBOARD_RECENT_RUN_LIMIT = 5;
+
+type DashboardPageState = { readonly status: 'loading' } | DashboardDataState;
+
+type DashboardPageStateSnapshot = {
+  readonly repository: ReturnType<typeof usePromptTrailRepository>;
+  readonly state: DashboardPageState;
+};
 
 const dashboardSections = [
   {
     title: '最近のRun',
     description:
-      'AI作業の実行履歴を確認する領域です。P0-5以降でRepository経由の実データ表示に置き換えます。',
+      'Repositoryから取得したRecent Runsを表示する領域です。実データの詳細表示は後続Issueで扱います。',
   },
   {
     title: '再開ポイント',
@@ -23,6 +36,33 @@ const dashboardSections = [
 ] as const;
 
 export function DashboardPage() {
+  const repository = usePromptTrailRepository();
+  const [pageStateSnapshot, setPageStateSnapshot] =
+    useState<DashboardPageStateSnapshot>({
+      repository,
+      state: { status: 'loading' },
+    });
+  const pageState =
+    pageStateSnapshot.repository === repository
+      ? pageStateSnapshot.state
+      : ({ status: 'loading' } as const);
+
+  useEffect(() => {
+    let isActive = true;
+
+    loadDashboardDataState(repository, {
+      recentRunLimit: DASHBOARD_RECENT_RUN_LIMIT,
+    }).then((dashboardDataState) => {
+      if (isActive) {
+        setPageStateSnapshot({ repository, state: dashboardDataState });
+      }
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [repository]);
+
   return (
     <section className="prompt-trail-page">
       <PageHeader
@@ -30,11 +70,7 @@ export function DashboardPage() {
         title="Dashboard"
         description="AI作業の再開入口として、最近の活動・未整理事項・次の行動を確認する画面です。"
       />
-      <StateMessage
-        variant="empty"
-        title="AI作業を再開するための利用開始状態です。"
-        description="まだRepositoryから取得したRunやLinkがないため、画面の役割と次に確認する領域だけを静的に示します。P0-5以降でRepository連携後のempty stateへ置き換えます。"
-      />
+      <DashboardStateMessage pageState={pageState} />
       <div className="prompt-trail-page__sections">
         {dashboardSections.map((section) => (
           <PageSection
@@ -43,11 +79,53 @@ export function DashboardPage() {
             description={section.description}
           >
             <p>
-              この領域は後続Issueで実データ表示へ差し替えるための器です。CRUD、検索、疑似データ表示はまだ提供しません。
+              この領域はRepository接続済みのDashboard骨格です。具体的なカード表示やRecent
+              Runsの詳細表示は後続Issueで実装します。
             </p>
           </PageSection>
         ))}
       </div>
     </section>
   );
+}
+
+function DashboardStateMessage({
+  pageState,
+}: {
+  pageState: DashboardPageState;
+}) {
+  switch (pageState.status) {
+    case 'loading':
+      return (
+        <StateMessage
+          variant="loading"
+          title="Dashboardデータを読み込んでいます..."
+          description="Repositoryから最近のRunと関連情報を取得しています。"
+        />
+      );
+    case 'empty':
+      return (
+        <StateMessage
+          variant="empty"
+          title="Repositoryに表示できるRunがまだありません。"
+          description="Fresh DBでは自動Seedせず、Repository読み取り後の正常なEmpty Stateとして表示しています。"
+        />
+      );
+    case 'failure':
+      return (
+        <StateMessage
+          variant="error"
+          title="Dashboardデータの読み込みに失敗しました。"
+          description="Repositoryの読み取りに失敗しました。時間をおいてページを再読み込みしてください。"
+        />
+      );
+    case 'data':
+      return (
+        <StateMessage
+          variant="empty"
+          title="Dashboardデータを読み込みました。"
+          description={`${pageState.data.recentRuns.length}件のRecent Runsを取得しました。詳細表示は後続Issueで扱います。`}
+        />
+      );
+  }
 }
