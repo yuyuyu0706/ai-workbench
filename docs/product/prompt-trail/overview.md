@@ -88,5 +88,6 @@ Phase 4ではGitHub Integrationを深め、Phase 5ではProductization & Adminis
 - [Functional Requirements](functional-requirements.md)
 - [Roadmap](roadmap.md)
 - [Application Architecture](application-architecture.md)
+- [Deployment and Hosted Preview](deployment-and-preview.md)
 - [Screen Structure and User Flow](screen-transition.md)
 - [ADR 0001: AI Workbench Monorepo](../../adr/0001-ai-workbench-monorepo.md)
