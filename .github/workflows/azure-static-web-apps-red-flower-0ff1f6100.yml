@@ -1,4 +1,4 @@
-name: Azure Static Web Apps CI/CD
+name: PromptTrail Public Preview
 
 on:
   push:
@@ -9,9 +9,9 @@ permissions:
   contents: read
 
 jobs:
-  build_and_deploy_job:
+  build_and_deploy_public_preview:
     runs-on: ubuntu-latest
-    name: Build and Deploy Job
+    name: Build and Deploy Public Preview
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

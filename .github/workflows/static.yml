@@ -1,10 +1,11 @@
 # Deploy PromptTrail to GitHub Pages as the shared codex/** development preview.
-name: Deploy static content to Pages
+name: PromptTrail Development Preview
 
 on:
-  # Runs on pushes targeting codex development branches.
+  # Runs on pushes targeting codex/** development branches.
   push:
-    branches: codex**
+    branches:
+      - 'codex/**'
 
   # Allows you to run this workflow manually from the Actions tab.
   workflow_dispatch:
@@ -21,7 +22,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  deploy_development_preview:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
