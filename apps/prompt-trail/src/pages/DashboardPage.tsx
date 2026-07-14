@@ -120,12 +120,6 @@ function DashboardStateMessage({
         />
       );
     case 'data':
-      return (
-        <StateMessage
-          variant="empty"
-          title="Dashboardデータを読み込みました。"
-          description={`${pageState.data.recentRuns.length}件のRecent Runsを取得しました。詳細表示は後続Issueで扱います。`}
-        />
-      );
+      return null;
   }
 }

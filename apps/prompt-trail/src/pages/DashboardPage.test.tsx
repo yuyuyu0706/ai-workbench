@@ -1,11 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PromptTrailRepositoryProvider } from '../app/PromptTrailRepositoryContext';
 import { createPromptTrailRuntime } from '../app/prompt-trail-runtime';
 import type { Project } from '../domain';
 import type { PromptTrailRepository } from '../repository';
-import { seedSampleData } from '../sample-data';
+import { sampleDataset, seedSampleData } from '../sample-data';
 import { createDatabaseTestScope } from '../test/database-test-utils';
 
 import { DashboardPage } from './DashboardPage';
@@ -67,47 +67,76 @@ describe('DashboardPage', () => {
     expect(screen.queryByText('raw database stack detail')).toBeNull();
   });
 
-  it('transitions to the data skeleton after repository data is loaded', async () => {
+  it('renders the dashboard sections without an empty message after repository data is loaded', async () => {
     const database = databaseTestScope.createDatabase();
     const runtime = createPromptTrailRuntime(database);
     await seedSampleData(runtime.repository);
 
     renderDashboardPage(runtime.repository);
 
+    await waitFor(() => {
+      expect(
+        screen.queryByText('Dashboardデータを読み込んでいます...'),
+      ).toBeNull();
+    });
+    expect(screen.queryByText('Empty')).toBeNull();
     expect(
-      await screen.findByText('Dashboardデータを読み込みました。'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        '1件のRecent Runsを取得しました。詳細表示は後続Issueで扱います。',
-      ),
-    ).toBeInTheDocument();
+      screen.queryByText('Repositoryに表示できるRunがまだありません。'),
+    ).toBeNull();
     expect(
       screen.getByRole('heading', { level: 2, name: '最近のRun' }),
     ).toBeInTheDocument();
   });
 
-  it('does not update state after unmounting before the repository read resolves', async () => {
-    let resolveProjects: (projects: readonly Project[]) => void = () =>
-      undefined;
-    const listActiveProjects = vi.fn<() => Promise<readonly Project[]>>(
-      () =>
-        new Promise((resolve) => {
-          resolveProjects = resolve;
-        }),
-    );
-    const repository = {
-      listActiveProjects,
+  it('does not overwrite the active repository result with a stale repository result', async () => {
+    let resolveRepositoryAProjects: (
+      projects: readonly Project[],
+    ) => void = () => undefined;
+    const repositoryA = {
+      listActiveProjects: vi.fn<() => Promise<readonly Project[]>>(
+        () =>
+          new Promise((resolve) => {
+            resolveRepositoryAProjects = resolve;
+          }),
+      ),
     } as unknown as PromptTrailRepository;
+    const repositoryB = createResolvedDataRepository();
 
-    const { unmount } = renderDashboardPage(repository);
-    unmount();
+    const { rerender } = render(
+      <PromptTrailRepositoryProvider repository={repositoryA}>
+        <DashboardPage />
+      </PromptTrailRepositoryProvider>,
+    );
 
-    resolveProjects([]);
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Dashboardデータを読み込んでいます...',
+    );
+
+    rerender(
+      <PromptTrailRepositoryProvider repository={repositoryB}>
+        <DashboardPage />
+      </PromptTrailRepositoryProvider>,
+    );
 
     await waitFor(() => {
-      expect(listActiveProjects).toHaveBeenCalledOnce();
+      expect(
+        screen.queryByText('Dashboardデータを読み込んでいます...'),
+      ).toBeNull();
     });
+    expect(screen.queryByText('Empty')).toBeNull();
+
+    await act(async () => {
+      resolveRepositoryAProjects([]);
+    });
+
+    expect(repositoryA.listActiveProjects).toHaveBeenCalledOnce();
+    expect(screen.queryByText('Empty')).toBeNull();
+    expect(
+      screen.queryByText('Repositoryに表示できるRunがまだありません。'),
+    ).toBeNull();
+    expect(
+      screen.getByRole('heading', { level: 2, name: '最近のRun' }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -117,4 +146,13 @@ function renderDashboardPage(repository: PromptTrailRepository) {
       <DashboardPage />
     </PromptTrailRepositoryProvider>,
   );
+}
+
+function createResolvedDataRepository(): PromptTrailRepository {
+  return {
+    listActiveProjects: vi.fn(async () => [sampleDataset.project]),
+    listActiveRuns: vi.fn(async () => [sampleDataset.run]),
+    getRecipe: vi.fn(async () => sampleDataset.recipe),
+    listActiveLinks: vi.fn(async () => sampleDataset.links),
+  } as unknown as PromptTrailRepository;
 }
