@@ -130,6 +130,9 @@ describe('DashboardPage', () => {
     });
 
     expect(repositoryA.listActiveProjects).toHaveBeenCalledOnce();
+    expect(
+      screen.queryByText('Dashboardデータを読み込んでいます...'),
+    ).toBeNull();
     expect(screen.queryByText('Empty')).toBeNull();
     expect(
       screen.queryByText('Repositoryに表示できるRunがまだありません。'),
