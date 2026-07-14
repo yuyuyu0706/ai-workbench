@@ -1,9 +1,12 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { AppShell } from './AppShell';
+import { PromptTrailRepositoryProvider } from './PromptTrailRepositoryContext';
+import { createPromptTrailRuntime } from './prompt-trail-runtime';
+import { createDatabaseTestScope } from '../test/database-test-utils';
 import { AppRouter } from './router';
 import { buildRunDetailPath, routePaths } from './routes';
 
@@ -19,17 +22,28 @@ function LocationProbe({
   return null;
 }
 
+const databaseTestScope = createDatabaseTestScope('router');
+
+afterEach(async () => {
+  await databaseTestScope.cleanup();
+});
+
 function renderRoute(
   pathname: string,
   options: { onLocationChange?: (pathname: string) => void } = {},
 ) {
+  const database = databaseTestScope.createDatabase();
+  const runtime = createPromptTrailRuntime(database);
+
   render(
-    <MemoryRouter initialEntries={[pathname]}>
-      <LocationProbe onLocationChange={options.onLocationChange} />
-      <AppShell>
-        <AppRouter />
-      </AppShell>
-    </MemoryRouter>,
+    <PromptTrailRepositoryProvider repository={runtime.repository}>
+      <MemoryRouter initialEntries={[pathname]}>
+        <LocationProbe onLocationChange={options.onLocationChange} />
+        <AppShell>
+          <AppRouter />
+        </AppShell>
+      </MemoryRouter>
+    </PromptTrailRepositoryProvider>,
   );
 }
 
@@ -62,7 +76,7 @@ function expectNoActiveNavigationItem() {
 }
 
 describe('AppRouter', () => {
-  it('redirects the root route to the dashboard skeleton and active navigation', async () => {
+  it('redirects the root route to the dashboard and active navigation', async () => {
     const visitedPathnames: string[] = [];
     renderRoute(routePaths.root, {
       onLocationChange: (pathname) => visitedPathnames.push(pathname),
@@ -70,6 +84,9 @@ describe('AppRouter', () => {
 
     expect(
       await screen.findByRole('heading', { name: 'Dashboard' }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('Repositoryに表示できるRunがまだありません。'),
     ).toBeInTheDocument();
     expect(screen.getByText('最近のRun')).toBeInTheDocument();
     expectOnlyActiveNavigationItem('Dashboard');
@@ -80,8 +97,8 @@ describe('AppRouter', () => {
     [
       routePaths.dashboard,
       'Dashboard',
-      'AI作業を再開するための利用開始状態です。',
-      'まだRepositoryから取得したRunやLinkがないため、画面の役割と次に確認する領域だけを静的に示します。P0-5以降でRepository連携後のempty stateへ置き換えます。',
+      'Repositoryに表示できるRunがまだありません。',
+      'Fresh DBでは自動Seedせず、Repository読み取り後の正常なEmpty Stateとして表示しています。',
       ['最近のRun', '再開ポイント', '未整理Link', '次にやること'],
     ],
     [
@@ -105,14 +122,20 @@ describe('AppRouter', () => {
     ],
   ])(
     'renders the static page skeleton for %s',
-    (pathname, heading, startMessage, stateDescription, sectionHeadings) => {
+    async (
+      pathname,
+      heading,
+      startMessage,
+      stateDescription,
+      sectionHeadings,
+    ) => {
       renderRoute(pathname);
 
       expect(
         screen.getByRole('heading', { name: heading }),
       ).toBeInTheDocument();
       expectOnlyActiveNavigationItem(heading);
-      expect(screen.getByText(startMessage)).toBeInTheDocument();
+      expect(await screen.findByText(startMessage)).toBeInTheDocument();
       expect(screen.getByText(stateDescription)).toBeInTheDocument();
 
       for (const sectionHeading of sectionHeadings) {
