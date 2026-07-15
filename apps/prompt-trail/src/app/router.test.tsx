@@ -88,7 +88,7 @@ describe('AppRouter', () => {
     expect(
       await screen.findByText('Repositoryに表示できるRunがまだありません。'),
     ).toBeInTheDocument();
-    expect(screen.getByText('最近のRun')).toBeInTheDocument();
+    expect(screen.queryByText('最近のRun')).toBeNull();
     expectOnlyActiveNavigationItem('Dashboard');
     expect(visitedPathnames.at(-1)).toBe(routePaths.dashboard);
   });
@@ -99,7 +99,7 @@ describe('AppRouter', () => {
       'Dashboard',
       'Repositoryに表示できるRunがまだありません。',
       'Fresh DBでは自動Seedせず、Repository読み取り後の正常なEmpty Stateとして表示しています。',
-      ['最近のRun', '再開ポイント', '未整理Link', '次にやること'],
+      [],
     ],
     [
       routePaths.promptLibrary,

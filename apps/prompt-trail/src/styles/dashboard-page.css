@@ -1,0 +1,99 @@
+.pt-dashboard-runs {
+  display: grid;
+  gap: var(--pt-space-4);
+}
+
+.pt-dashboard-run-card {
+  min-width: 0;
+  padding: var(--pt-space-4);
+  border: 1px solid var(--pt-color-border);
+  border-radius: var(--pt-radius-md);
+  background: color-mix(
+    in srgb,
+    var(--pt-color-surface) 92%,
+    var(--pt-color-accent) 8%
+  );
+}
+
+.pt-dashboard-run-card__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pt-space-3) var(--pt-space-4);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.pt-dashboard-run-card__title {
+  margin: 0;
+  color: var(--pt-color-text-strong);
+  font-size: 1.1rem;
+}
+
+.pt-dashboard-run-card__meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--pt-space-3);
+  margin: var(--pt-space-4) 0 0;
+}
+
+.pt-dashboard-run-card__meta div {
+  min-width: 0;
+}
+
+.pt-dashboard-label {
+  display: block;
+  margin-bottom: var(--pt-space-1);
+  color: var(--pt-color-text-muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pt-dashboard-value {
+  overflow-wrap: anywhere;
+  color: var(--pt-color-text);
+  font-weight: 700;
+}
+
+.pt-dashboard-related-links {
+  margin-top: var(--pt-space-4);
+}
+
+.pt-dashboard-related-links__title {
+  margin: 0 0 var(--pt-space-3);
+  color: var(--pt-color-text-strong);
+  font-size: 0.95rem;
+}
+
+.pt-dashboard-related-links__list {
+  display: grid;
+  gap: var(--pt-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pt-dashboard-related-link {
+  min-width: 0;
+  padding: var(--pt-space-3);
+  border: 1px solid var(--pt-color-border);
+  border-radius: var(--pt-radius-sm);
+  background: var(--pt-color-surface);
+}
+
+.pt-dashboard-related-link__title {
+  margin: 0 0 var(--pt-space-2);
+  overflow-wrap: anywhere;
+  color: var(--pt-color-text-strong);
+  font-weight: 800;
+}
+
+.pt-dashboard-related-link__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pt-space-2) var(--pt-space-3);
+  margin: 0;
+  color: var(--pt-color-text-muted);
+  font-size: 0.9rem;
+}

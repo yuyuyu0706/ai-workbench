@@ -17,7 +17,6 @@ const primaryPages = [
     path: '/dashboard',
     heading: 'Dashboard',
     currentNavigationLabel: 'Dashboard',
-    sectionHeading: '最近のRun',
     startState: 'Repositoryに表示できるRunがまだありません。',
   },
   {

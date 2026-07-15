@@ -66,10 +66,6 @@ test.describe('AppShell navigation', () => {
     await expect(
       page.getByText('Repositoryに表示できるRunがまだありません。'),
     ).toBeVisible();
-    await expect(
-      page.getByRole('heading', { level: 2, name: '最近のRun' }),
-    ).toBeVisible();
-
     const navigation = getGlobalNavigation(page);
     await expect(navigation).toBeVisible();
     await expectCurrentNavigation(navigation, 'Dashboard');
