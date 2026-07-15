@@ -49,7 +49,7 @@ export function DashboardPage() {
       <PageHeader
         eyebrow="Dashboard"
         title="Dashboard"
-        description="AI作業の再開入口として、最近の活動と関連LinkをRepositoryのRead Modelから確認する画面です。"
+        description="AI作業の再開入口として、最近のRunと関連Linkを確認する画面です。"
       />
       <DashboardStateMessage pageState={pageState} />
       {pageState.status === 'data' ? (
@@ -64,7 +64,7 @@ function DashboardDataSections({ data }: { data: DashboardReadModel }) {
     <div className="prompt-trail-page__sections">
       <PageSection
         title="最近のRun"
-        description="RepositoryのDashboardReadModel.recentRunsの順序どおり、最近のRunと関連Linkを表示します。"
+        description="最近のRunと、その作業に紐づく関連Linkを確認できます。"
       >
         <div className="pt-dashboard-runs">
           {data.recentRuns.map((recentRun) => (
