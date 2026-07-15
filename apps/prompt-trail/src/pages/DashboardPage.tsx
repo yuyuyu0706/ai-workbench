@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 
+import { buildRunDetailPath } from '../app/routes';
 import { loadDashboardDataState, type DashboardDataState } from '../dashboard';
+import type { DashboardReadModel, DashboardRecentRun } from '../dashboard';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageHeader, PageSection, StateMessage } from '../components/ui';
 
@@ -12,28 +15,6 @@ type DashboardPageStateSnapshot = {
   readonly repository: ReturnType<typeof usePromptTrailRepository>;
   readonly state: DashboardPageState;
 };
-
-const dashboardSections = [
-  {
-    title: '最近のRun',
-    description:
-      'Repositoryから取得したRecent Runsを表示する領域です。実データの詳細表示は後続Issueで扱います。',
-  },
-  {
-    title: '再開ポイント',
-    description:
-      '途中で止めた作業や次に確認したい作業の入口を整理する領域です。',
-  },
-  {
-    title: '未整理Link',
-    description:
-      'RunやRecipeへ接続する前の参照情報を見失わないための領域です。',
-  },
-  {
-    title: '次にやること',
-    description: '作業再開時に確認すべき次の行動を示す領域です。',
-  },
-] as const;
 
 export function DashboardPage() {
   const repository = usePromptTrailRepository();
@@ -68,23 +49,109 @@ export function DashboardPage() {
       <PageHeader
         eyebrow="Dashboard"
         title="Dashboard"
-        description="AI作業の再開入口として、最近の活動・未整理事項・次の行動を確認する画面です。"
+        description="AI作業の再開入口として、最近の活動と関連LinkをRepositoryのRead Modelから確認する画面です。"
       />
       <DashboardStateMessage pageState={pageState} />
-      <div className="prompt-trail-page__sections">
-        {dashboardSections.map((section) => (
-          <PageSection
-            key={section.title}
-            title={section.title}
-            description={section.description}
-          >
-            <p>
-              この領域はRepository接続済みのDashboard骨格です。具体的なカード表示やRecent
-              Runsの詳細表示は後続Issueで実装します。
-            </p>
-          </PageSection>
-        ))}
+      {pageState.status === 'data' ? (
+        <DashboardDataSections data={pageState.data} />
+      ) : null}
+    </section>
+  );
+}
+
+function DashboardDataSections({ data }: { data: DashboardReadModel }) {
+  return (
+    <div className="prompt-trail-page__sections">
+      <PageSection
+        title="最近のRun"
+        description="RepositoryのDashboardReadModel.recentRunsの順序どおり、最近のRunと関連Linkを表示します。"
+      >
+        <div className="pt-dashboard-runs">
+          {data.recentRuns.map((recentRun) => (
+            <DashboardRecentRunCard
+              key={recentRun.run.id}
+              recentRun={recentRun}
+            />
+          ))}
+        </div>
+      </PageSection>
+    </div>
+  );
+}
+
+function DashboardRecentRunCard({
+  recentRun,
+}: {
+  recentRun: DashboardRecentRun;
+}) {
+  const { run, project, recipe, links } = recentRun;
+
+  return (
+    <article className="pt-dashboard-run-card">
+      <div className="pt-dashboard-run-card__header">
+        <h3 className="pt-dashboard-run-card__title">{recipe.title}</h3>
+        <RouterLink
+          className="pt-button pt-button--secondary"
+          to={buildRunDetailPath(run.id)}
+        >
+          Run Detailへ移動
+        </RouterLink>
       </div>
+      <dl className="pt-dashboard-run-card__meta">
+        <div>
+          <dt className="pt-dashboard-label">Project</dt>
+          <dd className="pt-dashboard-value">{project.name}</dd>
+        </div>
+        <div>
+          <dt className="pt-dashboard-label">Status</dt>
+          <dd className="pt-dashboard-value">{run.status}</dd>
+        </div>
+        {run.evaluation === null ? null : (
+          <div>
+            <dt className="pt-dashboard-label">Evaluation</dt>
+            <dd className="pt-dashboard-value">{run.evaluation}</dd>
+          </div>
+        )}
+        <div>
+          <dt className="pt-dashboard-label">Updated At</dt>
+          <dd className="pt-dashboard-value">
+            <time dateTime={run.updatedAt}>{run.updatedAt}</time>
+          </dd>
+        </div>
+        <div>
+          <dt className="pt-dashboard-label">Links</dt>
+          <dd className="pt-dashboard-value">{links.length}件</dd>
+        </div>
+      </dl>
+      <RelatedLinks recentRun={recentRun} />
+    </article>
+  );
+}
+
+function RelatedLinks({ recentRun }: { recentRun: DashboardRecentRun }) {
+  const { recipe, links } = recentRun;
+
+  return (
+    <section className="pt-dashboard-related-links" aria-label="関連Link">
+      <h4 className="pt-dashboard-related-links__title">関連Link</h4>
+      {links.length === 0 ? (
+        <p>このRunに紐づく関連Linkはありません。</p>
+      ) : (
+        <ul className="pt-dashboard-related-links__list">
+          {links.map((link) => (
+            <li className="pt-dashboard-related-link" key={link.id}>
+              <p className="pt-dashboard-related-link__title">
+                {link.title ?? link.type}
+              </p>
+              <p className="pt-dashboard-related-link__meta">
+                <span>Type: {link.type}</span>
+                <span>Role: {link.role}</span>
+                <span>Recipe: {recipe.title}</span>
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
