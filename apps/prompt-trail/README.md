@@ -52,6 +52,7 @@ pnpm --filter prompt-trail preview
 
 - [ローカル開発の正本](../../docs/development/local-development.md)
 - [品質ゲートと開発運用](../../docs/development/quality-gates.md)
+- [環境・起動・品質ゲートのトラブルシューティング](../../docs/development/troubleshooting.md)
 - [Deployment and Hosted Preview](../../docs/product/prompt-trail/deployment-and-preview.md)
 - [PromptTrail Overview](../../docs/product/prompt-trail/overview.md)
 - [Functional Requirements](../../docs/product/prompt-trail/functional-requirements.md)

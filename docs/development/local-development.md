@@ -2,7 +2,7 @@
 
 ## 1. 目的と対象
 
-この文書は、PromptTrail を新しいローカル環境で再現するための、環境構築から production preview までの**正常系手順の唯一の正本**です。障害の診断と PR の品質判断は [品質ゲートと開発運用](quality-gates.md)、Hosted Preview / Deploy の運用は [Deployment and Hosted Preview](../product/prompt-trail/deployment-and-preview.md) を正とします。
+この文書は、PromptTrail を新しいローカル環境で再現するための、環境構築から production preview までの**正常系手順の唯一の正本**です。障害の詳細診断は [環境・起動・品質ゲートのトラブルシューティング](troubleshooting.md)、PR の品質判断は [品質ゲートと開発運用](quality-gates.md)、Hosted Preview / Deploy の運用は [Deployment and Hosted Preview](../product/prompt-trail/deployment-and-preview.md) を正とします。
 
 各工程では、目的、実行場所、コマンド、成功判定、次の工程を示します。
 
@@ -190,7 +190,7 @@ pnpm --filter prompt-trail test:e2e
 
 E2E は Playwright が `pnpm exec vite` を管理し、`http://127.0.0.1:4173` を `strictPort` で使用します。Desktop Chrome と Pixel 5 相当 Mobile の project を実行します。production preview は E2E server として利用しません。ローカルでは同じ URL の既存 server を再利用できます。
 
-**成功判定:** Desktop / Mobile の E2E が終了コード 0 で完了します。4173 は `strictPort` で固定のため競合すると失敗します。詳しい診断は品質ゲートの failure playbook を参照してください。  
+**成功判定:** Desktop / Mobile の E2E が終了コード 0 で完了します。4173 は `strictPort` で固定のため競合すると失敗します。詳しい診断は[環境・起動・品質ゲートのトラブルシューティング](troubleshooting.md#11-browser-e2e)を参照してください。
 **次の工程:** production build を実行します。
 
 ## 14. production build を実行する
@@ -257,5 +257,6 @@ CI では Chromium 導入に `--with-deps` を付けます。順序は Install d
 
 - [root README](../../README.md): リポジトリ全体の最短入口。
 - [PromptTrail README](../../apps/prompt-trail/README.md): アプリ固有の入口。
-- [品質ゲートと開発運用](quality-gates.md): 品質判断、PR 前確認、失敗時プレイブック。
+- [品質ゲートと開発運用](quality-gates.md): 品質判断、PR 前確認、失敗時の初動。
+- [環境・起動・品質ゲートのトラブルシューティング](troubleshooting.md): 環境・起動・品質ゲート障害の詳細診断と復旧。
 - [Deployment and Hosted Preview](../product/prompt-trail/deployment-and-preview.md): Hosted Preview / Deploy の運用。

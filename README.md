@@ -36,13 +36,14 @@ pnpm --filter prompt-trail dev
 pnpm --filter prompt-trail preview
 ```
 
-`pnpm format:check` は副作用のない確認、`pnpm format` はファイルを書き換える修正コマンドです。品質ゲートの実行順序、PR 前確認、失敗時の調査は [品質ゲートと開発運用](docs/development/quality-gates.md) を参照してください。
+`pnpm format:check` は副作用のない確認、`pnpm format` はファイルを書き換える修正コマンドです。品質ゲートの実行順序、PR 前確認、失敗時の初動は [品質ゲートと開発運用](docs/development/quality-gates.md) を参照してください。環境・起動・品質ゲート障害の詳細診断と復旧は [トラブルシューティング](docs/development/troubleshooting.md) を参照してください。
 
 ## Documentation
 
 - [PromptTrail README](apps/prompt-trail/README.md)
 - [ローカル開発](docs/development/local-development.md)
 - [品質ゲートと開発運用](docs/development/quality-gates.md)
+- [環境・起動・品質ゲートのトラブルシューティング](docs/development/troubleshooting.md)
 - [PromptTrail Overview](docs/product/prompt-trail/overview.md)
 - [Functional Requirements](docs/product/prompt-trail/functional-requirements.md)
 - [Roadmap](docs/product/prompt-trail/roadmap.md)
