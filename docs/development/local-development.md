@@ -142,12 +142,22 @@ pnpm format
 **実行場所:** Workspace root。
 
 ```bash
+# 標準確認
 pnpm test
+
+# PromptTrail 単体を確認する場合の代替
 pnpm --filter prompt-trail test
+```
+
+**成功判定:** 標準確認の `pnpm test`、または PromptTrail 単体の代替である `pnpm --filter prompt-trail test` が終了コード 0 で完了します。どちらか一方の完了後に E2E と build へ進めます。
+
+開発中に継続して監視する場合だけ、次を使用します。終了しないため、E2E や build の前提となる通常手順には含めません。
+
+```bash
 pnpm --filter prompt-trail test:watch
 ```
 
-**成功判定:** CI 向けの `pnpm test` または単体の `test` が終了コード 0 で完了します。`test:watch` はローカル開発専用で、CI では使用しません。  
+`test:watch` はローカル開発専用で、CI では使用しません。
 **次の工程:** 初回など必要な場合は Playwright Chromium を導入します。
 
 ## 12. Playwright Chromium を導入する
