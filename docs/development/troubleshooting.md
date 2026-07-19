@@ -97,7 +97,7 @@ git status --short
 
 ### 判断と次のアクション
 
-- manifest と lockfile の不一致なら、現在の branch / commit と意図した依存変更を確認します。この Issue では lockfile を更新して回避しません。依存変更が本来必要なら別 Issue / PR の変更として扱います。
+- manifest と lockfile の不一致なら、現在の branch / commit と意図した依存変更を確認します。診断目的で lockfile を更新して回避しません。意図した依存変更が必要な場合は、別 Issue / PR として扱います。
 - registry 接続失敗なら、接続先 URL、DNS、Proxy、TLS、証明書、組織ネットワークの可否を確認します。一時障害の可能性がある場合は、同じ commit で再実行し、前後の結果を記録します。
 - `apps/prompt-trail` 配下で実行していた場合は root へ戻り、Workspace root から frozen install を実行します。
 - install 後に `git status --short` で lockfile や不要な lockfile が変わっていないことを確認します。
@@ -244,7 +244,19 @@ Get-NetTCPConnection -LocalPort 4173 -State Listen
 2. 4173 の既存 process が PromptTrail 用か、所有者と用途を確認します。別用途なら安全に停止できるかを判断してから再実行します。
 3. Playwright は `http://127.0.0.1:4173` を `strictPort` で使います。CI は既存 server を再利用せず、ローカルだけが同じ URL の既存 server を再利用できます。
 4. Desktop だけ失敗する場合は Desktop project、Mobile だけなら Pixel 5 相当 viewport と該当 artifact を比較します。両方なら Vite 起動、route、browser IndexedDB 経路など共通原因から確認します。
-5. failure artifact を確認します。`apps/prompt-trail/playwright-report/` は HTML report、`apps/prompt-trail/test-results/` は失敗時の trace / screenshot を含みます。CI では同じパスが failure artifact として upload されます。artifact がない場合は E2E 前の step で止まっていないか確認します。
+5. failure artifact を確認します。`apps/prompt-trail/playwright-report/` は HTML report、`apps/prompt-trail/test-results/` は失敗時の trace / screenshot を含みます。ローカルでは report のディレクトリを指定して次を実行します。
+
+   ```bash
+   pnpm --filter prompt-trail exec playwright show-report playwright-report
+   ```
+
+   trace は `test-results/` 配下の対象 `trace.zip` を指定して開きます。
+
+   ```bash
+   pnpm --filter prompt-trail exec playwright show-trace test-results/<失敗したテストのディレクトリ>/trace.zip
+   ```
+
+   screenshot は同じ `test-results/` 配下の失敗したテストのディレクトリで確認します。CI では GitHub Actions の対象 Run を開き、Artifacts から `playwright-report` と `playwright-test-results` をダウンロードして、それぞれ report、trace、screenshot を確認します。artifact がない場合は、E2E 以前の Install、Lint、Format Check、Unit Test、Chromium 導入の step で失敗していないかを先に確認します。
 
 **やってはいけない回避策:** 4173 の process を用途確認なしに強制終了すること、CI と同じでない server を再利用して成功扱いにすること、片方の project 失敗を無視すること。  
 **復旧後の成功判定:** Desktop と Mobile の両 project が終了コード 0 で完了します。続けて production build を確認します。  
