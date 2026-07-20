@@ -37,6 +37,7 @@ PromptTrail は pnpm Workspace 内の React / TypeScript / Vite SPA です。bro
 | 障害診断・復旧                    | [Troubleshooting](../../development/troubleshooting.md)                               |
 | 品質判断・PR 前確認・CI           | [Quality Gates](../../development/quality-gates.md)                                   |
 | Hosted Preview / Deploy           | [Deployment and Hosted Preview](../../product/prompt-trail/deployment-and-preview.md) |
+| Phase 0 の個別受入結果            | [Phase 0 Acceptance](../../product/prompt-trail/phase-0-acceptance.md)                |
 | 重要な設計判断                    | [ADR](../../adr/)                                                                     |
 
 ## 品質責務
@@ -74,6 +75,7 @@ PromptTrail は pnpm Workspace 内の React / TypeScript / Vite SPA です。bro
 3. [Screen Structure](../../product/prompt-trail/screen-transition.md) — route、画面導線、recovery route。
 4. [Quality Gates](../../development/quality-gates.md) — ローカル確認、PR CI、品質判断。
 5. [Deployment and Hosted Preview](../../product/prompt-trail/deployment-and-preview.md) — 配信と hosted 表示確認。
-6. [ADR 0001](../../adr/0001-ai-workbench-monorepo.md)、[ADR 0002](../../adr/0002-prompt-trail-local-first.md)、[ADR 0003](../../adr/0003-prompt-trail-technology-stack.md) — 設計判断。
+6. [Phase 0 Acceptance](../../product/prompt-trail/phase-0-acceptance.md) — 個別受入の実施結果、対象 SHA、品質判定と配信判定。
+7. [ADR 0001](../../adr/0001-ai-workbench-monorepo.md)、[ADR 0002](../../adr/0002-prompt-trail-local-first.md)、[ADR 0003](../../adr/0003-prompt-trail-technology-stack.md) — 設計判断。
 
 このベースラインは正本の索引です。実装、設定、依存関係、lockfile、将来機能の仕様は変更しません。
