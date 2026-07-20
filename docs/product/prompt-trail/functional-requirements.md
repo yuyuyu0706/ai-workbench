@@ -2,15 +2,21 @@
 
 ## 機能要件・リポジトリ構成・実装ロードマップ（更新版）
 
+## この文書の責務
+
+本書は **Phase 1〜5 を含む目標機能要件** を扱います。表に記載する Project 検索、版管理、Recipe 実行、Run 再実行、Trail View、Export / Import などを Phase 0 実装済みと解釈してはいけません。
+
+Phase 0 の現在の実装状態は [PromptTrail Phase 0 Technical Baseline](../../architecture/prompt-trail/README.md)、[Application Architecture](application-architecture.md)、[PromptTrail Data Model](../../architecture/prompt-trail/data-model.md) を正本とします。本書を全面的な進捗管理表にはせず、将来の目標要件を維持します。
+
 ## 1. プロダクト全体像
 
-| 項目              | 内容                                                                               |
-| ----------------- | ---------------------------------------------------------------------------------- |
-| GitHubリポジトリ  | `ai-workbench`                                                                     |
-| 最初のアプリ      | `PromptTrail`                                                                      |
-| 配置先            | `apps/prompt-trail`                                                                |
-| コンセプト        | AIを活用した知的生産・開発作業を、設計し、実行し、追跡し、再利用するためのツール群 |
-| PromptTrailの役割 | Prompt・Context・Runを管理し、Chat・Issue・PR・成果物までの足跡を辿れるようにする  |
+| 項目              | 内容                                                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------- |
+| GitHubリポジトリ  | `ai-workbench`                                                                                                      |
+| 最初のアプリ      | `PromptTrail`                                                                                                       |
+| 配置先            | `apps/prompt-trail`                                                                                                 |
+| コンセプト        | AIを活用した知的生産・開発作業を、設計し、実行し、追跡し、再利用するためのツール群                                  |
+| PromptTrailの役割 | Project・Prompt・Context・Recipe・Run・Linkの 6 モデルを管理し、Chat・Issue・PR・成果物までの足跡を辿れるようにする |
 
 PromptTrailは、単なるプロンプト集ではない。
 
@@ -45,6 +51,7 @@ ai-workbench/
 │  ├─ product/
 │  │  └─ prompt-trail/
 │  ├─ architecture/
+│  ├─ development/
 │  └─ adr/
 │
 ├─ .github/
@@ -77,7 +84,7 @@ packages/
 
 ### 3-1. 採用方針
 
-| 領域           | 採用候補                 | 方針                                                                         |
+| 領域           | Phase 0採用技術          | 方針                                                                         |
 | -------------- | ------------------------ | ---------------------------------------------------------------------------- |
 | 言語           | TypeScript               | ドメインモデル、データ移行、外部リンク管理の型安全性を確保する               |
 | UI             | React                    | 複数画面、フォーム、状態遷移、一覧・詳細画面に適したコンポーネント設計を学ぶ |

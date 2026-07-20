@@ -41,6 +41,9 @@ pnpm --filter prompt-trail preview
 ## Documentation
 
 - [PromptTrail README](apps/prompt-trail/README.md)
+- [PromptTrail Phase 0 Technical Baseline](docs/architecture/prompt-trail/README.md)
+- [Application Architecture](docs/product/prompt-trail/application-architecture.md)
+- [PromptTrail Data Model](docs/architecture/prompt-trail/data-model.md)
 - [ローカル開発](docs/development/local-development.md)
 - [品質ゲートと開発運用](docs/development/quality-gates.md)
 - [環境・起動・品質ゲートのトラブルシューティング](docs/development/troubleshooting.md)
