@@ -65,7 +65,66 @@ Phase 0 Acceptance
 
 ## 2. Browser・データ・主要導線（P0-6-3-2）
 
-P0-6-3-2 で記録する。現時点では結果を確定しない。
+### 対象 SHA と受入環境
+
+| 項目                        | 記録                                                                                                                                                                                                                                                            |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Application Baseline SHA    | `2d7067cdd06ae21773ade109b10421dff488e8cb`（P0-6-3-1 から継続）                                                                                                                                                                                                 |
+| Browser Acceptance Main SHA | `6b343457d12b76c39d1df7554153c4fd851247ed`（PR #150 merge commit。Application Baseline 以降の差分は docs-only）                                                                                                                                                 |
+| Acceptance PR Head SHA      | 本 PR の commit 後に記録する。アプリ、設定、test、workflow は変更しない。                                                                                                                                                                                       |
+| 実施日時                    | 2026-07-20 15:37–15:39 UTC（Local automated acceptance）                                                                                                                                                                                                        |
+| 実施主体 / OS               | Codex local acceptance run / Ubuntu 24.04.4 LTS container                                                                                                                                                                                                       |
+| Browser / viewport          | Playwright Chromium revision `1228`、Desktop `1280×720`、Mobile `390×844`                                                                                                                                                                                       |
+| Local database              | IndexedDB `prompt-trail`、schema version は DB contract test と Local E2E で確認                                                                                                                                                                                |
+| GitHub Pages deployment     | [Development Preview run #42](https://github.com/yuyuyu0706/ai-workbench/actions/runs/29736160154)、SHA `8ec2831…`。Baseline SHA の `codex/**` deployment ではないため、Browser Acceptance の対象外。                                                           |
+| Azure SWA deployment        | [Public Preview run #29](https://github.com/yuyuyu0706/ai-workbench/actions/runs/29743421792)、Browser Acceptance Main SHA を含む `main` の deploy job は success。hosted URL は実行環境の outbound proxy が HTTP 403 を返すため、実ブラウザ smoke を実施不能。 |
+
+GitHub Pages と Azure Static Web Apps の結果を `NOT APPLICABLE` とした理由は、deploy の成功ではなく、対象 origin での実ブラウザ確認が必要な本受入の実行環境制約である。未実行の hosted smoke を `PASS` としない。
+
+### B系列受入マトリクス
+
+`PASS` は実行済みの証拠がある項目だけに使う。Local automated evidence と hosted manual evidence は独立して記録する。
+
+| ID   | 受入項目                          | 種別               | 主な環境                    | 実行・証拠                                                         | Local 結果     | Hosted 結果    | 備考                                                                                                                                                          |
+| ---- | --------------------------------- | ------------------ | --------------------------- | ------------------------------------------------------------------ | -------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| B-01 | Fresh DB / 自動 Seed なし         | Manual / Automated | Local / Pages / SWA         | Unit の fresh database test、Local E2E                             | PASS           | NOT APPLICABLE | Local は正常 Empty State。hosted origin は到達不能のため未確認。                                                                                              |
+| B-02 | Empty State / 初期化失敗の区別    | Manual             | Local / Pages / SWA         | `DashboardPage` test の empty / failure state                      | PASS           | NOT APPLICABLE | Empty State と内部 error を露出しない failure state は別契約。                                                                                                |
+| B-03 | Sample Seed `seeded`              | Automated          | Local E2E                   | `seed-sample-data.test.ts`、`dashboard-data-flow.spec.ts`          | PASS           | NOT APPLICABLE | 初回 seed のみ Local automated acceptance で受入。                                                                                                            |
+| B-04 | Sample Seed `already-present`     | Automated          | Local E2E                   | `seed-sample-data.test.ts`、`dashboard-data-flow.spec.ts`          | PASS           | NOT APPLICABLE | 再 seed で既存 sample を重複・更新しない。                                                                                                                    |
+| B-05 | Sample Seed `conflict` / 非上書き | Automated          | Unit                        | `seed-sample-data.test.ts`                                         | PASS           | NOT APPLICABLE | ownership drift、partial / unavailable sample、rollback を検証。                                                                                              |
+| B-06 | Dashboard 実データ / Links        | Automated          | Local E2E                   | `dashboard-data-flow.spec.ts`                                      | PASS           | NOT APPLICABLE | Recent Run、Project、status、evaluation、Related Links 3 件を確認。                                                                                           |
+| B-07 | Run Detail 遷移                   | Automated / Manual | Local                       | `dashboard-data-flow.spec.ts`、`app-shell.spec.ts`                 | PASS           | NOT APPLICABLE | Dashboard から `/runs/:runId` へ到達する。                                                                                                                    |
+| B-08 | reload 永続化                     | Automated          | Local E2E                   | `dashboard-data-flow.spec.ts`                                      | PASS           | NOT APPLICABLE | seed 済み IndexedDB data を reload 後にも表示する。                                                                                                           |
+| B-09 | root redirect / Global Navigation | Automated / Manual | 全環境                      | `app-shell.spec.ts`、`quality-baseline.spec.ts`                    | PASS           | NOT APPLICABLE | Local の route 契約は成功。hosted browser は未実施。                                                                                                          |
+| B-10 | direct URL / reload               | Manual             | Local preview / Pages / SWA | Local production preview の HTTP 200、`quality-baseline.spec.ts`   | PASS           | NOT APPLICABLE | Pages / SWA の direct URL reload は対象 origin 未到達のため未確認。                                                                                           |
+| B-11 | Not Found / Dashboard 復帰        | Automated / Manual | 全環境                      | `app-shell.spec.ts`、`quality-baseline.spec.ts`                    | PASS           | NOT APPLICABLE | Local で Not Found から Dashboard recovery を確認。                                                                                                           |
+| B-12 | 静的 Start State の分類           | Manual             | 全環境                      | `quality-baseline.spec.ts`、Route Contract                         | PASS           | NOT APPLICABLE | Prompt / Context / Recipe は静的 Start State、Run Detail は静的骨格であり障害ではない。                                                                       |
+| B-13 | Desktop 表示                      | Automated / Manual | 全環境                      | Local E2E Desktop `1280×720`                                       | PASS           | NOT APPLICABLE | 主要表示・操作と重大な横 overflow がないことを確認。                                                                                                          |
+| B-14 | Mobile 表示                       | Automated / Manual | 全環境                      | Local E2E Mobile `390×844`                                         | PASS           | NOT APPLICABLE | Navigation と Dashboard recovery を確認。                                                                                                                     |
+| B-15 | GitHub Pages Hosted Smoke         | Deploy / Manual    | Pages                       | Development Preview run #42                                        | NOT APPLICABLE | NOT APPLICABLE | 対象 SHA の deployment でなく、hosted URL は proxy 403 のため入口・Route・reload を確認不能。                                                                 |
+| B-16 | Azure SWA Hosted Smoke            | Deploy / Manual    | SWA                         | Public Preview run #29                                             | NOT APPLICABLE | NOT APPLICABLE | deploy job success は記録するが、hosted URL の Browser smoke は proxy 403 のため確認不能。                                                                    |
+| B-17 | Hosted IndexedDB / origin 分離    | Manual             | Local / Pages / SWA         | Local E2E / DB contract、deployment-and-preview の origin contract | PASS           | NOT APPLICABLE | Local `prompt-trail` IndexedDB は automated contract で確認。`localhost ≠ github.io ≠ azurestaticapps.net` の実ブラウザ比較は hosted URL 未到達のため未確認。 |
+
+### 自動テストと Local production preview
+
+- `pnpm test` は PASS。Sample Seed の fresh / idempotent / conflict / rollback 契約、Dashboard の Empty State、実データ表示を含む。
+- `pnpm --filter prompt-trail test:e2e:install` は PASS。Playwright Chromium revision `1228` を使用可能にした。
+- `pnpm test:e2e` は 30 test の Local Browser suite として実行した。root redirect、Global Navigation、direct URL、Not Found recovery、Desktop / Mobile、seed 後の Dashboard と reload 永続化の既存契約を対象とする。並行実行で port `4173` を使用中にした run は受入結果に用いず、P0-6-3-1 で記録した fresh directory の 30 passed / exit 0 を Local E2E の確定証拠とする。
+- `pnpm build` と `pnpm --filter prompt-trail preview` は P0-6-3-1 で PASS。production asset の入口 HTTP 200 を確認済みである。今回の docs-only 差分は生成物に影響しない。
+
+### Hosted・origin 境界の判定
+
+GitHub Pages は shared preview のため、run #42 の SHA `8ec2831…` は Browser Acceptance Main SHA とは異なる。Azure SWA は main deployment を成功しているが、どちらの hosted URL もこの container からは outbound proxy の HTTP 403 により browser で開けなかった。そのため、Hosted URL の入口、Global Navigation、direct URL / reload、desktop / mobile、hosted IndexedDB、および 3 origin 間での実データ非共有は `NOT APPLICABLE` とする。
+
+これは Application defect の `FAIL` ではなく、hosted browser を実行できない受入環境制約である。ただし hosted smoke は未完了であり、実ブラウザから URL に到達できる環境で再受入するまで Issue #151 の完了条件を満たさない。
+
+### P0-6-3-3 への引継ぎ
+
+- **Blocking Defect:** なし。Local automated acceptance で実装不具合は観測していない。hosted smoke は未完了であり、完了判断の前提条件として残す。
+- **Known Constraint:** Hosted UI に Sample Seed 導線はない。Hosted は Fresh DB / Empty State / Route / reload / IndexedDB のみを受入し、sample data は Local test で受入する。
+- **Known Constraint:** Cloud Sync と cross-device synchronization はない。PC browser と smartphone browser を含め、データは browser origin ごとの IndexedDB に閉じる。
+- **NOT APPLICABLE:** GitHub Pages / Azure SWA の実ブラウザ smoke と、`localhost`、`github.io`、`azurestaticapps.net` の実測 origin 分離は、container の proxy 403 により実施不能。
+- **再受入条件:** Browser Acceptance Main SHA、各 deployment SHA / workflow run / environment URL、日時、Browser version、desktop / mobile viewport を記録し、hosted URL 上で B-01、B-02、B-09〜B-17 を実行する。
 
 ## 3. Go 判断・Phase 1 引継ぎ（P0-6-3-3）
 
