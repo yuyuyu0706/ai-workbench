@@ -1,300 +1,200 @@
 # Prompt Trail Data Model
 
-Prompt Trail は、AI への依頼から成果までの Trail を Project、Prompt、Context、Recipe、Run、Link の 6 モデルで構造化します。この文書は、全モデルで共有するエンティティ規約と、Project、Prompt、Context、Recipe、Run、Link の最小ドメイン契約を記録します。
+Prompt Trail の Data Model 正本です。P0-5 完了時点の Domain、Dexie 永続化、Repository、Sample Seed の公開契約を、実装に基づいて一続きで記録します。Runtime、画面、Provider、Router の責務は [Application Architecture](../../product/prompt-trail/application-architecture.md) を参照してください。
 
-## 共通エンティティ種別
+## 正本の範囲
 
-Prompt Trail の共通ドメイン契約では、次の 6 種類をエンティティ種別として扱います。
+本書は次を扱います。
 
-- `project`
-- `prompt`
-- `context`
-- `recipe`
-- `run`
-- `link`
+- Project、Prompt、Context、Recipe、Run、Link の 6 Domain Model と共通規約
+- 所有、scope、可変参照、Snapshot
+- `prompt-trail` の schema version 1、Store、主キー、索引、保存境界
+- Repository の公開 API、参照整合性、error、transaction、lifecycle
+- Fresh DB と明示的な Sample Seed のデータ契約
 
-これらは `apps/prompt-trail/src/domain/common.ts` の `PromptTrailEntityKind` として公開し、後続の個別モデル、Dexie schema、Repository、画面モデルが同じ種別名を参照できるようにします。
+ID Factory、追加の schema migration、archive/restore 専用 API、画面・起動時の振る舞いはこの時点では実装しません。
 
-## ID 規約
-
-各モデルの ID は、実行時・永続化時には通常の文字列として扱います。一方で TypeScript 上では `EntityId<Kind>` による nominal typing を使い、Project ID と Prompt ID など、異なるモデル種別の ID を誤って代入しにくくします。
-
-現時点では ID 生成処理、意味付き ID、DB auto increment の採用有無は未確定です。本 Issue では ID の共通型契約のみを定義し、生成責務は後続 Issue に委ねます。
-
-## 日時規約
-
-日時は ISO 8601 UTC 文字列を前提とし、`UtcDateTimeString` として表します。保存例は `2026-07-04T00:00:00.000Z` のように UTC を明示する形式です。
-
-日時の生成・検証補助関数はまだ追加しません。現段階では型エイリアスと設計規約に留め、実行時バリデーションが必要になった時点で責務を限定して追加します。
-
-## 共通監査項目とライフサイクル
-
-永続化済みエンティティは、`BaseEntity<Kind>` として次の項目を持ちます。
-
-| Field       | Meaning                                                                     |
-| ----------- | --------------------------------------------------------------------------- |
-| `id`        | モデル種別に紐づく ID。永続化表現は文字列です。                             |
-| `createdAt` | エンティティを作成した UTC 日時です。                                       |
-| `updatedAt` | 内容更新、論理削除、復元、アーカイブ状態変更のたびに更新する UTC 日時です。 |
-| `deletedAt` | 論理削除日時です。通常取得から除外する状態を表し、未削除時は `null` です。  |
-
-`deletedAt` はデータ保護と復元可能性のための論理削除状態です。通常の一覧や候補取得では `deletedAt !== null` のエンティティを除外する前提です。
-
-`archivedAt` は履歴として保持するが通常の利用候補から外す業務状態です。すべてのモデルに必須ではないため、`ArchivableEntity` を archive 可能なモデルにだけ合成します。未アーカイブ時は `null` です。
-
-Project の `archivedAt`、Prompt の `deprecated`、Context の `disabled`、共通の `deletedAt` は統合しません。それぞれの責務は次のとおりです。
-
-| State                  | Applies to | Responsibility                                                                             |
-| ---------------------- | ---------- | ------------------------------------------------------------------------------------------ |
-| `archivedAt !== null`  | Project    | Project を履歴として残し、通常の利用対象から外します。                                     |
-| `status: "deprecated"` | Prompt     | Prompt を削除せず、新規利用候補から外します。                                              |
-| `status: "disabled"`   | Context    | Context を削除せず、新規利用候補から外します。                                             |
-| `deletedAt !== null`   | All models | 復元可能な論理削除です。通常取得から除外し、archive/deprecated/disabled と別扱いにします。 |
-
-## Scope 規約
-
-Prompt や Context など、後続モデルで共通資産と Project 専用資産の両方になり得るものは `AssetScope` を採用します。
-
-| Scope         | Shape                                        | Rule                                                 |
-| ------------- | -------------------------------------------- | ---------------------------------------------------- |
-| Global asset  | `{ scope: "global" }`                        | 共通資産を表し、`projectId` を持ちません。           |
-| Project asset | `{ scope: "project", projectId: ProjectId }` | Project 専用資産を表し、`projectId` を必須にします。 |
-
-この判別可能 union により、共通資産へ `projectId` を保存したり、Project 専用資産から `projectId` を欠落させたりする組合せを型で作りにくくします。
-
-Project 自身は共通資産／Project 専用資産ではなく、Project 専用資産の所有境界です。そのため Project モデルには `AssetScope` を合成しません。
-
-## Project モデル
-
-Project は作業資産を束ねる単位です。`BaseEntity<'project'>` と `ArchivableEntity` を合成し、次の最小属性だけを持ちます。
-
-| Field           | Type                | Meaning                                            |
-| --------------- | ------------------- | -------------------------------------------------- |
-| `name`          | `string`            | Project 名です。                                   |
-| `description`   | `string \| null`    | Project の説明です。未設定時は `null` です。       |
-| `tags`          | `readonly string[]` | Project 分類用タグです。値がない場合も空配列です。 |
-| `repositoryUrl` | `string \| null`    | 関連リポジトリ URL です。未設定時は `null` です。  |
-
-Project は `archivedAt` により履歴化できますが、Prompt／Context の `status` や soft delete とは別の業務状態として扱います。
-
-## Prompt モデル
-
-Prompt は再利用可能な Markdown 依頼テンプレートです。`BaseEntity<'prompt'>` と `AssetScope` を合成し、global asset と project asset の両方を表せます。
-
-| Field    | Type                | Meaning                                           |
-| -------- | ------------------- | ------------------------------------------------- |
-| `title`  | `string`            | Prompt のタイトルです。                           |
-| `body`   | `string`            | Markdown 本文です。                               |
-| `kind`   | `PromptKind`        | Prompt の用途種別です。                           |
-| `status` | `PromptStatus`      | Prompt の利用状態です。                           |
-| `tags`   | `readonly string[]` | Prompt 分類用タグです。値がない場合も空配列です。 |
-
-`PromptKind` は初期候補として `chat-consultation`、`codex-request`、`issue-creation`、`design-review`、`incident-analysis`、`other` だけを許容します。`PromptStatus` は `draft`、`active`、`deprecated` だけを許容します。これらは型と `as const` の公開定数として提供しますが、表示ラベル、多言語化、並び順はここでは扱いません。
-
-## Context モデル
-
-Context は背景、制約、設計原則などを表す再利用可能な Markdown 知識資産です。`BaseEntity<'context'>` と `AssetScope` を合成し、global asset と project asset の両方を表せます。
-
-| Field    | Type                | Meaning                                            |
-| -------- | ------------------- | -------------------------------------------------- |
-| `title`  | `string`            | Context のタイトルです。                           |
-| `body`   | `string`            | Markdown 本文です。                                |
-| `kind`   | `ContextKind`       | Context の用途種別です。                           |
-| `status` | `ContextStatus`     | Context の利用状態です。                           |
-| `tags`   | `readonly string[]` | Context 分類用タグです。値がない場合も空配列です。 |
-
-`ContextKind` は初期候補として `project-overview`、`technical-architecture`、`development-rules`、`glossary`、`output-rules`、`other` だけを許容します。`ContextStatus` は `enabled`、`disabled` だけを許容します。これらは型と `as const` の公開定数として提供しますが、表示ラベル、多言語化、並び順はここでは扱いません。
-
-## Recipe モデル
-
-Recipe は Project 配下で再利用する、Prompt 1 件と Context 0 件以上の組合せです。`BaseEntity<'recipe'>` を合成し、Prompt／Context の本文・状態・scope は複製せず、常に可変参照として保持します。
-
-| Field         | Type                   | Meaning                                                              |
-| ------------- | ---------------------- | -------------------------------------------------------------------- |
-| `projectId`   | `ProjectId`            | Recipe を所有する Project です。                                     |
-| `title`       | `string`               | Recipe のタイトルです。                                              |
-| `description` | `string \| null`       | Recipe の説明です。未設定時は `null` です。                          |
-| `promptId`    | `PromptId`             | Recipe が参照する Prompt です。必ず 1 件だけ保持します。             |
-| `contextIds`  | `readonly ContextId[]` | Recipe が参照する Context の順序付き配列です。未選択時は空配列です。 |
-
-`contextIds` の配列順は、後続の最終 Prompt 組み立て時に Context を適用する順序です。Recipe は再利用可能な作業パターンを表すため、参照先 Prompt／Context が更新されると、次回以降の実行では更新後の資産を参照します。
-
-## Run モデル
-
-Run は Recipe から作成される実行記録であり、`BaseEntity<'run'>` と `ArchivableEntity` を合成します。Recipe が可変参照を保持するのに対し、Run は実行時点の Prompt／Context、入力値、最終 Prompt を固定保存する証跡です。
-
-| Field              | Type                                             | Meaning                                                                            |
-| ------------------ | ------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| `projectId`        | `ProjectId`                                      | Run が所属する Project です。                                                      |
-| `recipeId`         | `RecipeId`                                       | Run の作成元 Recipe です。                                                         |
-| `promptSnapshot`   | `PromptSnapshot`                                 | 実行時点の Prompt ID、タイトル、Markdown 本文を固定保存します。                    |
-| `contextSnapshots` | `readonly ContextSnapshot[]`                     | 実行時点の Context ID、タイトル、Markdown 本文を Recipe の適用順で固定保存します。 |
-| `inputValues`      | `{ readonly [variableName: string]: JsonValue }` | Recipe 変数名をキーにした JSON 互換値の辞書です。未入力時は空オブジェクトです。    |
-| `finalPrompt`      | `string`                                         | 実行時に組み立てられた最終依頼本文です。                                           |
-| `status`           | `RunStatus`                                      | Run の進行状態です。                                                               |
-| `evaluation`       | `RunEvaluation \| null`                          | Run の評価です。未評価時は `null` です。                                           |
-| `improvementNote`  | `string \| null`                                 | 改善メモです。未設定時は `null` です。                                             |
-| `archivedAt`       | `UtcDateTimeString \| null`                      | Run を履歴化する日時です。未アーカイブ時は `null` です。                           |
-
-`PromptSnapshot` は `promptId`、`title`、`body` を持ち、`ContextSnapshot` は `contextId`、`title`、`body` を持ちます。これにより、元の Prompt／Context が更新、無効化、論理削除されても、過去 Run の依頼内容を再現できます。`contextSnapshots` の配列順は Recipe で選択された Context 適用順を保持します。
-
-`RunStatus` は初期候補として `draft`、`prepared`、`executed`、`in-progress`、`done` だけを許容します。アーカイブ状態は `status` に `archived` を追加せず、`archivedAt` だけで表します。`RunEvaluation` は `good`、`needs-improvement`、`failed` だけを許容し、未評価は `null` で表します。
-
-## Link モデル
-
-Link は Run に直接所属する Trail 関係データです。単なる URL 配列ではなく、Chat、Issue、Pull Request、Commit、Release などを type／role 付きで辿れるようにします。`BaseEntity<'link'>` を合成し、登録日時は `createdAt` を利用します。
-
-| Field        | Type             | Meaning                                                         |
-| ------------ | ---------------- | --------------------------------------------------------------- |
-| `runId`      | `RunId`          | Link が所属する Run です。                                      |
-| `url`        | `string`         | 外部または内部成果への URL です。                               |
-| `title`      | `string \| null` | Link のタイトルです。未設定時は `null` です。                   |
-| `type`       | `LinkType`       | Link 対象の種別です。                                           |
-| `role`       | `LinkRole`       | Trail 上での役割です。                                          |
-| `summary`    | `string \| null` | Link 内容の要約です。未設定時は `null` です。                   |
-| `externalId` | `string \| null` | GitHub 番号や外部システム ID などです。未設定時は `null` です。 |
-
-`LinkType` は `chat`、`issue`、`pull-request`、`commit`、`release`、`document`、`external` だけを許容します。`LinkRole` は `source`、`reference`、`execution`、`output`、`result` だけを許容します。URL 自動判別、GitHub API 連携、外部ステータス同期、最終確認日時はここでは扱いません。
-
-## 保存表現の null / array 規約
-
-永続化済みエンティティでは、単一の任意値は `null` で表し、`undefined` は保存表現に使いません。複数値は、値がない場合も `null` ではなく空配列で表します。
-
-Project の `description` と `repositoryUrl`、Recipe の `description`、Run の `evaluation` と `improvementNote`、Link の `title`、`summary`、`externalId` は単一任意値として `null` を許容します。Project、Prompt、Context の `tags`、Recipe の `contextIds`、Run の `contextSnapshots` は、値がない場合も空配列です。Run の `inputValues` は未入力時に空オブジェクトです。Prompt／Context の `scope: "global"` では `projectId` を持たず、`scope: "project"` では `projectId` を必須にすることで、保存表現で `undefined` に意味を持たせない共通規約と整合させます。
-
-この規約により IndexedDB、Export / Import、将来の同期処理で欠損値の意味を揃えます。
-
-## 永続化マッピング v1
-
-P0-3-2 の Dexie schema version 1 では、Project、Prompt、Context、Recipe、Run、Link の 6 モデルを 1 モデル 1 Store で保存します。主キーは各モデルの `id` をそのまま利用し、DB auto increment や保存専用 ID は導入しません。
-
-| Model   | Store      | Primary key | v1 の最小インデックス                                                     | 保存境界                                                                   |
-| ------- | ---------- | ----------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Project | `projects` | `id`        | `updatedAt`, `archivedAt`, `deletedAt`                                    | Project レコード単体として保存します。                                     |
-| Prompt  | `prompts`  | `id`        | `scope`, `projectId`, `status`, `updatedAt`, `deletedAt`                  | Markdown 本文、タグ、状態、scope を Prompt レコードへ保存します。          |
-| Context | `contexts` | `id`        | `scope`, `projectId`, `status`, `updatedAt`, `deletedAt`                  | Markdown 本文、タグ、状態、scope を Context レコードへ保存します。         |
-| Recipe  | `recipes`  | `id`        | `projectId`, `promptId`, `updatedAt`, `deletedAt`                         | Prompt 1 件と Context 0 件以上への可変参照を Recipe レコードへ保存します。 |
-| Run     | `runs`     | `id`        | `projectId`, `recipeId`, `status`, `updatedAt`, `archivedAt`, `deletedAt` | 実行時点の Snapshot、入力値、最終 Prompt を Run レコードへ埋め込みます。   |
-| Link    | `links`    | `id`        | `runId`, `createdAt`, `deletedAt`                                         | Run に所属する Trail 関係データを独立 Store として保存します。             |
-
-`tags`、Markdown 本文、URL、`externalId`、`kind`、`summary`、Snapshot 内部項目は v1 では索引化しません。タグ検索、本文検索、URL 検索、高度な絞り込み、複合索引は、実利用の必要性を確認した後の schema version で判断します。
-
-`Recipe.contextIds` は順序を持つ配列のまま `recipes` レコードへ保存し、Context 参照の中間 Store は作りません。この配列順は Context の適用順であり、保存・取得・Run 作成時に並び替えません。
-
-`Run.promptSnapshot`、`Run.contextSnapshots`、`Run.inputValues`、`Run.finalPrompt` は `runs` レコードへ埋め込み、Snapshot 専用 Store や入力値専用 Store へ分解しません。Snapshot は作成後に元 Prompt／Context が更新、deprecated／disabled、論理削除されても書き換えず、過去 Run の再現性を優先します。
-
-Link は Run ごとの増減と `createdAt` による時系列取得を行うため、Run レコード内の配列ではなく `links` Store へ独立保存します。Link には `projectId` を重複保存せず、所属 Project は `Link -> Run -> Project` の参照で辿ります。
-
-## 参照整合・更新時の検証契約
-
-IndexedDB／Dexie schema は外部キー制約を提供しないため、次の検証は P0-3-3 の Repository／Storage アクセス層で実装する契約とします。Dexie schema version 1 では Store 名、主キー、索引だけを定義し、参照整合の実行時検証は行いません。
-
-| 対象操作                                  | 検証契約                                                                                                                                                                                                                      |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Project 専用 Prompt／Context の作成・更新 | `scope: "project"` の資産は、存在し `deletedAt = null` の Project を `projectId` に持ちます。`scope: "global"` の資産は `projectId` を持ちません。                                                                            |
-| Recipe の作成・更新                       | Recipe は存在し `deletedAt = null` の Project に所属します。参照 Prompt は存在し、`deletedAt = null` かつ `status !== "deprecated"` です。参照 Context はすべて存在し、`deletedAt = null` かつ `status !== "disabled"` です。 |
-| Recipe の scope 判定                      | Project 専用 Prompt／Context を参照する場合、その資産の `projectId` は Recipe の `projectId` と一致します。global Prompt／Context は任意の Project の Recipe から参照できます。                                               |
-| Recipe の Context 順序                    | `contextIds` は重複を持たず、配列順を Context 適用順として保存します。空配列は Context 未選択を表す有効な状態です。                                                                                                           |
-| Run の作成                                | 作成元 Recipe は存在し `deletedAt = null` です。Recipe の `projectId` と Run の `projectId` は一致します。                                                                                                                    |
-| Run Snapshot の作成                       | `promptSnapshot.promptId` は作成時点の `Recipe.promptId` と一致します。`contextSnapshots` の元 `contextId`、配列順、配列長は作成時点の `Recipe.contextIds` と一致します。                                                     |
-| Link の作成・更新                         | Link は存在し `deletedAt = null` の Run に `runId` で所属します。Project 所属は `Link -> Run -> Project` で解決し、Link には `projectId` を追加しません。                                                                     |
-
-これらの契約により、global／project scope の混在、Project 専用資産の他 Project 混入、Recipe の Context 重複、Run と Recipe の Project 不一致、Snapshot 順序の不一致、削除済み Run への Link 追加を Repository 境界で検出できるようにします。
-
-## 削除・アーカイブ時の保持契約
-
-Prompt Trail では Trail の欠損を避けるため、Project、Prompt、Context、Recipe、Run、Link の物理削除と自動カスケード削除を行いません。soft delete、archive、deprecated、disabled は関連レコードを自動変更せず、各レコード自身の状態として保存します。
-
-| 状態変更                          | 保持契約                                                                                                                                                          |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Project の soft delete／archive   | 配下の Prompt、Context、Recipe、Run、Link を自動削除・自動 archive しません。通常取得から Project を除外し、履歴・復元用の明示的な取得経路で扱います。            |
-| Prompt の soft delete／deprecated | 既存 Recipe は参照を保持します。新規 Recipe 候補や Recipe 更新時の参照先からは除外し、既存 Run は `promptSnapshot` により実行時点の内容を再現します。             |
-| Context の soft delete／disabled  | 既存 Recipe は `contextIds` を保持します。新規 Recipe 候補や Recipe 更新時の参照先からは除外し、既存 Run は `contextSnapshots` により実行時点の内容を再現します。 |
-| Recipe の soft delete             | 既存 Run は `recipeId` と Snapshot を保持します。Recipe 削除を理由に Run や Link を自動削除しません。                                                             |
-| Run の soft delete／archive       | Link を物理削除せず、Run 復元時に Trail を回復できるようにします。通常の Run 一覧からは除外または archive 除外します。                                            |
-| Link の soft delete               | Link 自身を通常取得から除外します。所属 Run や Project の状態は変更しません。                                                                                     |
-
-参照資産が削除、deprecated、disabled になった Recipe は残し、後続 UI や Repository の取得結果で実行不可状態を導出できるようにします。既存 Run は固定 Snapshot を正本とし、元資産の現在状態に追従して書き換えません。
-
-## 通常取得条件・既定の並び順
-
-通常取得は、利用者が日常的に選択・実行・追跡する対象だけを返す取得経路です。archive 済み、削除済み、deprecated、disabled の閲覧／復元は、通常取得とは別の明示的な取得経路として扱います。
-
-| 対象         | 通常取得条件                                                                                           | 既定の並び順     |
-| ------------ | ------------------------------------------------------------------------------------------------------ | ---------------- |
-| Project 選択 | `deletedAt = null` かつ `archivedAt = null`                                                            | `updatedAt` 降順 |
-| Prompt 候補  | `deletedAt = null`、`status = "active"`、`scope = "global"` または指定 Project の `scope = "project"`  | `updatedAt` 降順 |
-| Context 候補 | `deletedAt = null`、`status = "enabled"`、`scope = "global"` または指定 Project の `scope = "project"` | `updatedAt` 降順 |
-| Recipe 一覧  | `deletedAt = null`、指定 Project の `projectId`                                                        | `updatedAt` 降順 |
-| Run 一覧     | `deletedAt = null`、指定 Project の `projectId`、通常は `archivedAt = null`                            | `updatedAt` 降順 |
-| Link 一覧    | `deletedAt = null`、指定 Run の `runId`                                                                | `createdAt` 昇順 |
-
-Project archive 後に配下資産、Recipe、Run をどの画面で閲覧するかは後続 UI 設計で決めます。本契約ではデータを保持し、通常取得から除外することだけを定義します。
-
-## 意図的な未確定事項
-
-本 Issue では Project、Prompt、Context、Recipe、Run、Link のドメイン契約を確定し、次の事項は後続 Issue で扱います。
-
-- Recipe 専用の Context 適用範囲、Prompt 変数の解析・入力形式・必須チェック・初期値
-- Prompt 版管理、複製履歴、Prompt 派生元、Context の文字数・推定トークン数、URL 形式検証、タグの重複除去・大小文字正規化
-- ID 生成処理、Entity Factory、DB auto increment、意味付き ID
-- Dexie schema、IndexedDB `version(1)`、テーブル、索引、DB 初期化
-- Repository / Storage、保存・取得・更新・soft delete の実装
-- React Router、CRUD 画面、Dashboard、サンプルデータ、Export / Import、同期、認証
-
-## P0-3-1 公開契約の統合記録
-
-P0-3-1 の完了時点では、`apps/prompt-trail/src/domain/index.ts` を Prompt Trail ドメインの唯一の公開入口とします。後続の UI、Dexie schema、Repository、外部 API 連携の実装は、個別モデルファイルへの深い import を増やさず、この入口から必要な型と公開定数を参照します。`index.ts` は UI、Dexie、Repository、外部 API を import せず、ドメインモデルと公開定数だけを再公開する境界として維持します。
-
-### モデル関係図
+## モデル関係と所有境界
 
 ```mermaid
-flowchart LR
-  Project --> Recipe
-  Project --> Run
-  Prompt -. "1件を参照" .-> Recipe
-  Context -. "順序付きで参照" .-> Recipe
-  Recipe --> Run
-  Run --> PromptSnapshot
-  Run --> ContextSnapshots
-  Run --> Link
+flowchart TD
+  Project[Project]
+  Prompt[Prompt / global or project asset]
+  Context[Context / global or project asset]
+  Recipe[Recipe]
+  Run[Run]
+  PromptSnapshot[PromptSnapshot]
+  ContextSnapshots[ordered ContextSnapshots]
+  Link[Link]
+
+  Project -->|owns| Recipe
+  Project -->|owns| Run
+  Recipe -. mutable reference: one .-> Prompt
+  Recipe -. ordered mutable references .-> Context
+  Run -->|embeds| PromptSnapshot
+  Run -->|embeds ordered| ContextSnapshots
+  Run -->|owns| Link
 ```
 
-Recipe は Project 配下の作業パターンとして、Prompt 1 件と Context 0 件以上への可変参照を保持します。Prompt／Context の本文、状態、scope は Recipe に複製しないため、次回以降の Run 作成では参照先資産の最新状態を利用します。
+Project は Recipe と Run の所有境界です。Prompt と Context は global または Project 専用の asset です。Recipe は Prompt 本文や Context 本文を複製せず、1 件の `promptId` と順序付き `contextIds` で可変参照します。Run は実行時点の Prompt/Context Snapshot、`inputValues`、`finalPrompt` を固定保存します。Link は Run に所属し、`projectId` を重複保存しません。Link の Project 所属は `Link → Run → Project` で解決します。
 
-Run は Recipe から作成される固定証跡です。実行時点の `PromptSnapshot`、順序付きの `ContextSnapshot`、`inputValues`、`finalPrompt` を Run レコードに保持し、元の Prompt／Context が更新、deprecated／disabled、soft delete されても過去 Run の内容を再現できるようにします。
+## 共通 Domain 規約
 
-Link は Run に直接所属する Trail 関係データです。Link 自身に `projectId` は持たせず、Project 所属は `Link -> Run -> Project` で辿ります。Project は Recipe と Run の所有境界であり、Prompt／Context は `AssetScope` により global asset または project asset として扱います。
+`PromptTrailEntityKind` は `project`、`prompt`、`context`、`recipe`、`run`、`link` の 6 種別です。`EntityId<Kind>` は TypeScript 上の nominal ID で、実行時と保存時の表現は文字列です。`UtcDateTimeString` は ISO 8601 UTC 文字列です。Domain の唯一の公開入口は `apps/prompt-trail/src/domain/index.ts` です。
 
-### 公開 API 一覧
+| Contract           | Rule                                                                                                                                 |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `BaseEntity`       | `id`、`createdAt`、`updatedAt`、`deletedAt` を持ちます。                                                                             |
+| `ArchivableEntity` | archive 可能な Project と Run にだけ `archivedAt` を合成します。                                                                     |
+| Optional scalar    | 単一の任意値は `null` で表し、保存表現に `undefined` を使いません。                                                                  |
+| Collections        | 複数値は空配列で表します。`contextIds` と `contextSnapshots` は順序を保持します。                                                    |
+| Input values       | 未入力の `inputValues` は空オブジェクトです。                                                                                        |
+| `AssetScope`       | global は `{ scope: "global" }`、project asset は `{ scope: "project", projectId }` です。global asset は `projectId` を持ちません。 |
 
-`apps/prompt-trail/src/domain/index.ts` は、次の公開面を集約します。default export、Factory、ID 生成、runtime validator、Repository 型、Dexie 型、UI 専用型は公開契約に含めません。
+保存契約では nominal type 付き文字列を各 Store の主キーに使用し、DB auto increment は使いません。汎用 ID Factory / ID 生成サービスは未実装です。
 
-| 区分           | 公開対象                                                                                                                                                                          | 主な後続利用                                                                                  |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| 共通規約       | `PromptTrailEntityKind`、`EntityId`、各モデル ID、`UtcDateTimeString`、`BaseEntity`、`ArchivableEntity`、`AssetScope`、`GlobalScope`、`ProjectScope`、`PROMPT_TRAIL_ENTITY_KINDS` | P0-3-2 の Store 名・主キー・索引、P0-3-3 の scope／参照整合、P0-4／P0-5 の通常取得条件        |
-| 6 モデル       | `Project`、`Prompt`、`Context`、`Recipe`、`Run`、`Link`                                                                                                                           | P0-3-2 の保存境界、P0-3-3 の Repository 入出力、P0-4／P0-5 の画面モデル                       |
-| 実行証跡       | `PromptSnapshot`、`ContextSnapshot`、`JsonPrimitive`、`JsonValue`                                                                                                                 | P0-3-2 の Run 埋め込み保存、P0-3-3 の Run 作成検証、Phase 2／Phase 3 の Trail 再現            |
-| 種別・状態定数 | Prompt／Context／Run／Link の kind、status、evaluation、type、role の型と公開定数                                                                                                 | P0-3-2 の保存値、P0-3-3 の候補抽出、P0-4／P0-5 の一覧・選択 UI、Phase 2／Phase 3 の Link 分類 |
+## 6 Domain Model
 
-後続工程ごとの参照範囲は次のとおりです。
+| Model   | 主な内容                                                                                        |
+| ------- | ----------------------------------------------------------------------------------------------- |
+| Project | `name`、任意の `description` / `repositoryUrl`、`tags`、`archivedAt` を持つ所有境界です。       |
+| Prompt  | Markdown の `title` / `body`、`kind`、`status`、`tags` と AssetScope を持つ再利用 asset です。  |
+| Context | 背景・制約・ルールの Markdown、`kind`、`status`、`tags` と AssetScope を持つ再利用 asset です。 |
+| Recipe  | Project 配下の 1 Prompt と 0 件以上の順序付き Context への可変参照です。                        |
+| Run     | Recipe からの実行証跡です。Snapshot、入力値、最終 Prompt、評価、`archivedAt` を保持します。     |
+| Link    | Chat、Issue、PR、Commit 等への URL を type / role とともに Run 配下に保存します。               |
 
-- P0-3-2 は、6 モデル、ID 型、Store 名、主キー、v1 最小インデックス、保存境界を参照します。
-- P0-3-3 は、6 モデル、scope、参照整合、不変条件、通常取得条件、soft delete 契約を参照します。
-- P0-4／P0-5 は、通常取得用のモデル、状態、一覧順を参照します。
-- Phase 2／Phase 3 は、Recipe の可変参照、Run Snapshot、Link type／role を参照します。
+Prompt の `deprecated`、Context の `disabled`、Project / Run の `archivedAt`、全モデルの `deletedAt` は別の状態です。Snapshot は元 asset が更新、無効化、soft delete されても変更しません。
 
-### P0-3-2 への引継ぎチェック
+## Domain / Store / Repository 対応
 
-P0-3-2 の Dexie schema v1 実装では、次の事項を確認します。
+| Model   | Dexie Store | 主な Repository API                                                        |
+| ------- | ----------- | -------------------------------------------------------------------------- |
+| Project | `projects`  | `saveProject` / `getProject` / `listActiveProjects` / `softDeleteProject`  |
+| Prompt  | `prompts`   | `savePrompt` / `getPrompt` / `listActivePrompts` / `softDeletePrompt`      |
+| Context | `contexts`  | `saveContext` / `getContext` / `listEnabledContexts` / `softDeleteContext` |
+| Recipe  | `recipes`   | `saveRecipe` / `getRecipe` / `listActiveRecipes` / `softDeleteRecipe`      |
+| Run     | `runs`      | `saveRun` / `getRun` / `listActiveRuns` / `softDeleteRun`                  |
+| Link    | `links`     | `saveLink` / `getLink` / `listActiveLinks` / `softDeleteLink`              |
 
-- Project、Prompt、Context、Recipe、Run、Link の 6 Store を作り、主キーは各モデルの `id` とします。
-- v1 では既存の「永続化マッピング v1」に記録した最小インデックスだけを追加します。
-- `Recipe.contextIds` は順序を保つ埋め込み配列であり、Context 参照の中間 Store は作りません。
-- Run の `promptSnapshot`、`contextSnapshots`、`inputValues`、`finalPrompt` は Run レコードに埋め込みます。
-- Link は独立 Store とし、Project 所属は `Link -> Run -> Project` で辿ります。
-- Dexie schema に外部キー制約、参照整合検証、自動カスケード削除を期待しません。
-- `deletedAt`／`archivedAt` のように `null` を持つライフサイクル項目は、索引だけに依存して通常取得を完結させず、取得起点と後段フィルタの組合せで扱います。
-- 参照整合、通常取得条件、soft delete は P0-3-3 の Repository／Storage アクセス層で実装します。
-- 物理削除と自動カスケード削除は行わず、Trail の復元可能性を優先します。
-- schema version 1 では、タグ、Markdown 本文、URL、外部 ID、kind、summary、Snapshot 内部項目の索引、複合索引、検索最適化を追加しません。
+6 モデルを一括登録する `insertTrailBundle()` も公開します。
+
+## Dexie 永続化: schema version 1
+
+- Database name: `prompt-trail`
+- Schema version: `1`
+- 1 モデルにつき 1 Store
+- 各 Store の主キーは model の `id`。auto increment は使用しません。
+
+| Store      | Primary key | Index                                                                     | 保存境界                                                    |
+| ---------- | ----------- | ------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `projects` | `id`        | `updatedAt`, `archivedAt`, `deletedAt`                                    | Project 単体                                                |
+| `prompts`  | `id`        | `scope`, `projectId`, `status`, `updatedAt`, `deletedAt`                  | 本文、tags、状態、scope を record に埋め込み                |
+| `contexts` | `id`        | `scope`, `projectId`, `status`, `updatedAt`, `deletedAt`                  | 本文、tags、状態、scope を record に埋め込み                |
+| `recipes`  | `id`        | `projectId`, `promptId`, `updatedAt`, `deletedAt`                         | 順序付き `contextIds` を record に埋め込み                  |
+| `runs`     | `id`        | `projectId`, `recipeId`, `status`, `updatedAt`, `archivedAt`, `deletedAt` | Snapshot、`inputValues`、`finalPrompt` を record に埋め込み |
+| `links`    | `id`        | `runId`, `createdAt`, `deletedAt`                                         | Run に属する Link を独立 record として保存                  |
+
+schema v1 は外部キー制約を提供しません。複合索引、全文検索索引、tags、本文、URL、Snapshot 内部項目の索引も追加しません。参照整合性は Repository 境界で検証します。
+
+## Repository 公開契約
+
+### 保存と取得
+
+`save*()` は部分更新 API ではなく、完全な Domain Entity を `put` する置換保存です。Prompt、Context、Recipe、Run、Link は保存前に必要な参照検証を行います。Repository constructor は DB の open / close / delete を行いません。
+
+`get*()` は存在しないとき `null` を返します。ID 指定取得では soft delete / archive 済みの record も取得できます。これは active list の除外条件とは別の契約です。
+
+### 通常一覧
+
+| API                               | 条件                                               | 並び順           |
+| --------------------------------- | -------------------------------------------------- | ---------------- |
+| `listActiveProjects()`            | 非削除・非 archive                                 | `updatedAt` 降順 |
+| `listActivePrompts(projectId?)`   | 非削除・`active`・global または指定 Project scope  | `updatedAt` 降順 |
+| `listEnabledContexts(projectId?)` | 非削除・`enabled`・global または指定 Project scope | `updatedAt` 降順 |
+| `listActiveRecipes(projectId)`    | 非削除・指定 Project                               | `updatedAt` 降順 |
+| `listActiveRuns(projectId)`       | 非削除・非 archive・指定 Project                   | `updatedAt` 降順 |
+| `listActiveLinks(runId)`          | 非削除・指定 Run                                   | `createdAt` 昇順 |
+
+### Soft delete とライフサイクル
+
+`softDelete*()` は物理削除ではなく `deletedAt` を設定し、通常一覧から除外します。ID 指定取得では record を保持します。自動 cascade delete は行いません。現行 soft delete API は `deletedAt` のみを更新し、`updatedAt` を自動更新しません。
+
+モデル上で表現できる状態と、専用 Repository API は区別します。実装済み操作は完全 Entity の save、ID get、active list、soft delete、TrailBundle atomic insert です。`archiveProject()`、`archiveRun()`、`restore*()`、deleted / archived 一覧、物理削除、cascade delete の専用 API はありません。
+
+## 参照整合性
+
+| 保存対象                        | Repository の検証契約                                                                               |
+| ------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Project scoped Prompt / Context | Project が存在し、soft delete されていません。                                                      |
+| Global Prompt / Context         | `projectId` を持ちません。                                                                          |
+| Recipe                          | Project / Prompt / Context が存在し利用可能です。                                                   |
+| Recipe scope                    | Project scoped asset の Project は Recipe と一致します。                                            |
+| Recipe contexts                 | `contextIds` に重複はなく、順序を保持します。                                                       |
+| Run                             | Project / Recipe が存在し利用可能で、Project が一致します。                                         |
+| Run Snapshot                    | Prompt Snapshot ID と Recipe Prompt が一致し、Context Snapshot の件数・順序が Recipe と一致します。 |
+| Link                            | 所属 Run が存在し、soft delete されていません。                                                     |
+| TrailBundle                     | 全 ID が未登録です。                                                                                |
+
+## Repository error 契約
+
+| Code                    | 意味・主な発生条件                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------- |
+| `storage-failure`       | 公開 error 語彙です。現行 Repository 処理では明示的に生成していません。               |
+| `reference-not-found`   | 必要な Project、Prompt、Context、Recipe、Run、または soft delete 対象が存在しません。 |
+| `reference-unavailable` | 参照先が soft delete、deprecated、disabled などで利用できません。                     |
+| `scope-mismatch`        | global asset の `projectId`、または不正な project scope を検出しました。              |
+| `duplicate-context-id`  | Recipe の `contextIds` が重複しています。                                             |
+| `project-mismatch`      | Project scoped asset または Run/Recipe の Project が一致しません。                    |
+| `snapshot-mismatch`     | Run Snapshot の Prompt または Context 件数・順序が Recipe と一致しません。            |
+| `duplicate-id`          | TrailBundle に既登録 ID が含まれます。                                                |
+
+## Transaction と rollback
+
+| 操作                | Transaction 対象                        |
+| ------------------- | --------------------------------------- |
+| `savePrompt`        | projects + prompts                      |
+| `saveContext`       | projects + contexts                     |
+| `saveRecipe`        | projects + prompts + contexts + recipes |
+| `saveRun`           | projects + recipes + runs               |
+| `saveLink`          | runs + links                            |
+| `insertTrailBundle` | 6 Store すべて                          |
+
+`insertTrailBundle()` は 1 回の `rw` transaction 内で ID 重複検査、参照検証、Project、Prompt、Context、Recipe、Run、Links の登録を行います。途中で失敗すると transaction 全体が rollback されます。
+
+## Fresh DB と Sample Seed
+
+Fresh DB の 6 Store は空であり、通常起動で自動 seed しません。Sample Seed は独立した明示処理です。preflight で sample の ID、利用状態、所有・参照関係を確認し、未登録なら `insertTrailBundle()` による atomic insert を行います。
+
+| Result            | 条件                                                                 |
+| ----------------- | -------------------------------------------------------------------- |
+| `seeded`          | sample ID が未登録で、TrailBundle を登録しました。                   |
+| `already-present` | sample の全 record が存在し、利用可能な関係を満たします。            |
+| `conflict`        | 一部のみ存在する、または expected な所有・参照・状態を満たしません。 |
+
+Seed は既存 sample 内容を上書きしません。Prompt 本文などのユーザー編集内容は complete 判定の対象外です。起動や画面状態の詳細は Application Architecture を参照してください。
+
+## Source Map
+
+| 責務                | 実装                                                          |
+| ------------------- | ------------------------------------------------------------- |
+| Domain 共通型       | `apps/prompt-trail/src/domain/common.ts`                      |
+| Domain 公開入口     | `apps/prompt-trail/src/domain/index.ts`                       |
+| 6 モデル            | `apps/prompt-trail/src/domain/*.ts`                           |
+| DB metadata         | `apps/prompt-trail/src/db/metadata.ts`                        |
+| Dexie schema        | `apps/prompt-trail/src/db/database.ts`                        |
+| Repository 公開入口 | `apps/prompt-trail/src/repository/index.ts`                   |
+| Repository 実装     | `apps/prompt-trail/src/repository/prompt-trail-repository.ts` |
+| Repository errors   | `apps/prompt-trail/src/repository/errors.ts`                  |
+| Sample Seed         | `apps/prompt-trail/src/sample-data/seed-sample-data.ts`       |
+| Contract tests      | Domain / DB / Repository / Sample Data の関連 `*.test.ts`     |
+
+## 更新トリガー
+
+次の変更では本書を更新します。
+
+- Domain Model、ID、status、scope、Trail 関係を変更するとき
+- schema version、Store、index、migration を変更するとき
+- Repository 公開 API、通常取得条件、参照整合性、error code、transaction 境界を変更するとき
+- archive / restore 等の専用 API を追加するとき
+- Sample Seed の preflight または atomicity を変更するとき
