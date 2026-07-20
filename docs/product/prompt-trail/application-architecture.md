@@ -133,7 +133,7 @@ Canonical Sample Dataset
   → Dexie / IndexedDB
 ```
 
-`seedSampleData()` は Repository を受け取り、Sample Dataset の事前状態を検査します。全件未登録なら `seeded`、完全かつ整合した Sample が既にあるなら `already-present`、一部のみ存在するか内容が整合しない場合は `conflict` を返します。通常起動は Fresh DB を自動 Seed しません。
+`seedSampleData()` は Repository を受け取り、Sample Dataset の事前状態を検査し、既存内容を上書きしません。全 Sample ID が未登録なら `seeded` を返します。必要な Sample ID がすべて存在し、利用状態と所有・参照関係が整合していれば `already-present` を返します。ID の欠落、所有関係・参照関係・利用状態の不整合があれば `conflict` を返します。Prompt のタイトルや本文など、ユーザーが編集できる内容は完全一致判定の対象外です。通常起動は Fresh DB を自動 Seed しません。
 
 ## 7. Route、AppShell、Page の現行状態
 
