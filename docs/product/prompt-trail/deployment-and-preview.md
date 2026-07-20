@@ -95,6 +95,10 @@ Hosted Preview で確認すべき主な観点は、画面表示、global navigat
 
 Hosted Preview は、クラウドデータ同期、cross-device synchronization、本番リリース、staging / manual promotion の代替ではありません。
 
+## Public Alpha での利用案内
+
+Phase 1 の Public Alpha は、Hosted Preview の配信基盤を利用して最小の Prompt → Run → Link → Trail → Reuse 体験を公開します。Public Alpha であってもデータは browser origin ごとの IndexedDB に閉じ、クラウド同期環境にはなりません。利用者には origin ごとの分離、端末間非同期、browser storage の削除などでデータを失う可能性を明示します。
+
 ## 7. Local-first / IndexedDB Contract
 
 PromptTrail は Local-first を前提とし、データ保存は browser origin ごとの IndexedDB に閉じます。

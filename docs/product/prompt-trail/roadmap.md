@@ -1,376 +1,184 @@
 # PromptTrail Roadmap
 
-このロードマップは、PromptTrail の実装フェーズを Phase 0 から Phase 5 まで整理したものです。機能要件の正本は [Functional Requirements](functional-requirements.md) とし、本ドキュメントは Phase 0 の現行実装、Phase 1 以降の実装順序、MVP 後のプロダクト拡張方針を要約します。
+このロードマップは、PromptTrail を「機能を広く完成してから投入する」計画から、「最小体験を早期に Public Alpha として公開し、利用者から学びながら育てる」計画へ再編した正本です。機能要件の正本は [Functional Requirements](functional-requirements.md) とし、本書は後続の Lv1 / Lv2 Issue の優先順位とスコープを定めます。
+
+## 方針
+
+```text
+Build Minimum → Release → Learn → Prioritize → Build
+```
+
+Phase の完了は実装量だけでなく、次の意思決定に必要な情報を得られたかで判断します。MVP は完成品ではなく、利用者が PromptTrail の中核価値を試せる最小体験です。**MVP 到達点は Phase 1 の Public Alpha 完了時点**とします。
+
+検証する中核価値は、AI への依頼内容と Chat、Issue、PR、成果物を一本の Trail として残し、次の作業で再利用できることです。
 
 ## 全体像
 
-| Phase   | 名称                            | 目的                                            |
-| ------- | ------------------------------- | ----------------------------------------------- |
-| Phase 0 | Foundation                      | 技術・データ・品質・基本導線・最小データ接続    |
-| Phase 1 | Library                         | Project・Prompt・Context を再利用資産として管理 |
-| Phase 2 | Recipe Builder                  | Prompt と Context を組み立て、出力可能にする    |
-| Phase 3 | Run & Trail                     | Run 履歴と Chat／Issue／PR リンクを追跡する     |
-| Phase 4 | GitHub Integration              | GitHub 連携と AI Workbench 拡張準備             |
-| Phase 5 | Productization & Administration | 複数の利用者像・契約・権限・習熟度に対応する    |
-
-**MVP 到達点は Phase 3 完了時点**です。Phase 4 は MVP 後の GitHub Integration に集中し、Identity、Authorization、Plan、Administration は Phase 5 の Productization として扱います。
+| Phase   | 名称                            | 目的                                                                          |
+| ------- | ------------------------------- | ----------------------------------------------------------------------------- |
+| Phase 0 | Foundation                      | Public Alpha を支える技術・品質・配信基盤を維持する                           |
+| Phase 1 | Validation Release              | 最小の Prompt → Run → Link → Trail → Reuse 体験を Public Alpha として公開する |
+| Phase 2 | User Validation                 | 実利用を観察し、次の投資先を決める                                            |
+| Phase 3 | Evidence-driven Expansion       | 利用証拠に基づき、必要な機能を選択的に強化する                                |
+| Phase 4 | Integration                     | GitHub をはじめとする外部サービスとの接続を深める                             |
+| Phase 5 | Productization & Administration | 認証、契約、権限、同期、運用管理を備えたプロダクトへ拡張する                  |
 
 ```text
 Phase 0  Foundation
-         └─ 技術・データ・品質・基本導線・最小データ接続
-
-Phase 1  Library
-         ├─ Project Workspace
-         ├─ Sidebar / AppShell進化
-         ├─ Prompt / Context管理
-         ├─ Prompt最小版管理
-         ├─ Search / Backup
-         └─ Settings最小骨格
-
-Phase 2  Recipe Builder
-         └─ Prompt / Contextを組み立てて出力
-
-Phase 3  Run & Trail
-         └─ AI依頼から成果までを追跡
-             → MVP到達
-
-Phase 4  GitHub Integration
-         └─ GitHubとの接続深化
-
+Phase 1  Validation Release → Public Alpha / MVP
+Phase 2  User Validation
+Phase 3  Evidence-driven Expansion
+Phase 4  Integration
 Phase 5  Productization & Administration
-         ├─ Persona / Experience
-         ├─ Identity
-         ├─ Authorization Role
-         ├─ Plan / Entitlement
-         └─ Admin Console
 ```
+
+Phase 番号は整数のみを使用します。
 
 ---
 
 ## Phase 0: Foundation
 
-### 目的
+### 位置づけ
 
-AI Workbench のモノレポ基盤と PromptTrail の技術基盤を整え、継続的に開発できる状態にします。Phase 0 は P0-1〜P0-6 へ分解し、P0-1〜P0-4 は完了済み、P0-5 / P0-6 は残作業として扱います。
+P0-1〜P0-5 で整備した pnpm Workspace、React、TypeScript、Vite、品質基盤、ドメインモデル、Dexie / IndexedDB、Repository 境界、Router / AppShell、Dashboard、Hosted Preview を Public Alpha に十分な Foundation として維持します。Foundation への追加投資は、Public Alpha を阻害する問題に限定します。
 
-```text
-Phase 0：Foundation
-│
-├─ ✅ P0-1 開発基盤
-├─ ✅ P0-2 品質基盤・CI
-├─ ✅ P0-3 ドメインモデル・IndexedDB・Repository
-├─ ✅ P0-4 AppShell・基本導線・品質ベースライン
-├─ ⬜ P0-5 サンプルデータ・Dashboard動作証明
-└─ ⬜ P0-6 技術ドキュメント・統合受入
-```
+### 残作業
 
-### P0-1〜P0-4 の到達点
+P0-6 は長期運用文書を完成させることではなく、次の Public Alpha に必要な最小範囲へ絞ります。
 
-- pnpm Workspace、`apps/prompt-trail`、React + TypeScript + Vite の起動基盤を確立する。
-- ESLint、Prettier、Vitest、Playwright、GitHub Actions による品質基盤と CI を整備する。
-- Project、Prompt、Context、Recipe、Run、Link のドメインモデル、IndexedDB / Dexie、Repository 境界を整備する。
-- Application Composition Root で Repository を注入し、UI が Dexie / IndexedDB へ直接依存しない境界を作る。
-- Router / AppShell / Global Navigation を整備し、Dashboard、Prompt Library、Context Library、Recipe Builder、Run Detail、Not Found への基本導線を確立する。
-- Page Start State と Repository Empty / Data / Failure State の責務を分離する。
-- Unit / Component regression、Browser navigation E2E、Responsive / Accessibility baseline を整備する。
-
-### P0-5 / P0-6 の残作業
-
-- **P0-5: サンプルデータ・Dashboard 動作証明**
-  - Repository とサンプルデータを通じて Dashboard の最小動作を確認する。
-  - Phase 1 以降の Project / Prompt / Context / Recipe / Run / Link を理解しやすい初期データを整える。
-- **P0-6: 技術ドキュメント・統合受入**
-  - P0-6-1 でローカル開発環境手順を正式化・最新化する。
-  - P0-6-2 で Phase 0 のアーキテクチャ、データモデル、品質運用ドキュメントを統合する。
-  - 現行実装とロードマップ、機能要件、アーキテクチャ文書の整合を確認する。
-
-### P0-6-1: ローカル開発環境手順
-
-既存 README は、最短セットアップ、`dev` / `build` / `preview` / test / E2E などの日常コマンドの入口として維持します。P0-6-1 では「手順が存在しない」前提ではなく、既存 README を出発点として次を正式化・最新化します。
-
-- Ubuntu を含む再現可能な正式手順。
-- Node.js / Corepack / pnpm の前提。
-- Vite dev / build / preview の起動確認。
-- Unit / E2E / lint / format の実行確認。
-- 代表的な障害切り分け。
-- 現行実装との整合確認と陳腐化解消。
-
-### P0-6-2: 技術基盤図の整備対象
-
-既存の Application Architecture は維持し、補完図として次の 2 系統を検討します。この Issue では図そのものの作成ではなく、P0-6-2 の整備対象として配置します。
-
-#### Technology Stack / Runtime Architecture
-
-```text
-Development / Quality
-├─ pnpm Workspace
-├─ TypeScript
-├─ Vite
-├─ Vitest
-├─ Playwright
-└─ GitHub Actions
-
-Browser Runtime
-├─ React
-├─ React Router
-├─ Application / Provider / Pages
-├─ Repository
-├─ Dexie
-└─ IndexedDB
-```
-
-目的は、開発時に使う技術とブラウザ実行時に使う技術を区別し、Vite、React、Router、Repository、Dexie / IndexedDB の位置関係を一枚で把握できるようにすることです。
-
-#### Data Architecture
-
-```text
-UI
- ↓
-Repository
- ↓
-Dexie
- ↓
-IndexedDB
- ├─ Project
- ├─ Prompt
- ├─ Context
- ├─ Recipe
- ├─ Run
- └─ Link
-```
-
-```text
-Project
- ├─ Prompt
- ├─ Context
- ├─ Recipe
- └─ Run
-      └─ Link
-```
-
-目的は、論理データモデルと物理的な永続化境界を混同せず、UI が Repository を通じてデータへアクセスする設計原則を視覚化することです。
+- 現行アーキテクチャと Local-first / IndexedDB 保存境界の概要。
+- Public Preview の利用方法と既知の制約。
+- 公開データへ秘密情報・機密情報を含めないルール。
+- Public Alpha 向け最小リリースチェック。
 
 ---
 
-## Phase 1: Library
+## Phase 1: Validation Release
 
 ### 目的
 
-Project、Prompt、Context を再利用可能な知識資産として登録、整理、検索できるようにします。Project は新規テーマとして重複追加せず、ドメインモデル、IndexedDB / Repository、機能要件、Phase 1 の上位作業単位として扱います。
+PromptTrail の中核価値を体験できる縦切りを実装し、Public Alpha として公開します。
 
-### Phase 1 前半: Project Workspace / AppShell 進化
-
-- Project 一覧、作成、編集、切替、アーカイブ。
-- Current Project の明示。
-- Project 単位で Prompt、Context、Recipe、Run を切り替える Workspace 体験。
-- Phase 0 の Global Navigation は完了成果として維持し、Project の実体が UI へ現れるタイミングで左サイドバー型 Navigation へ進化させる。
-- Phase 1 では本格的な Login / Admin / Plus / Pro 判定を実装しない。
-- Navigation は将来の visibility / capability / experience 制御を阻害しない責務分離にする。
-- hamburger menu、Drawer、詳細なモバイル Navigation 設計は Phase 1 詳細設計で判断し、このロードマップでは固定しない。
-
-将来拡張の概念例:
+### 必須スコープ
 
 ```text
-Navigation Item
-├─ route
-├─ label
-├─ required capability
-├─ experience visibility
-└─ administration visibility
+Project を選ぶ（または既定 Project を使う）
+  ↓
+Prompt を入力・保存する
+  ↓
+Prompt から Run を作成する
+  ↓
+Chat / Issue / PR / Commit / Document の URL を登録する
+  ↓
+Trail として確認する
+  ↓
+過去の Prompt または Run を再利用する
 ```
 
-これは将来設計余地を示すものであり、Phase 1 で Role / Plan / Entitlement を実装する要求ではありません。
+- Project の最小選択または既定 Project。
+- Prompt の入力、保存、表示、コピー。
+- Prompt からの Run 作成と、実行時 Prompt のスナップショット保存。
+- Chat、Issue、PR、Commit、Document などの URL 手動登録。
+- Link 種別と役割の最小管理、Run 内 Trail 表示。
+- Prompt のコピー、または Run 複製による再利用。
+- サンプル Trail または初回利用ガイド、Feedback 導線。
+- Hosted 環境で利用できる Public Alpha。
 
-### Phase 1 後半: Prompt / Context / Search / Backup
+### MVP 完了条件
 
-- Prompt の作成、編集、複製、タグ、状態管理。
-- Prompt 最小版管理として、更新履歴、過去版の閲覧、過去版の復元を扱う。
-- Context の作成、分類、適用範囲、有効・無効管理。
-- Prompt / Context の検索と絞り込み。
-- 日本語全文検索、タグ検索、Project 絞り込みの最小実装。
-- ソフトデリート、JSON Export / Import / Backup / Restore によるデータ保護。
-- Settings 最小骨格として JSON Export / Import / Backup / Restore の入口を用意する。
-- Codex 依頼、Issue 作成、設計レビューなどの初期サンプル登録。
-
-### Phase 1 の非機能要件配置
-
-- アクセシビリティは、キーボード操作、ラベル、コントラストを Phase 0 baseline から継続改善する。
-- MVP 主要操作のオフライン性は、Phase 1 からローカルファーストな Project / Prompt / Context 管理で維持する。
-- 機密情報警告は詳細アルゴリズムを固定せず、API キー、トークン、パスワードらしき文字列に対する最小警告を Phase 1 後半または Phase 2 の実装候補として扱う。
-
-### 完了条件
-
-- Project を上位作業単位として選択・切替できる。
-- Prompt と Context を Project 別または共通資産として管理できる。
-- キーワード、タグ、Project で必要な資産を探せる。
-- Prompt の最小更新履歴を閲覧・復元できる。
-- JSON バックアップと復元ができる。
-- Settings 最小骨格からデータ保護機能へ到達できる。
+- 新規利用者が最初の Run を作成できる。
+- Prompt と一つ以上の Link を Run へ登録できる。
+- AI 依頼から成果物までを Trail として確認できる。
+- 過去 Prompt または Run を次の作業へ再利用できる。
+- 公開 URL から主要操作を試せ、Feedback を送れる。
+- Local-first / IndexedDB の保存制約を利用者へ明示している。
 
 ---
 
-## Phase 2: Recipe Builder
+## Phase 2: User Validation
 
 ### 目的
 
-Prompt と Context を安定した形式で組み立て、ChatGPT や Codex へ渡せる最終 Prompt として出力できるようにします。
+Public Alpha の実利用から中核仮説の妥当性と、次に投資する機能を判断します。
 
-### 主なスコープ
+### 主な活動
 
-- Recipe の作成、編集、複製、保存。
-- `{{variable}}` の自動検出と入力フォーム生成。
-- 必須項目や未解決変数の入力検証。
-- Prompt、Context、入力値からの最終 Prompt 生成。
-- コピー、Markdown 出力、Issue 本文向け出力。
-- Codex 依頼、Bug Issue、設計レビュー、引き継ぎ資料などの初期 Recipe。
-- 機密情報警告を Phase 1 で未実装にした場合の最小警告導入候補。
+- 初期利用者へ Public Alpha を案内し、実際の AI 依頼と成果物を登録してもらう。
+- 初回 Run / Trail 作成、継続利用、再利用、離脱理由を観察する。
+- 定性フィードバックと最小限の利用指標を整理する。
+- 得られた証拠から Phase 3 の優先機能を決定する。
 
-### 完了条件
+### 判断する仮説・指標
 
-- フォーム入力だけで最終 Prompt を生成できる。
-- 生成した Prompt をコピーまたは Markdown 出力できる。
-- 同じ作業パターンを Recipe として再利用できる。
+- 短い説明だけで最初の Trail を作れるか。
+- 2 件目の Run を登録するか、過去 Prompt または Run を再利用するか。
+- Markdown、メモ、ブラウザブックマークより便利と感じるか。
+- Link 登録が負担や混乱になっていないか。
+- Library、Recipe、検索、GitHub 同期のうち、どれが最も必要とされるか。
 
 ---
 
-## Phase 3: Run & Trail
+## Phase 3: Evidence-driven Expansion
 
-### 目的
+### 目的と方針
 
-AI への依頼から Chat、Issue、PR、Commit、Document などの成果までを、一本の Trail として追跡できるようにします。
+Phase 2 で確認された利用課題と需要に基づき、機能を選択的に強化します。候補を一括実装せず、利用証拠が弱い機能は延期し、小さな Release / Learn 単位へ分割します。
 
-### 主なスコープ
+### 候補スコープ
 
-- Recipe からの Run 作成。
-- 実行時の Prompt、Context、入力値のスナップショット保存。
-- Chat、Issue、PR、Commit、Document などの Link 登録。
-- GitHub URL や Chat URL の Link 種別自動判別。
-- Source、Reference、Execution、Output、Result などの Link 役割設定。
-- Link を時系列で確認する Trail View。
-- Run の成果評価と改善メモ。
-- 過去 Run の複製による再実行。
-- MVP 主要操作のオフライン性とアクセシビリティ継続改善。
-
-### 完了条件
-
-- 1 つの Run に複数の Chat、Issue、PR を紐付けられる。
-- 「この Prompt がどの Issue・PR につながったか」を辿れる。
-- Chat の決定事項を要約付きで残せる。
-- 過去の成功 Run を複製して次の依頼に使える。
-- **Phase 3 完了時点で MVP に到達し、PromptTrail を日常の AI 活用・GitHub 運用に投入できる。**
+- Project Workspace、Prompt / Context Library。
+- Recipe Builder、変数検出、入力フォーム。
+- タグ、検索、絞り込み、Prompt 版管理。
+- JSON Export / Import / Backup / Restore、Settings 最小骨格。
+- Run 評価、改善メモ、再実行支援、Trail 表示強化。
 
 ---
 
-## Phase 4: GitHub Integration
+## Phase 4: Integration
 
-### 目的
+GitHub Integration を中心に、外部サービスとの接続を深めます。
 
-MVP 後の拡張として GitHub との接続を深め、成果追跡と将来の AI Workbench 複数アプリ化に備えます。Phase 4 は GitHub Integration として独立した責務を維持し、Identity / Admin / Plan を混在させません。
-
-### 主なスコープ
-
-- GitHub API 連携による Issue、PR、Commit のタイトル・状態取得。
-- GitHub Link の手動または定期的な状態更新。
-- Recipe から GitHub Issue のタイトル・本文を生成する支援。
-- PR の Open / Merged / Closed 状態表示。
-- URL から Issue 番号、PR 番号、タイトルを補完する Link 補完。
-- Good 評価の Run を Prompt 改善候補へ昇格しやすくする支援。
-- GitHub Integration 設定として Settings を拡張する。
-- 第 2 アプリの着手時に `packages/` 切り出し要否を判断する共通化評価。
-
-### 完了条件
-
-- GitHub の Issue・PR を Run へ効率よく接続できる。
-- Run から実装の進捗・結果を確認できる。
-- GitHub 連携設定を Settings から扱える。
-- 共通パッケージを作るべき重複があるか評価できる。
+- GitHub API による Issue、PR、Commit 情報取得。
+- Link の状態更新、URL からのメタデータ補完、同期。
+- Issue 本文生成支援と外部サービス Integration 設定。
 
 ---
 
 ## Phase 5: Productization & Administration
 
-### 目的
+長期的な製品化と運用管理を進めます。
 
-個人向けローカルワークベンチから、複数の利用者像・契約・権限・習熟度に対応できるプロダクトへ拡張します。Phase 5 の本質は単なる管理者画面追加ではなく、次のプロダクトモデル転換です。
+- Persona / Experience と Progressive Disclosure。
+- Identity / Authentication、Authorization Role。
+- Plan / Entitlement、Admin Console、User management。
+- Cloud Database、Cloud Sync、Cross-device synchronization、Operational settings。
 
-```text
-Individual AI Workbench
-→ Multi-persona Product
-```
+Persona / Experience、Plan / Entitlement、Authorization Role は異なる責務として扱います。
 
-### 主なテーマ
+---
 
-```text
-Phase 5
-│
-├─ Persona / Experience Model
-│  ├─ Simple
-│  ├─ Standard
-│  └─ Advanced
-│
-├─ Identity / Authorization
-│  ├─ User / Account
-│  ├─ Authentication
-│  ├─ Admin
-│  └─ Member
-│
-├─ Plan / Entitlement
-│  ├─ Guest
-│  ├─ Plus
-│  ├─ Pro
-│  └─ Feature Entitlement
-│
-└─ Administration
-   ├─ Admin Console
-   ├─ User management
-   ├─ Plan / feature management
-   └─ Operational settings
-```
+## Public Alpha で後回しにする機能
 
-### Persona / Experience、Plan / Entitlement、Authorization Role の分離
+Phase 1 の必須条件にしない機能は次のとおりです。既存のモデルと Repository 境界は、Phase 1 を阻害しない範囲で維持します。
 
-将来のユーザー区分を 1 つの `userType` へ統合しません。次の 3 軸を分離して扱います。
+- Context Library の完成、Prompt 更新履歴・過去版復元、高度なタグ・検索・絞り込み。
+- JSON Backup / Restore、Settings 画面の完成。
+- Recipe の変数自動検出・入力フォーム生成、複数 Recipe の高度な管理。
+- GitHub API 連携、Link 情報の自動同期。
+- Login / Account、Plan / Entitlement、Admin Console。
+- Cloud Sync、Cross-device synchronization。
 
-| 軸                   | 役割                     | 例                           |
-| -------------------- | ------------------------ | ---------------------------- |
-| Persona / Experience | 何を分かりやすく見せるか | Simple / Standard / Advanced |
-| Plan / Entitlement   | 何を利用できるか         | Guest / Plus / Pro           |
-| Authorization Role   | 何を管理できるか         | Admin / Member               |
+## Public Alpha のデータ・配信制約
 
-`Pro + Member + Simple Experience` のような組み合わせも成立します。したがって、Guest / Plus / Pro と Admin / Member を同一 Role 体系として扱いません。
+PromptTrail は Local-first / IndexedDB を採用しています。localhost、GitHub Pages、Azure Static Web Apps は origin が異なるためデータを共有しません。また、PC とスマートフォンの間でも同期せず、browser の変更や storage の削除によってデータを失う可能性があります。Public Alpha は Cloud Sync 環境ではないことを、案内と UI で明確にします。
 
-### Progressive Disclosure 方針
+## 後続 Issue 設計への引き継ぎ
 
-Context Library のような高度な概念を初心者・ゲストを含む全ユーザーへ一律に提示すると、利用開始時の認知負荷が高くなる可能性があります。MVP 前から、将来の段階的機能開示を阻害しない設計余地を確保します。
+後続の Phase 1 Lv1 / Lv2 Issue は、このロードマップを正本として次の単位を検討します。
 
-```text
-Simple Experience
-├─ Dashboard
-├─ Projects
-├─ Guided Recipe
-└─ Recent Runs
-
-Standard / Advanced Experience
-├─ Prompt Library
-├─ Context Library
-├─ Detailed Recipe Builder
-├─ Trail
-└─ Advanced Settings
-```
-
-- Experience による表示制御と、Plan / Role による利用可否・管理権限を混同しない。
-- Phase 1 の Sidebar / Navigation 設計時に、将来の Progressive Disclosure を阻害しない構造を選ぶ。
-- Simple / Standard / Advanced の本格実装時期は、Phase 1〜3 での先行導入または Phase 5 での統合実装を今後の詳細設計で判断する。
-- Guest / Plus / Pro の本格的な契約・Entitlement 制御は Phase 5 を基本とする。
-- MVP 前に Identity / Authentication / Subscription 基盤を前倒しし、MVP 速度を落とすことは避ける。
-
-### Settings 拡張
-
-Phase 5 では Account / Plan / Administration 関連設定へ Settings を拡張します。Phase 1 のデータ保護設定、Phase 4 の GitHub Integration 設定とは責務を分けて段階的に育てます。
-
-### 完了条件
-
-- Persona / Experience、Identity / Authorization、Plan / Entitlement、Administration の責務境界が実装に反映される。
-- Guest / Plus / Pro と Admin / Member が同一 Role として扱われていない。
-- Experience による段階的開示と、Plan / Role による利用可否・管理権限が分離されている。
-- Admin Console、User management、Plan / feature management、Operational settings を扱える。
+- Public Alpha の最小 UX・画面構成。
+- Prompt 入力・保存・コピー。
+- Run 作成・Prompt Snapshot。
+- Link 登録・Trail 表示。
+- Run 複製・再利用。
+- サンプル Trail・オンボーディング、Feedback 導線、統合受入・公開。

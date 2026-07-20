@@ -374,166 +374,64 @@ Release v0.1.0
 
 ## 9. 実装ロードマップ
 
-詳細な実装順序とPhase 0のP0-1〜P0-6再同期は [Roadmap](roadmap.md) を正本とする。ここでは機能要件との対応を保つため、Phase 0〜5の要約を記載する。
+実装順序、Phase 0 の P0-1〜P0-6、Public Alpha の詳細は [Roadmap](roadmap.md) を正本とします。本書では機能要件との対応を保つため、Phase 0〜5 を要約します。MVP 到達点は **Phase 1: Validation Release の Public Alpha 完了時点**です。
 
-### Phase 0：AI Workbench基盤・PromptTrailの起動
+### Phase 0：Foundation
 
-**目的：** モノレポとアプリの技術基盤を作り、開発を継続できる状態にする。
+技術・品質・データ・基本導線・Hosted Preview 基盤を Public Alpha の Foundation として維持する。追加投資は Public Alpha を阻害する問題に限定し、P0-6 はアーキテクチャ、Local-first / IndexedDB 保存境界、Public Preview の利用方法、既知の制約、公開データの扱い、最小リリースチェックへ絞る。
 
-| 項目           | 内容                                                                                              |
-| -------------- | ------------------------------------------------------------------------------------------------- |
-| リポジトリ作成 | `ai-workbench` を新規作成する                                                                     |
-| Workspace構成  | pnpm Workspaceと`apps/prompt-trail`を作成する                                                     |
-| React基盤      | React + TypeScript + Viteで起動できるようにする                                                   |
-| 画面骨組み     | Dashboard、Prompt Library、Context Library、Recipe Builder、Run Detailの基本導線を置く            |
-| DB設計         | Project、Prompt、Context、Recipe、Run、Linkの型とIndexedDBスキーマを定義する                      |
-| 品質基盤       | ESLint、Prettier、Vitest、Playwright、GitHub Actionsを導入する                                    |
-| ドキュメント   | README、ADR、アーキテクチャ方針を整備し、P0-6でローカル開発手順と技術基盤図の整備対象を正式化する |
+### Phase 1：Validation Release
 
-**完了条件**
+PromptTrail の中核価値を検証する最小の縦切りを Public Alpha として公開する。
 
-- `pnpm install` と `pnpm dev` でPromptTrailを起動できる
-- `pnpm test` とE2Eテストを実行できる
-- IndexedDBの初期化とサンプルデータ表示ができる
-- リポジトリ構成と技術方針がREADMEに明記されている
+| 項目       | 内容                                                                              |
+| ---------- | --------------------------------------------------------------------------------- |
+| Project    | 最小選択または既定 Project を利用する                                             |
+| Prompt     | 入力、保存、表示、コピーを行う                                                    |
+| Run        | Prompt から作成し、実行時 Prompt をスナップショット保存する                       |
+| Link       | Chat、Issue、PR、Commit、Document の URL を手動登録し、最小の種別・役割を管理する |
+| Trail      | Run 内で AI 依頼から成果物までを確認する                                          |
+| Reuse      | 過去 Prompt のコピーまたは Run 複製で次の作業に使う                               |
+| Onboarding | サンプル Trail または初回利用ガイド、Feedback 導線を提供する                      |
 
----
+完了時には、新規利用者が Prompt と一つ以上の Link を含む最初の Run を作成し、Trail を確認して次の作業に再利用できる。Hosted 環境から主要操作を試せ、Local-first / IndexedDB の制約を利用者へ明示する。
 
-### Phase 1：Project・Prompt・Contextライブラリ
+### Phase 2：User Validation
 
-**目的：** 再利用する知識資産を登録・整理・検索できるようにする。
+初期利用者の利用観察とインタビューを行い、初回 Trail 作成、2 件目の Run、Prompt / Run の再利用、離脱・混乱箇所、既存のメモやブックマークとの比較を確認する。Library、Recipe、検索、GitHub 同期のどれへ投資するかを、定性フィードバックと最小限の利用指標から決定する。
 
-| 項目              | 内容                                                                      |
-| ----------------- | ------------------------------------------------------------------------- |
-| Project Workspace | 作成、編集、Current Project、切替、アーカイブ、左サイドバー型AppShell進化 |
-| Prompt管理        | 作成、編集、複製、タグ、状態管理、最小版管理                              |
-| Context管理       | 作成、分類、適用範囲、有効・無効管理                                      |
-| 検索              | Prompt・Contextを検索・絞り込み                                           |
-| データ保護        | ソフトデリート、JSON出力・復元、Settings最小骨格                          |
-| 初期サンプル      | Codex依頼、Issue作成、設計レビューの例を登録                              |
+### Phase 3：Evidence-driven Expansion
 
-**完了条件**
+Phase 2 の利用証拠に基づき、以下の候補を選択的に実装する。すべてを一括実装せず、小さな Release / Learn 単位へ分割する。
 
-- PromptとContextをProject別または共通資産として管理できる
-- Project WorkspaceとCurrent Projectにより作業対象を切り替えられる
-- キーワード・タグ・Projectで必要な資産を探せる
-- Promptの最小更新履歴を閲覧・復元できる
-- JSONバックアップと復元ができる
+- Project Workspace、Prompt / Context Library、Recipe Builder、変数検出と入力フォーム。
+- タグ、検索、絞り込み、Prompt 版管理。
+- JSON Export / Import / Backup / Restore、Settings 最小骨格。
+- Trail、Run 評価、改善メモ、再実行支援の強化。
 
----
+### Phase 4：Integration
 
-### Phase 2：Recipe Builder・Prompt生成
-
-**目的：** 依頼を安定した形式で組み立て、ChatGPTやCodexへ渡せるようにする。
-
-| 項目       | 内容                                             |
-| ---------- | ------------------------------------------------ |
-| Recipe管理 | 作成、編集、複製、保存                           |
-| 変数検出   | `{{variable}}` を自動検出して入力フォームを生成  |
-| 入力検証   | 必須項目や未解決変数を検出                       |
-| Prompt生成 | Prompt・Context・入力値から最終Promptを生成      |
-| 出力       | コピー、Markdown出力、Issue本文向け出力          |
-| 初期Recipe | Codex依頼、Bug Issue、設計レビュー、引き継ぎ資料 |
-
-**完了条件**
-
-- フォーム入力だけで最終Promptを生成できる
-- 生成したPromptをコピー・Markdown出力できる
-- 同じ作業パターンをRecipeとして再利用できる
-
----
-
-### Phase 3：Run履歴・Trail Link管理
-
-**目的：** AIへの依頼から実装成果までを、一本のTrailとして追跡できるようにする。
-
-| 項目             | 内容                                                   |
-| ---------------- | ------------------------------------------------------ |
-| Run作成          | RecipeからRunを作成する                                |
-| スナップショット | 実行時のPrompt、Context、入力値を固定保存する          |
-| Link登録         | Chat、Issue、PR、Commit、Documentなどを複数登録する    |
-| URL自動判別      | GitHub URLやChatURLをLink種別へ自動分類する            |
-| Link役割         | Source、Reference、Execution、Output、Resultを設定する |
-| Trail View       | Linkを時系列で確認できる                               |
-| Run評価          | 成果評価と改善メモを記録する                           |
-| 再実行           | 過去Runを複製して次の依頼を作る                        |
-
-**完了条件**
-
-- 1つのRunに複数のChat、Issue、PRを紐付けられる
-- 「このPromptがどのIssue・PRにつながったか」を辿れる
-- Chatの決定事項を要約付きで残せる
-- 過去の成功Runを複製して次の依頼に使える
-
-**MVP到達点：**
-Phase 3完了時点で、PromptTrailを日常のAI活用・GitHub運用に投入する。
-
----
-
-### Phase 4：GitHub Integration・AI Workbench拡張準備
-
-**目的：** GitHubとの接続を深め、成果追跡と将来の複数アプリ化に備える。
-
-| 項目           | 内容                                                 |
-| -------------- | ---------------------------------------------------- |
-| GitHub連携     | Issue、PR、Commitのタイトル・状態を取得する          |
-| Settings拡張   | GitHub Integration設定を扱う                         |
-| Link同期       | GitHub Linkの状態を手動または定期更新できる          |
-| Issue作成支援  | RecipeからGitHub Issueのタイトル・本文を生成する     |
-| PR状態表示     | Open / Merged / ClosedをRun画面に表示する            |
-| Link補完       | URLからIssue番号、PR番号、タイトルを補完する         |
-| Prompt改善支援 | Good評価のRunを候補としてPromptへ昇格しやすくする    |
-| 共通化評価     | 第2アプリの着手時に`packages/`切り出し要否を判断する |
-
-**完了条件**
-
-- GitHubのIssue・PRをRunへ効率よく接続できる
-- Runから実装の進捗・結果を確認できる
-- 共通パッケージを作るべき重複があるか評価できる
-
----
+GitHub API による Issue、PR、Commit の情報取得、Link の状態更新、URL からのメタデータ補完、Issue 本文生成支援、外部サービス Integration 設定を扱う。
 
 ### Phase 5：Productization & Administration
 
-**目的：** 個人向けローカルワークベンチから、複数の利用者像・契約・権限・習熟度に対応できるプロダクトへ拡張する。
+Persona / Experience、Identity / Authentication、Authorization Role、Plan / Entitlement、Admin Console、User management、Cloud Database、Cross-device synchronization、Operational settings を扱う。Experience による表示制御、Plan / Entitlement による利用可否、Authorization Role による管理権限は分離する。
 
-| 項目                     | 内容                                                                            |
-| ------------------------ | ------------------------------------------------------------------------------- |
-| Persona / Experience     | Simple / Standard / Advanced による段階的な体験設計                             |
-| Identity / Authorization | User / Account、Authentication、Admin、Member                                   |
-| Plan / Entitlement       | Guest / Plus / Pro、Feature Entitlement                                         |
-| Administration           | Admin Console、User management、Plan / feature management、Operational settings |
-| Settings拡張             | Account / Plan / Administration関連設定を扱う                                   |
+## 10. Public Alpha で見送る機能
 
-Guest / Plus / Pro と Admin / Member は同一Roleとして扱わない。Experienceによる表示制御、Plan / Entitlementによる利用可否、Authorization Roleによる管理権限を分離し、Progressive Disclosureを将来阻害しない設計方針を維持する。
+| 機能                                                              | 扱い                           |
+| ----------------------------------------------------------------- | ------------------------------ |
+| Context Library の完成、Prompt 更新履歴、高度な検索               | Phase 3 の利用証拠に基づく候補 |
+| Recipe の変数自動検出・入力フォーム                               | Phase 3 の利用証拠に基づく候補 |
+| JSON Backup / Restore、Settings 画面の完成                        | Phase 3 の利用証拠に基づく候補 |
+| GitHub API 連携、Link 自動同期                                    | Phase 4                        |
+| Authentication / Authorization、Plan / Entitlement、Admin Console | Phase 5                        |
+| Cloud Sync / Cross-device synchronization                         | Phase 5                        |
 
----
+## 11. Local-first / IndexedDB の制約
 
-## 10. MVPで見送る機能
+PromptTrail は Local-first で、IndexedDB に browser origin ごとにデータを保存する。localhost、GitHub Pages、Azure Static Web Apps のデータは共有されず、PC とスマートフォンの間でも同期しない。browser の変更や storage の削除によりデータを失う可能性があるため、Public Alpha は Cloud Sync 環境ではないことを利用者へ明示する。
 
-| 機能                     | 理由                                 |
-| ------------------------ | ------------------------------------ |
-| ChatGPT・Codexの直接実行 | 認証、会話ログ、監査、課金管理が重い |
-| GitHub Issueの自動作成   | Phase 4までは出力・コピーで十分      |
-| GitHubトークンの保存     | セキュリティ設計を固めてから扱う     |
-| 複数人の共同編集         | 個人利用・小規模利用では優先度が低い |
-| RAGによるContext自動検索 | データ資産が十分に増えてから導入する |
-| クラウド同期             | まずローカルファーストで価値検証する |
-| 共通UIパッケージ         | 第2アプリが生まれてから検討する      |
+## 12. 結論
 
----
-
-## 11. 結論
-
-AI Workbenchは、AIを使った仕事の道具を育てるための母艦である。
-
-PromptTrailはその最初のアプリとして、以下を実現する。
-
-1. PromptとContextを再利用可能な資産として管理する
-2. Recipeで依頼パターンを標準化する
-3. Runで実際に使った依頼を証跡化する
-4. Chat、Issue、PR、成果物をLinkでつなぐ
-5. 成果を踏まえてPromptとContextを改善する
-
-最初の実装目標はPhase 3までとする。
-この段階で、ChatGPTによる構想整理、GitHub Issue化、Codexへの開発依頼、PR確認という流れを、PromptTrail上で一つのTrailとして管理できる。
+PromptTrail は、AI への依頼、Chat、Issue、PR、成果物を Link でつなぎ、次の作業へ再利用する Trail を残すプロダクトである。最初の公開目標は Phase 1 の Public Alpha とし、Phase 2 の利用観察を通じて以後の開発優先順位を決定する。
