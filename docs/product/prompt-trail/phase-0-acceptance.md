@@ -131,16 +131,16 @@ GitHub Pages は `codex-5b9cai` / `6c520a8…` を対象とする manual dispatc
 
 ### 3.1 判断対象と証拠 SHA
 
-| 項目                     | 記録                                                                                                                                                        |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Application Baseline SHA | `2d7067cdd06ae21773ade109b10421dff488e8cb`（P0-6-3-1 から継続するアプリ実装の基準）                                                                         |
-| P0-6-3-1 Merge SHA       | `6b343457d12b76c39d1df7554153c4fd851247ed`（PR #150 merge commit）                                                                                          |
-| P0-6-3-2 Merge SHA       | `c9a49c345c73c1bd5fa3670f1b24212ba411a3b3`（PR #152 merge commit）                                                                                          |
-| Go Decision Main SHA     | `2c6da196b2e155fce66012aad257d7a073897b76`（2026-07-21 UTC の作業開始時 HEAD）                                                                              |
-| PR #152 以降の影響確認   | `2f03cff` と `2c6da19` は docs / 作業用ファイルのみで、Application、test、workflow、dependency、build 設定への差分はない。Application Baseline を維持する。 |
-| Decision Evidence SHA    | 本章を含む PR の review 対象 head SHA。PR 作成後に GitHub の commit SHA を記録して確認する。                                                                |
-| Final PR Head SHA        | main マージ前の最終 PR head SHA。Decision Evidence SHA と区別して PR で確認する。                                                                           |
-| Decision PR CI           | 最終 PR head に対する `PromptTrail CI / Quality and build`。本書作成時点では未実行のため、結果を推測しない。                                                |
+| 項目                     | 記録                                                                                                                                                                                                                     |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Application Baseline SHA | `2d7067cdd06ae21773ade109b10421dff488e8cb`（P0-6-3-1 から継続するアプリ実装の基準）                                                                                                                                      |
+| P0-6-3-1 Merge SHA       | `6b343457d12b76c39d1df7554153c4fd851247ed`（PR #150 merge commit）                                                                                                                                                       |
+| P0-6-3-2 Merge SHA       | `c9a49c345c73c1bd5fa3670f1b24212ba411a3b3`（PR #152 merge commit）                                                                                                                                                       |
+| Go Decision Main SHA     | `2c6da196b2e155fce66012aad257d7a073897b76`（2026-07-21 UTC の作業開始時 HEAD）                                                                                                                                           |
+| PR #152 以降の影響確認   | `2f03cff` と `2c6da19` は docs / 作業用ファイルのみで、Application、test、workflow、dependency、build 設定への差分はない。Application Baseline を維持する。                                                              |
+| Decision Evidence SHA    | `87a8ec4e80444501d0ba12a7649a26543d8cad6e`（PR #157 の review 対象 head SHA）                                                                                                                                            |
+| Final PR Head SHA        | 文書内では固定しない。main マージ前の最終値は PR 本文に記録し、Decision Evidence SHA と区別する。                                                                                                                        |
+| Decision PR CI           | [PromptTrail CI run #183](https://github.com/yuyuyu0706/ai-workbench/actions/runs/29838170183) は review 対象 head `87a8ec4…` で success。Install / Lint / Format / Unit / Playwright / E2E / Build の全工程が success。 |
 
 ### 3.2 Phase 0 完了判定
 
@@ -150,18 +150,18 @@ GitHub Pages は `codex-5b9cai` / `6c520a8…` を対象とする manual dispatc
 
 ### 3.3 C 系列判断マトリクス
 
-| ID   | 判断項目                       | 主な証拠                                     | 結果           | 判断                                                                                                |
-| ---- | ------------------------------ | -------------------------------------------- | -------------- | --------------------------------------------------------------------------------------------------- |
-| C-01 | 再現性・Local Quality          | A-01〜A-10、PR #150 CI                       | PASS           | frozen install、Lint、Format、Unit、Local E2E、Build、preview の証拠がある。                        |
-| C-02 | PR CI                          | PR #150 / #152 の CI、Decision PR CI         | NOT APPLICABLE | PR #150 / #152 は success。今回の最終 head CI は PR 作成後に実行するため、本時点で PASS としない。  |
-| C-03 | Local Browser / データ / Route | B-01〜B-14、B-17 Local                       | PASS           | Fresh DB、Seed 契約、Dashboard、Route / reload、Desktop / Mobile、Local IndexedDB を確認済み。      |
-| C-04 | Blocking Defect                | #148 / #151 の不具合分類、最新 main 差分確認 | PASS           | Phase 1 Golden Path を成立不能にする既知の不具合はない。                                            |
-| C-05 | GitHub Pages Hosted 受入       | B-15                                         | NOT APPLICABLE | 対象 SHA の deployment / Environment URL と実ブラウザ smoke が未確認。再受入条件は 3.7 に記録する。 |
-| C-06 | Azure SWA Hosted Browser 受入  | B-16                                         | NOT APPLICABLE | deploy job success はあるが Environment URL と実ブラウザ smoke が未確認。                           |
-| C-07 | Hosted IndexedDB / origin 分離 | B-17 Hosted                                  | NOT APPLICABLE | `localhost`、`github.io`、`azurestaticapps.net` の実測比較を未実施。                                |
-| C-08 | Phase 1 開発開始条件           | Foundation、Roadmap、#149、#153              | PASS           | 3.6 の全開始条件を満たす。                                                                          |
-| C-09 | Public Alpha 公開条件          | Hosted Golden Path、制約表示                 | NOT APPLICABLE | Release Gate は未完了であり、公開可否を PASS としない。                                             |
-| C-10 | Phase 0 最終判断               | C-01〜C-09                                   | CONDITIONAL GO | Local Foundation は GO、Hosted 公開受入を Public Alpha Release Gate として残す。                    |
+| ID   | 判断項目                       | 主な証拠                                     | 結果           | 判断                                                                                                                                                                                                                                     |
+| ---- | ------------------------------ | -------------------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C-01 | 再現性・Local Quality          | A-01〜A-10、PR #150 CI                       | PASS           | frozen install、Lint、Format、Unit、Local E2E、Build、preview の証拠がある。                                                                                                                                                             |
+| C-02 | PR CI                          | PR #150 / #152 / #157 の CI                  | PASS           | PR #150 run #175、PR #152 run #178、PR #157 [run #183](https://github.com/yuyuyu0706/ai-workbench/actions/runs/29838170183) は success。#183 は Install / Lint / Format / Unit / Playwright / E2E / Build の全工程が success。           |
+| C-03 | Local Browser / データ / Route | B-01〜B-14、B-17 Local                       | PASS           | Fresh DB、Seed 契約、Dashboard、Route / reload、Desktop / Mobile、Local IndexedDB を確認済み。                                                                                                                                           |
+| C-04 | Blocking Defect                | #148 / #151 の不具合分類、最新 main 差分確認 | PASS           | Phase 1 Golden Path を成立不能にする既知の不具合はない。                                                                                                                                                                                 |
+| C-05 | GitHub Pages Hosted 受入       | B-15、Development Preview run #47            | NOT APPLICABLE | [run #47](https://github.com/yuyuyu0706/ai-workbench/actions/runs/29838167707) は deployment SHA `87a8ec4…` で success、Environment URL は `https://yuyuyu0706.github.io/ai-workbench/`。実ブラウザ smoke は未実施のため PASS としない。 |
+| C-06 | Azure SWA Hosted Browser 受入  | B-16                                         | NOT APPLICABLE | deploy job success はあるが Environment URL と実ブラウザ smoke が未確認。                                                                                                                                                                |
+| C-07 | Hosted IndexedDB / origin 分離 | B-17 Hosted                                  | NOT APPLICABLE | `localhost`、`github.io`、`azurestaticapps.net` の実測比較を未実施。                                                                                                                                                                     |
+| C-08 | Phase 1 開発開始条件           | Foundation、Roadmap、#149、#153              | PASS           | 3.6 の全開始条件を満たす。                                                                                                                                                                                                               |
+| C-09 | Public Alpha 公開条件          | Hosted Golden Path、制約表示                 | NOT APPLICABLE | Release Gate は未完了であり、公開可否を PASS としない。                                                                                                                                                                                  |
+| C-10 | Phase 0 最終判断               | C-01〜C-09                                   | CONDITIONAL GO | Local Foundation は GO、Hosted 公開受入を Public Alpha Release Gate として残す。                                                                                                                                                         |
 
 ### 3.4 残課題分類
 
