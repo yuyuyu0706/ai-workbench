@@ -23,6 +23,12 @@ PromptTrail は pnpm Workspace 内の React / TypeScript / Vite SPA です。bro
 
 通常起動時に Fresh DB へ自動 Seed はしません。Sample Seed は通常起動と独立した明示経路です。Phase 0 の実装済み範囲と、Phase 1 以降の目標要件は区別して確認します。
 
+## Phase 0 判断と Phase 1 移行
+
+Phase 0 Foundation の最終判断は **CONDITIONAL GO** です。Local Foundation に Blocking Defect はなく、Phase 1 の開発を開始します。Hosted origin の実ブラウザ受入は未確認のため、Public Alpha の公開は Release Gate 完了を条件とします。判断の証拠、残課題分類、開始条件、Release Gate は [Phase 0 Acceptance](../../product/prompt-trail/phase-0-acceptance.md) を正本とします。
+
+Phase 1 の目的と進捗は [Roadmap](../../product/prompt-trail/roadmap.md)、[Issue #149](https://github.com/yuyuyu0706/ai-workbench/issues/149)、最初の縦切りは [Issue #153](https://github.com/yuyuyu0706/ai-workbench/issues/153) を参照します。Hosted 未確認事項は Public Alpha Release Gate として維持し、設計・受入結果の詳細は本ベースラインへ複製しません。
+
 ## 正本責務マップ
 
 | 知りたいこと                      | 正本                                                                                  |
