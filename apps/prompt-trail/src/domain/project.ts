@@ -1,4 +1,7 @@
-import type { ArchivableEntity, BaseEntity } from './common';
+import type { ArchivableEntity, BaseEntity, ProjectId } from './common';
+
+/** Stable Project ownership boundary used by the Public Alpha Direct Run flow. */
+export const DEFAULT_PROJECT_ID = 'prompt-trail-default-project' as ProjectId;
 
 /**
  * Work unit that groups Prompt Trail assets and their outcomes.
