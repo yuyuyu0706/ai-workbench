@@ -89,6 +89,7 @@ export class PromptTrailRepository {
       'rw',
       [this.database.projects, this.database.prompts, this.database.runs],
       async () => {
+        this.ensureDirectRunBundleRelationships(directRunBundle);
         const existingProject = await this.database.projects.get(project.id);
 
         if (existingProject === undefined) {
@@ -394,6 +395,33 @@ export class PromptTrailRepository {
       throw new PromptTrailRepositoryError(
         'duplicate-id',
         'Direct Run bundle contains an ID that already exists',
+      );
+    }
+  }
+
+  private ensureDirectRunBundleRelationships(
+    directRunBundle: DirectRunBundle,
+  ): void {
+    const { project, prompt, run } = directRunBundle;
+
+    if (prompt.scope !== 'project' || prompt.projectId !== project.id) {
+      throw new PromptTrailRepositoryError(
+        'project-mismatch',
+        'Direct Run Prompt must belong to the bundle Project',
+      );
+    }
+
+    if (run.projectId !== project.id) {
+      throw new PromptTrailRepositoryError(
+        'project-mismatch',
+        'Direct Run must belong to the bundle Project',
+      );
+    }
+
+    if (run.promptSnapshot.promptId !== prompt.id) {
+      throw new PromptTrailRepositoryError(
+        'snapshot-mismatch',
+        'Direct Run Prompt Snapshot must reference the bundle Prompt',
       );
     }
   }

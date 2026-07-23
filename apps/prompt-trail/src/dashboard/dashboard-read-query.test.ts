@@ -4,11 +4,13 @@ import type {
   Link,
   Project,
   ProjectId,
+  Prompt,
   Recipe,
   Run,
   RunId,
   UtcDateTimeString,
 } from '../domain';
+import { createDefaultProject, DEFAULT_PROJECT_ID } from '../domain';
 import { sampleDataset, seedSampleData } from '../sample-data';
 import { createDatabaseTestScope } from '../test/database-test-utils';
 import { PromptTrailRepository } from '../repository';
@@ -50,6 +52,66 @@ function cloneSampleLink(overrides: Partial<Link> = {}): Link {
 }
 
 describe('loadDashboardReadModel', () => {
+  it('loads Direct and Recipe Runs in updated order without resolving a Recipe for Direct Run', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    await repository.insertTrailBundle({
+      project: cloneSampleProject(),
+      prompt: { ...sampleDataset.prompt },
+      context: { ...sampleDataset.context },
+      recipe: cloneSampleRecipe(),
+      run: cloneSampleRun(),
+      links: [],
+    });
+    const directPrompt: Prompt = {
+      id: 'dashboard-direct-prompt' as Prompt['id'],
+      createdAt: utc('2026-07-13T00:00:00.000Z'),
+      updatedAt: utc('2026-07-13T00:00:00.000Z'),
+      deletedAt: null,
+      scope: 'project',
+      projectId: DEFAULT_PROJECT_ID,
+      title: 'Direct dashboard prompt',
+      body: 'Direct body',
+      kind: 'codex-request',
+      status: 'active',
+      tags: [],
+    };
+    const directRun: Run & { recipeId: null } = {
+      id: 'dashboard-direct-run' as RunId,
+      createdAt: utc('2026-07-13T00:00:00.000Z'),
+      updatedAt: utc('2026-07-13T01:00:00.000Z'),
+      deletedAt: null,
+      archivedAt: null,
+      projectId: DEFAULT_PROJECT_ID,
+      recipeId: null,
+      promptSnapshot: {
+        promptId: directPrompt.id,
+        title: directPrompt.title,
+        body: directPrompt.body,
+      },
+      contextSnapshots: [],
+      inputValues: {},
+      finalPrompt: directPrompt.body,
+      status: 'prepared',
+      evaluation: null,
+      improvementNote: null,
+    };
+    await repository.createDirectRunBundle({
+      project: createDefaultProject(utc('2026-07-13T00:00:00.000Z')),
+      prompt: directPrompt,
+      run: directRun,
+    });
+
+    const model = await loadDashboardReadModel(repository, {
+      recentRunLimit: 2,
+    });
+    expect(model.recentRuns.map(({ run }) => run.id)).toEqual([
+      directRun.id,
+      sampleDataset.run.id,
+    ]);
+    expect(model.recentRuns[0]).toMatchObject({ run: directRun, recipe: null });
+  });
+
   it('loads the canonical sample dataset through repository read contracts', async () => {
     const database = databaseScope.createDatabase();
     const repository = new PromptTrailRepository(database);

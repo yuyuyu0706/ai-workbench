@@ -171,6 +171,33 @@ describe('DashboardPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('renders a Direct Run Snapshot title without Recipe metadata', async () => {
+    const directRun = createRun({
+      id: 'direct-dashboard-run' as Run['id'],
+      recipeId: null,
+      promptSnapshot: {
+        promptId:
+          'direct-dashboard-prompt' as Run['promptSnapshot']['promptId'],
+        title: 'Direct Run Prompt',
+        body: 'Direct body',
+      },
+      contextSnapshots: [],
+      inputValues: {},
+      finalPrompt: 'Direct body',
+    });
+
+    renderDashboardPage(createResolvedDataRepository({ runs: [directRun] }));
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 3,
+        name: 'Direct Run Prompt',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Recipe')).toBeNull();
+    expect(screen.queryByText(/Recipe:/)).toBeNull();
+  });
+
   it('does not overwrite the active repository result with a stale repository result', async () => {
     let resolveRepositoryAProjects: (
       projects: readonly Project[],
