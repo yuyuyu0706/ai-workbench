@@ -28,6 +28,13 @@ export type TrailBundle = {
   readonly links: readonly Link[];
 };
 
+/** Atomic creation payload for a Recipe-free Run from one project Prompt. */
+export type DirectRunBundle = {
+  readonly project: Project;
+  readonly prompt: Prompt;
+  readonly run: Run & { readonly recipeId: null };
+};
+
 export class PromptTrailRepository {
   private readonly database: PromptTrailDatabase;
 
@@ -71,6 +78,35 @@ export class PromptTrailRepository {
     );
 
     return trailBundle;
+  }
+
+  async createDirectRunBundle(
+    directRunBundle: DirectRunBundle,
+  ): Promise<DirectRunBundle> {
+    let project = directRunBundle.project;
+
+    await this.database.transaction(
+      'rw',
+      [this.database.projects, this.database.prompts, this.database.runs],
+      async () => {
+        this.ensureDirectRunBundleRelationships(directRunBundle);
+        const existingProject = await this.database.projects.get(project.id);
+
+        if (existingProject === undefined) {
+          await this.database.projects.add(project);
+        } else {
+          this.ensureProjectAvailable(existingProject);
+          project = existingProject;
+        }
+
+        await this.ensureDirectRunIdsAbsent(directRunBundle);
+        await this.database.prompts.add(directRunBundle.prompt);
+        await this.ensureDirectRunReferencesAvailable(directRunBundle.run);
+        await this.database.runs.add(directRunBundle.run);
+      },
+    );
+
+    return { ...directRunBundle, project };
   }
 
   async saveProject(project: Project): Promise<Project> {
@@ -254,6 +290,7 @@ export class PromptTrailRepository {
     await this.database.transaction(
       'rw',
       this.database.projects,
+      this.database.prompts,
       this.database.recipes,
       this.database.runs,
       async () => {
@@ -346,7 +383,57 @@ export class PromptTrailRepository {
     }
   }
 
+  private async ensureDirectRunIdsAbsent(
+    directRunBundle: DirectRunBundle,
+  ): Promise<void> {
+    const [prompt, run] = await Promise.all([
+      this.database.prompts.get(directRunBundle.prompt.id),
+      this.database.runs.get(directRunBundle.run.id),
+    ]);
+
+    if (prompt !== undefined || run !== undefined) {
+      throw new PromptTrailRepositoryError(
+        'duplicate-id',
+        'Direct Run bundle contains an ID that already exists',
+      );
+    }
+  }
+
+  private ensureDirectRunBundleRelationships(
+    directRunBundle: DirectRunBundle,
+  ): void {
+    const { project, prompt, run } = directRunBundle;
+
+    if (prompt.scope !== 'project' || prompt.projectId !== project.id) {
+      throw new PromptTrailRepositoryError(
+        'project-mismatch',
+        'Direct Run Prompt must belong to the bundle Project',
+      );
+    }
+
+    if (run.projectId !== project.id) {
+      throw new PromptTrailRepositoryError(
+        'project-mismatch',
+        'Direct Run must belong to the bundle Project',
+      );
+    }
+
+    if (run.promptSnapshot.promptId !== prompt.id) {
+      throw new PromptTrailRepositoryError(
+        'snapshot-mismatch',
+        'Direct Run Prompt Snapshot must reference the bundle Prompt',
+      );
+    }
+  }
+
   private async ensureRunReferencesAvailable(run: Run): Promise<void> {
+    if (run.recipeId === null) {
+      await this.ensureDirectRunReferencesAvailable(
+        run as Run & { readonly recipeId: null },
+      );
+      return;
+    }
+
     const project = await this.database.projects.get(run.projectId);
 
     if (project === undefined) {
@@ -407,6 +494,66 @@ export class PromptTrailRepository {
           `Run context snapshots do not match recipe order: ${run.id}`,
         );
       }
+    }
+  }
+
+  private async ensureDirectRunReferencesAvailable(
+    run: Run & { readonly recipeId: null },
+  ): Promise<void> {
+    const project = await this.database.projects.get(run.projectId);
+
+    if (project === undefined) {
+      throw new PromptTrailRepositoryError(
+        'reference-not-found',
+        `Project not found: ${run.projectId}`,
+      );
+    }
+
+    this.ensureProjectAvailable(project);
+
+    const prompt = await this.database.prompts.get(run.promptSnapshot.promptId);
+
+    if (prompt === undefined) {
+      throw new PromptTrailRepositoryError(
+        'reference-not-found',
+        `Prompt not found: ${run.promptSnapshot.promptId}`,
+      );
+    }
+
+    if (prompt.deletedAt !== null || prompt.status !== 'active') {
+      throw new PromptTrailRepositoryError(
+        'reference-unavailable',
+        `Prompt is unavailable: ${run.promptSnapshot.promptId}`,
+      );
+    }
+
+    if (prompt.scope !== 'project' || prompt.projectId !== run.projectId) {
+      throw new PromptTrailRepositoryError(
+        'project-mismatch',
+        `Direct Run Prompt belongs to another project: ${run.id}`,
+      );
+    }
+
+    if (
+      run.promptSnapshot.title !== prompt.title ||
+      run.promptSnapshot.body !== prompt.body ||
+      run.contextSnapshots.length !== 0 ||
+      Object.keys(run.inputValues).length !== 0 ||
+      run.finalPrompt !== prompt.body
+    ) {
+      throw new PromptTrailRepositoryError(
+        'snapshot-mismatch',
+        `Direct Run invariants do not match Prompt: ${run.id}`,
+      );
+    }
+  }
+
+  private ensureProjectAvailable(project: Project): void {
+    if (project.deletedAt !== null || project.archivedAt !== null) {
+      throw new PromptTrailRepositoryError(
+        'reference-unavailable',
+        `Project is unavailable: ${project.id}`,
+      );
     }
   }
 

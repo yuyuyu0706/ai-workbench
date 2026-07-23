@@ -18,6 +18,7 @@ export type {
 export { PROMPT_TRAIL_ENTITY_KINDS } from './common';
 
 export type { Project } from './project';
+export { createDefaultProject, DEFAULT_PROJECT_ID } from './project';
 
 export type { Prompt, PromptKind, PromptStatus } from './prompt';
 export { PROMPT_KINDS, PROMPT_STATUSES } from './prompt';

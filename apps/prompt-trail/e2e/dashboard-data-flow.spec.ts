@@ -8,9 +8,9 @@ function getGlobalNavigation(page: Page) {
 }
 
 function getCanonicalRecentRunCard(page: Page): Locator {
-  return page
-    .locator('article')
-    .filter({ has: page.getByRole('heading', { name: 'Codex開発依頼' }) });
+  return page.locator('article').filter({
+    has: page.getByRole('heading', { name: 'GitHub Issue作成依頼' }),
+  });
 }
 
 async function expectCanonicalSeededDashboard(

@@ -92,7 +92,7 @@ describe('DashboardPage', () => {
     expect(
       screen.getByRole('heading', {
         level: 3,
-        name: sampleDataset.recipe.title,
+        name: sampleDataset.run.promptSnapshot.title,
       }),
     ).toBeInTheDocument();
     expect(screen.getByText(sampleDataset.project.name)).toBeInTheDocument();
@@ -131,11 +131,11 @@ describe('DashboardPage', () => {
       updatedAt: '2026-07-12T00:00:00.000Z' as Run['updatedAt'],
     });
     const firstRecipe = createRecipe({
-      id: firstRun.recipeId,
+      id: 'recipe-newer' as Recipe['id'],
       title: '先に表示されるRecipe',
     });
     const secondRecipe = createRecipe({
-      id: secondRun.recipeId,
+      id: 'recipe-older' as Recipe['id'],
       title: '後に表示されるRecipe',
     });
     const fallbackTitleLink = createLink({
@@ -158,8 +158,8 @@ describe('DashboardPage', () => {
 
     const runHeadings = await screen.findAllByRole('heading', { level: 3 });
     expect(runHeadings.map((heading) => heading.textContent)).toEqual([
-      firstRecipe.title,
-      secondRecipe.title,
+      firstRun.promptSnapshot.title,
+      secondRun.promptSnapshot.title,
     ]);
     expect(screen.queryByText('未評価')).toBeNull();
     expect(screen.queryByText('なし')).toBeNull();
@@ -169,6 +169,33 @@ describe('DashboardPage', () => {
     expect(
       screen.getByText(`Recipe: ${firstRecipe.title}`),
     ).toBeInTheDocument();
+  });
+
+  it('renders a Direct Run Snapshot title without Recipe metadata', async () => {
+    const directRun = createRun({
+      id: 'direct-dashboard-run' as Run['id'],
+      recipeId: null,
+      promptSnapshot: {
+        promptId:
+          'direct-dashboard-prompt' as Run['promptSnapshot']['promptId'],
+        title: 'Direct Run Prompt',
+        body: 'Direct body',
+      },
+      contextSnapshots: [],
+      inputValues: {},
+      finalPrompt: 'Direct body',
+    });
+
+    renderDashboardPage(createResolvedDataRepository({ runs: [directRun] }));
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 3,
+        name: 'Direct Run Prompt',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Recipe')).toBeNull();
+    expect(screen.queryByText(/Recipe:/)).toBeNull();
   });
 
   it('does not overwrite the active repository result with a stale repository result', async () => {

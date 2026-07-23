@@ -41,14 +41,15 @@ export interface ContextSnapshot {
 }
 
 /**
- * Execution evidence created from a Recipe.
+ * Execution evidence created from a Recipe or directly from a Prompt.
  *
  * Run stores immutable snapshots and the final composed prompt so past work can
  * be reproduced even after the source Prompt or Context assets change.
  */
 export interface Run extends BaseEntity<'run'>, ArchivableEntity {
   readonly projectId: ProjectId;
-  readonly recipeId: RecipeId;
+  /** null identifies a Direct Run created from a project-scoped Prompt. */
+  readonly recipeId: RecipeId | null;
   readonly promptSnapshot: PromptSnapshot;
   /** Context snapshots preserve the same order selected by the source Recipe. */
   readonly contextSnapshots: readonly ContextSnapshot[];

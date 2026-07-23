@@ -89,7 +89,9 @@ function DashboardRecentRunCard({
   return (
     <article className="pt-dashboard-run-card">
       <div className="pt-dashboard-run-card__header">
-        <h3 className="pt-dashboard-run-card__title">{recipe.title}</h3>
+        <h3 className="pt-dashboard-run-card__title">
+          {run.promptSnapshot.title}
+        </h3>
         <RouterLink
           className="pt-button pt-button--secondary"
           to={buildRunDetailPath(run.id)}
@@ -102,6 +104,12 @@ function DashboardRecentRunCard({
           <dt className="pt-dashboard-label">Project</dt>
           <dd className="pt-dashboard-value">{project.name}</dd>
         </div>
+        {recipe === null ? null : (
+          <div>
+            <dt className="pt-dashboard-label">Recipe</dt>
+            <dd className="pt-dashboard-value">{recipe.title}</dd>
+          </div>
+        )}
         <div>
           <dt className="pt-dashboard-label">Status</dt>
           <dd className="pt-dashboard-value">{run.status}</dd>
@@ -146,7 +154,7 @@ function RelatedLinks({ recentRun }: { recentRun: DashboardRecentRun }) {
               <p className="pt-dashboard-related-link__meta">
                 <span>Type: {link.type}</span>
                 <span>Role: {link.role}</span>
-                <span>Recipe: {recipe.title}</span>
+                {recipe === null ? null : <span>Recipe: {recipe.title}</span>}
               </p>
             </li>
           ))}
