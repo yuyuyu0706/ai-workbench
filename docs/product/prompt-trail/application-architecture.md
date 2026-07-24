@@ -177,3 +177,7 @@ Prompt / Context / Recipe など、Dashboard 以外で未接続の Page は、Ph
 - Sample Seed の通常起動における位置づけが変わるとき。
 - UI から DB / Repository へのアクセス境界が変わるとき。
 - Phase 0 で新たな Page が Repository 接続されるとき。
+
+## Direct Trail creation and detail reads
+
+`trail-creation/create-direct-trail.ts` owns Direct Run entity construction and calls `PromptTrailRepository.createDirectRunBundle()` once. `run-detail/run-detail-read-query.ts` composes Run, Project, optional Recipe, and active Links through the repository boundary. Pages handle loading, failure, not-found, and submitting presentation without accessing Dexie directly.

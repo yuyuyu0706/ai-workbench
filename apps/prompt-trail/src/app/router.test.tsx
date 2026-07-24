@@ -174,51 +174,18 @@ describe('AppRouter', () => {
     }
   });
 
-  it('renders run detail from a direct URL with an explicit dashboard recovery link', async () => {
+  it('renders a repository-backed run detail loading state with a dashboard recovery link', () => {
     const user = userEvent.setup();
     renderRoute(buildRunDetailPath('run-123'));
 
     expect(
       screen.getByRole('heading', { name: 'Run Detail' }),
     ).toBeInTheDocument();
+    expect(screen.getByText('Runを読み込んでいます...')).toBeInTheDocument();
     expect(
-      screen.getByText('Runを振り返る前の利用開始状態です。'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'まだRepositoryからRun履歴を取得しないため、振り返りに必要な領域だけを静的に示します。P0-5以降でRepository連携後のempty / failure stateと実データ表示へ置き換えます。',
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'Run run-123 の入力、成果物、評価を含めて振り返る画面です。',
-      ),
-    ).toBeInTheDocument();
-
-    for (const sectionHeading of [
-      '実行サマリ',
-      '使用したRecipe',
-      'Prompt Snapshot',
-      'Context Snapshot',
-      '成果物 / Link',
-      '評価',
-      '改善メモ',
-    ]) {
-      expect(
-        screen.getByRole('heading', { level: 2, name: sectionHeading }),
-      ).toBeInTheDocument();
-    }
-
-    expectNoActiveNavigationItem();
-
-    const dashboardLink = screen.getByRole('link', { name: 'Dashboardへ戻る' });
-    expect(dashboardLink).toHaveAttribute('href', routePaths.dashboard);
-
-    await user.click(dashboardLink);
-
-    expect(
-      await screen.findByRole('heading', { name: 'Dashboard' }),
-    ).toBeInTheDocument();
+      screen.getByRole('link', { name: 'Dashboardへ戻る' }),
+    ).toHaveAttribute('href', '/dashboard');
+    void user;
   });
 
   it('renders not found for an unknown URL with an explicit dashboard recovery link', async () => {

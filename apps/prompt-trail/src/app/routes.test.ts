@@ -15,6 +15,7 @@ describe('route contract', () => {
       [routeIds.promptLibrary]: '/prompts',
       [routeIds.contextLibrary]: '/contexts',
       [routeIds.recipeBuilder]: '/recipes/builder',
+      [routeIds.newTrail]: '/runs/new',
       [routeIds.runDetail]: '/runs/:runId',
       [routeIds.notFound]: '*',
     });
@@ -43,6 +44,7 @@ describe('route contract', () => {
         path: routePaths.recipeBuilder,
         label: 'Recipe Builder',
       },
+      { id: routeIds.newTrail, path: routePaths.newTrail, label: 'New Trail' },
       {
         id: routeIds.runDetail,
         path: routePaths.runDetail,
