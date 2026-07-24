@@ -70,6 +70,18 @@ Mount が返す handle の `dispose()` は、React root を unmount した後に
 | Repository             | 永続化契約、ドメイン操作                                                 | 画面状態、UI 表示               |
 | DB                     | Dexie schema、IndexedDB 接続                                             | UI 判断、Page 固有の Read Model |
 
+## 4. P1-1-1-2 Page データフロー
+
+```mermaid
+flowchart LR
+  NewTrailPage --> TrailCreationService --> Repository
+  RunDetailPage --> RunDetailDataState --> RunDetailQuery --> Repository
+  DashboardPage --> DashboardDataState --> DashboardQuery --> Repository
+  Repository --> Dexie
+```
+
+`NewTrailPage` は Trail Creation Service を通じて Direct Run bundle を atomic 保存します。`RunDetailPage` は Data State と Query を介して実データを読み取り、Link 保存も Repository 境界で行います。
+
 ## 4. Dashboard の実データフロー
 
 Dashboard は、Repository 接続済みの実データ画面です。`DashboardPage` は Provider から Repository を取得し、画面表示時に `loadDashboardDataState()` を呼び出します。
