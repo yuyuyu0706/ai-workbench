@@ -141,14 +141,15 @@ Canonical Sample Dataset
 
 `AppShell` は header、Global Navigation、main 領域を提供します。`AppRouter` は `/` を `/dashboard` へ redirect し、各 route を Page へ接続します。Global Navigation は Dashboard、Prompt Library、Context Library、Recipe Builder の常設 route のみを表示します。Run Detail は contextual route、Not Found は recovery route であり、いずれも常設 Navigation の active 項目にはなりません。Not Found は Dashboard への復帰導線を提供します。
 
-| 画面 / Route                        | 現行状態                    | 責務                                                       |
-| ----------------------------------- | --------------------------- | ---------------------------------------------------------- |
-| Dashboard (`/dashboard`)            | Repository 接続済み         | loading / empty / failure / data を実データとして表示する  |
-| Prompt Library (`/prompts`)         | 静的 start state            | Prompt 管理の画面入口を示す。Repository 読み取りは未接続   |
-| Context Library (`/contexts`)       | 静的 start state            | Context 管理の画面入口を示す。Repository 読み取りは未接続  |
-| Recipe Builder (`/recipes/builder`) | 静的 start state            | Recipe 構築の画面入口を示す。Repository 読み取りは未接続   |
-| Run Detail (`/runs/:runId`)         | 静的骨格の contextual route | Run ID を受け取り、振り返り領域と Dashboard 復帰導線を示す |
-| Not Found (`*`)                     | recovery route              | 未知 URL を示し、Dashboard へ復帰させる                    |
+| 画面 / Route                        | 現行状態                             | 責務                                                        |
+| ----------------------------------- | ------------------------------------ | ----------------------------------------------------------- |
+| Dashboard (`/dashboard`)            | Repository 接続済み                  | loading / empty / failure / data を実データとして表示する   |
+| Prompt Library (`/prompts`)         | 静的 start state                     | Prompt 管理の画面入口を示す。Repository 読み取りは未接続    |
+| Context Library (`/contexts`)       | 静的 start state                     | Context 管理の画面入口を示す。Repository 読み取りは未接続   |
+| Recipe Builder (`/recipes/builder`) | 静的 start state                     | Recipe 構築の画面入口を示す。Repository 読み取りは未接続    |
+| New Trail (`/runs/new`)             | contextual route                     | Prompt から Direct Run を作成する                           |
+| Run Detail (`/runs/:runId`)         | Repository 接続済み contextual route | loading / not-found / failure / data と Link 登録を表示する |
+| Not Found (`*`)                     | recovery route                       | 未知 URL を示し、Dashboard へ復帰させる                     |
 
 Prompt / Context / Recipe など、Dashboard 以外で未接続の Page は、Phase 0 の画面骨格です。これらの `StateMessage` は Repository 取得後の empty / failure を表すものではありません。
 
@@ -163,6 +164,9 @@ Prompt / Context / Recipe など、Dashboard 以外で未接続の Page は、Ph
 | Repository Context       | `apps/prompt-trail/src/app/PromptTrailRepositoryContext.tsx`                                    |
 | Router / Shell           | `apps/prompt-trail/src/app/App.tsx`、`router.tsx`、`AppShell.tsx`、`routes.ts`、`navigation.ts` |
 | Dashboard UI             | `apps/prompt-trail/src/pages/DashboardPage.tsx`                                                 |
+| New Trail UI / Service   | `apps/prompt-trail/src/pages/NewTrailPage.tsx`、`trail-creation/create-direct-trail.ts`         |
+| Run Detail UI / Query    | `apps/prompt-trail/src/pages/RunDetailPage.tsx`、`run-detail/`                                  |
+| Link Factory             | `apps/prompt-trail/src/trail-creation/create-run-link.ts`                                       |
 | Dashboard State          | `apps/prompt-trail/src/dashboard/dashboard-data-state.ts`                                       |
 | Dashboard Query          | `apps/prompt-trail/src/dashboard/dashboard-read-query.ts`                                       |
 | Sample Seed              | `apps/prompt-trail/src/sample-data/seed-sample-data.ts`                                         |
@@ -179,11 +183,3 @@ Prompt / Context / Recipe など、Dashboard 以外で未接続の Page は、Ph
 - Sample Seed の通常起動における位置づけが変わるとき。
 - UI から DB / Repository へのアクセス境界が変わるとき。
 - Phase 0 で新たな Page が Repository 接続されるとき。
-
-## Direct Trail creation and detail reads
-
-`trail-creation/create-direct-trail.ts` owns Direct Run entity construction and calls `PromptTrailRepository.createDirectRunBundle()` once. `run-detail/run-detail-read-query.ts` composes Run, Project, optional Recipe, and active Links through the repository boundary. Pages handle loading, failure, not-found, and submitting presentation without accessing Dexie directly.
-
-## 8. P1-1-1-2 の Trail 作成と Run Detail
-
-`/runs/new` は Dashboard CTA から到達する contextual route です。`NewTrailPage` は Trail Creation Service を呼び出し、Prompt、Default Project、Direct Run を `createDirectRunBundle()` で保存します。`RunDetailPage` は Run Detail Query / Data State を通じて Repository 実データを表示し、loading / not-found / failure / data を区別します。Prompt Snapshot と Link 登録・一覧は同一 Run の Trail として表示し、UI は Repository API 以外へ直接アクセスしません。P0-4-3 の静的骨格はこの接続済み実装以前の設計経緯です。
