@@ -133,3 +133,31 @@ describe('RunDetailPage Link form', () => {
     expect(screen.getByText('Prompt A')).toBeInTheDocument();
   });
 });
+
+it('prevents duplicate Link submissions while saving and then lists the result', async () => {
+  const user = (await import('@testing-library/user-event')).default.setup();
+  let resolve!: (link: any) => void;
+  const repository = {
+    getRun: vi.fn(async () => direct),
+    getProject: vi.fn(async () => ({ name: 'Project' })),
+    listActiveLinks: vi.fn(async () => []),
+    saveLink: vi.fn(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    ),
+  } as any;
+  renderPage(repository);
+  await screen.findByText('Direct Prompt');
+  await user.type(screen.getByLabelText('URL'), 'https://example.com/pending');
+  await user.click(screen.getByRole('button', { name: 'Linkを登録' }));
+  const button = screen.getByRole('button', { name: '保存中...' });
+  expect(button).toBeDisabled();
+  await user.click(button);
+  expect(repository.saveLink).toHaveBeenCalledOnce();
+  resolve({ ...repository.saveLink.mock.calls[0][0], id: 'link-pending' });
+  expect(
+    await screen.findByText('https://example.com/pending'),
+  ).toBeInTheDocument();
+});

@@ -149,7 +149,7 @@ Canonical Sample Dataset
 
 `seedSampleData()` は Repository を受け取り、Sample Dataset の事前状態を検査し、既存内容を上書きしません。全 Sample ID が未登録なら `seeded` を返します。必要な Sample ID がすべて存在し、利用状態と所有・参照関係が整合していれば `already-present` を返します。ID の欠落、所有関係・参照関係・利用状態の不整合があれば `conflict` を返します。Prompt のタイトルや本文など、ユーザーが編集できる内容は完全一致判定の対象外です。通常起動は Fresh DB を自動 Seed しません。
 
-## 7. Route、AppShell、Page の現行状態
+## 8. Route、AppShell、Page の現行状態
 
 `AppShell` は header、Global Navigation、main 領域を提供します。`AppRouter` は `/` を `/dashboard` へ redirect し、各 route を Page へ接続します。Global Navigation は Dashboard、Prompt Library、Context Library、Recipe Builder の常設 route のみを表示します。Run Detail は contextual route、Not Found は recovery route であり、いずれも常設 Navigation の active 項目にはなりません。Not Found は Dashboard への復帰導線を提供します。
 
