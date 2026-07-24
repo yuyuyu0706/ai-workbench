@@ -72,3 +72,64 @@ describe('RunDetailPage', () => {
     expect(screen.getByText('Context A')).toBeInTheDocument();
   });
 });
+
+describe('RunDetailPage Link form', () => {
+  it('rejects invalid and non-HTTP URLs without saving', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const repository = {
+      getRun: vi.fn(async () => direct),
+      getProject: vi.fn(async () => ({ name: 'Project' })),
+      listActiveLinks: vi.fn(async () => []),
+      saveLink: vi.fn(),
+    } as any;
+    renderPage(repository);
+    await screen.findByText('Direct Prompt');
+    const url = screen.getByLabelText('URL');
+    await user.type(url, 'ftp://example.com');
+    await user.click(screen.getByRole('button', { name: 'Linkを登録' }));
+    expect(await screen.findByText(/http または https/)).toBeInTheDocument();
+    expect(repository.saveLink).not.toHaveBeenCalled();
+  });
+  it('adds saved Links and resets the form', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const repository = {
+      getRun: vi.fn(async () => direct),
+      getProject: vi.fn(async () => ({ name: 'Project' })),
+      listActiveLinks: vi.fn(async () => []),
+      saveLink: vi.fn(async (link: any) => link),
+    } as any;
+    renderPage(repository);
+    await screen.findByText('Direct Prompt');
+    await user.type(screen.getByLabelText('URL'), 'https://example.com/result');
+    await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
+    await user.selectOptions(screen.getByLabelText('Link役割'), 'output');
+    await user.click(screen.getByRole('button', { name: 'Linkを登録' }));
+    expect(
+      await screen.findByText('https://example.com/result'),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('URL')).toHaveValue('');
+    expect(screen.getByLabelText('Link種別')).toHaveValue('external');
+    expect(screen.getByLabelText('Link役割')).toHaveValue('result');
+  });
+  it('retains input and shows an inline error when saving fails', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const repository = {
+      getRun: vi.fn(async () => direct),
+      getProject: vi.fn(async () => ({ name: 'Project' })),
+      listActiveLinks: vi.fn(async () => []),
+      saveLink: vi.fn(async () => {
+        throw new Error('db');
+      }),
+    } as any;
+    renderPage(repository);
+    await screen.findByText('Direct Prompt');
+    const url = screen.getByLabelText('URL');
+    await user.type(url, 'https://example.com');
+    await user.click(screen.getByRole('button', { name: 'Linkを登録' }));
+    expect(
+      await screen.findByText(/Linkを保存できませんでした/),
+    ).toBeInTheDocument();
+    expect(url).toHaveValue('https://example.com');
+    expect(screen.getByText('Prompt A')).toBeInTheDocument();
+  });
+});
