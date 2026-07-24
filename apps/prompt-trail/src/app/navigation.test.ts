@@ -41,10 +41,14 @@ describe('navigation contract', () => {
       routeIds.runDetail,
     );
     expect(globalNavigationItems.map((item) => item.id)).not.toContain(
+      routeIds.newTrail,
+    );
+    expect(globalNavigationItems.map((item) => item.id)).not.toContain(
       routeIds.notFound,
     );
-    expect(contextualRouteIds).toEqual([routeIds.runDetail]);
+    expect(contextualRouteIds).toEqual([routeIds.newTrail, routeIds.runDetail]);
     expect(recoveryRouteIds).toEqual([routeIds.notFound]);
+    expect(isContextualRoute(routeIds.newTrail)).toBe(true);
     expect(isContextualRoute(routeIds.runDetail)).toBe(true);
     expect(isRecoveryRoute(routeIds.notFound)).toBe(true);
   });

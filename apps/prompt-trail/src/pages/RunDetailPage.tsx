@@ -4,6 +4,7 @@ import { routePaths } from '../app/routes';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageHeader, PageSection, StateMessage } from '../components/ui';
 import { LINK_ROLES, LINK_TYPES, type Link as TrailLink } from '../domain';
+import { createRunLink } from '../trail-creation/create-run-link';
 import {
   loadRunDetailDataState,
   type RunDetailDataState,
@@ -11,23 +12,45 @@ import {
 export function RunDetailPage() {
   const repository = usePromptTrailRepository();
   const { runId = '' } = useParams();
-  const [state, setState] = useState<
-    RunDetailDataState | { status: 'loading' }
-  >({ status: 'loading' });
-  const [links, setLinks] = useState<readonly TrailLink[]>([]);
-  const [url, setUrl] = useState('');
-  const [type, setType] = useState<(typeof LINK_TYPES)[number]>('external');
-  const [role, setRole] = useState<(typeof LINK_ROLES)[number]>('result');
-  const [linkStatus, setLinkStatus] = useState<
-    'idle' | 'submitting' | 'failure'
-  >('idle');
+  const [snapshot, setSnapshot] = useState<{
+    repository: typeof repository;
+    runId: string;
+    state: RunDetailDataState | { status: 'loading' };
+    links: readonly TrailLink[];
+  }>({ repository, runId, state: { status: 'loading' }, links: [] });
+  const [formSnapshot, setFormSnapshot] = useState({
+    repository,
+    runId,
+    url: '',
+    type: 'external' as (typeof LINK_TYPES)[number],
+    role: 'result' as (typeof LINK_ROLES)[number],
+    status: 'idle' as 'idle' | 'submitting' | 'failure',
+  });
+  const isCurrent =
+    snapshot.repository === repository && snapshot.runId === runId;
+  const state = isCurrent ? snapshot.state : ({ status: 'loading' } as const);
+  const links = isCurrent ? snapshot.links : [];
+  const form =
+    formSnapshot.repository === repository && formSnapshot.runId === runId
+      ? formSnapshot
+      : {
+          repository,
+          runId,
+          url: '',
+          type: 'external' as const,
+          role: 'result' as const,
+          status: 'idle' as const,
+        };
   useEffect(() => {
     let active = true;
     loadRunDetailDataState(repository, runId).then((next) => {
-      if (active) {
-        setState(next);
-        if (next.status === 'data') setLinks(next.data.links);
-      }
+      if (active)
+        setSnapshot({
+          repository,
+          runId,
+          state: next,
+          links: next.status === 'data' ? next.data.links : [],
+        });
     });
     return () => {
       active = false;
@@ -35,39 +58,44 @@ export function RunDetailPage() {
   }, [repository, runId]);
   async function saveLink(event: React.FormEvent) {
     event.preventDefault();
-    if (state.status !== 'data' || linkStatus === 'submitting') return;
-    let normalized: string;
+    if (state.status !== 'data' || form.status === 'submitting') return;
+    let url: string;
     try {
-      const parsed = new URL(url.trim());
+      const parsed = new URL(form.url.trim());
       if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error();
-      normalized = parsed.toString();
+      url = parsed.toString();
     } catch {
-      setLinkStatus('failure');
+      setFormSnapshot({ ...form, status: 'failure' });
       return;
     }
-    setLinkStatus('submitting');
+    const savingForm = { ...form, status: 'submitting' as const };
+    setFormSnapshot(savingForm);
     try {
-      const now = new Date().toISOString() as never;
-      const link = await repository.saveLink({
-        id: `link-${crypto.randomUUID()}` as never,
-        createdAt: now,
-        updatedAt: now,
-        deletedAt: null,
-        runId: state.data.run.id,
-        url: normalized,
-        title: null,
-        type,
-        role,
-        summary: null,
-        externalId: null,
+      const link = await repository.saveLink(
+        createRunLink({
+          runId: state.data.run.id,
+          url,
+          type: form.type,
+          role: form.role,
+        }),
+      );
+      if (snapshot.repository !== repository || snapshot.runId !== runId)
+        return;
+      setSnapshot({ ...snapshot, links: [...links, link] });
+      setFormSnapshot({
+        repository,
+        runId,
+        url: '',
+        type: 'external',
+        role: 'result',
+        status: 'idle',
       });
-      setLinks([...links, link]);
-      setUrl('');
-      setType('external');
-      setRole('result');
-      setLinkStatus('idle');
     } catch {
-      setLinkStatus('failure');
+      if (
+        formSnapshot.repository === repository &&
+        formSnapshot.runId === runId
+      )
+        setFormSnapshot({ ...form, status: 'failure' });
     }
   }
   if (state.status === 'loading')
@@ -156,16 +184,23 @@ export function RunDetailPage() {
             <input
               id="link-url"
               type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              disabled={linkStatus === 'submitting'}
+              value={form.url}
+              onChange={(e) =>
+                setFormSnapshot({ ...form, url: e.target.value })
+              }
+              disabled={form.status === 'submitting'}
               required
             />
             <label htmlFor="link-type">Link種別</label>
             <select
               id="link-type"
-              value={type}
-              onChange={(e) => setType(e.target.value as typeof type)}
+              value={form.type}
+              onChange={(e) =>
+                setFormSnapshot({
+                  ...form,
+                  type: e.target.value as typeof form.type,
+                })
+              }
             >
               {LINK_TYPES.map((value) => (
                 <option key={value}>{value}</option>
@@ -174,14 +209,19 @@ export function RunDetailPage() {
             <label htmlFor="link-role">Link役割</label>
             <select
               id="link-role"
-              value={role}
-              onChange={(e) => setRole(e.target.value as typeof role)}
+              value={form.role}
+              onChange={(e) =>
+                setFormSnapshot({
+                  ...form,
+                  role: e.target.value as typeof form.role,
+                })
+              }
             >
               {LINK_ROLES.map((value) => (
                 <option key={value}>{value}</option>
               ))}
             </select>
-            {linkStatus === 'failure' ? (
+            {form.status === 'failure' ? (
               <p className="pt-form__error">
                 Linkを保存できませんでした。http または https
                 URLを確認してください。
@@ -189,9 +229,9 @@ export function RunDetailPage() {
             ) : null}
             <button
               className="pt-button pt-button--primary"
-              disabled={linkStatus === 'submitting'}
+              disabled={form.status === 'submitting'}
             >
-              {linkStatus === 'submitting' ? '保存中...' : 'Linkを登録'}
+              {form.status === 'submitting' ? '保存中...' : 'Linkを登録'}
             </button>
           </form>
           {links.length === 0 ? (
