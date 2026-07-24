@@ -1,6 +1,6 @@
 # PromptTrail Application Architecture
 
-このドキュメントは、**P0-5 完了時点**の PromptTrail Application Architecture の正本です。起動、依存注入、Repository 公開境界、Dashboard の実データ読み取り、画面と状態の責務を、現行実装に合わせて説明します。
+このドキュメントは、**P1-1-1-2 完了時点**の PromptTrail Application Architecture の正本です。起動、依存注入、Repository 公開境界、Dashboard の実データ読み取り、画面と状態の責務を、現行実装に合わせて説明します。
 
 画面構成と利用者導線は [Screen Structure and User Flow](screen-transition.md)、6つのドメインモデルと永続化契約は [Data Model](../../architecture/prompt-trail/data-model.md) を正本とします。環境構築、障害診断、品質確認、Hosted Preview / Deploy の手順は、それぞれ [Local Development](../../development/local-development.md)、[Troubleshooting](../../development/troubleshooting.md)、[Quality Gates](../../development/quality-gates.md)、[Deployment and Hosted Preview](deployment-and-preview.md) を参照してください。本書ではそれらの手順を複製しません。
 
@@ -55,18 +55,20 @@ Mount が返す handle の `dispose()` は、React root を unmount した後に
 
 ## 3. レイヤー別の責務境界
 
-| 領域              | 主な責務                                                                 | 非責務                          |
-| ----------------- | ------------------------------------------------------------------------ | ------------------------------- |
-| Entry             | DOM root の取得、application mount の呼び出し                            | DB 初期化、データ取得           |
-| Mount             | Runtime / React root の生成、`dispose()` による unmount と Runtime close | Page のデータ状態管理           |
-| Runtime           | DB / Repository の生成、DB open / close                                  | UI 表示、Route 判断             |
-| Bootstrap         | 起動状態の管理、ready gate、Repository Provider の配置                   | Dashboard のデータ状態          |
-| Provider          | 同一 Repository instance の Context 公開                                 | DB / Dexie の公開、DB lifecycle |
-| Router / AppShell | URL、Navigation、共通レイアウト、recovery route                          | 永続化、Read Model 構築         |
-| Page              | Use case の呼び出し、画面固有の表示状態                                  | Dexie / IndexedDB の直接操作    |
-| Dashboard Query   | Dashboard Read Model の取得・結合                                        | JSX 表示、DB schema             |
-| Repository        | 永続化契約、ドメイン操作                                                 | 画面状態、UI 表示               |
-| DB                | Dexie schema、IndexedDB 接続                                             | UI 判断、Page 固有の Read Model |
+| 領域                   | 主な責務                                                                 | 非責務                          |
+| ---------------------- | ------------------------------------------------------------------------ | ------------------------------- |
+| Entry                  | DOM root の取得、application mount の呼び出し                            | DB 初期化、データ取得           |
+| Mount                  | Runtime / React root の生成、`dispose()` による unmount と Runtime close | Page のデータ状態管理           |
+| Runtime                | DB / Repository の生成、DB open / close                                  | UI 表示、Route 判断             |
+| Bootstrap              | 起動状態の管理、ready gate、Repository Provider の配置                   | Dashboard のデータ状態          |
+| Provider               | 同一 Repository instance の Context 公開                                 | DB / Dexie の公開、DB lifecycle |
+| Router / AppShell      | URL、Navigation、共通レイアウト、recovery route                          | 永続化、Read Model 構築         |
+| Page                   | Use case の呼び出し、画面固有の表示状態                                  | Dexie / IndexedDB の直接操作    |
+| Trail Creation Service | Prompt から Default Project / Direct Run bundle を構築・atomic 保存      | JSX、Dexie 直接操作             |
+| Run Detail Query       | Run / Project / optional Recipe / active Link の取得・結合               | JSX、DB schema                  |
+| Dashboard Query        | Dashboard Read Model の取得・結合                                        | JSX 表示、DB schema             |
+| Repository             | 永続化契約、ドメイン操作                                                 | 画面状態、UI 表示               |
+| DB                     | Dexie schema、IndexedDB 接続                                             | UI 判断、Page 固有の Read Model |
 
 ## 4. Dashboard の実データフロー
 
@@ -181,3 +183,7 @@ Prompt / Context / Recipe など、Dashboard 以外で未接続の Page は、Ph
 ## Direct Trail creation and detail reads
 
 `trail-creation/create-direct-trail.ts` owns Direct Run entity construction and calls `PromptTrailRepository.createDirectRunBundle()` once. `run-detail/run-detail-read-query.ts` composes Run, Project, optional Recipe, and active Links through the repository boundary. Pages handle loading, failure, not-found, and submitting presentation without accessing Dexie directly.
+
+## 8. P1-1-1-2 の Trail 作成と Run Detail
+
+`/runs/new` は Dashboard CTA から到達する contextual route です。`NewTrailPage` は Trail Creation Service を呼び出し、Prompt、Default Project、Direct Run を `createDirectRunBundle()` で保存します。`RunDetailPage` は Run Detail Query / Data State を通じて Repository 実データを表示し、loading / not-found / failure / data を区別します。Prompt Snapshot と Link 登録・一覧は同一 Run の Trail として表示し、UI は Repository API 以外へ直接アクセスしません。P0-4-3 の静的骨格はこの接続済み実装以前の設計経緯です。
