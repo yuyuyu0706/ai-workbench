@@ -46,8 +46,7 @@ const secondaryPages = [
   {
     path: '/runs/test-run',
     heading: 'Run Detail',
-    sectionHeading: '成果物 / Link',
-    startState: 'Runを振り返る前の利用開始状態です。',
+    startState: '指定されたRunが見つかりません。',
   },
   {
     path: '/unknown-route',
