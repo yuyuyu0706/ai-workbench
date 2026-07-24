@@ -65,7 +65,11 @@ export function RunDetailPage() {
       if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error();
       url = parsed.toString();
     } catch {
-      setFormSnapshot({ ...form, status: 'failure' });
+      setFormSnapshot((current) =>
+        current.repository === repository && current.runId === runId
+          ? { ...current, status: 'failure' }
+          : current,
+      );
       return;
     }
     const savingForm = { ...form, status: 'submitting' as const };
@@ -79,23 +83,29 @@ export function RunDetailPage() {
           role: form.role,
         }),
       );
-      if (snapshot.repository !== repository || snapshot.runId !== runId)
-        return;
-      setSnapshot({ ...snapshot, links: [...links, link] });
-      setFormSnapshot({
-        repository,
-        runId,
-        url: '',
-        type: 'external',
-        role: 'result',
-        status: 'idle',
-      });
+      setSnapshot((current) =>
+        current.repository === repository && current.runId === runId
+          ? { ...current, links: [...current.links, link] }
+          : current,
+      );
+      setFormSnapshot((current) =>
+        current.repository === repository && current.runId === runId
+          ? {
+              repository,
+              runId,
+              url: '',
+              type: 'external',
+              role: 'result',
+              status: 'idle',
+            }
+          : current,
+      );
     } catch {
-      if (
-        formSnapshot.repository === repository &&
-        formSnapshot.runId === runId
-      )
-        setFormSnapshot({ ...form, status: 'failure' });
+      setFormSnapshot((current) =>
+        current.repository === repository && current.runId === runId
+          ? { ...current, status: 'failure' }
+          : current,
+      );
     }
   }
   if (state.status === 'loading')
