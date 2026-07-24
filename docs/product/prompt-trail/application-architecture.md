@@ -82,7 +82,7 @@ flowchart LR
 
 `NewTrailPage` は Trail Creation Service を通じて Direct Run bundle を atomic 保存します。`RunDetailPage` は Data State と Query を介して実データを読み取り、Link 保存も Repository 境界で行います。
 
-## 4. Dashboard の実データフロー
+## 5. Dashboard の実データフロー
 
 Dashboard は、Repository 接続済みの実データ画面です。`DashboardPage` は Provider から Repository を取得し、画面表示時に `loadDashboardDataState()` を呼び出します。
 
@@ -109,7 +109,7 @@ flowchart LR
 
 取得中・空・失敗・データありの表示判断は `DashboardPage` と Dashboard State 層の責務です。Repository と DB は画面用の状態を保持しません。
 
-## 5. 状態責務
+## 6. 状態責務
 
 起動状態と Dashboard のデータ状態は別の責務です。
 
@@ -127,7 +127,7 @@ flowchart LR
 
 Bootstrap の `failed` は DB / Repository 初期化に失敗して Page 自体を出せない状態です。一方、Dashboard の `failure` は Bootstrap が ready となり Repository が公開された後、Dashboard 固有の読み取りが失敗した状態です。Bootstrap ready 後に、Page 固有の `loading` が始まります。
 
-## 6. Sample Dataset と通常起動
+## 7. Sample Dataset と通常起動
 
 Fresh DB の通常起動は Seed を必須処理にせず、次の経路です。
 
@@ -165,7 +165,7 @@ Canonical Sample Dataset
 
 Prompt / Context / Recipe など、Dashboard 以外で未接続の Page は、Phase 0 の画面骨格です。これらの `StateMessage` は Repository 取得後の empty / failure を表すものではありません。
 
-## 8. Source Map
+## 9. Source Map
 
 | 責務                     | 実装                                                                                            |
 | ------------------------ | ----------------------------------------------------------------------------------------------- |
@@ -184,7 +184,7 @@ Prompt / Context / Recipe など、Dashboard 以外で未接続の Page は、Ph
 | Sample Seed              | `apps/prompt-trail/src/sample-data/seed-sample-data.ts`                                         |
 | Repository / Persistence | `apps/prompt-trail/src/repository/`、`apps/prompt-trail/src/db/`                                |
 
-## 9. 更新トリガー
+## 10. 更新トリガー
 
 次の変更では、本書の更新を検討します。
 

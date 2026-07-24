@@ -1,16 +1,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { PromptTrailRepositoryProvider } from '../app/PromptTrailRepositoryContext';
 import type { PromptTrailRepository } from '../repository';
 import { NewTrailPage } from './NewTrailPage';
+function LocationProbe() {
+  return <output>{useLocation().pathname}</output>;
+}
 function renderPage(repository: PromptTrailRepository) {
   return render(
     <MemoryRouter>
       <PromptTrailRepositoryProvider repository={repository}>
         <NewTrailPage />
+        <LocationProbe />
       </PromptTrailRepositoryProvider>
     </MemoryRouter>,
   );
@@ -35,6 +39,19 @@ describe('NewTrailPage', () => {
       ),
     ).toBeInTheDocument();
     expect(input).toHaveValue('keep this');
+  });
+  it('navigates to the created Run Detail path after a successful save', async () => {
+    const user = userEvent.setup();
+    const repository = {
+      createDirectRunBundle: vi.fn(async (bundle) => ({
+        ...bundle,
+        run: { ...bundle.run, id: 'run-created' },
+      })),
+    } as unknown as PromptTrailRepository;
+    renderPage(repository);
+    await user.type(screen.getByLabelText('Prompt本文'), 'create me');
+    await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
+    expect(await screen.findByText('/runs/run-created')).toBeInTheDocument();
   });
   it('disables repeated submits while saving', async () => {
     const user = userEvent.setup();
