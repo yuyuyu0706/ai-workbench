@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { PromptTrailRepositoryProvider } from '../app/PromptTrailRepositoryContext';
 import type { PromptTrailRepository } from '../repository';
@@ -110,6 +110,7 @@ describe('RunDetailPage Link form', () => {
     expect(screen.getByLabelText('URL')).toHaveValue('');
     expect(screen.getByLabelText('Link種別')).toHaveValue('external');
     expect(screen.getByLabelText('Link役割')).toHaveValue('result');
+    expect(screen.getByText(/document \/ output/)).toBeInTheDocument();
   });
   it('retains input and shows an inline error when saving fails', async () => {
     const user = (await import('@testing-library/user-event')).default.setup();
@@ -160,4 +161,80 @@ it('prevents duplicate Link submissions while saving and then lists the result',
   expect(
     await screen.findByText('https://example.com/pending'),
   ).toBeInTheDocument();
+});
+
+function RouteSwitchProbe() {
+  const navigate = useNavigate();
+  return <button onClick={() => navigate('/runs/run-b')}>Run Bへ切替</button>;
+}
+it('keeps Run B state when a pending Run A Link save resolves after a route change', async () => {
+  const user = (await import('@testing-library/user-event')).default.setup();
+  let resolve!: (link: any) => void;
+  const runA = {
+    ...direct,
+    id: 'run-a',
+    projectId: 'project-a',
+    promptSnapshot: { title: 'Prompt A', body: 'Body A' },
+  };
+  const runB = {
+    ...direct,
+    id: 'run-b',
+    projectId: 'project-b',
+    promptSnapshot: { title: 'Prompt B', body: 'Body B' },
+  };
+  const repository = {
+    getRun: vi.fn(async (id) => (id === 'run-a' ? runA : runB)),
+    getProject: vi.fn(async (id) => ({
+      name: id === 'project-a' ? 'Project A' : 'Project B',
+    })),
+    listActiveLinks: vi.fn(async (id) => [
+      {
+        id: id === 'run-a' ? 'link-a' : 'link-b',
+        url: id === 'run-a' ? 'https://a.existing' : 'https://b.existing',
+        type: 'external',
+        role: 'result',
+        createdAt: '2026-01-01',
+      },
+    ]),
+    saveLink: vi.fn(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    ),
+  } as any;
+  render(
+    <MemoryRouter initialEntries={['/runs/run-a']}>
+      <PromptTrailRepositoryProvider repository={repository}>
+        <RouteSwitchProbe />
+        <Routes>
+          <Route path="/runs/:runId" element={<RunDetailPage />} />
+        </Routes>
+      </PromptTrailRepositoryProvider>
+    </MemoryRouter>,
+  );
+  await screen.findByText('Prompt A');
+  await user.type(screen.getByLabelText('URL'), 'https://a.pending');
+  await user.click(screen.getByRole('button', { name: 'Linkを登録' }));
+  await user.click(screen.getByRole('button', { name: 'Run Bへ切替' }));
+  expect(await screen.findByText('Prompt B')).toBeInTheDocument();
+  expect(screen.getByText('Project B')).toBeInTheDocument();
+  expect(screen.getByText('https://b.existing')).toBeInTheDocument();
+  expect(screen.getByLabelText('URL')).toHaveValue('');
+  resolve({
+    id: 'link-a-new',
+    runId: 'run-a',
+    url: 'https://a.pending',
+    type: 'external',
+    role: 'result',
+    createdAt: '2026-01-01',
+  });
+  await new Promise((resolve) => setTimeout(resolve));
+  expect(screen.getByText('Prompt B')).toBeInTheDocument();
+  expect(screen.getByText('Project B')).toBeInTheDocument();
+  expect(screen.queryByText('https://a.pending')).toBeNull();
+  expect(screen.getByText('https://b.existing')).toBeInTheDocument();
+  expect(screen.getByLabelText('URL')).toHaveValue('');
+  expect(screen.getByLabelText('Link種別')).toHaveValue('external');
+  expect(screen.getByLabelText('Link役割')).toHaveValue('result');
 });
