@@ -122,10 +122,7 @@ test.describe('AppShell navigation', () => {
     await expect(page).toHaveURL(/\/runs\/test-run$/);
     await expectHeading(page, 'Run Detail');
     await expect(
-      page.getByText('Runを振り返る前の利用開始状態です。'),
-    ).toBeVisible();
-    await expect(
-      page.getByRole('heading', { level: 2, name: '成果物 / Link' }),
+      page.getByText('指定されたRunが見つかりません。'),
     ).toBeVisible();
     await expectNoCurrentNavigation(getGlobalNavigation(page));
   });
@@ -137,7 +134,7 @@ test.describe('AppShell navigation', () => {
 
     await expectHeading(page, 'Run Detail');
     await expect(
-      page.getByText('Runを振り返る前の利用開始状態です。'),
+      page.getByText('指定されたRunが見つかりません。'),
     ).toBeVisible();
     await expectNoCurrentNavigation(getGlobalNavigation(page));
 

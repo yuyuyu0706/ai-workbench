@@ -4,6 +4,7 @@ export const routeIds = {
   promptLibrary: 'promptLibrary',
   contextLibrary: 'contextLibrary',
   recipeBuilder: 'recipeBuilder',
+  newTrail: 'newTrail',
   runDetail: 'runDetail',
   notFound: 'notFound',
 } as const;
@@ -16,6 +17,7 @@ export const routePaths = {
   [routeIds.promptLibrary]: '/prompts',
   [routeIds.contextLibrary]: '/contexts',
   [routeIds.recipeBuilder]: '/recipes/builder',
+  [routeIds.newTrail]: '/runs/new',
   [routeIds.runDetail]: '/runs/:runId',
   [routeIds.notFound]: '*',
 } as const satisfies Record<RouteId, string>;
@@ -46,6 +48,7 @@ export const routeDefinitions = [
     path: routePaths.recipeBuilder,
     label: 'Recipe Builder',
   },
+  { id: routeIds.newTrail, path: routePaths.newTrail, label: 'New Trail' },
   { id: routeIds.runDetail, path: routePaths.runDetail, label: 'Run Detail' },
   { id: routeIds.notFound, path: routePaths.notFound, label: 'Not Found' },
 ] as const satisfies readonly RouteDefinition[];

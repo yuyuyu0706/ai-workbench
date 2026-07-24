@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { ContextLibraryPage } from '../pages/ContextLibraryPage';
 import { DashboardPage } from '../pages/DashboardPage';
+import { NewTrailPage } from '../pages/NewTrailPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { PromptLibraryPage } from '../pages/PromptLibraryPage';
 import { RecipeBuilderPage } from '../pages/RecipeBuilderPage';
@@ -31,6 +32,7 @@ export function AppRouter() {
         path={routePaths[routeIds.recipeBuilder]}
         element={<RecipeBuilderPage />}
       />
+      <Route path={routePaths[routeIds.newTrail]} element={<NewTrailPage />} />
       <Route
         path={routePaths[routeIds.runDetail]}
         element={<RunDetailPage />}

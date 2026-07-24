@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 
-import { buildRunDetailPath } from '../app/routes';
+import { buildRunDetailPath, routePaths } from '../app/routes';
 import { loadDashboardDataState, type DashboardDataState } from '../dashboard';
 import type { DashboardReadModel, DashboardRecentRun } from '../dashboard';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
@@ -50,6 +50,14 @@ export function DashboardPage() {
         eyebrow="Dashboard"
         title="Dashboard"
         description="AI作業の再開入口として、最近のRunと関連Linkを確認する画面です。"
+        actions={
+          <RouterLink
+            className="pt-button pt-button--primary"
+            to={routePaths.newTrail}
+          >
+            新しいTrailを始める
+          </RouterLink>
+        }
       />
       <DashboardStateMessage pageState={pageState} />
       {pageState.status === 'data' ? (

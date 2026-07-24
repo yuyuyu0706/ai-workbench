@@ -6,7 +6,8 @@ export type GlobalNavigationRouteId =
   | typeof routeIds.contextLibrary
   | typeof routeIds.recipeBuilder;
 
-export type ContextualRouteId = typeof routeIds.runDetail;
+export type ContextualRouteId =
+  typeof routeIds.newTrail | typeof routeIds.runDetail;
 export type RecoveryRouteId = typeof routeIds.notFound;
 
 export interface NavigationItem {
@@ -16,6 +17,7 @@ export interface NavigationItem {
 }
 
 export const contextualRouteIds = [
+  routeIds.newTrail,
   routeIds.runDetail,
 ] as const satisfies readonly ContextualRouteId[];
 export const recoveryRouteIds = [
