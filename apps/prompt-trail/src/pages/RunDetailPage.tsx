@@ -99,8 +99,8 @@ export function RunDetailPage() {
     <section className="prompt-trail-page">
       <PageHeader
         eyebrow="Run Detail"
-        title={run.promptSnapshot.title}
-        description={`${project.name} のTrailです。`}
+        title="Run Detail"
+        description={`${project.name} のTrail: ${run.promptSnapshot.title}`}
       />
       <div className="prompt-trail-page__sections">
         <PageSection title="実行サマリ">
