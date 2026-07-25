@@ -49,7 +49,7 @@ export function DashboardPage() {
       <PageHeader
         eyebrow="Dashboard"
         title="Dashboard"
-        description="AI作業の再開入口として、最近のRunと関連Linkを確認する画面です。"
+        description="AI作業の再開入口として、最近のTrailを確認する画面です。"
         actions={
           <RouterLink
             className="pt-button pt-button--primary"
@@ -71,8 +71,8 @@ function DashboardDataSections({ data }: { data: DashboardReadModel }) {
   return (
     <div className="prompt-trail-page__sections">
       <PageSection
-        title="最近のRun"
-        description="最近のRunと、その作業に紐づく関連Linkを確認できます。"
+        title="最近のTrail"
+        description="最近作成したTrailを確認できます。詳細なPromptと関連リンクはTrailから確認してください。"
       >
         <div className="pt-dashboard-runs">
           {data.recentRuns.map((recentRun) => (
@@ -104,7 +104,7 @@ function DashboardRecentRunCard({
           className="pt-button pt-button--secondary"
           to={buildRunDetailPath(run.id)}
         >
-          Run Detailへ移動
+          Trailを確認
         </RouterLink>
       </div>
       <dl className="pt-dashboard-run-card__meta">
@@ -135,40 +135,11 @@ function DashboardRecentRunCard({
           </dd>
         </div>
         <div>
-          <dt className="pt-dashboard-label">Links</dt>
+          <dt className="pt-dashboard-label">関連リンク</dt>
           <dd className="pt-dashboard-value">{links.length}件</dd>
         </div>
       </dl>
-      <RelatedLinks recentRun={recentRun} />
     </article>
-  );
-}
-
-function RelatedLinks({ recentRun }: { recentRun: DashboardRecentRun }) {
-  const { recipe, links } = recentRun;
-
-  return (
-    <section className="pt-dashboard-related-links" aria-label="関連Link">
-      <h4 className="pt-dashboard-related-links__title">関連Link</h4>
-      {links.length === 0 ? (
-        <p>このRunに紐づく関連Linkはありません。</p>
-      ) : (
-        <ul className="pt-dashboard-related-links__list">
-          {links.map((link) => (
-            <li className="pt-dashboard-related-link" key={link.id}>
-              <p className="pt-dashboard-related-link__title">
-                {link.title ?? link.type}
-              </p>
-              <p className="pt-dashboard-related-link__meta">
-                <span>Type: {link.type}</span>
-                <span>Role: {link.role}</span>
-                {recipe === null ? null : <span>Recipe: {recipe.title}</span>}
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
   );
 }
 

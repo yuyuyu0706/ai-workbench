@@ -177,6 +177,20 @@
   color: var(--pt-color-danger);
   margin: 0;
 }
+.pt-success-notice {
+  width: min(100%, var(--pt-content-max));
+  margin: 0 auto;
+  padding: var(--pt-space-3) var(--pt-space-4);
+  border: 1px solid var(--pt-color-border);
+  border-radius: var(--pt-radius-sm);
+  overflow-wrap: anywhere;
+  color: var(--pt-color-text-strong);
+  background: color-mix(
+    in srgb,
+    var(--pt-color-surface) 88%,
+    var(--pt-color-accent) 12%
+  );
+}
 .pt-snapshot {
   white-space: pre-wrap;
   overflow-wrap: anywhere;

@@ -70,7 +70,7 @@ describe('DashboardPage', () => {
     expect(screen.queryByText('raw database stack detail')).toBeNull();
   });
 
-  it('renders recent runs and related links from repository dashboard data', async () => {
+  it('renders recent Trails with only their related-link count', async () => {
     const database = databaseTestScope.createDatabase();
     const runtime = createPromptTrailRuntime(database);
     await seedSampleData(runtime.repository);
@@ -87,7 +87,7 @@ describe('DashboardPage', () => {
       screen.queryByText('Repositoryに表示できるRunがまだありません。'),
     ).toBeNull();
     expect(
-      screen.getByRole('heading', { level: 2, name: '最近のRun' }),
+      screen.getByRole('heading', { level: 2, name: '最近のTrail' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', {
@@ -101,18 +101,19 @@ describe('DashboardPage', () => {
     expect(screen.getByText(sampleDataset.run.updatedAt)).toBeInTheDocument();
     expect(screen.getByText('3件')).toBeInTheDocument();
 
-    const detailLink = screen.getByRole('link', { name: 'Run Detailへ移動' });
+    const detailLink = screen.getByRole('link', { name: 'Trailを確認' });
     expect(detailLink).toHaveAttribute(
       'href',
       buildRunDetailPath(sampleDataset.run.id),
     );
 
-    expect(screen.getByText('Roadmap再同期 Chat')).toBeInTheDocument();
-    expect(screen.getByText(/Type: chat/)).toBeInTheDocument();
-    expect(screen.getByText(/Role: source/)).toBeInTheDocument();
+    expect(screen.getByText('関連リンク')).toBeInTheDocument();
+    expect(screen.queryByText('Roadmap再同期 Chat')).toBeNull();
+    expect(screen.queryByText(/Type: chat/)).toBeNull();
+    expect(screen.queryByText(/Role: source/)).toBeNull();
     expect(
-      screen.getAllByText(`Recipe: ${sampleDataset.recipe.title}`),
-    ).toHaveLength(sampleDataset.links.length);
+      screen.queryByText(`Recipe: ${sampleDataset.recipe.title}`),
+    ).toBeNull();
   });
 
   it('keeps recent runs in read model order and does not fabricate null evaluation text', async () => {
@@ -163,12 +164,11 @@ describe('DashboardPage', () => {
     ]);
     expect(screen.queryByText('未評価')).toBeNull();
     expect(screen.queryByText('なし')).toBeNull();
-    expect(screen.getByText('external')).toBeInTheDocument();
-    expect(screen.getByText(/Type: external/)).toBeInTheDocument();
-    expect(screen.getByText(/Role: reference/)).toBeInTheDocument();
-    expect(
-      screen.getByText(`Recipe: ${firstRecipe.title}`),
-    ).toBeInTheDocument();
+    expect(screen.getByText('1件')).toBeInTheDocument();
+    expect(screen.queryByText('external')).toBeNull();
+    expect(screen.queryByText(/Type: external/)).toBeNull();
+    expect(screen.queryByText(/Role: reference/)).toBeNull();
+    expect(screen.queryByText(`Recipe: ${firstRecipe.title}`)).toBeNull();
   });
 
   it('renders a Direct Run Snapshot title without Recipe metadata', async () => {
@@ -252,7 +252,7 @@ describe('DashboardPage', () => {
       screen.queryByText('Repositoryに表示できるRunがまだありません。'),
     ).toBeNull();
     expect(
-      screen.getByRole('heading', { level: 2, name: '最近のRun' }),
+      screen.getByRole('heading', { level: 2, name: '最近のTrail' }),
     ).toBeInTheDocument();
   });
 });

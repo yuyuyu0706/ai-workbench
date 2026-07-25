@@ -9,13 +9,13 @@ const linkTitle = 'Golden Path document';
 
 function getPromptSnapshot(page: Page): Locator {
   return page.locator('section').filter({
-    has: page.getByRole('heading', { level: 2, name: 'Prompt Snapshot' }),
+    has: page.getByRole('heading', { level: 2, name: 'Prompt' }),
   });
 }
 
 function getLinkSection(page: Page): Locator {
   return page.locator('section').filter({
-    has: page.getByRole('heading', { level: 2, name: '成果物 / Link' }),
+    has: page.getByRole('heading', { level: 2, name: '関連リンク' }),
   });
 }
 
@@ -51,6 +51,9 @@ test.describe('first Trail creation acceptance', () => {
       page.getByRole('heading', { level: 1, name: 'Run Detail' }),
     ).toBeVisible();
     await expect(page).toHaveURL(/\/runs\/(?!new$)[^/]+$/);
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Trailを作成しました。' }),
+    ).toBeVisible();
     const runDetailUrl = page.url();
     const snapshot = getPromptSnapshot(page);
     await expect(snapshot.getByRole('heading', { level: 3 })).toHaveText(
@@ -61,12 +64,19 @@ test.describe('first Trail creation acceptance', () => {
     await page.getByLabel('Link名称').fill(linkTitle);
     await page.getByLabel('URL').fill(linkUrl);
     await page.getByLabel('Link種別').selectOption('document');
-    await page.getByRole('button', { name: 'Linkを登録' }).click();
+    await page.getByRole('button', { name: '関連リンクを登録' }).click();
+    await expect(
+      page
+        .getByRole('status')
+        .filter({ hasText: '関連リンクを登録しました。' }),
+    ).toBeVisible();
     await expectCreatedTrail(page);
     await expectNoHorizontalOverflow(page);
 
     await page.reload();
     await expect(page).toHaveURL(runDetailUrl);
+    await expect(page.getByText('Trailを作成しました。')).toHaveCount(0);
+    await expect(page.getByText('関連リンクを登録しました。')).toHaveCount(0);
     await expectCreatedTrail(page);
     await expectNoHorizontalOverflow(page);
 
@@ -77,7 +87,7 @@ test.describe('first Trail creation acceptance', () => {
     await expect(recentRun).toContainText('1件');
     await expectNoHorizontalOverflow(page);
 
-    await recentRun.getByRole('link', { name: 'Run Detailへ移動' }).click();
+    await recentRun.getByRole('link', { name: 'Trailを確認' }).click();
     await expect(page).toHaveURL(runDetailUrl);
     await expectCreatedTrail(page);
   });
@@ -105,12 +115,12 @@ test.describe('first Trail creation acceptance', () => {
     await page.getByLabel('Link名称').fill(linkTitle);
     await page.getByLabel('Link種別').selectOption('document');
     await urlInput.fill('ftp://example.com/result');
-    await page.getByRole('button', { name: 'Linkを登録' }).click();
+    await page.getByRole('button', { name: '関連リンクを登録' }).click();
     await expect(page.getByText(/http または https/)).toBeVisible();
     await expect(urlInput).toHaveValue('ftp://example.com/result');
 
     await urlInput.fill(linkUrl);
-    await page.getByRole('button', { name: 'Linkを登録' }).click();
+    await page.getByRole('button', { name: '関連リンクを登録' }).click();
     await expect(page.getByRole('link', { name: linkTitle })).toHaveAttribute(
       'href',
       linkUrl,

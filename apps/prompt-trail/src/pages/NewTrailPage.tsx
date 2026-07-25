@@ -18,7 +18,9 @@ export function NewTrailPage() {
     setStatus('submitting');
     try {
       const run = await createDirectTrail(repository, { promptBody: body });
-      navigate(buildRunDetailPath(run.id));
+      navigate(buildRunDetailPath(run.id), {
+        state: { trailCreated: true },
+      });
     } catch {
       setStatus('failure');
     }
@@ -28,12 +30,12 @@ export function NewTrailPage() {
       <PageHeader
         eyebrow="New Trail"
         title="新しいTrailを始める"
-        description="Promptを入力すると、Default ProjectとDirect Runを作成します。"
+        description="AIに依頼する内容を入力してください。作業後に関連リンクを追加すると、依頼から成果までをTrailとして残せます。"
       />
       <div className="prompt-trail-page__sections">
         <PageSection
           title="Prompt"
-          description="最初の非空行からタイトルを自動生成します。"
+          description="Promptの最初の行がTrailタイトルになります。"
         >
           <form className="pt-form" onSubmit={submit}>
             <label htmlFor="prompt-body">Prompt本文</label>
