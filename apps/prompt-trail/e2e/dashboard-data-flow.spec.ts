@@ -24,7 +24,7 @@ async function expectCanonicalSeededDashboard(
   const recentRunCard = getCanonicalRecentRunRow(page);
   await expect(recentRunCard).toHaveCount(1);
   await expect(recentRunCard).toBeVisible();
-  await expect(recentRunCard.getByText('Codex開発依頼')).toBeVisible();
+  await expect(recentRunCard.getByText('Codex開発依頼')).toHaveCount(0);
   await expect(recentRunCard.getByText('完了')).toBeVisible();
   await expect(recentRunCard.getByText('good')).toHaveCount(0);
   await expect(recentRunCard.getByText('3件')).toBeVisible();
@@ -34,7 +34,11 @@ async function expectCanonicalSeededDashboard(
     'dateTime',
     seedResult.sampleRunUpdatedAt,
   );
-  await expect(updatedAt).toHaveText(seedResult.sampleRunUpdatedAt);
+  await expect(updatedAt).toHaveText(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+
+  await expect(
+    page.getByRole('columnheader', { name: 'Recipe', includeHidden: true }),
+  ).toHaveCount(0);
 
   await expect(
     page.getByRole('columnheader', { name: '関連リンク', includeHidden: true }),
