@@ -1,10 +1,6 @@
-import type {
-  Link,
-  LinkRole,
-  LinkType,
-  RunId,
-  UtcDateTimeString,
-} from '../domain';
+import type { Link, LinkType, RunId, UtcDateTimeString } from '../domain';
+
+export type SelectableLinkType = Exclude<LinkType, 'external'>;
 
 export type CreateRunLinkDependencies = {
   readonly createId?: () => Link['id'];
@@ -14,12 +10,16 @@ export type CreateRunLinkDependencies = {
 export function createRunLink(
   input: {
     readonly runId: RunId;
+    readonly title: string;
     readonly url: string;
-    readonly type: LinkType;
-    readonly role: LinkRole;
+    readonly type: SelectableLinkType;
   },
   dependencies: CreateRunLinkDependencies = {},
 ): Link {
+  const title = input.title.trim();
+  if (title.length === 0) {
+    throw new Error('Link title is required.');
+  }
   const now =
     dependencies.now ?? (() => new Date().toISOString() as UtcDateTimeString);
   const createId =
@@ -33,9 +33,9 @@ export function createRunLink(
     deletedAt: null,
     runId: input.runId,
     url: input.url,
-    title: null,
+    title,
     type: input.type,
-    role: input.role,
+    role: null,
     summary: null,
     externalId: null,
   };

@@ -3,8 +3,11 @@ import { Link, useParams } from 'react-router-dom';
 import { routePaths } from '../app/routes';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageHeader, PageSection, StateMessage } from '../components/ui';
-import { LINK_ROLES, LINK_TYPES, type Link as TrailLink } from '../domain';
-import { createRunLink } from '../trail-creation/create-run-link';
+import type { Link as TrailLink, LinkType } from '../domain';
+import {
+  createRunLink,
+  type SelectableLinkType,
+} from '../trail-creation/create-run-link';
 import {
   loadRunDetailDataState,
   type RunDetailDataState,
@@ -21,10 +24,11 @@ export function RunDetailPage() {
   const [formSnapshot, setFormSnapshot] = useState({
     repository,
     runId,
+    title: '',
     url: '',
-    type: 'external' as (typeof LINK_TYPES)[number],
-    role: 'result' as (typeof LINK_ROLES)[number],
+    type: '' as SelectableLinkType | '',
     status: 'idle' as 'idle' | 'submitting' | 'failure',
+    error: null as 'title' | 'url' | 'type' | 'save' | null,
   });
   const isCurrent =
     snapshot.repository === repository && snapshot.runId === runId;
@@ -36,10 +40,11 @@ export function RunDetailPage() {
       : {
           repository,
           runId,
+          title: '',
           url: '',
-          type: 'external' as const,
-          role: 'result' as const,
+          type: '' as const,
           status: 'idle' as const,
+          error: null,
         };
   useEffect(() => {
     let active = true;
@@ -59,6 +64,11 @@ export function RunDetailPage() {
   async function saveLink(event: React.FormEvent) {
     event.preventDefault();
     if (state.status !== 'data' || form.status === 'submitting') return;
+    const title = form.title.trim();
+    if (title.length === 0) {
+      setFormSnapshot({ ...form, status: 'failure', error: 'title' });
+      return;
+    }
     let url: string;
     try {
       const parsed = new URL(form.url.trim());
@@ -67,9 +77,13 @@ export function RunDetailPage() {
     } catch {
       setFormSnapshot((current) =>
         current.repository === repository && current.runId === runId
-          ? { ...current, status: 'failure' }
+          ? { ...current, status: 'failure', error: 'url' }
           : current,
       );
+      return;
+    }
+    if (form.type === '') {
+      setFormSnapshot({ ...form, status: 'failure', error: 'type' });
       return;
     }
     const savingForm = { ...form, status: 'submitting' as const };
@@ -78,9 +92,9 @@ export function RunDetailPage() {
       const link = await repository.saveLink(
         createRunLink({
           runId: state.data.run.id,
+          title,
           url,
           type: form.type,
-          role: form.role,
         }),
       );
       setSnapshot((current) =>
@@ -93,17 +107,18 @@ export function RunDetailPage() {
           ? {
               repository,
               runId,
+              title: '',
               url: '',
-              type: 'external',
-              role: 'result',
+              type: '',
               status: 'idle',
+              error: null,
             }
           : current,
       );
     } catch {
       setFormSnapshot((current) =>
         current.repository === repository && current.runId === runId
-          ? { ...current, status: 'failure' }
+          ? { ...current, status: 'failure', error: 'save' }
           : current,
       );
     }
@@ -190,6 +205,15 @@ export function RunDetailPage() {
           description="Prompt SnapshotとLinkをこのTrailで確認できます。"
         >
           <form className="pt-form" onSubmit={saveLink}>
+            <label htmlFor="link-title">Link名称</label>
+            <input
+              id="link-title"
+              value={form.title}
+              onChange={(e) =>
+                setFormSnapshot({ ...form, title: e.target.value })
+              }
+              disabled={form.status === 'submitting'}
+            />
             <label htmlFor="link-url">URL</label>
             <input
               id="link-url"
@@ -199,7 +223,6 @@ export function RunDetailPage() {
                 setFormSnapshot({ ...form, url: e.target.value })
               }
               disabled={form.status === 'submitting'}
-              required
             />
             <label htmlFor="link-type">Link種別</label>
             <select
@@ -211,30 +234,24 @@ export function RunDetailPage() {
                   type: e.target.value as typeof form.type,
                 })
               }
+              disabled={form.status === 'submitting'}
             >
-              {LINK_TYPES.map((value) => (
-                <option key={value}>{value}</option>
-              ))}
-            </select>
-            <label htmlFor="link-role">Link役割</label>
-            <select
-              id="link-role"
-              value={form.role}
-              onChange={(e) =>
-                setFormSnapshot({
-                  ...form,
-                  role: e.target.value as typeof form.role,
-                })
-              }
-            >
-              {LINK_ROLES.map((value) => (
-                <option key={value}>{value}</option>
+              <option value="">選択してください</option>
+              {SELECTABLE_LINK_TYPES.map((value) => (
+                <option key={value} value={value}>
+                  {LINK_TYPE_LABELS[value]}
+                </option>
               ))}
             </select>
             {form.status === 'failure' ? (
               <p className="pt-form__error">
-                Linkを保存できませんでした。http または https
-                URLを確認してください。
+                {form.error === 'title'
+                  ? 'Link名称を入力してください。'
+                  : form.error === 'type'
+                    ? 'Link種別を選択してください。'
+                    : form.error === 'url'
+                      ? 'http または https のURLを入力してください。'
+                      : 'Linkを保存できませんでした。入力内容を保持しています。もう一度お試しください。'}
               </p>
             ) : null}
             <button
@@ -251,10 +268,13 @@ export function RunDetailPage() {
               {links.map((link) => (
                 <li key={link.id}>
                   <a href={link.url} target="_blank" rel="noreferrer">
-                    {link.url}
+                    {link.title?.trim() || link.url}
                   </a>
+                  {link.title?.trim() ? (
+                    <span className="pt-link-list__url">{link.url}</span>
+                  ) : null}
                   <span>
-                    {link.type} / {link.role} / {link.createdAt}
+                    {LINK_TYPE_LABELS[link.type]} / {link.createdAt}
                   </span>
                 </li>
               ))}
@@ -273,6 +293,25 @@ export function RunDetailPage() {
     </section>
   );
 }
+
+const SELECTABLE_LINK_TYPES: readonly SelectableLinkType[] = [
+  'chat',
+  'issue',
+  'pull-request',
+  'commit',
+  'release',
+  'document',
+];
+
+const LINK_TYPE_LABELS: Record<LinkType, string> = {
+  chat: 'Chat',
+  issue: 'Issue',
+  'pull-request': 'Pull Request',
+  commit: 'Commit',
+  release: 'Release',
+  document: 'Document',
+  external: 'その他',
+};
 function DetailMessage({
   variant,
   title,

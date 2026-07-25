@@ -5,6 +5,7 @@ import { expectNoHorizontalOverflow } from './support/layout';
 const promptTitle = 'Issue 161 Golden Path';
 const promptBody = `\n${promptTitle}\n\n作成したTrailの永続性を確認する。`;
 const linkUrl = 'https://example.com/prompt-trail/issue-161';
+const linkTitle = 'Golden Path document';
 
 function getPromptSnapshot(page: Page): Locator {
   return page.locator('section').filter({
@@ -27,7 +28,9 @@ async function expectCreatedTrail(page: Page) {
 
   const savedLink = getLinkSection(page).getByRole('listitem');
   await expect(savedLink.getByRole('link')).toHaveAttribute('href', linkUrl);
-  await expect(savedLink).toContainText('document / reference');
+  await expect(savedLink.getByRole('link', { name: linkTitle })).toBeVisible();
+  await expect(savedLink).toContainText(linkUrl);
+  await expect(savedLink).toContainText('Document');
 }
 
 test.describe('first Trail creation acceptance', () => {
@@ -55,9 +58,9 @@ test.describe('first Trail creation acceptance', () => {
     );
     await expect(snapshot.locator('pre')).toHaveText(promptBody);
 
+    await page.getByLabel('Link名称').fill(linkTitle);
     await page.getByLabel('URL').fill(linkUrl);
     await page.getByLabel('Link種別').selectOption('document');
-    await page.getByLabel('Link役割').selectOption('reference');
     await page.getByRole('button', { name: 'Linkを登録' }).click();
     await expectCreatedTrail(page);
     await expectNoHorizontalOverflow(page);
@@ -99,14 +102,16 @@ test.describe('first Trail creation acceptance', () => {
     await expect(page).toHaveURL(/\/runs\/[^/]+$/);
 
     const urlInput = page.getByLabel('URL');
+    await page.getByLabel('Link名称').fill(linkTitle);
+    await page.getByLabel('Link種別').selectOption('document');
     await urlInput.fill('ftp://example.com/result');
     await page.getByRole('button', { name: 'Linkを登録' }).click();
-    await expect(page.getByText(/Linkを保存できませんでした。/)).toBeVisible();
+    await expect(page.getByText(/http または https/)).toBeVisible();
     await expect(urlInput).toHaveValue('ftp://example.com/result');
 
     await urlInput.fill(linkUrl);
     await page.getByRole('button', { name: 'Linkを登録' }).click();
-    await expect(page.getByRole('link', { name: linkUrl })).toHaveAttribute(
+    await expect(page.getByRole('link', { name: linkTitle })).toHaveAttribute(
       'href',
       linkUrl,
     );
