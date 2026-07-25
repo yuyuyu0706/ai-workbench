@@ -7,7 +7,8 @@ import { PromptTrailRepositoryProvider } from '../app/PromptTrailRepositoryConte
 import type { PromptTrailRepository } from '../repository';
 import { NewTrailPage } from './NewTrailPage';
 function LocationProbe() {
-  return <output>{useLocation().pathname}</output>;
+  const location = useLocation();
+  return <output>{JSON.stringify([location.pathname, location.state])}</output>;
 }
 function renderPage(repository: PromptTrailRepository) {
   return render(
@@ -20,6 +21,21 @@ function renderPage(repository: PromptTrailRepository) {
   );
 }
 describe('NewTrailPage', () => {
+  it('explains the Trail flow without exposing internal creation terms', () => {
+    const repository = {} as PromptTrailRepository;
+    renderPage(repository);
+
+    expect(
+      screen.getByText(
+        'AIに依頼する内容を入力してください。作業後に関連リンクを追加すると、依頼から成果までをTrailとして残せます。',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Promptの最初の行がTrailタイトルになります。'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Default Project|Direct Run|非空行/)).toBeNull();
+  });
+
   it('rejects blank input and retains it after a save failure', async () => {
     const user = userEvent.setup();
     const repository = {
@@ -51,7 +67,9 @@ describe('NewTrailPage', () => {
     renderPage(repository);
     await user.type(screen.getByLabelText('Prompt本文'), 'create me');
     await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
-    expect(await screen.findByText('/runs/run-created')).toBeInTheDocument();
+    expect(
+      await screen.findByText('["/runs/run-created",{"trailCreated":true}]'),
+    ).toBeInTheDocument();
   });
   it('disables repeated submits while saving', async () => {
     const user = userEvent.setup();

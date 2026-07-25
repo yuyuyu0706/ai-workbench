@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { routePaths } from '../app/routes';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageHeader, PageSection, StateMessage } from '../components/ui';
@@ -15,6 +15,12 @@ import {
 export function RunDetailPage() {
   const repository = usePromptTrailRepository();
   const { runId = '' } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const trailCreated =
+    (location.state as { trailCreated?: boolean } | null)?.trailCreated ===
+    true;
+  const [createdNoticeRunId] = useState(trailCreated ? runId : null);
   const [snapshot, setSnapshot] = useState<{
     repository: typeof repository;
     runId: string;
@@ -29,6 +35,7 @@ export function RunDetailPage() {
     type: '' as SelectableLinkType | '',
     status: 'idle' as 'idle' | 'submitting' | 'failure',
     error: null as 'title' | 'url' | 'type' | 'save' | null,
+    successNotice: false,
   });
   const isCurrent =
     snapshot.repository === repository && snapshot.runId === runId;
@@ -45,7 +52,22 @@ export function RunDetailPage() {
           type: '' as const,
           status: 'idle' as const,
           error: null,
+          successNotice: false,
         };
+  useEffect(() => {
+    if (trailCreated) {
+      void navigate(`${location.pathname}${location.search}${location.hash}`, {
+        replace: true,
+        state: null,
+      });
+    }
+  }, [
+    location.hash,
+    location.pathname,
+    location.search,
+    navigate,
+    trailCreated,
+  ]);
   useEffect(() => {
     let active = true;
     loadRunDetailDataState(repository, runId).then((next) => {
@@ -66,7 +88,12 @@ export function RunDetailPage() {
     if (state.status !== 'data' || form.status === 'submitting') return;
     const title = form.title.trim();
     if (title.length === 0) {
-      setFormSnapshot({ ...form, status: 'failure', error: 'title' });
+      setFormSnapshot({
+        ...form,
+        status: 'failure',
+        error: 'title',
+        successNotice: false,
+      });
       return;
     }
     let url: string;
@@ -77,16 +104,31 @@ export function RunDetailPage() {
     } catch {
       setFormSnapshot((current) =>
         current.repository === repository && current.runId === runId
-          ? { ...current, status: 'failure', error: 'url' }
+          ? {
+              ...current,
+              status: 'failure',
+              error: 'url',
+              successNotice: false,
+            }
           : current,
       );
       return;
     }
     if (form.type === '') {
-      setFormSnapshot({ ...form, status: 'failure', error: 'type' });
+      setFormSnapshot({
+        ...form,
+        status: 'failure',
+        error: 'type',
+        successNotice: false,
+      });
       return;
     }
-    const savingForm = { ...form, status: 'submitting' as const };
+    const savingForm = {
+      ...form,
+      status: 'submitting' as const,
+      error: null,
+      successNotice: false,
+    };
     setFormSnapshot(savingForm);
     try {
       const link = await repository.saveLink(
@@ -112,13 +154,19 @@ export function RunDetailPage() {
               type: '',
               status: 'idle',
               error: null,
+              successNotice: true,
             }
           : current,
       );
     } catch {
       setFormSnapshot((current) =>
         current.repository === repository && current.runId === runId
-          ? { ...current, status: 'failure', error: 'save' }
+          ? {
+              ...current,
+              status: 'failure',
+              error: 'save',
+              successNotice: false,
+            }
           : current,
       );
     }
@@ -156,6 +204,11 @@ export function RunDetailPage() {
         description={`${project.name} のTrail: ${run.promptSnapshot.title}`}
       />
       <div className="prompt-trail-page__sections">
+        {createdNoticeRunId === runId ? (
+          <p className="pt-success-notice" role="status">
+            Trailを作成しました。Promptを確認し、作業に関係する関連リンクを追加してください。
+          </p>
+        ) : null}
         <PageSection title="実行サマリ">
           <dl className="pt-detail-list">
             <div>
@@ -186,7 +239,7 @@ export function RunDetailPage() {
             )}
           </dl>
         </PageSection>
-        <PageSection title="Prompt Snapshot">
+        <PageSection title="Prompt">
           <h3>{run.promptSnapshot.title}</h3>
           <pre className="pt-snapshot">{run.promptSnapshot.body}</pre>
         </PageSection>
@@ -201,8 +254,8 @@ export function RunDetailPage() {
           </PageSection>
         ) : null}
         <PageSection
-          title="成果物 / Link"
-          description="Prompt SnapshotとLinkをこのTrailで確認できます。"
+          title="関連リンク"
+          description="この作業で参照したChat・Issue・PR・Documentや、作成した成果物のURLを登録できます。"
         >
           <form className="pt-form" onSubmit={saveLink}>
             <label htmlFor="link-title">Link名称</label>
@@ -210,7 +263,13 @@ export function RunDetailPage() {
               id="link-title"
               value={form.title}
               onChange={(e) =>
-                setFormSnapshot({ ...form, title: e.target.value })
+                setFormSnapshot({
+                  ...form,
+                  title: e.target.value,
+                  status: 'idle',
+                  error: null,
+                  successNotice: false,
+                })
               }
               disabled={form.status === 'submitting'}
             />
@@ -220,7 +279,13 @@ export function RunDetailPage() {
               type="url"
               value={form.url}
               onChange={(e) =>
-                setFormSnapshot({ ...form, url: e.target.value })
+                setFormSnapshot({
+                  ...form,
+                  url: e.target.value,
+                  status: 'idle',
+                  error: null,
+                  successNotice: false,
+                })
               }
               disabled={form.status === 'submitting'}
             />
@@ -232,6 +297,9 @@ export function RunDetailPage() {
                 setFormSnapshot({
                   ...form,
                   type: e.target.value as typeof form.type,
+                  status: 'idle',
+                  error: null,
+                  successNotice: false,
                 })
               }
               disabled={form.status === 'submitting'}
@@ -254,15 +322,22 @@ export function RunDetailPage() {
                       : 'Linkを保存できませんでした。入力内容を保持しています。もう一度お試しください。'}
               </p>
             ) : null}
+            {form.successNotice ? (
+              <p className="pt-success-notice" role="status">
+                関連リンクを登録しました。
+              </p>
+            ) : null}
             <button
               className="pt-button pt-button--primary"
               disabled={form.status === 'submitting'}
             >
-              {form.status === 'submitting' ? '保存中...' : 'Linkを登録'}
+              {form.status === 'submitting' ? '保存中...' : '関連リンクを登録'}
             </button>
           </form>
           {links.length === 0 ? (
-            <p>まだ成果物・参照Linkがありません。</p>
+            <p>
+              まだ関連リンクがありません。作業に関係するURLを登録してください。
+            </p>
           ) : (
             <ul className="pt-link-list">
               {links.map((link) => (

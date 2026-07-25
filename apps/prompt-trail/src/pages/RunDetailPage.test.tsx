@@ -5,9 +5,17 @@ import { describe, expect, it, vi } from 'vitest';
 import { PromptTrailRepositoryProvider } from '../app/PromptTrailRepositoryContext';
 import type { PromptTrailRepository } from '../repository';
 import { RunDetailPage } from './RunDetailPage';
-function renderPage(repository: PromptTrailRepository, id = 'run-1') {
+function renderPage(
+  repository: PromptTrailRepository,
+  id = 'run-1',
+  state?: { trailCreated: true },
+) {
   return render(
-    <MemoryRouter initialEntries={[`/runs/${id}`]}>
+    <MemoryRouter
+      initialEntries={[
+        state ? { pathname: `/runs/${id}`, state } : `/runs/${id}`,
+      ]}
+    >
       <PromptTrailRepositoryProvider repository={repository}>
         <Routes>
           <Route path="/runs/:runId" element={<RunDetailPage />} />
@@ -55,6 +63,23 @@ describe('RunDetailPage', () => {
     } as any;
     renderPage(repo);
     expect(await screen.findByText('Direct Prompt')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Prompt' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Prompt Snapshot')).toBeNull();
+    expect(
+      screen.getByRole('heading', { level: 2, name: '関連リンク' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'この作業で参照したChat・Issue・PR・Documentや、作成した成果物のURLを登録できます。',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'まだ関連リンクがありません。作業に関係するURLを登録してください。',
+      ),
+    ).toBeInTheDocument();
     expect(repo.getRecipe).not.toHaveBeenCalled();
     const recipeRepo = {
       ...repo,
@@ -71,6 +96,26 @@ describe('RunDetailPage', () => {
     expect(await screen.findByText('Recipe A')).toBeInTheDocument();
     expect(screen.getByText('Context A')).toBeInTheDocument();
   });
+
+  it('shows the creation notice only when navigation marks a newly created Trail', async () => {
+    const repository = {
+      getRun: vi.fn(async () => direct),
+      getProject: vi.fn(async () => ({ name: 'Project' })),
+      listActiveLinks: vi.fn(async () => []),
+    } as any;
+
+    const directAccess = renderPage(repository);
+    await screen.findByText('Direct Prompt');
+    expect(
+      screen.queryByText('Trailを作成しました。', { exact: false }),
+    ).toBeNull();
+    directAccess.unmount();
+
+    renderPage(repository, 'run-1', { trailCreated: true });
+    expect(
+      await screen.findByText('Trailを作成しました。', { exact: false }),
+    ).toHaveAttribute('role', 'status');
+  });
 });
 
 describe('RunDetailPage Link form', () => {
@@ -86,7 +131,7 @@ describe('RunDetailPage Link form', () => {
     await screen.findByText('Direct Prompt');
     await user.type(screen.getByLabelText('URL'), 'https://example.com');
     await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
-    await user.click(screen.getByRole('button', { name: 'Linkを登録' }));
+    await user.click(screen.getByRole('button', { name: '関連リンクを登録' }));
     expect(
       await screen.findByText('Link名称を入力してください。'),
     ).toBeInTheDocument();
@@ -105,7 +150,7 @@ describe('RunDetailPage Link form', () => {
     await screen.findByText('Direct Prompt');
     await user.type(screen.getByLabelText('Link名称'), 'Result document');
     await user.type(screen.getByLabelText('URL'), 'https://example.com');
-    await user.click(screen.getByRole('button', { name: 'Linkを登録' }));
+    await user.click(screen.getByRole('button', { name: '関連リンクを登録' }));
     expect(
       await screen.findByText('Link種別を選択してください。'),
     ).toBeInTheDocument();
@@ -128,7 +173,7 @@ describe('RunDetailPage Link form', () => {
     await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
     const url = screen.getByLabelText('URL');
     await user.type(url, 'ftp://example.com');
-    await user.click(screen.getByRole('button', { name: 'Linkを登録' }));
+    await user.click(screen.getByRole('button', { name: '関連リンクを登録' }));
     expect(await screen.findByText(/http または https/)).toBeInTheDocument();
     expect(repository.saveLink).not.toHaveBeenCalled();
   });
@@ -145,7 +190,7 @@ describe('RunDetailPage Link form', () => {
     await user.type(screen.getByLabelText('Link名称'), 'Result document');
     await user.type(screen.getByLabelText('URL'), 'https://example.com/result');
     await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
-    await user.click(screen.getByRole('button', { name: 'Linkを登録' }));
+    await user.click(screen.getByRole('button', { name: '関連リンクを登録' }));
     expect(
       await screen.findByText('https://example.com/result'),
     ).toBeInTheDocument();
@@ -154,6 +199,12 @@ describe('RunDetailPage Link form', () => {
     expect(screen.getByLabelText('Link種別')).toHaveValue('');
     expect(screen.getByText('Result document')).toBeInTheDocument();
     expect(screen.getByText(/Document \//)).toBeInTheDocument();
+    expect(screen.getByText('関連リンクを登録しました。')).toHaveAttribute(
+      'role',
+      'status',
+    );
+    await user.type(screen.getByLabelText('Link名称'), 'N');
+    expect(screen.queryByText('関連リンクを登録しました。')).toBeNull();
   });
   it('retains input and shows an inline error when saving fails', async () => {
     const user = (await import('@testing-library/user-event')).default.setup();
@@ -171,7 +222,7 @@ describe('RunDetailPage Link form', () => {
     await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
     const url = screen.getByLabelText('URL');
     await user.type(url, 'https://example.com');
-    await user.click(screen.getByRole('button', { name: 'Linkを登録' }));
+    await user.click(screen.getByRole('button', { name: '関連リンクを登録' }));
     expect(
       await screen.findByText(/Linkを保存できませんでした/),
     ).toBeInTheDocument();
@@ -201,7 +252,7 @@ it('prevents duplicate Link submissions while saving and then lists the result',
   await user.type(screen.getByLabelText('Link名称'), 'Pending link');
   await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
   await user.type(screen.getByLabelText('URL'), 'https://example.com/pending');
-  await user.click(screen.getByRole('button', { name: 'Linkを登録' }));
+  await user.click(screen.getByRole('button', { name: '関連リンクを登録' }));
   const button = screen.getByRole('button', { name: '保存中...' });
   expect(button).toBeDisabled();
   await user.click(button);
@@ -266,7 +317,7 @@ it('keeps Run B state when a pending Run A Link save resolves after a route chan
   await user.type(screen.getByLabelText('Link名称'), 'A pending');
   await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
   await user.type(screen.getByLabelText('URL'), 'https://a.pending');
-  await user.click(screen.getByRole('button', { name: 'Linkを登録' }));
+  await user.click(screen.getByRole('button', { name: '関連リンクを登録' }));
   await user.click(screen.getByRole('button', { name: 'Run Bへ切替' }));
   expect(await screen.findByText('Prompt B')).toBeInTheDocument();
   expect(screen.getByText('Project B')).toBeInTheDocument();

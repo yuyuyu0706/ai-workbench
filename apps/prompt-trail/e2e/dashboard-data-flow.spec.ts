@@ -18,7 +18,7 @@ async function expectCanonicalSeededDashboard(
   seedResult: { readonly sampleRunUpdatedAt: string },
 ) {
   await expect(
-    page.getByRole('heading', { level: 2, name: '最近のRun' }),
+    page.getByRole('heading', { level: 2, name: '最近のTrail' }),
   ).toBeVisible();
 
   const recentRunCard = getCanonicalRecentRunCard(page);
@@ -38,13 +38,10 @@ async function expectCanonicalSeededDashboard(
   );
   await expect(updatedAt).toHaveText(seedResult.sampleRunUpdatedAt);
 
-  const relatedLinks = recentRunCard.getByRole('listitem');
-  await expect(relatedLinks).toHaveCount(3);
-  await expect(recentRunCard.getByText('Roadmap再同期 Chat')).toBeVisible();
-  await expect(
-    recentRunCard.getByText('Roadmap再同期 Issue #100'),
-  ).toBeVisible();
-  await expect(recentRunCard.getByText('Roadmap再同期 PR #101')).toBeVisible();
+  await expect(recentRunCard.getByText('関連リンク')).toBeVisible();
+  await expect(recentRunCard.getByRole('listitem')).toHaveCount(0);
+  await expect(recentRunCard.getByText('Roadmap再同期 Chat')).toHaveCount(0);
+  await expect(recentRunCard.getByText(/Type:|Role:/)).toHaveCount(0);
 
   return recentRunCard;
 }
@@ -75,7 +72,7 @@ test.describe('Dashboard data flow', () => {
     await navigation.getByRole('link', { name: 'Dashboard' }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
     await expect(
-      page.getByRole('heading', { level: 2, name: '最近のRun' }),
+      page.getByRole('heading', { level: 2, name: '最近のTrail' }),
     ).toBeVisible();
 
     const recentRunCard = await expectCanonicalSeededDashboard(
@@ -83,7 +80,7 @@ test.describe('Dashboard data flow', () => {
       seedResult,
     );
 
-    await recentRunCard.getByRole('link', { name: 'Run Detailへ移動' }).click();
+    await recentRunCard.getByRole('link', { name: 'Trailを確認' }).click();
     await expect(page).toHaveURL(
       new RegExp(`/runs/${seedResult.sampleRunId}$`),
     );
