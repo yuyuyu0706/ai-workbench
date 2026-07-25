@@ -44,11 +44,11 @@ test.describe('first Trail creation acceptance', () => {
     await page.getByLabel('Prompt本文').fill(promptBody);
     await page.getByRole('button', { name: 'Trailを作成' }).click();
 
-    await expect(page).toHaveURL(/\/runs\/[^/]+$/);
-    const runDetailUrl = page.url();
     await expect(
       page.getByRole('heading', { level: 1, name: 'Run Detail' }),
     ).toBeVisible();
+    await expect(page).toHaveURL(/\/runs\/(?!new$)[^/]+$/);
+    const runDetailUrl = page.url();
     const snapshot = getPromptSnapshot(page);
     await expect(snapshot.getByRole('heading', { level: 3 })).toHaveText(
       promptTitle,
