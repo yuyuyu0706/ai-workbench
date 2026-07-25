@@ -109,19 +109,27 @@ function DashboardRecentRunRow({
 
   return (
     <tr className="pt-dashboard-run-row">
-      <th scope="row" data-label="Trail名">
+      <th scope="row">
         <h3 className="pt-dashboard-run-row__title">
           {run.promptSnapshot.title}
         </h3>
       </th>
-      <td data-label="Recipe">{recipe?.title ?? '—'}</td>
-      <td data-label="ステータス">
+      <td>
+        <span className="pt-dashboard-run-row__mobile-label">Recipe</span>
+        <span>{recipe?.title ?? '—'}</span>
+      </td>
+      <td>
+        <span className="pt-dashboard-run-row__mobile-label">ステータス</span>
         <RunStatusPin status={run.status} />
       </td>
-      <td data-label="更新日時">
+      <td>
+        <span className="pt-dashboard-run-row__mobile-label">更新日時</span>
         <time dateTime={run.updatedAt}>{run.updatedAt}</time>
       </td>
-      <td data-label="関連リンク">{links.length}件</td>
+      <td>
+        <span className="pt-dashboard-run-row__mobile-label">関連リンク</span>
+        <span>{links.length}件</span>
+      </td>
       <td className="pt-dashboard-run-row__action">
         <RouterLink
           className="pt-button pt-button--secondary"

@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { PromptTrailRepositoryProvider } from '../app/PromptTrailRepositoryContext';
 import { buildRunDetailPath } from '../app/routes';
 import { createPromptTrailRuntime } from '../app/prompt-trail-runtime';
-import type { Link, Project, Recipe, Run } from '../domain';
+import type { Link, Project, Recipe, Run, RunStatus } from '../domain';
 import type { PromptTrailRepository } from '../repository';
 import { sampleDataset, seedSampleData } from '../sample-data';
 import { createDatabaseTestScope } from '../test/database-test-utils';
@@ -111,7 +111,9 @@ describe('DashboardPage', () => {
       buildRunDetailPath(sampleDataset.run.id),
     );
 
-    expect(screen.getByText('関連リンク')).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: '関連リンク' }),
+    ).toBeInTheDocument();
     expect(screen.queryByText('Roadmap再同期 Chat')).toBeNull();
     expect(screen.queryByText(/Type: chat/)).toBeNull();
     expect(screen.queryByText(/Role: source/)).toBeNull();
@@ -177,6 +179,29 @@ describe('DashboardPage', () => {
       'pt-status-pin--in-progress',
     );
   });
+
+  it.each<readonly [RunStatus, string]>([
+    ['draft', '下書き'],
+    ['prepared', '準備済み'],
+    ['in-progress', '実行中'],
+    ['executed', '実行済み'],
+    ['done', '完了'],
+  ])(
+    'renders the %s status with its Japanese pin label',
+    async (status, label) => {
+      const run = createRun({
+        id: `run-${status}` as Run['id'],
+        status,
+      });
+
+      renderDashboardPage(createResolvedDataRepository({ runs: [run] }));
+
+      expect(await screen.findByText(label)).toHaveClass(
+        'pt-status-pin',
+        `pt-status-pin--${status}`,
+      );
+    },
+  );
 
   it('renders a Direct Run Snapshot title without Recipe metadata', async () => {
     const directRun = createRun({
