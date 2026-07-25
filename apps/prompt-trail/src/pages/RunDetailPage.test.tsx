@@ -74,6 +74,44 @@ describe('RunDetailPage', () => {
 });
 
 describe('RunDetailPage Link form', () => {
+  it('rejects an empty Link title without saving', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const repository = {
+      getRun: vi.fn(async () => direct),
+      getProject: vi.fn(async () => ({ name: 'Project' })),
+      listActiveLinks: vi.fn(async () => []),
+      saveLink: vi.fn(),
+    } as any;
+    renderPage(repository);
+    await screen.findByText('Direct Prompt');
+    await user.type(screen.getByLabelText('URL'), 'https://example.com');
+    await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
+    await user.click(screen.getByRole('button', { name: 'Linkを登録' }));
+    expect(
+      await screen.findByText('Link名称を入力してください。'),
+    ).toBeInTheDocument();
+    expect(repository.saveLink).not.toHaveBeenCalled();
+  });
+
+  it('rejects an unselected Link type without saving', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const repository = {
+      getRun: vi.fn(async () => direct),
+      getProject: vi.fn(async () => ({ name: 'Project' })),
+      listActiveLinks: vi.fn(async () => []),
+      saveLink: vi.fn(),
+    } as any;
+    renderPage(repository);
+    await screen.findByText('Direct Prompt');
+    await user.type(screen.getByLabelText('Link名称'), 'Result document');
+    await user.type(screen.getByLabelText('URL'), 'https://example.com');
+    await user.click(screen.getByRole('button', { name: 'Linkを登録' }));
+    expect(
+      await screen.findByText('Link種別を選択してください。'),
+    ).toBeInTheDocument();
+    expect(repository.saveLink).not.toHaveBeenCalled();
+  });
+
   it('rejects invalid and non-HTTP URLs without saving', async () => {
     const user = (await import('@testing-library/user-event')).default.setup();
     const repository = {
@@ -137,7 +175,9 @@ describe('RunDetailPage Link form', () => {
     expect(
       await screen.findByText(/Linkを保存できませんでした/),
     ).toBeInTheDocument();
+    expect(screen.getByLabelText('Link名称')).toHaveValue('Failed link');
     expect(url).toHaveValue('https://example.com');
+    expect(screen.getByLabelText('Link種別')).toHaveValue('document');
     expect(screen.getByText('Prompt A')).toBeInTheDocument();
   });
 });
