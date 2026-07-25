@@ -7,8 +7,8 @@ function getGlobalNavigation(page: Page) {
   return page.getByRole('navigation', { name: 'Global navigation' });
 }
 
-function getCanonicalRecentRunCard(page: Page): Locator {
-  return page.locator('article').filter({
+function getCanonicalRecentRunRow(page: Page): Locator {
+  return page.getByRole('row').filter({
     has: page.getByRole('heading', { name: 'GitHub Issue作成依頼' }),
   });
 }
@@ -21,14 +21,12 @@ async function expectCanonicalSeededDashboard(
     page.getByRole('heading', { level: 2, name: '最近のTrail' }),
   ).toBeVisible();
 
-  const recentRunCard = getCanonicalRecentRunCard(page);
+  const recentRunCard = getCanonicalRecentRunRow(page);
   await expect(recentRunCard).toHaveCount(1);
   await expect(recentRunCard).toBeVisible();
-  await expect(
-    recentRunCard.getByText('PromptTrail Development'),
-  ).toBeVisible();
-  await expect(recentRunCard.getByText('done')).toBeVisible();
-  await expect(recentRunCard.getByText('good')).toBeVisible();
+  await expect(recentRunCard.getByText('Codex開発依頼')).toBeVisible();
+  await expect(recentRunCard.getByText('完了')).toBeVisible();
+  await expect(recentRunCard.getByText('good')).toHaveCount(0);
   await expect(recentRunCard.getByText('3件')).toBeVisible();
 
   const updatedAt = recentRunCard.locator('time');
@@ -38,7 +36,9 @@ async function expectCanonicalSeededDashboard(
   );
   await expect(updatedAt).toHaveText(seedResult.sampleRunUpdatedAt);
 
-  await expect(recentRunCard.getByText('関連リンク')).toBeVisible();
+  await expect(
+    page.getByRole('columnheader', { name: '関連リンク', includeHidden: true }),
+  ).toHaveCount(1);
   await expect(recentRunCard.getByRole('listitem')).toHaveCount(0);
   await expect(recentRunCard.getByText('Roadmap再同期 Chat')).toHaveCount(0);
   await expect(recentRunCard.getByText(/Type:|Role:/)).toHaveCount(0);

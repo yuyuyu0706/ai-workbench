@@ -95,9 +95,13 @@ describe('DashboardPage', () => {
         name: sampleDataset.run.promptSnapshot.title,
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText(sampleDataset.project.name)).toBeInTheDocument();
-    expect(screen.getByText(sampleDataset.run.status)).toBeInTheDocument();
-    expect(screen.getByText(sampleDataset.run.evaluation!)).toBeInTheDocument();
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'Trail名' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('完了')).toHaveClass('pt-status-pin--done');
+    expect(screen.queryByText(sampleDataset.project.name)).toBeNull();
+    expect(screen.queryByText(sampleDataset.run.evaluation!)).toBeNull();
     expect(screen.getByText(sampleDataset.run.updatedAt)).toBeInTheDocument();
     expect(screen.getByText('3件')).toBeInTheDocument();
 
@@ -169,6 +173,9 @@ describe('DashboardPage', () => {
     expect(screen.queryByText(/Type: external/)).toBeNull();
     expect(screen.queryByText(/Role: reference/)).toBeNull();
     expect(screen.queryByText(`Recipe: ${firstRecipe.title}`)).toBeNull();
+    expect(screen.getByText('実行中')).toHaveClass(
+      'pt-status-pin--in-progress',
+    );
   });
 
   it('renders a Direct Run Snapshot title without Recipe metadata', async () => {
@@ -194,7 +201,10 @@ describe('DashboardPage', () => {
         name: 'Direct Run Prompt',
       }),
     ).toBeInTheDocument();
-    expect(screen.queryByText('Recipe')).toBeNull();
+    expect(
+      screen.getByRole('columnheader', { name: 'Recipe' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('—')).toBeInTheDocument();
     expect(screen.queryByText(/Recipe:/)).toBeNull();
   });
 
