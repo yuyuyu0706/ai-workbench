@@ -12,6 +12,7 @@ import { sampleDataset, seedSampleData } from '../sample-data';
 import { createDatabaseTestScope } from '../test/database-test-utils';
 
 import { DashboardPage } from './DashboardPage';
+import { formatDashboardDateTime } from './dashboard-date-time';
 
 const databaseTestScope = createDatabaseTestScope('dashboard-page');
 
@@ -20,6 +21,20 @@ afterEach(async () => {
 });
 
 describe('DashboardPage', () => {
+  it('formats an ISO date in the browser local timezone', () => {
+    const isoDateTime = '2026-07-25T19:59:00.000Z';
+    const date = new Date(isoDateTime);
+    const pad = (value: number) => String(value).padStart(2, '0');
+
+    expect(formatDashboardDateTime(isoDateTime)).toBe(
+      `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`,
+    );
+  });
+
+  it('keeps an invalid date value so rendering does not fail', () => {
+    expect(formatDashboardDateTime('invalid-date')).toBe('invalid-date');
+  });
+
   it('shows a page-local loading state while the repository read is pending', () => {
     const listActiveProjects = vi.fn<() => Promise<readonly Project[]>>(
       () => new Promise(() => undefined),
@@ -102,7 +117,10 @@ describe('DashboardPage', () => {
     expect(screen.getByText('完了')).toHaveClass('pt-status-pin--done');
     expect(screen.queryByText(sampleDataset.project.name)).toBeNull();
     expect(screen.queryByText(sampleDataset.run.evaluation!)).toBeNull();
-    expect(screen.getByText(sampleDataset.run.updatedAt)).toBeInTheDocument();
+    const updatedAt = screen.getByText(
+      formatDashboardDateTime(sampleDataset.run.updatedAt),
+    );
+    expect(updatedAt).toHaveAttribute('datetime', sampleDataset.run.updatedAt);
     expect(screen.getByText('3件')).toBeInTheDocument();
 
     const detailLink = screen.getByRole('link', { name: 'Trailを確認' });
@@ -114,6 +132,12 @@ describe('DashboardPage', () => {
     expect(
       screen.getByRole('columnheader', { name: '関連リンク' }),
     ).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Recipe' })).toBeNull();
+    expect(
+      screen.queryByText(
+        '最近作成したTrailを確認できます。詳細なPromptと関連リンクはTrailから確認してください。',
+      ),
+    ).toBeNull();
     expect(screen.queryByText('Roadmap再同期 Chat')).toBeNull();
     expect(screen.queryByText(/Type: chat/)).toBeNull();
     expect(screen.queryByText(/Role: source/)).toBeNull();
@@ -226,10 +250,8 @@ describe('DashboardPage', () => {
         name: 'Direct Run Prompt',
       }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('columnheader', { name: 'Recipe' }),
-    ).toBeInTheDocument();
-    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Recipe' })).toBeNull();
+    expect(screen.queryByText('—')).toBeNull();
     expect(screen.queryByText(/Recipe:/)).toBeNull();
   });
 

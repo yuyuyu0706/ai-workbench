@@ -8,6 +8,8 @@ import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageHeader, PageSection, StateMessage } from '../components/ui';
 import type { RunStatus } from '../domain';
 
+import { formatDashboardDateTime } from './dashboard-date-time';
+
 const DASHBOARD_RECENT_RUN_LIMIT = 5;
 
 type DashboardPageState = { readonly status: 'loading' } | DashboardDataState;
@@ -71,19 +73,15 @@ export function DashboardPage() {
 function DashboardDataSections({ data }: { data: DashboardReadModel }) {
   return (
     <div className="prompt-trail-page__sections">
-      <PageSection
-        title="最近のTrail"
-        description="最近作成したTrailを確認できます。詳細なPromptと関連リンクはTrailから確認してください。"
-      >
+      <PageSection title="最近のTrail">
         <table className="pt-dashboard-runs">
           <thead>
             <tr>
               <th scope="col">Trail名</th>
-              <th scope="col">Recipe</th>
               <th scope="col">ステータス</th>
               <th scope="col">更新日時</th>
               <th scope="col">関連リンク</th>
-              <th scope="col" aria-label="操作" />
+              <th scope="col">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -105,7 +103,7 @@ function DashboardRecentRunRow({
 }: {
   recentRun: DashboardRecentRun;
 }) {
-  const { run, recipe, links } = recentRun;
+  const { run, links } = recentRun;
 
   return (
     <tr className="pt-dashboard-run-row">
@@ -115,16 +113,14 @@ function DashboardRecentRunRow({
         </h3>
       </th>
       <td>
-        <span className="pt-dashboard-run-row__mobile-label">Recipe</span>
-        <span>{recipe?.title ?? '—'}</span>
-      </td>
-      <td>
         <span className="pt-dashboard-run-row__mobile-label">ステータス</span>
         <RunStatusPin status={run.status} />
       </td>
       <td>
         <span className="pt-dashboard-run-row__mobile-label">更新日時</span>
-        <time dateTime={run.updatedAt}>{run.updatedAt}</time>
+        <time dateTime={run.updatedAt}>
+          {formatDashboardDateTime(run.updatedAt)}
+        </time>
       </td>
       <td>
         <span className="pt-dashboard-run-row__mobile-label">関連リンク</span>
