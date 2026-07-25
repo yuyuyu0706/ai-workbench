@@ -28,7 +28,7 @@ export interface Link extends BaseEntity<'link'> {
   readonly url: string;
   readonly title: string | null;
   readonly type: LinkType;
-  readonly role: LinkRole;
+  readonly role: LinkRole | null;
   readonly summary: string | null;
   readonly externalId: string | null;
 }

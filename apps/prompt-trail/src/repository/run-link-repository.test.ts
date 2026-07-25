@@ -526,10 +526,12 @@ describe('PromptTrailRepository link persistence', () => {
     const newer = buildLink({
       id: linkId('newer'),
       createdAt: utc('2026-07-06T03:00:00.000Z'),
+      role: null,
     });
     const older = buildLink({
       id: linkId('older'),
       createdAt: utc('2026-07-06T01:00:00.000Z'),
+      title: null,
     });
     const deleted = buildLink({
       id: linkId('deleted'),

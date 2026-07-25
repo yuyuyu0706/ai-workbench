@@ -204,6 +204,12 @@
 }
 .pt-link-list li {
   margin: var(--pt-space-3) 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pt-link-list a,
+.pt-link-list__url {
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 .pt-link-list span {

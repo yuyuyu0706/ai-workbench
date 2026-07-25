@@ -74,6 +74,44 @@ describe('RunDetailPage', () => {
 });
 
 describe('RunDetailPage Link form', () => {
+  it('rejects an empty Link title without saving', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const repository = {
+      getRun: vi.fn(async () => direct),
+      getProject: vi.fn(async () => ({ name: 'Project' })),
+      listActiveLinks: vi.fn(async () => []),
+      saveLink: vi.fn(),
+    } as any;
+    renderPage(repository);
+    await screen.findByText('Direct Prompt');
+    await user.type(screen.getByLabelText('URL'), 'https://example.com');
+    await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
+    await user.click(screen.getByRole('button', { name: 'Linkを登録' }));
+    expect(
+      await screen.findByText('Link名称を入力してください。'),
+    ).toBeInTheDocument();
+    expect(repository.saveLink).not.toHaveBeenCalled();
+  });
+
+  it('rejects an unselected Link type without saving', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const repository = {
+      getRun: vi.fn(async () => direct),
+      getProject: vi.fn(async () => ({ name: 'Project' })),
+      listActiveLinks: vi.fn(async () => []),
+      saveLink: vi.fn(),
+    } as any;
+    renderPage(repository);
+    await screen.findByText('Direct Prompt');
+    await user.type(screen.getByLabelText('Link名称'), 'Result document');
+    await user.type(screen.getByLabelText('URL'), 'https://example.com');
+    await user.click(screen.getByRole('button', { name: 'Linkを登録' }));
+    expect(
+      await screen.findByText('Link種別を選択してください。'),
+    ).toBeInTheDocument();
+    expect(repository.saveLink).not.toHaveBeenCalled();
+  });
+
   it('rejects invalid and non-HTTP URLs without saving', async () => {
     const user = (await import('@testing-library/user-event')).default.setup();
     const repository = {
@@ -84,6 +122,10 @@ describe('RunDetailPage Link form', () => {
     } as any;
     renderPage(repository);
     await screen.findByText('Direct Prompt');
+    expect(screen.getByLabelText('Link名称')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Link役割')).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText('Link名称'), 'FTP result');
+    await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
     const url = screen.getByLabelText('URL');
     await user.type(url, 'ftp://example.com');
     await user.click(screen.getByRole('button', { name: 'Linkを登録' }));
@@ -100,17 +142,18 @@ describe('RunDetailPage Link form', () => {
     } as any;
     renderPage(repository);
     await screen.findByText('Direct Prompt');
+    await user.type(screen.getByLabelText('Link名称'), 'Result document');
     await user.type(screen.getByLabelText('URL'), 'https://example.com/result');
     await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
-    await user.selectOptions(screen.getByLabelText('Link役割'), 'output');
     await user.click(screen.getByRole('button', { name: 'Linkを登録' }));
     expect(
       await screen.findByText('https://example.com/result'),
     ).toBeInTheDocument();
     expect(screen.getByLabelText('URL')).toHaveValue('');
-    expect(screen.getByLabelText('Link種別')).toHaveValue('external');
-    expect(screen.getByLabelText('Link役割')).toHaveValue('result');
-    expect(screen.getByText(/document \/ output/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Link名称')).toHaveValue('');
+    expect(screen.getByLabelText('Link種別')).toHaveValue('');
+    expect(screen.getByText('Result document')).toBeInTheDocument();
+    expect(screen.getByText(/Document \//)).toBeInTheDocument();
   });
   it('retains input and shows an inline error when saving fails', async () => {
     const user = (await import('@testing-library/user-event')).default.setup();
@@ -124,13 +167,17 @@ describe('RunDetailPage Link form', () => {
     } as any;
     renderPage(repository);
     await screen.findByText('Direct Prompt');
+    await user.type(screen.getByLabelText('Link名称'), 'Failed link');
+    await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
     const url = screen.getByLabelText('URL');
     await user.type(url, 'https://example.com');
     await user.click(screen.getByRole('button', { name: 'Linkを登録' }));
     expect(
       await screen.findByText(/Linkを保存できませんでした/),
     ).toBeInTheDocument();
+    expect(screen.getByLabelText('Link名称')).toHaveValue('Failed link');
     expect(url).toHaveValue('https://example.com');
+    expect(screen.getByLabelText('Link種別')).toHaveValue('document');
     expect(screen.getByText('Prompt A')).toBeInTheDocument();
   });
 });
@@ -151,6 +198,8 @@ it('prevents duplicate Link submissions while saving and then lists the result',
   } as any;
   renderPage(repository);
   await screen.findByText('Direct Prompt');
+  await user.type(screen.getByLabelText('Link名称'), 'Pending link');
+  await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
   await user.type(screen.getByLabelText('URL'), 'https://example.com/pending');
   await user.click(screen.getByRole('button', { name: 'Linkを登録' }));
   const button = screen.getByRole('button', { name: '保存中...' });
@@ -214,12 +263,15 @@ it('keeps Run B state when a pending Run A Link save resolves after a route chan
     </MemoryRouter>,
   );
   await screen.findByText('Prompt A');
+  await user.type(screen.getByLabelText('Link名称'), 'A pending');
+  await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
   await user.type(screen.getByLabelText('URL'), 'https://a.pending');
   await user.click(screen.getByRole('button', { name: 'Linkを登録' }));
   await user.click(screen.getByRole('button', { name: 'Run Bへ切替' }));
   expect(await screen.findByText('Prompt B')).toBeInTheDocument();
   expect(screen.getByText('Project B')).toBeInTheDocument();
   expect(screen.getByText('https://b.existing')).toBeInTheDocument();
+  expect(screen.getByText(/その他/)).toBeInTheDocument();
   expect(screen.getByLabelText('URL')).toHaveValue('');
   resolve({
     id: 'link-a-new',
@@ -235,6 +287,6 @@ it('keeps Run B state when a pending Run A Link save resolves after a route chan
   expect(screen.queryByText('https://a.pending')).toBeNull();
   expect(screen.getByText('https://b.existing')).toBeInTheDocument();
   expect(screen.getByLabelText('URL')).toHaveValue('');
-  expect(screen.getByLabelText('Link種別')).toHaveValue('external');
-  expect(screen.getByLabelText('Link役割')).toHaveValue('result');
+  expect(screen.getByLabelText('Link名称')).toHaveValue('');
+  expect(screen.getByLabelText('Link種別')).toHaveValue('');
 });
