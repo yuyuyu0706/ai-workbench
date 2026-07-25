@@ -81,7 +81,7 @@ test.describe('first Trail creation acceptance', () => {
     await expectNoHorizontalOverflow(page);
 
     await page.getByRole('link', { name: 'Dashboardへ戻る' }).click();
-    const recentRun = page.locator('article').filter({
+    const recentRun = page.getByRole('row').filter({
       has: page.getByRole('heading', { level: 3, name: promptTitle }),
     });
     await expect(recentRun).toContainText('1件');

@@ -6,6 +6,7 @@ import { loadDashboardDataState, type DashboardDataState } from '../dashboard';
 import type { DashboardReadModel, DashboardRecentRun } from '../dashboard';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageHeader, PageSection, StateMessage } from '../components/ui';
+import type { RunStatus } from '../domain';
 
 const DASHBOARD_RECENT_RUN_LIMIT = 5;
 
@@ -74,72 +75,86 @@ function DashboardDataSections({ data }: { data: DashboardReadModel }) {
         title="最近のTrail"
         description="最近作成したTrailを確認できます。詳細なPromptと関連リンクはTrailから確認してください。"
       >
-        <div className="pt-dashboard-runs">
-          {data.recentRuns.map((recentRun) => (
-            <DashboardRecentRunCard
-              key={recentRun.run.id}
-              recentRun={recentRun}
-            />
-          ))}
-        </div>
+        <table className="pt-dashboard-runs">
+          <thead>
+            <tr>
+              <th scope="col">Trail名</th>
+              <th scope="col">Recipe</th>
+              <th scope="col">ステータス</th>
+              <th scope="col">更新日時</th>
+              <th scope="col">関連リンク</th>
+              <th scope="col" aria-label="操作" />
+            </tr>
+          </thead>
+          <tbody>
+            {data.recentRuns.map((recentRun) => (
+              <DashboardRecentRunRow
+                key={recentRun.run.id}
+                recentRun={recentRun}
+              />
+            ))}
+          </tbody>
+        </table>
       </PageSection>
     </div>
   );
 }
 
-function DashboardRecentRunCard({
+function DashboardRecentRunRow({
   recentRun,
 }: {
   recentRun: DashboardRecentRun;
 }) {
-  const { run, project, recipe, links } = recentRun;
+  const { run, recipe, links } = recentRun;
 
   return (
-    <article className="pt-dashboard-run-card">
-      <div className="pt-dashboard-run-card__header">
-        <h3 className="pt-dashboard-run-card__title">
+    <tr className="pt-dashboard-run-row">
+      <th scope="row">
+        <h3 className="pt-dashboard-run-row__title">
           {run.promptSnapshot.title}
         </h3>
+      </th>
+      <td>
+        <span className="pt-dashboard-run-row__mobile-label">Recipe</span>
+        <span>{recipe?.title ?? '—'}</span>
+      </td>
+      <td>
+        <span className="pt-dashboard-run-row__mobile-label">ステータス</span>
+        <RunStatusPin status={run.status} />
+      </td>
+      <td>
+        <span className="pt-dashboard-run-row__mobile-label">更新日時</span>
+        <time dateTime={run.updatedAt}>{run.updatedAt}</time>
+      </td>
+      <td>
+        <span className="pt-dashboard-run-row__mobile-label">関連リンク</span>
+        <span>{links.length}件</span>
+      </td>
+      <td className="pt-dashboard-run-row__action">
         <RouterLink
           className="pt-button pt-button--secondary"
           to={buildRunDetailPath(run.id)}
         >
           Trailを確認
         </RouterLink>
-      </div>
-      <dl className="pt-dashboard-run-card__meta">
-        <div>
-          <dt className="pt-dashboard-label">Project</dt>
-          <dd className="pt-dashboard-value">{project.name}</dd>
-        </div>
-        {recipe === null ? null : (
-          <div>
-            <dt className="pt-dashboard-label">Recipe</dt>
-            <dd className="pt-dashboard-value">{recipe.title}</dd>
-          </div>
-        )}
-        <div>
-          <dt className="pt-dashboard-label">Status</dt>
-          <dd className="pt-dashboard-value">{run.status}</dd>
-        </div>
-        {run.evaluation === null ? null : (
-          <div>
-            <dt className="pt-dashboard-label">Evaluation</dt>
-            <dd className="pt-dashboard-value">{run.evaluation}</dd>
-          </div>
-        )}
-        <div>
-          <dt className="pt-dashboard-label">Updated At</dt>
-          <dd className="pt-dashboard-value">
-            <time dateTime={run.updatedAt}>{run.updatedAt}</time>
-          </dd>
-        </div>
-        <div>
-          <dt className="pt-dashboard-label">関連リンク</dt>
-          <dd className="pt-dashboard-value">{links.length}件</dd>
-        </div>
-      </dl>
-    </article>
+      </td>
+    </tr>
+  );
+}
+
+const RUN_STATUS_LABELS: Record<RunStatus, string> = {
+  draft: '下書き',
+  prepared: '準備済み',
+  'in-progress': '実行中',
+  executed: '実行済み',
+  done: '完了',
+};
+
+function RunStatusPin({ status }: { status: RunStatus }) {
+  return (
+    <span className={`pt-status-pin pt-status-pin--${status}`}>
+      {RUN_STATUS_LABELS[status]}
+    </span>
   );
 }
 
