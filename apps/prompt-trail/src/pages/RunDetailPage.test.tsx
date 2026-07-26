@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { PromptTrailRepositoryProvider } from '../app/PromptTrailRepositoryContext';
@@ -70,12 +70,12 @@ describe('RunDetailPage', () => {
       screen.getByText('「Result document」を削除しますか？'),
     ).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'キャンセル' }));
-    expect(remove).toHaveFocus();
+    await waitFor(() => expect(remove).toHaveFocus());
     expect(screen.getByRole('link', { name: 'Result document' })).toBeVisible();
 
     await user.click(remove);
     await user.keyboard('{Escape}');
-    expect(remove).toHaveFocus();
+    await waitFor(() => expect(remove).toHaveFocus());
     await user.click(remove);
     await user.click(screen.getByRole('button', { name: '削除する' }));
 
@@ -84,10 +84,13 @@ describe('RunDetailPage', () => {
       'link-1',
       expect.any(String),
     );
-    expect(screen.queryByRole('link', { name: 'Result document' })).toBeNull();
-    expect(screen.getByText('関連リンクを削除しました。')).toHaveAttribute(
-      'role',
-      'status',
+    expect(
+      await screen.findByText('関連リンクを削除しました。'),
+    ).toHaveAttribute('role', 'status');
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('link', { name: 'Result document' }),
+      ).not.toBeInTheDocument(),
     );
   });
 
