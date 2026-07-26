@@ -75,6 +75,26 @@ test.describe('first Trail creation acceptance', () => {
       'false',
     );
     const originalViewport = page.viewportSize();
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await linkInformationButton.click();
+    const desktopPopover = page.getByText('この作業で参照したChat・Issue・PR', {
+      exact: false,
+    });
+    const desktopButtonBounds = await linkInformationButton.boundingBox();
+    const desktopPopoverBounds = await desktopPopover.boundingBox();
+    expect(desktopButtonBounds).not.toBeNull();
+    expect(desktopPopoverBounds).not.toBeNull();
+    expect(desktopPopoverBounds!.x).toBeGreaterThan(
+      desktopButtonBounds!.x + desktopButtonBounds!.width,
+    );
+    expect(
+      Math.abs(
+        desktopPopoverBounds!.y +
+          desktopPopoverBounds!.height -
+          (desktopButtonBounds!.y + desktopButtonBounds!.height / 2),
+      ),
+    ).toBeLessThanOrEqual(1);
+    await page.keyboard.press('Escape');
     for (const width of [320, 375, 430]) {
       await page.setViewportSize({
         width,

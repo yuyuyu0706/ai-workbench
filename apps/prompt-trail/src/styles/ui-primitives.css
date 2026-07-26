@@ -148,7 +148,7 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: var(--pt-space-2);
+  gap: var(--pt-space-1);
   max-width: 100%;
 }
 
