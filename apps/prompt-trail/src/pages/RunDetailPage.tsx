@@ -255,7 +255,7 @@ export function RunDetailPage() {
               <dt>Created At</dt>
               <dd>
                 <time dateTime={run.createdAt}>
-                  {formatDateTime(run.createdAt)}
+                  {formatDateTime(run.createdAt, { includeSeconds: true })}
                 </time>
               </dd>
             </div>
@@ -263,7 +263,7 @@ export function RunDetailPage() {
               <dt>Updated At</dt>
               <dd>
                 <time dateTime={run.updatedAt}>
-                  {formatDateTime(run.updatedAt)}
+                  {formatDateTime(run.updatedAt, { includeSeconds: true })}
                 </time>
               </dd>
             </div>
@@ -291,7 +291,7 @@ export function RunDetailPage() {
         ) : null}
         <PageSection
           title="関連リンク"
-          actions={
+          titleAccessory={
             <div className="pt-run-link-information" ref={linkInformationRef}>
               <button
                 ref={linkInformationButtonRef}

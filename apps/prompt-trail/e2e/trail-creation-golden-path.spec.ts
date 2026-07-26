@@ -59,7 +59,7 @@ test.describe('first Trail creation acceptance', () => {
     });
     await expect(runSummary.locator('time')).toHaveCount(2);
     await expect(runSummary.locator('time').first()).toHaveText(
-      /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/,
+      /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/,
     );
     const linkInformationButton = page.getByRole('button', {
       name: '関連リンクについて',
@@ -74,6 +74,26 @@ test.describe('first Trail creation acceptance', () => {
       'aria-expanded',
       'false',
     );
+    const originalViewport = page.viewportSize();
+    for (const width of [320, 375, 430]) {
+      await page.setViewportSize({
+        width,
+        height: originalViewport?.height ?? 900,
+      });
+      await linkInformationButton.click();
+      await expectNoHorizontalOverflow(page);
+      const popover = page.getByText('この作業で参照したChat・Issue・PR', {
+        exact: false,
+      });
+      const bounds = await popover.boundingBox();
+      expect(bounds).not.toBeNull();
+      expect(bounds!.x).toBeGreaterThanOrEqual(0);
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
+      await page.keyboard.press('Escape');
+    }
+    if (originalViewport !== null) {
+      await page.setViewportSize(originalViewport);
+    }
     const runDetailUrl = page.url();
     const snapshot = getPromptSnapshot(page);
     await expect(snapshot.getByRole('heading', { level: 3 })).toHaveText(

@@ -12,6 +12,7 @@ describe('PageSection', () => {
         description="Use this area for the first static skeleton pass."
         eyebrow="Next step"
         title="最近のRun"
+        titleAccessory={<span>補足</span>}
       >
         <p>Repository data will replace this empty state in P0-5.</p>
       </PageSection>,
@@ -22,6 +23,7 @@ describe('PageSection', () => {
     expect(
       screen.getByRole('heading', { level: 2, name: '最近のRun' }),
     ).toBeInTheDocument();
+    expect(screen.getByText('補足')).toBeInTheDocument();
     expect(screen.getByText('Next step')).toHaveClass(
       'pt-page-section__eyebrow',
     );

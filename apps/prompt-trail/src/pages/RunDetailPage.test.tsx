@@ -105,7 +105,7 @@ describe('RunDetailPage', () => {
     } as any;
     renderPage(repository);
 
-    const created = await screen.findByText('2026-01-02 03:04');
+    const created = await screen.findByText('2026-01-02 03:04:00');
     expect(created).toHaveAttribute('datetime', '2026-01-02T03:04:00.000Z');
     expect(screen.getByText('invalid-date')).toHaveAttribute(
       'datetime',

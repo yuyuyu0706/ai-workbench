@@ -1,19 +1,28 @@
 .pt-run-link-information {
-  position: relative;
+  position: static;
 }
 
 .pt-run-link-information__button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  padding: 0;
-  border: 1px solid var(--pt-color-border);
-  border-radius: 50%;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  margin: -0.625rem;
+  padding: 0.625rem;
+  border: 0;
+  border-radius: var(--pt-radius-sm);
   color: var(--pt-color-accent-strong);
-  background: var(--pt-color-surface);
+  background: transparent;
   cursor: pointer;
+}
+
+.pt-run-link-information__button:hover {
+  background: color-mix(
+    in srgb,
+    var(--pt-color-surface) 70%,
+    var(--pt-color-accent) 8%
+  );
 }
 
 .pt-run-link-information__button svg {
@@ -29,7 +38,7 @@
   position: absolute;
   z-index: 1;
   top: calc(100% + var(--pt-space-2));
-  right: 0;
+  left: 0;
   width: min(22rem, calc(100vw - 2 * var(--pt-space-5)));
   margin: 0;
   padding: var(--pt-space-3) var(--pt-space-4);

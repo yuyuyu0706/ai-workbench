@@ -1,4 +1,7 @@
-export function formatDateTime(isoDateTime: string): string {
+export function formatDateTime(
+  isoDateTime: string,
+  options: { includeSeconds?: boolean } = {},
+): string {
   const date = new Date(isoDateTime);
 
   if (Number.isNaN(date.getTime())) {
@@ -7,5 +10,9 @@ export function formatDateTime(isoDateTime: string): string {
 
   const pad = (value: number) => String(value).padStart(2, '0');
 
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  const minutePrecision = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+
+  return options.includeSeconds
+    ? `${minutePrecision}:${pad(date.getSeconds())}`
+    : minutePrecision;
 }
