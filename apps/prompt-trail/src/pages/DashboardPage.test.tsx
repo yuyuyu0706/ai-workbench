@@ -133,6 +133,11 @@ describe('DashboardPage', () => {
     await userEvent.click(menuButton);
     expect(menuButton).toHaveAttribute('aria-expanded', 'true');
     expect(menuButton).toHaveAttribute('aria-haspopup', 'menu');
+    const menu = screen.getByRole('menu', {
+      name: `${sampleDataset.run.promptSnapshot.title}の操作メニュー`,
+    });
+    expect(menuButton).toHaveAttribute('id');
+    expect(menu).toHaveAttribute('aria-labelledby', menuButton.id);
     const detailLink = screen.getByRole('menuitem', { name: 'Trailを確認' });
     expect(detailLink).toHaveAttribute(
       'href',
@@ -188,7 +193,9 @@ describe('DashboardPage', () => {
     await user.click(secondTrigger);
     expect(firstTrigger).toHaveAttribute('aria-expanded', 'false');
     expect(secondTrigger).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getAllByRole('menu')).toHaveLength(1);
+    expect(
+      screen.getByRole('menu', { name: 'Second Trailの操作メニュー' }),
+    ).toBeInTheDocument();
 
     await user.keyboard('{Escape}');
     expect(secondTrigger).toHaveAttribute('aria-expanded', 'false');

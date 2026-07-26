@@ -166,7 +166,9 @@ function DashboardRunActionMenu({
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 }) {
-  const menuId = useId();
+  const generatedId = useId();
+  const triggerId = `${generatedId}-trigger`;
+  const menuId = `${generatedId}-menu`;
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuItemRef = useRef<HTMLAnchorElement>(null);
@@ -200,6 +202,7 @@ function DashboardRunActionMenu({
   return (
     <div className="pt-dashboard-run-menu" ref={containerRef}>
       <button
+        id={triggerId}
         ref={triggerRef}
         className="pt-dashboard-run-menu__trigger"
         type="button"
@@ -216,7 +219,12 @@ function DashboardRunActionMenu({
         </svg>
       </button>
       {isOpen ? (
-        <div className="pt-dashboard-run-menu__popover" id={menuId} role="menu">
+        <div
+          className="pt-dashboard-run-menu__popover"
+          id={menuId}
+          role="menu"
+          aria-labelledby={triggerId}
+        >
           <RouterLink
             ref={menuItemRef}
             className="pt-dashboard-run-menu__item"

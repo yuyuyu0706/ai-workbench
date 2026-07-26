@@ -87,6 +87,11 @@ test.describe('Dashboard data flow', () => {
     await recentRunCard
       .getByRole('button', { name: 'GitHub Issue作成依頼の操作メニュー' })
       .click();
+    await expect(
+      recentRunCard.getByRole('menu', {
+        name: 'GitHub Issue作成依頼の操作メニュー',
+      }),
+    ).toBeVisible();
     await recentRunCard.getByRole('menuitem', { name: 'Trailを確認' }).click();
     await expect(page).toHaveURL(
       new RegExp(`/runs/${seedResult.sampleRunId}$`),
@@ -149,6 +154,21 @@ test.describe('Dashboard data flow', () => {
           name: 'GitHub Issue作成依頼の操作メニュー',
         }),
       ).toBeVisible();
+
+      const trigger = recentRun.getByRole('button', {
+        name: 'GitHub Issue作成依頼の操作メニュー',
+      });
+      await trigger.click();
+      const menu = recentRun.getByRole('menu', {
+        name: 'GitHub Issue作成依頼の操作メニュー',
+      });
+      await expect(menu).toBeVisible();
+      const menuBox = await menu.boundingBox();
+      expect(menuBox).not.toBeNull();
+      expect(menuBox!.x).toBeGreaterThanOrEqual(0);
+      expect(menuBox!.x + menuBox!.width).toBeLessThanOrEqual(width);
+      await expectNoHorizontalOverflow(page);
+      await page.keyboard.press('Escape');
     }
   });
 
