@@ -94,10 +94,11 @@ describe('RunDetailPage', () => {
   });
 
   it('formats summary dates and preserves their original values', async () => {
+    const createdAt = '2026-01-02T03:04:00.000Z';
     const repository = {
       getRun: vi.fn(async () => ({
         ...direct,
-        createdAt: '2026-01-02T03:04:00.000Z',
+        createdAt,
         updatedAt: 'invalid-date',
       })),
       getProject: vi.fn(async () => ({ name: 'Project' })),
@@ -105,8 +106,15 @@ describe('RunDetailPage', () => {
     } as any;
     renderPage(repository);
 
-    const created = await screen.findByText('2026-01-02 03:04:00');
-    expect(created).toHaveAttribute('datetime', '2026-01-02T03:04:00.000Z');
+    const createdDate = new Date(createdAt);
+    const pad = (value: number) => String(value).padStart(2, '0');
+    const expectedCreatedAt = `${createdDate.getFullYear()}-${pad(
+      createdDate.getMonth() + 1,
+    )}-${pad(createdDate.getDate())} ${pad(createdDate.getHours())}:${pad(
+      createdDate.getMinutes(),
+    )}:${pad(createdDate.getSeconds())}`;
+    const created = await screen.findByText(expectedCreatedAt);
+    expect(created).toHaveAttribute('datetime', createdAt);
     expect(screen.getByText('invalid-date')).toHaveAttribute(
       'datetime',
       'invalid-date',

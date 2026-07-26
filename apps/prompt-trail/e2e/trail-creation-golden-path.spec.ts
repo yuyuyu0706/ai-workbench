@@ -95,7 +95,7 @@ test.describe('first Trail creation acceptance', () => {
       ),
     ).toBeLessThanOrEqual(1);
     await page.keyboard.press('Escape');
-    for (const width of [320, 375, 430]) {
+    for (const width of [320, 375, 430, 520]) {
       await page.setViewportSize({
         width,
         height: originalViewport?.height ?? 900,
