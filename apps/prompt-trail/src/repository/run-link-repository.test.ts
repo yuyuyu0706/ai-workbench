@@ -557,7 +557,11 @@ describe('PromptTrailRepository link persistence', () => {
       newer,
     ]);
     await expect(
-      repository.softDeleteLink(newer.id, utc('2026-07-06T06:00:00.000Z')),
+      repository.softDeleteLink(
+        run.id,
+        newer.id,
+        utc('2026-07-06T06:00:00.000Z'),
+      ),
     ).resolves.toEqual({
       ...newer,
       deletedAt: utc('2026-07-06T06:00:00.000Z'),
@@ -566,6 +570,27 @@ describe('PromptTrailRepository link persistence', () => {
       ...newer,
       deletedAt: utc('2026-07-06T06:00:00.000Z'),
     });
+    await expect(
+      repository.softDeleteLink(
+        run.id,
+        newer.id,
+        utc('2026-07-06T07:00:00.000Z'),
+      ),
+    ).resolves.toEqual({
+      ...newer,
+      deletedAt: utc('2026-07-06T06:00:00.000Z'),
+    });
+    await expect(repository.listActiveLinks(run.id)).resolves.toEqual([older]);
+    await expect(
+      repository.softDeleteLink(
+        run.id,
+        otherRunLink.id,
+        utc('2026-07-06T08:00:00.000Z'),
+      ),
+    ).rejects.toMatchObject(expectedRepositoryError('reference-not-found'));
+    await expect(repository.getLink(otherRunLink.id)).resolves.toEqual(
+      otherRunLink,
+    );
   });
 
   it('allows archived runs and rejects missing or deleted runs transactionally', async () => {
@@ -618,6 +643,7 @@ describe('PromptTrailRepository link persistence', () => {
     ).rejects.toMatchObject(expectedRepositoryError('reference-not-found'));
     await expect(
       repository.softDeleteLink(
+        runId('missing-run'),
         linkId('missing-link'),
         utc('2026-07-06T00:00:00.000Z'),
       ),

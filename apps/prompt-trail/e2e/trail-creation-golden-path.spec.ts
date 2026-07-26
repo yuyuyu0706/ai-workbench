@@ -140,16 +140,41 @@ test.describe('first Trail creation acceptance', () => {
     await expectCreatedTrail(page);
     await expectNoHorizontalOverflow(page);
 
+    const deleteButton = page.getByRole('button', {
+      name: `${linkTitle}を削除`,
+    });
+    const viewportBeforeDelete = page.viewportSize();
+    await page.setViewportSize({ width: 320, height: 900 });
+    await deleteButton.click();
+    await expectNoHorizontalOverflow(page);
+    await page.getByRole('button', { name: 'キャンセル' }).click();
+    if (viewportBeforeDelete !== null) {
+      await page.setViewportSize(viewportBeforeDelete);
+    }
+    await expectCreatedTrail(page);
+    await deleteButton.click();
+    await page.getByRole('button', { name: '削除する' }).click();
+    await expect(
+      page
+        .getByRole('status')
+        .filter({ hasText: '関連リンクを削除しました。' }),
+    ).toBeVisible();
+    await expect(getLinkSection(page).getByRole('listitem')).toHaveCount(0);
+    await expectNoHorizontalOverflow(page);
+
+    await page.reload();
+    await expect(getLinkSection(page).getByRole('listitem')).toHaveCount(0);
+
     await page.getByRole('link', { name: 'Dashboardへ戻る' }).click();
     const recentRun = page.getByRole('row').filter({
       has: page.getByRole('heading', { level: 3, name: promptTitle }),
     });
-    await expect(recentRun).toContainText('1件');
+    await expect(recentRun).toContainText('0件');
     await expectNoHorizontalOverflow(page);
 
     await recentRun.getByRole('link', { name: promptTitle }).click();
     await expect(page).toHaveURL(runDetailUrl);
-    await expectCreatedTrail(page);
+    await expect(getLinkSection(page).getByRole('listitem')).toHaveCount(0);
   });
 
   test('recovers from representative validation and not-found states', async ({

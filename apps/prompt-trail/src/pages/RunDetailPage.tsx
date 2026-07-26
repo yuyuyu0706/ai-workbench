@@ -3,7 +3,12 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { routePaths } from '../app/routes';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageHeader, PageSection, StateMessage } from '../components/ui';
-import type { Link as TrailLink, LinkType } from '../domain';
+import type {
+  Link as TrailLink,
+  LinkId,
+  LinkType,
+  UtcDateTimeString,
+} from '../domain';
 import {
   createRunLink,
   type SelectableLinkType,
@@ -21,6 +26,7 @@ export function RunDetailPage() {
   const linkInformationId = useId();
   const linkInformationRef = useRef<HTMLDivElement>(null);
   const linkInformationButtonRef = useRef<HTMLButtonElement>(null);
+  const deleteButtonRefs = useRef(new Map<LinkId, HTMLButtonElement>());
   const [isLinkInformationOpen, setIsLinkInformationOpen] = useState(false);
   const trailCreated =
     (location.state as { trailCreated?: boolean } | null)?.trailCreated ===
@@ -42,6 +48,13 @@ export function RunDetailPage() {
     error: null as 'title' | 'url' | 'type' | 'save' | null,
     successNotice: false,
   });
+  const [deleteSnapshot, setDeleteSnapshot] = useState({
+    repository,
+    runId,
+    linkId: null as LinkId | null,
+    status: 'idle' as 'idle' | 'deleting' | 'failure',
+    successNotice: false,
+  });
   const isCurrent =
     snapshot.repository === repository && snapshot.runId === runId;
   const state = isCurrent ? snapshot.state : ({ status: 'loading' } as const);
@@ -57,6 +70,16 @@ export function RunDetailPage() {
           type: '' as const,
           status: 'idle' as const,
           error: null,
+          successNotice: false,
+        };
+  const deletion =
+    deleteSnapshot.repository === repository && deleteSnapshot.runId === runId
+      ? deleteSnapshot
+      : {
+          repository,
+          runId,
+          linkId: null,
+          status: 'idle' as const,
           successNotice: false,
         };
   useEffect(() => {
@@ -111,6 +134,84 @@ export function RunDetailPage() {
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isLinkInformationOpen]);
+  useEffect(() => {
+    if (deletion.linkId === null || deletion.status === 'deleting') return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape' || deletion.linkId === null) return;
+      const button = deleteButtonRefs.current.get(deletion.linkId);
+      setDeleteSnapshot({
+        repository,
+        runId,
+        linkId: null,
+        status: 'idle',
+        successNotice: false,
+      });
+      requestAnimationFrame(() => button?.focus());
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [deletion.linkId, deletion.status, repository, runId]);
+
+  function cancelDelete(linkId: LinkId) {
+    const button = deleteButtonRefs.current.get(linkId);
+    setDeleteSnapshot({
+      repository,
+      runId,
+      linkId: null,
+      status: 'idle',
+      successNotice: false,
+    });
+    requestAnimationFrame(() => button?.focus());
+  }
+
+  async function deleteLink(linkId: LinkId) {
+    if (deletion.status === 'deleting' || state.status !== 'data') return;
+    setDeleteSnapshot({
+      repository,
+      runId,
+      linkId,
+      status: 'deleting',
+      successNotice: false,
+    });
+    try {
+      await repository.softDeleteLink(
+        state.data.run.id,
+        linkId,
+        new Date().toISOString() as UtcDateTimeString,
+      );
+      setSnapshot((current) =>
+        current.repository === repository && current.runId === runId
+          ? {
+              ...current,
+              links: current.links.filter((link) => link.id !== linkId),
+            }
+          : current,
+      );
+      setDeleteSnapshot((current) =>
+        current.repository === repository &&
+        current.runId === runId &&
+        current.linkId === linkId &&
+        current.status === 'deleting'
+          ? {
+              repository,
+              runId,
+              linkId: null,
+              status: 'idle',
+              successNotice: true,
+            }
+          : current,
+      );
+    } catch {
+      setDeleteSnapshot((current) =>
+        current.repository === repository &&
+        current.runId === runId &&
+        current.linkId === linkId &&
+        current.status === 'deleting'
+          ? { ...current, status: 'failure', successNotice: false }
+          : current,
+      );
+    }
+  }
   async function saveLink(event: React.FormEvent) {
     event.preventDefault();
     if (state.status !== 'data' || form.status === 'submitting') return;
@@ -397,20 +498,83 @@ export function RunDetailPage() {
           </form>
           {links.length > 0 ? (
             <ul className="pt-link-list">
-              {links.map((link) => (
-                <li key={link.id}>
-                  <a href={link.url} target="_blank" rel="noreferrer">
-                    {link.title?.trim() || link.url}
-                  </a>
-                  {link.title?.trim() ? (
-                    <span className="pt-link-list__url">{link.url}</span>
-                  ) : null}
-                  <span>
-                    {LINK_TYPE_LABELS[link.type]} / {link.createdAt}
-                  </span>
-                </li>
-              ))}
+              {links.map((link) => {
+                const label = link.title?.trim() || link.url;
+                const isConfirming = deletion.linkId === link.id;
+                return (
+                  <li key={link.id} className="pt-run-link-row">
+                    <div className="pt-run-link-row__content">
+                      <a href={link.url} target="_blank" rel="noreferrer">
+                        {label}
+                      </a>
+                      {link.title?.trim() ? (
+                        <span className="pt-link-list__url">{link.url}</span>
+                      ) : null}
+                      <span>
+                        {LINK_TYPE_LABELS[link.type]} / {link.createdAt}
+                      </span>
+                    </div>
+                    <button
+                      ref={(node) => {
+                        if (node) deleteButtonRefs.current.set(link.id, node);
+                        else deleteButtonRefs.current.delete(link.id);
+                      }}
+                      className="pt-run-link-row__delete"
+                      type="button"
+                      aria-label={`${label}を削除`}
+                      onClick={() => {
+                        if (deletion.status === 'deleting') return;
+                        setDeleteSnapshot({
+                          repository,
+                          runId,
+                          linkId: link.id,
+                          status: 'idle',
+                          successNotice: false,
+                        });
+                      }}
+                      disabled={deletion.status === 'deleting'}
+                    >
+                      削除
+                    </button>
+                    {isConfirming ? (
+                      <div className="pt-run-link-confirmation">
+                        <p>「{label}」を削除しますか？</p>
+                        {deletion.status === 'failure' ? (
+                          <p className="pt-form__error">
+                            関連リンクを削除できませんでした。もう一度お試しください。
+                          </p>
+                        ) : null}
+                        <div className="pt-run-link-confirmation__actions">
+                          <button
+                            className="pt-button pt-button--primary"
+                            type="button"
+                            disabled={deletion.status === 'deleting'}
+                            onClick={() => void deleteLink(link.id)}
+                          >
+                            {deletion.status === 'deleting'
+                              ? '削除中...'
+                              : '削除する'}
+                          </button>
+                          <button
+                            className="pt-button pt-button--secondary"
+                            type="button"
+                            disabled={deletion.status === 'deleting'}
+                            onClick={() => cancelDelete(link.id)}
+                          >
+                            キャンセル
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </li>
+                );
+              })}
             </ul>
+          ) : null}
+          {deletion.successNotice ? (
+            <p className="pt-success-notice" role="status">
+              関連リンクを削除しました。
+            </p>
           ) : null}
         </PageSection>
       </div>
