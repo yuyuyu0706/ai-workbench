@@ -64,21 +64,31 @@
 }
 
 .pt-dashboard-run-row__title-link {
-  color: var(--pt-color-text-strong);
+  color: var(--pt-color-accent);
   font-weight: 400;
-  text-decoration-color: transparent;
+  text-decoration: none;
   text-decoration-thickness: 0.1em;
   text-underline-offset: 0.18em;
 }
 
+.pt-dashboard-run-row__title-link:visited {
+  color: var(--pt-color-accent);
+}
+
 .pt-dashboard-run-row__title-link:hover {
-  text-decoration-color: currentColor;
+  text-decoration-line: underline;
 }
 
 .pt-dashboard-run-row__title-link:focus-visible {
   border-radius: var(--pt-radius-sm);
-  outline: 2px solid currentColor;
+  outline: 2px solid var(--pt-color-focus-ring);
   outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pt-dashboard-runs tbody .pt-dashboard-run-row:hover > * {
+    background: var(--pt-color-surface-subtle);
+  }
 }
 
 .pt-dashboard-run-row__mobile-label {
