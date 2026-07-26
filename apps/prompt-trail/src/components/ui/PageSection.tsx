@@ -5,6 +5,7 @@ export interface PageSectionProps {
   eyebrow?: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
+  titleAccessory?: ReactNode;
   children: ReactNode;
 }
 
@@ -13,6 +14,7 @@ export function PageSection({
   eyebrow,
   description,
   actions,
+  titleAccessory,
   children,
 }: PageSectionProps) {
   const titleId = useId();
@@ -24,9 +26,18 @@ export function PageSection({
           {eyebrow === undefined ? null : (
             <p className="pt-page-section__eyebrow">{eyebrow}</p>
           )}
-          <h2 className="pt-page-section__title" id={titleId}>
-            {title}
-          </h2>
+          {titleAccessory === undefined ? (
+            <h2 className="pt-page-section__title" id={titleId}>
+              {title}
+            </h2>
+          ) : (
+            <div className="pt-page-section__title-row">
+              <h2 className="pt-page-section__title" id={titleId}>
+                {title}
+              </h2>
+              {titleAccessory}
+            </div>
+          )}
           {description === undefined ? null : (
             <p className="pt-page-section__description">{description}</p>
           )}

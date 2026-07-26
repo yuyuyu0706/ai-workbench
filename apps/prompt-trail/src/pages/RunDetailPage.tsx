@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { routePaths } from '../app/routes';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
@@ -12,11 +12,16 @@ import {
   loadRunDetailDataState,
   type RunDetailDataState,
 } from '../run-detail/run-detail-data-state';
+import { formatDateTime } from './date-time';
 export function RunDetailPage() {
   const repository = usePromptTrailRepository();
   const { runId = '' } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const linkInformationId = useId();
+  const linkInformationRef = useRef<HTMLDivElement>(null);
+  const linkInformationButtonRef = useRef<HTMLButtonElement>(null);
+  const [isLinkInformationOpen, setIsLinkInformationOpen] = useState(false);
   const trailCreated =
     (location.state as { trailCreated?: boolean } | null)?.trailCreated ===
     true;
@@ -83,6 +88,29 @@ export function RunDetailPage() {
       active = false;
     };
   }, [repository, runId]);
+  useEffect(() => {
+    if (!isLinkInformationOpen) return;
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!linkInformationRef.current?.contains(event.target as Node)) {
+        setIsLinkInformationOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsLinkInformationOpen(false);
+        linkInformationButtonRef.current?.focus();
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isLinkInformationOpen]);
   async function saveLink(event: React.FormEvent) {
     event.preventDefault();
     if (state.status !== 'data' || form.status === 'submitting') return;
@@ -225,11 +253,19 @@ export function RunDetailPage() {
             </div>
             <div>
               <dt>Created At</dt>
-              <dd>{run.createdAt}</dd>
+              <dd>
+                <time dateTime={run.createdAt}>
+                  {formatDateTime(run.createdAt, { includeSeconds: true })}
+                </time>
+              </dd>
             </div>
             <div>
               <dt>Updated At</dt>
-              <dd>{run.updatedAt}</dd>
+              <dd>
+                <time dateTime={run.updatedAt}>
+                  {formatDateTime(run.updatedAt, { includeSeconds: true })}
+                </time>
+              </dd>
             </div>
             {recipe === null ? null : (
               <div>
@@ -255,7 +291,32 @@ export function RunDetailPage() {
         ) : null}
         <PageSection
           title="関連リンク"
-          description="この作業で参照したChat・Issue・PR・Documentや、作成した成果物のURLを登録できます。"
+          titleAccessory={
+            <div className="pt-run-link-information" ref={linkInformationRef}>
+              <button
+                ref={linkInformationButtonRef}
+                className="pt-run-link-information__button"
+                type="button"
+                aria-label="関連リンクについて"
+                aria-expanded={isLinkInformationOpen}
+                aria-controls={linkInformationId}
+                onClick={() => setIsLinkInformationOpen((open) => !open)}
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 11v6M12 7.5v.5" />
+                </svg>
+              </button>
+              {isLinkInformationOpen ? (
+                <p
+                  className="pt-run-link-information__popover"
+                  id={linkInformationId}
+                >
+                  この作業で参照したChat・Issue・PR・Documentや、作成した成果物のURLを登録できます。
+                </p>
+              ) : null}
+            </div>
+          }
         >
           <form className="pt-form" onSubmit={saveLink}>
             <label htmlFor="link-title">Link名称</label>
@@ -328,17 +389,13 @@ export function RunDetailPage() {
               </p>
             ) : null}
             <button
-              className="pt-button pt-button--primary"
+              className="pt-button pt-button--primary pt-run-link-submit"
               disabled={form.status === 'submitting'}
             >
               {form.status === 'submitting' ? '保存中...' : '関連リンクを登録'}
             </button>
           </form>
-          {links.length === 0 ? (
-            <p>
-              まだ関連リンクがありません。作業に関係するURLを登録してください。
-            </p>
-          ) : (
+          {links.length > 0 ? (
             <ul className="pt-link-list">
               {links.map((link) => (
                 <li key={link.id}>
@@ -354,7 +411,7 @@ export function RunDetailPage() {
                 </li>
               ))}
             </ul>
-          )}
+          ) : null}
         </PageSection>
       </div>
       <div className="prompt-trail-page__actions">

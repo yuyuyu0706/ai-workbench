@@ -5,6 +5,7 @@ import './styles/ui-primitives.css';
 import './styles/app-shell.css';
 import './styles/welcome-page.css';
 import './styles/dashboard-page.css';
+import './styles/run-detail-page.css';
 
 const rootElement = document.getElementById('root');
 

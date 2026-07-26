@@ -144,6 +144,18 @@
   line-height: var(--pt-line-height-heading);
 }
 
+.pt-page-section__title-row {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pt-space-1);
+  max-width: 100%;
+}
+
+.pt-page-section__title-row .pt-page-section__title {
+  margin-bottom: 0;
+}
+
 .pt-page-section__description {
   margin-bottom: 0;
   color: var(--pt-color-text-muted);

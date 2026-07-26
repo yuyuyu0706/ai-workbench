@@ -8,7 +8,7 @@ import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageHeader, PageSection, StateMessage } from '../components/ui';
 import type { RunStatus } from '../domain';
 
-import { formatDashboardDateTime } from './dashboard-date-time';
+import { formatDateTime } from './date-time';
 
 const DASHBOARD_RECENT_RUN_LIMIT = 5;
 
@@ -130,9 +130,7 @@ function DashboardRecentRunRow({
       </td>
       <td className="pt-dashboard-run-row__updated-at">
         <span className="pt-dashboard-run-row__mobile-label">更新日時</span>
-        <time dateTime={run.updatedAt}>
-          {formatDashboardDateTime(run.updatedAt)}
-        </time>
+        <time dateTime={run.updatedAt}>{formatDateTime(run.updatedAt)}</time>
       </td>
       <td className="pt-dashboard-run-row__links">
         <span className="pt-dashboard-run-row__mobile-label">関連リンク</span>

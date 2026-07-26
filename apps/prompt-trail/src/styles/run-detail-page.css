@@ -1,0 +1,62 @@
+.pt-run-link-information {
+  position: static;
+}
+
+.pt-run-link-information__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  line-height: 0;
+  padding: 0.625rem;
+  border: 0;
+  border-radius: var(--pt-radius-sm);
+  color: var(--pt-color-accent-strong);
+  background: transparent;
+  cursor: pointer;
+}
+
+.pt-run-link-information__button:hover {
+  background: color-mix(
+    in srgb,
+    var(--pt-color-surface) 70%,
+    var(--pt-color-accent) 8%
+  );
+}
+
+.pt-run-link-information__button svg {
+  width: 1.35rem;
+  height: 1.35rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.8;
+}
+
+.pt-run-link-information__popover {
+  position: absolute;
+  z-index: 1;
+  bottom: 50%;
+  left: calc(100% + var(--pt-space-2));
+  width: min(22rem, calc(100vw - 2 * var(--pt-space-5)));
+  margin: 0;
+  padding: var(--pt-space-3) var(--pt-space-4);
+  border: 1px solid var(--pt-color-border);
+  border-radius: var(--pt-radius-sm);
+  box-shadow: var(--pt-shadow-card);
+  color: var(--pt-color-text);
+  background: var(--pt-color-surface);
+}
+
+@media (max-width: 40rem) {
+  .pt-run-link-information__popover {
+    right: auto;
+    left: 0;
+  }
+}
+
+.pt-run-link-submit {
+  width: auto;
+  justify-self: start;
+}
