@@ -54,6 +54,26 @@ test.describe('first Trail creation acceptance', () => {
     await expect(
       page.getByRole('status').filter({ hasText: 'Trailを作成しました。' }),
     ).toBeVisible();
+    const runSummary = page.locator('section').filter({
+      has: page.getByRole('heading', { level: 2, name: '実行サマリ' }),
+    });
+    await expect(runSummary.locator('time')).toHaveCount(2);
+    await expect(runSummary.locator('time').first()).toHaveText(
+      /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/,
+    );
+    const linkInformationButton = page.getByRole('button', {
+      name: '関連リンクについて',
+    });
+    await linkInformationButton.click();
+    await expect(
+      page.getByText('この作業で参照したChat・Issue・PR', { exact: false }),
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(linkInformationButton).toBeFocused();
+    await expect(linkInformationButton).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
     const runDetailUrl = page.url();
     const snapshot = getPromptSnapshot(page);
     await expect(snapshot.getByRole('heading', { level: 3 })).toHaveText(

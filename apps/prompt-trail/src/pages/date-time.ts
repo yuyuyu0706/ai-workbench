@@ -1,4 +1,4 @@
-export function formatDashboardDateTime(isoDateTime: string): string {
+export function formatDateTime(isoDateTime: string): string {
   const date = new Date(isoDateTime);
 
   if (Number.isNaN(date.getTime())) {

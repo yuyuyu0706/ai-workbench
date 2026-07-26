@@ -12,7 +12,7 @@ import { sampleDataset, seedSampleData } from '../sample-data';
 import { createDatabaseTestScope } from '../test/database-test-utils';
 
 import { DashboardPage } from './DashboardPage';
-import { formatDashboardDateTime } from './dashboard-date-time';
+import { formatDateTime } from './date-time';
 
 const databaseTestScope = createDatabaseTestScope('dashboard-page');
 
@@ -26,13 +26,13 @@ describe('DashboardPage', () => {
     const date = new Date(isoDateTime);
     const pad = (value: number) => String(value).padStart(2, '0');
 
-    expect(formatDashboardDateTime(isoDateTime)).toBe(
+    expect(formatDateTime(isoDateTime)).toBe(
       `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`,
     );
   });
 
   it('keeps an invalid date value so rendering does not fail', () => {
-    expect(formatDashboardDateTime('invalid-date')).toBe('invalid-date');
+    expect(formatDateTime('invalid-date')).toBe('invalid-date');
   });
 
   it('shows a page-local loading state while the repository read is pending', () => {
@@ -118,7 +118,7 @@ describe('DashboardPage', () => {
     expect(screen.queryByText(sampleDataset.project.name)).toBeNull();
     expect(screen.queryByText(sampleDataset.run.evaluation!)).toBeNull();
     const updatedAt = screen.getByText(
-      formatDashboardDateTime(sampleDataset.run.updatedAt),
+      formatDateTime(sampleDataset.run.updatedAt),
     );
     expect(updatedAt).toHaveAttribute('datetime', sampleDataset.run.updatedAt);
     expect(screen.getByText('3件')).toBeInTheDocument();

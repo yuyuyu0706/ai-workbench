@@ -1,0 +1,46 @@
+.pt-run-link-information {
+  position: relative;
+}
+
+.pt-run-link-information__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 1px solid var(--pt-color-border);
+  border-radius: 50%;
+  color: var(--pt-color-accent-strong);
+  background: var(--pt-color-surface);
+  cursor: pointer;
+}
+
+.pt-run-link-information__button svg {
+  width: 1.35rem;
+  height: 1.35rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.8;
+}
+
+.pt-run-link-information__popover {
+  position: absolute;
+  z-index: 1;
+  top: calc(100% + var(--pt-space-2));
+  right: 0;
+  width: min(22rem, calc(100vw - 2 * var(--pt-space-5)));
+  margin: 0;
+  padding: var(--pt-space-3) var(--pt-space-4);
+  border: 1px solid var(--pt-color-border);
+  border-radius: var(--pt-radius-sm);
+  box-shadow: var(--pt-shadow-card);
+  color: var(--pt-color-text);
+  background: var(--pt-color-surface);
+}
+
+.pt-run-link-submit {
+  width: auto;
+  justify-self: start;
+}

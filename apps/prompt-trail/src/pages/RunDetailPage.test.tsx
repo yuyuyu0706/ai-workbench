@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { PromptTrailRepositoryProvider } from '../app/PromptTrailRepositoryContext';
@@ -71,15 +71,11 @@ describe('RunDetailPage', () => {
       screen.getByRole('heading', { level: 2, name: '関連リンク' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        'この作業で参照したChat・Issue・PR・Documentや、作成した成果物のURLを登録できます。',
-      ),
-    ).toBeInTheDocument();
+      screen.queryByText('この作業で参照したChat・Issue・PR', { exact: false }),
+    ).toBeNull();
     expect(
-      screen.getByText(
-        'まだ関連リンクがありません。作業に関係するURLを登録してください。',
-      ),
-    ).toBeInTheDocument();
+      screen.queryByText('まだ関連リンクがありません。', { exact: false }),
+    ).toBeNull();
     expect(repo.getRecipe).not.toHaveBeenCalled();
     const recipeRepo = {
       ...repo,
@@ -95,6 +91,56 @@ describe('RunDetailPage', () => {
     renderPage(recipeRepo);
     expect(await screen.findByText('Recipe A')).toBeInTheDocument();
     expect(screen.getByText('Context A')).toBeInTheDocument();
+  });
+
+  it('formats summary dates and preserves their original values', async () => {
+    const repository = {
+      getRun: vi.fn(async () => ({
+        ...direct,
+        createdAt: '2026-01-02T03:04:00.000Z',
+        updatedAt: 'invalid-date',
+      })),
+      getProject: vi.fn(async () => ({ name: 'Project' })),
+      listActiveLinks: vi.fn(async () => []),
+    } as any;
+    renderPage(repository);
+
+    const created = await screen.findByText('2026-01-02 03:04');
+    expect(created).toHaveAttribute('datetime', '2026-01-02T03:04:00.000Z');
+    expect(screen.getByText('invalid-date')).toHaveAttribute(
+      'datetime',
+      'invalid-date',
+    );
+  });
+
+  it('opens and closes the related Link information accessibly', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const repository = {
+      getRun: vi.fn(async () => direct),
+      getProject: vi.fn(async () => ({ name: 'Project' })),
+      listActiveLinks: vi.fn(async () => []),
+    } as any;
+    renderPage(repository);
+
+    const button = await screen.findByRole('button', {
+      name: '関連リンクについて',
+    });
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    expect(button).toHaveAttribute('aria-controls');
+
+    await user.click(button);
+    expect(button).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      screen.getByText('この作業で参照したChat・Issue・PR', { exact: false }),
+    ).toHaveAttribute('id', button.getAttribute('aria-controls'));
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    expect(button).toHaveFocus();
+
+    await user.click(button);
+    fireEvent.mouseDown(document.body);
+    expect(button).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('shows the creation notice only when navigation marks a newly created Trail', async () => {
