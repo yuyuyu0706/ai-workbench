@@ -188,7 +188,10 @@ export function RunDetailPage() {
           : current,
       );
       setDeleteSnapshot((current) =>
-        current.repository === repository && current.runId === runId
+        current.repository === repository &&
+        current.runId === runId &&
+        current.linkId === linkId &&
+        current.status === 'deleting'
           ? {
               repository,
               runId,
@@ -200,7 +203,10 @@ export function RunDetailPage() {
       );
     } catch {
       setDeleteSnapshot((current) =>
-        current.repository === repository && current.runId === runId
+        current.repository === repository &&
+        current.runId === runId &&
+        current.linkId === linkId &&
+        current.status === 'deleting'
           ? { ...current, status: 'failure', successNotice: false }
           : current,
       );
@@ -516,16 +522,17 @@ export function RunDetailPage() {
                       className="pt-run-link-row__delete"
                       type="button"
                       aria-label={`${label}を削除`}
-                      onClick={() =>
+                      onClick={() => {
+                        if (deletion.status === 'deleting') return;
                         setDeleteSnapshot({
                           repository,
                           runId,
                           linkId: link.id,
                           status: 'idle',
                           successNotice: false,
-                        })
-                      }
-                      disabled={isConfirming && deletion.status === 'deleting'}
+                        });
+                      }}
+                      disabled={deletion.status === 'deleting'}
                     >
                       削除
                     </button>

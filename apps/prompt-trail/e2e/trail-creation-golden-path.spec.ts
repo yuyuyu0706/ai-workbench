@@ -143,8 +143,14 @@ test.describe('first Trail creation acceptance', () => {
     const deleteButton = page.getByRole('button', {
       name: `${linkTitle}を削除`,
     });
+    const viewportBeforeDelete = page.viewportSize();
+    await page.setViewportSize({ width: 320, height: 900 });
     await deleteButton.click();
+    await expectNoHorizontalOverflow(page);
     await page.getByRole('button', { name: 'キャンセル' }).click();
+    if (viewportBeforeDelete !== null) {
+      await page.setViewportSize(viewportBeforeDelete);
+    }
     await expectCreatedTrail(page);
     await deleteButton.click();
     await page.getByRole('button', { name: '削除する' }).click();

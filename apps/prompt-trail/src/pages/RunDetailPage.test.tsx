@@ -133,6 +133,62 @@ describe('RunDetailPage', () => {
     ).toBeVisible();
     expect(screen.getByRole('button', { name: '削除する' })).toBeEnabled();
   });
+
+  it('prevents another Link deletion while a deletion is pending', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    let completeDeletion!: () => void;
+    const deletionPending = new Promise<void>((resolve) => {
+      completeDeletion = resolve;
+    });
+    const linkA = {
+      id: 'link-a',
+      runId: 'run-1',
+      title: 'Link A',
+      url: 'https://example.com/a',
+      type: 'document',
+      createdAt: '2026-01-01',
+      deletedAt: null,
+    };
+    const linkB = {
+      ...linkA,
+      id: 'link-b',
+      title: 'Link B',
+      url: 'https://example.com/b',
+    };
+    const repository = {
+      getRun: vi.fn(async () => direct),
+      getProject: vi.fn(async () => ({ name: 'Project' })),
+      listActiveLinks: vi.fn(async () => [linkA, linkB]),
+      softDeleteLink: vi.fn(async () => {
+        await deletionPending;
+        return { ...linkA, deletedAt: '2026-01-02' };
+      }),
+    } as any;
+    renderPage(repository);
+
+    const deleteA = await screen.findByRole('button', {
+      name: 'Link Aを削除',
+    });
+    const deleteB = screen.getByRole('button', { name: 'Link Bを削除' });
+    await user.click(deleteA);
+    await user.click(screen.getByRole('button', { name: '削除する' }));
+
+    expect(deleteA).toBeDisabled();
+    expect(deleteB).toBeDisabled();
+    await user.click(deleteB);
+    expect(screen.queryByText('「Link B」を削除しますか？')).toBeNull();
+    expect(repository.softDeleteLink).toHaveBeenCalledTimes(1);
+
+    completeDeletion();
+    expect(
+      await screen.findByText('関連リンクを削除しました。'),
+    ).toHaveAttribute('role', 'status');
+    await waitFor(() =>
+      expect(screen.queryByRole('link', { name: 'Link A' })).toBeNull(),
+    );
+    expect(screen.getByRole('link', { name: 'Link B' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Link Bを削除' })).toBeEnabled();
+  });
   it('shows loading, not-found, and failure states', async () => {
     const pending = { getRun: vi.fn(() => new Promise(() => {})) } as any;
     renderPage(pending);
