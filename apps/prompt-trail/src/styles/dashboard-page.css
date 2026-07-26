@@ -1,5 +1,6 @@
 .pt-dashboard-runs {
   width: 100%;
+  border-collapse: separate;
   border-spacing: 0;
   border: 1px solid var(--pt-color-border);
   border-radius: var(--pt-radius-md);
@@ -23,6 +24,14 @@
   white-space: nowrap;
 }
 
+.pt-dashboard-runs thead th:first-child {
+  border-start-start-radius: var(--pt-radius-md);
+}
+
+.pt-dashboard-runs thead th:last-child {
+  border-start-end-radius: var(--pt-radius-md);
+}
+
 .pt-dashboard-runs thead .pt-dashboard-run-row__status {
   width: 7rem;
 }
@@ -41,6 +50,14 @@
 
 .pt-dashboard-runs tbody tr:last-child > * {
   border-bottom: 0;
+}
+
+.pt-dashboard-runs tbody tr:last-child > :first-child {
+  border-end-start-radius: var(--pt-radius-md);
+}
+
+.pt-dashboard-runs tbody tr:last-child > :last-child {
+  border-end-end-radius: var(--pt-radius-md);
 }
 
 .pt-dashboard-run-row__title {
