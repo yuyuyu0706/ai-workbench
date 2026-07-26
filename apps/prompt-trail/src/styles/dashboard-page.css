@@ -1,15 +1,15 @@
 .pt-dashboard-runs {
   width: 100%;
+  border-collapse: separate;
   border-spacing: 0;
   border: 1px solid var(--pt-color-border);
   border-radius: var(--pt-radius-md);
-  overflow: hidden;
   background: var(--pt-color-surface);
 }
 
 .pt-dashboard-runs th,
 .pt-dashboard-runs td {
-  padding: var(--pt-space-3);
+  padding: var(--pt-space-2) var(--pt-space-3);
   border-bottom: 1px solid var(--pt-color-border);
   text-align: left;
   vertical-align: middle;
@@ -19,43 +19,76 @@
 .pt-dashboard-runs thead th {
   color: var(--pt-color-text-muted);
   background: var(--pt-color-surface-subtle);
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 700;
   white-space: nowrap;
 }
 
-.pt-dashboard-runs thead th:nth-child(2) {
+.pt-dashboard-runs thead th:first-child {
+  border-start-start-radius: var(--pt-radius-md);
+}
+
+.pt-dashboard-runs thead th:last-child {
+  border-start-end-radius: var(--pt-radius-md);
+}
+
+.pt-dashboard-runs thead .pt-dashboard-run-row__status {
   width: 7rem;
 }
 
-.pt-dashboard-runs thead th:nth-child(3) {
+.pt-dashboard-runs thead .pt-dashboard-run-row__updated-at {
   width: 10.5rem;
 }
 
-.pt-dashboard-runs thead th:nth-child(4) {
+.pt-dashboard-runs thead .pt-dashboard-run-row__links {
   width: 7rem;
-}
-
-.pt-dashboard-runs thead th:nth-child(5) {
-  width: 9rem;
 }
 
 .pt-dashboard-runs tbody tr:last-child > * {
   border-bottom: 0;
 }
 
+.pt-dashboard-runs tbody tr:last-child > :first-child {
+  border-end-start-radius: var(--pt-radius-md);
+}
+
+.pt-dashboard-runs tbody tr:last-child > :last-child {
+  border-end-end-radius: var(--pt-radius-md);
+}
+
 .pt-dashboard-run-row__title {
   margin: 0;
   color: var(--pt-color-text-strong);
   font-size: 1rem;
+  font-weight: 400;
 }
 
-.pt-dashboard-run-row__action {
-  text-align: right !important;
+.pt-dashboard-run-row__title-link {
+  color: var(--pt-color-accent);
+  font-weight: 400;
+  text-decoration: none;
+  text-decoration-thickness: 0.1em;
+  text-underline-offset: 0.18em;
 }
 
-.pt-dashboard-run-row__action .pt-button {
-  white-space: nowrap;
+.pt-dashboard-run-row__title-link:visited {
+  color: var(--pt-color-accent);
+}
+
+.pt-dashboard-run-row__title-link:hover {
+  text-decoration-line: underline;
+}
+
+.pt-dashboard-run-row__title-link:focus-visible {
+  border-radius: var(--pt-radius-sm);
+  outline: 2px solid var(--pt-color-focus-ring);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pt-dashboard-runs tbody .pt-dashboard-run-row:hover > * {
+    background: var(--pt-color-surface-subtle);
+  }
 }
 
 .pt-dashboard-run-row__mobile-label {
@@ -65,13 +98,13 @@
 .pt-status-pin {
   display: inline-flex;
   align-items: center;
-  min-height: 1.75rem;
-  padding: var(--pt-space-1) var(--pt-space-3);
+  min-height: 1.5rem;
+  padding: 0 var(--pt-space-2);
   border: 1px solid;
   border-radius: var(--pt-radius-sm);
   white-space: nowrap;
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: 400;
 }
 
 .pt-status-pin--draft {
@@ -79,25 +112,21 @@
   color: #39445a;
   background: #eef1f5;
 }
-
 .pt-status-pin--prepared {
   border-color: #7aa2dd;
   color: #214e89;
   background: #eaf3ff;
 }
-
 .pt-status-pin--in-progress {
   border-color: #4564d4;
   color: #213a8f;
   background: #e5ebff;
 }
-
 .pt-status-pin--executed {
   border-color: #7885c8;
   color: #3f397e;
   background: #efedff;
 }
-
 .pt-status-pin--done {
   border-color: #62a47b;
   color: #24633a;
@@ -105,7 +134,7 @@
 }
 
 @media (min-width: 44.01rem) {
-  .pt-dashboard-runs tbody td:nth-child(3) time {
+  .pt-dashboard-run-row__updated-at time {
     white-space: nowrap;
   }
 }
@@ -131,8 +160,12 @@
 
   .pt-dashboard-runs .pt-dashboard-run-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) minmax(0, 0.7fr);
-    padding: var(--pt-space-3);
+    grid-template-areas:
+      'trail status'
+      'updated links';
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--pt-space-2);
+    padding: var(--pt-space-2) var(--pt-space-3);
     border-bottom: 1px solid var(--pt-color-border);
   }
 
@@ -145,21 +178,32 @@
     gap: var(--pt-space-1);
     align-items: center;
     min-width: 0;
-    padding: var(--pt-space-2) 0;
+    padding: var(--pt-space-1) 0;
     border: 0;
   }
 
+  .pt-dashboard-run-row__trail {
+    grid-area: trail;
+  }
+  .pt-dashboard-run-row__status {
+    grid-area: status;
+    justify-content: flex-end;
+  }
+  .pt-dashboard-run-row__updated-at {
+    grid-area: updated;
+  }
+  .pt-dashboard-run-row__links {
+    grid-area: links;
+  }
   .pt-dashboard-run-row__mobile-label {
     display: block;
+    flex: none;
     color: var(--pt-color-text-muted);
     font-size: 0.75rem;
-    font-weight: 800;
+    font-weight: 700;
   }
 
-  .pt-dashboard-runs
-    .pt-dashboard-run-row
-    > td:nth-child(2)
-    .pt-dashboard-run-row__mobile-label {
+  .pt-dashboard-run-row__status .pt-dashboard-run-row__mobile-label {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -171,43 +215,26 @@
     border: 0;
   }
 
-  .pt-dashboard-runs .pt-dashboard-run-row > th {
-    grid-column: 1 / 3;
-    grid-row: 1;
+  .pt-dashboard-run-row__updated-at,
+  .pt-dashboard-run-row__links {
+    flex-wrap: wrap;
   }
-
-  .pt-dashboard-runs .pt-dashboard-run-row > td:nth-child(2) {
-    grid-column: 3;
-    grid-row: 1;
-    justify-content: flex-end;
-  }
-
-  .pt-dashboard-runs .pt-dashboard-run-row > td:nth-child(3),
-  .pt-dashboard-runs .pt-dashboard-run-row > td:nth-child(4) {
-    flex-direction: column;
-    align-items: flex-start;
-    grid-row: 2;
-  }
-
-  .pt-dashboard-runs .pt-dashboard-run-row > td:nth-child(3) {
-    grid-column: 1;
-  }
-
-  .pt-dashboard-runs .pt-dashboard-run-row > td:nth-child(4) {
-    grid-column: 2;
-  }
-
-  .pt-dashboard-runs .pt-dashboard-run-row > td:nth-child(3) time {
+  .pt-dashboard-run-row__updated-at time {
     max-width: 100%;
     overflow-wrap: anywhere;
   }
+}
 
-  .pt-dashboard-runs .pt-dashboard-run-row__action {
-    grid-column: 1 / -1;
-    grid-row: 3;
+@media (max-width: 22rem) {
+  .pt-dashboard-runs .pt-dashboard-run-row {
+    grid-template-areas:
+      'trail trail'
+      'status status'
+      'updated links';
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .pt-dashboard-run-row__action {
-    justify-content: flex-end;
+  .pt-dashboard-run-row__status {
+    justify-content: flex-start;
   }
 }

@@ -77,11 +77,18 @@ function DashboardDataSections({ data }: { data: DashboardReadModel }) {
         <table className="pt-dashboard-runs">
           <thead>
             <tr>
-              <th scope="col">Trail名</th>
-              <th scope="col">ステータス</th>
-              <th scope="col">更新日時</th>
-              <th scope="col">関連リンク</th>
-              <th scope="col">操作</th>
+              <th className="pt-dashboard-run-row__trail" scope="col">
+                Trail名
+              </th>
+              <th className="pt-dashboard-run-row__status" scope="col">
+                ステータス
+              </th>
+              <th className="pt-dashboard-run-row__updated-at" scope="col">
+                更新日時
+              </th>
+              <th className="pt-dashboard-run-row__links" scope="col">
+                関連リンク
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -107,32 +114,29 @@ function DashboardRecentRunRow({
 
   return (
     <tr className="pt-dashboard-run-row">
-      <th scope="row">
+      <th className="pt-dashboard-run-row__trail" scope="row">
         <h3 className="pt-dashboard-run-row__title">
-          {run.promptSnapshot.title}
+          <RouterLink
+            className="pt-dashboard-run-row__title-link"
+            to={buildRunDetailPath(run.id)}
+          >
+            {run.promptSnapshot.title}
+          </RouterLink>
         </h3>
       </th>
-      <td>
+      <td className="pt-dashboard-run-row__status">
         <span className="pt-dashboard-run-row__mobile-label">ステータス</span>
         <RunStatusPin status={run.status} />
       </td>
-      <td>
+      <td className="pt-dashboard-run-row__updated-at">
         <span className="pt-dashboard-run-row__mobile-label">更新日時</span>
         <time dateTime={run.updatedAt}>
           {formatDashboardDateTime(run.updatedAt)}
         </time>
       </td>
-      <td>
+      <td className="pt-dashboard-run-row__links">
         <span className="pt-dashboard-run-row__mobile-label">関連リンク</span>
         <span>{links.length}件</span>
-      </td>
-      <td className="pt-dashboard-run-row__action">
-        <RouterLink
-          className="pt-button pt-button--secondary"
-          to={buildRunDetailPath(run.id)}
-        >
-          Trailを確認
-        </RouterLink>
       </td>
     </tr>
   );

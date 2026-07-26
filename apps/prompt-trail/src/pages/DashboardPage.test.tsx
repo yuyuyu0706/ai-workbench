@@ -123,11 +123,16 @@ describe('DashboardPage', () => {
     expect(updatedAt).toHaveAttribute('datetime', sampleDataset.run.updatedAt);
     expect(screen.getByText('3件')).toBeInTheDocument();
 
-    const detailLink = screen.getByRole('link', { name: 'Trailを確認' });
+    const detailLink = screen.getByRole('link', {
+      name: sampleDataset.run.promptSnapshot.title,
+    });
     expect(detailLink).toHaveAttribute(
       'href',
       buildRunDetailPath(sampleDataset.run.id),
     );
+    expect(screen.queryByRole('columnheader', { name: '操作' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /操作メニュー/ })).toBeNull();
+    expect(screen.queryByRole('menu')).toBeNull();
 
     expect(
       screen.getByRole('columnheader', { name: '関連リンク' }),

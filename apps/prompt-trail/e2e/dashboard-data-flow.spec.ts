@@ -84,7 +84,14 @@ test.describe('Dashboard data flow', () => {
       seedResult,
     );
 
-    await recentRunCard.getByRole('link', { name: 'Trailを確認' }).click();
+    await expect(page.getByRole('columnheader', { name: '操作' })).toHaveCount(
+      0,
+    );
+    await expect(recentRunCard.getByRole('button')).toHaveCount(0);
+    await expect(recentRunCard.getByRole('menu')).toHaveCount(0);
+    await recentRunCard
+      .getByRole('link', { name: 'GitHub Issue作成依頼' })
+      .click();
     await expect(page).toHaveURL(
       new RegExp(`/runs/${seedResult.sampleRunId}$`),
     );
@@ -135,7 +142,37 @@ test.describe('Dashboard data flow', () => {
 
     await page.reload();
 
-    await expectCanonicalSeededDashboard(page, seedResult);
-    await expectNoHorizontalOverflow(page);
+    const recentRun = await expectCanonicalSeededDashboard(page, seedResult);
+
+    for (const width of [320, 375, 430]) {
+      await page.setViewportSize({ width, height: 800 });
+      await expectNoHorizontalOverflow(page);
+      await expect(recentRun).toBeVisible();
+      await expect(
+        recentRun.getByRole('link', {
+          name: 'GitHub Issue作成依頼',
+        }),
+      ).toBeVisible();
+    }
+  });
+
+  test('opens Run Detail from the Trail name with Tab and Enter', async ({
+    page,
+  }) => {
+    await page.goto('/dashboard');
+    const seedResult = await seedCanonicalSampleDataInBrowser(page);
+    await page.reload();
+
+    const recentRun = await expectCanonicalSeededDashboard(page, seedResult);
+    const trailLink = recentRun.getByRole('link', {
+      name: 'GitHub Issue作成依頼',
+    });
+    await page.getByRole('link', { name: '新しいTrailを始める' }).focus();
+    await page.keyboard.press('Tab');
+    await expect(trailLink).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(
+      new RegExp(`/runs/${seedResult.sampleRunId}$`),
+    );
   });
 });
