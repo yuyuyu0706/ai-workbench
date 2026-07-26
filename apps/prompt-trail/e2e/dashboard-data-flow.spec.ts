@@ -84,7 +84,10 @@ test.describe('Dashboard data flow', () => {
       seedResult,
     );
 
-    await recentRunCard.getByRole('link', { name: 'Trailを確認' }).click();
+    await recentRunCard
+      .getByRole('button', { name: 'GitHub Issue作成依頼の操作メニュー' })
+      .click();
+    await recentRunCard.getByRole('menuitem', { name: 'Trailを確認' }).click();
     await expect(page).toHaveURL(
       new RegExp(`/runs/${seedResult.sampleRunId}$`),
     );
@@ -135,7 +138,46 @@ test.describe('Dashboard data flow', () => {
 
     await page.reload();
 
-    await expectCanonicalSeededDashboard(page, seedResult);
-    await expectNoHorizontalOverflow(page);
+    const recentRun = await expectCanonicalSeededDashboard(page, seedResult);
+
+    for (const width of [320, 375, 430]) {
+      await page.setViewportSize({ width, height: 800 });
+      await expectNoHorizontalOverflow(page);
+      await expect(recentRun).toBeVisible();
+      await expect(
+        recentRun.getByRole('button', {
+          name: 'GitHub Issue作成依頼の操作メニュー',
+        }),
+      ).toBeVisible();
+    }
+  });
+
+  test('supports keyboard action menu navigation and Escape', async ({
+    page,
+  }) => {
+    await page.goto('/dashboard');
+    const seedResult = await seedCanonicalSampleDataInBrowser(page);
+    await page.reload();
+
+    const recentRun = await expectCanonicalSeededDashboard(page, seedResult);
+    const trigger = recentRun.getByRole('button', {
+      name: 'GitHub Issue作成依頼の操作メニュー',
+    });
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+    const menuItem = recentRun.getByRole('menuitem', {
+      name: 'Trailを確認',
+    });
+    await expect(menuItem).toBeFocused();
+
+    await page.keyboard.press('Escape');
+    await expect(menuItem).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(
+      new RegExp(`/runs/${seedResult.sampleRunId}$`),
+    );
   });
 });
