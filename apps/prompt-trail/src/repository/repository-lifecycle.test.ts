@@ -303,7 +303,11 @@ describe('PromptTrailRepository cross-store lifecycle integration', () => {
     ]);
 
     const deletedRun = await repository.softDeleteRun(originalRun.id, T8);
-    const deletedLink = await repository.softDeleteLink(originalLink.id, T8);
+    const deletedLink = await repository.softDeleteLink(
+      originalRun.id,
+      originalLink.id,
+      T8,
+    );
 
     expect(deletedPrompt).toEqual({ ...updatedPrompt, deletedAt: T5 });
     expect(deletedContext).toEqual({ ...updatedGlobalContext, deletedAt: T5 });

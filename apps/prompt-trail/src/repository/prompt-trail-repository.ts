@@ -354,15 +354,24 @@ export class PromptTrailRepository {
   }
 
   async softDeleteLink(
+    runId: RunId,
     linkId: LinkId,
     deletedAt: UtcDateTimeString,
   ): Promise<Link> {
-    return this.softDeleteEntity(
-      this.database.links,
-      linkId,
-      deletedAt,
-      'Link',
-    );
+    const link = await this.getLink(linkId);
+
+    if (link === null || link.runId !== runId) {
+      throw new PromptTrailRepositoryError(
+        'reference-not-found',
+        `Link not found for Run: ${runId}/${linkId}`,
+      );
+    }
+
+    if (link.deletedAt !== null) return link;
+
+    const deletedLink = { ...link, deletedAt };
+    await this.database.links.put(deletedLink);
+    return deletedLink;
   }
 
   private async ensureBundleIdsAbsent(trailBundle: TrailBundle): Promise<void> {

@@ -35,6 +35,101 @@ const direct = {
   updatedAt: '2026-01-01',
 };
 describe('RunDetailPage', () => {
+  it('confirms, cancels, and deletes only after repository success', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const trailLink = {
+      id: 'link-1',
+      runId: 'run-1',
+      title: 'Result document',
+      url: 'https://example.com/result',
+      type: 'document',
+      role: null,
+      summary: null,
+      externalId: null,
+      createdAt: '2026-01-01',
+      updatedAt: '2026-01-01',
+      deletedAt: null,
+    };
+    const repository = {
+      getRun: vi.fn(async () => direct),
+      getProject: vi.fn(async () => ({ name: 'Project' })),
+      listActiveLinks: vi.fn(async () => [trailLink]),
+      softDeleteLink: vi.fn(async () => ({
+        ...trailLink,
+        deletedAt: '2026-01-02',
+      })),
+    } as any;
+    renderPage(repository);
+
+    const remove = await screen.findByRole('button', {
+      name: 'Result documentを削除',
+    });
+    await user.click(remove);
+    expect(repository.softDeleteLink).not.toHaveBeenCalled();
+    expect(
+      screen.getByText('「Result document」を削除しますか？'),
+    ).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'キャンセル' }));
+    expect(remove).toHaveFocus();
+    expect(screen.getByRole('link', { name: 'Result document' })).toBeVisible();
+
+    await user.click(remove);
+    await user.keyboard('{Escape}');
+    expect(remove).toHaveFocus();
+    await user.click(remove);
+    await user.click(screen.getByRole('button', { name: '削除する' }));
+
+    expect(repository.softDeleteLink).toHaveBeenCalledWith(
+      'run-1',
+      'link-1',
+      expect.any(String),
+    );
+    expect(screen.queryByRole('link', { name: 'Result document' })).toBeNull();
+    expect(screen.getByText('関連リンクを削除しました。')).toHaveAttribute(
+      'role',
+      'status',
+    );
+  });
+
+  it('keeps a Link and its retry confirmation when deletion fails', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const repository = {
+      getRun: vi.fn(async () => direct),
+      getProject: vi.fn(async () => ({ name: 'Project' })),
+      listActiveLinks: vi.fn(async () => [
+        {
+          id: 'link-1',
+          runId: 'run-1',
+          title: null,
+          url: 'https://example.com/legacy',
+          type: 'external',
+          createdAt: '2026-01-01',
+          deletedAt: null,
+        },
+      ]),
+      softDeleteLink: vi.fn(async () => {
+        throw new Error('db');
+      }),
+    } as any;
+    renderPage(repository);
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'https://example.com/legacyを削除',
+      }),
+    );
+    await user.click(screen.getByRole('button', { name: '削除する' }));
+
+    expect(
+      await screen.findByText(
+        '関連リンクを削除できませんでした。もう一度お試しください。',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: 'https://example.com/legacy' }),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: '削除する' })).toBeEnabled();
+  });
   it('shows loading, not-found, and failure states', async () => {
     const pending = { getRun: vi.fn(() => new Promise(() => {})) } as any;
     renderPage(pending);
