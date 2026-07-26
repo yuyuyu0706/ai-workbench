@@ -1,5 +1,4 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { MemoryRouter } from 'react-router-dom';
@@ -124,25 +123,16 @@ describe('DashboardPage', () => {
     expect(updatedAt).toHaveAttribute('datetime', sampleDataset.run.updatedAt);
     expect(screen.getByText('3件')).toBeInTheDocument();
 
-    const menuButton = screen.getByRole('button', {
-      name: `${sampleDataset.run.promptSnapshot.title}の操作メニュー`,
+    const detailLink = screen.getByRole('link', {
+      name: sampleDataset.run.promptSnapshot.title,
     });
-    expect(menuButton).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByRole('link', { name: 'Trailを確認' })).toBeNull();
-
-    await userEvent.click(menuButton);
-    expect(menuButton).toHaveAttribute('aria-expanded', 'true');
-    expect(menuButton).toHaveAttribute('aria-haspopup', 'menu');
-    const menu = screen.getByRole('menu', {
-      name: `${sampleDataset.run.promptSnapshot.title}の操作メニュー`,
-    });
-    expect(menuButton).toHaveAttribute('id');
-    expect(menu).toHaveAttribute('aria-labelledby', menuButton.id);
-    const detailLink = screen.getByRole('menuitem', { name: 'Trailを確認' });
     expect(detailLink).toHaveAttribute(
       'href',
       buildRunDetailPath(sampleDataset.run.id),
     );
+    expect(screen.queryByRole('columnheader', { name: '操作' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /操作メニュー/ })).toBeNull();
+    expect(screen.queryByRole('menu')).toBeNull();
 
     expect(
       screen.getByRole('columnheader', { name: '関連リンク' }),
@@ -159,53 +149,6 @@ describe('DashboardPage', () => {
     expect(
       screen.queryByText(`Recipe: ${sampleDataset.recipe.title}`),
     ).toBeNull();
-  });
-
-  it('keeps one action menu open and closes it from outside or Escape', async () => {
-    const user = userEvent.setup();
-    const firstRun = createRun({
-      id: 'menu-first' as Run['id'],
-      promptSnapshot: {
-        ...sampleDataset.run.promptSnapshot,
-        title: 'First Trail',
-      },
-    });
-    const secondRun = createRun({
-      id: 'menu-second' as Run['id'],
-      promptSnapshot: {
-        ...sampleDataset.run.promptSnapshot,
-        title: 'Second Trail',
-      },
-    });
-    renderDashboardPage(
-      createResolvedDataRepository({ runs: [firstRun, secondRun] }),
-    );
-
-    const firstTrigger = await screen.findByRole('button', {
-      name: 'First Trailの操作メニュー',
-    });
-    const secondTrigger = screen.getByRole('button', {
-      name: 'Second Trailの操作メニュー',
-    });
-
-    await user.click(firstTrigger);
-    expect(screen.getByRole('menuitem', { name: 'Trailを確認' })).toHaveFocus();
-    await user.click(secondTrigger);
-    expect(firstTrigger).toHaveAttribute('aria-expanded', 'false');
-    expect(secondTrigger).toHaveAttribute('aria-expanded', 'true');
-    expect(
-      screen.getByRole('menu', { name: 'Second Trailの操作メニュー' }),
-    ).toBeInTheDocument();
-
-    await user.keyboard('{Escape}');
-    expect(secondTrigger).toHaveAttribute('aria-expanded', 'false');
-    expect(secondTrigger).toHaveFocus();
-
-    await user.click(firstTrigger);
-    await user.click(
-      screen.getByRole('heading', { level: 2, name: '最近のTrail' }),
-    );
-    expect(firstTrigger).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('keeps recent runs in read model order and does not fabricate null evaluation text', async () => {

@@ -84,15 +84,14 @@ test.describe('Dashboard data flow', () => {
       seedResult,
     );
 
+    await expect(page.getByRole('columnheader', { name: '操作' })).toHaveCount(
+      0,
+    );
+    await expect(recentRunCard.getByRole('button')).toHaveCount(0);
+    await expect(recentRunCard.getByRole('menu')).toHaveCount(0);
     await recentRunCard
-      .getByRole('button', { name: 'GitHub Issue作成依頼の操作メニュー' })
+      .getByRole('link', { name: 'GitHub Issue作成依頼' })
       .click();
-    await expect(
-      recentRunCard.getByRole('menu', {
-        name: 'GitHub Issue作成依頼の操作メニュー',
-      }),
-    ).toBeVisible();
-    await recentRunCard.getByRole('menuitem', { name: 'Trailを確認' }).click();
     await expect(page).toHaveURL(
       new RegExp(`/runs/${seedResult.sampleRunId}$`),
     );
@@ -150,29 +149,14 @@ test.describe('Dashboard data flow', () => {
       await expectNoHorizontalOverflow(page);
       await expect(recentRun).toBeVisible();
       await expect(
-        recentRun.getByRole('button', {
-          name: 'GitHub Issue作成依頼の操作メニュー',
+        recentRun.getByRole('link', {
+          name: 'GitHub Issue作成依頼',
         }),
       ).toBeVisible();
-
-      const trigger = recentRun.getByRole('button', {
-        name: 'GitHub Issue作成依頼の操作メニュー',
-      });
-      await trigger.click();
-      const menu = recentRun.getByRole('menu', {
-        name: 'GitHub Issue作成依頼の操作メニュー',
-      });
-      await expect(menu).toBeVisible();
-      const menuBox = await menu.boundingBox();
-      expect(menuBox).not.toBeNull();
-      expect(menuBox!.x).toBeGreaterThanOrEqual(0);
-      expect(menuBox!.x + menuBox!.width).toBeLessThanOrEqual(width);
-      await expectNoHorizontalOverflow(page);
-      await page.keyboard.press('Escape');
     }
   });
 
-  test('supports keyboard action menu navigation and Escape', async ({
+  test('opens Run Detail from the Trail name with Tab and Enter', async ({
     page,
   }) => {
     await page.goto('/dashboard');
@@ -180,21 +164,12 @@ test.describe('Dashboard data flow', () => {
     await page.reload();
 
     const recentRun = await expectCanonicalSeededDashboard(page, seedResult);
-    const trigger = recentRun.getByRole('button', {
-      name: 'GitHub Issue作成依頼の操作メニュー',
+    const trailLink = recentRun.getByRole('link', {
+      name: 'GitHub Issue作成依頼',
     });
-    await trigger.focus();
-    await page.keyboard.press('Enter');
-    const menuItem = recentRun.getByRole('menuitem', {
-      name: 'Trailを確認',
-    });
-    await expect(menuItem).toBeFocused();
-
-    await page.keyboard.press('Escape');
-    await expect(menuItem).toHaveCount(0);
-    await expect(trigger).toBeFocused();
-
-    await page.keyboard.press('Enter');
+    await page.getByRole('link', { name: '新しいTrailを始める' }).focus();
+    await page.keyboard.press('Tab');
+    await expect(trailLink).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(
       new RegExp(`/runs/${seedResult.sampleRunId}$`),

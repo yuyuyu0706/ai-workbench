@@ -87,10 +87,7 @@ test.describe('first Trail creation acceptance', () => {
     await expect(recentRun).toContainText('1件');
     await expectNoHorizontalOverflow(page);
 
-    await recentRun
-      .getByRole('button', { name: `${promptTitle}の操作メニュー` })
-      .click();
-    await recentRun.getByRole('menuitem', { name: 'Trailを確認' }).click();
+    await recentRun.getByRole('link', { name: promptTitle }).click();
     await expect(page).toHaveURL(runDetailUrl);
     await expectCreatedTrail(page);
   });
