@@ -38,13 +38,10 @@ describe('developer data scenario catalog', () => {
     }
   });
 
-  it('matches expected active counts and keeps IDs unique within each scenario', () => {
+  it('matches expected total record counts and keeps IDs unique within each scenario', () => {
     for (const scenario of developerDataScenarios) {
       for (const key of countKeys) {
-        const activeRecords = scenario.dataset[key].filter(
-          ({ deletedAt }) => deletedAt === null,
-        );
-        expect(activeRecords, `${scenario.id}.${key}`).toHaveLength(
+        expect(scenario.dataset[key], `${scenario.id}.${key}`).toHaveLength(
           scenario.expectedCounts[key],
         );
       }
@@ -123,7 +120,12 @@ describe('developer data scenario catalog', () => {
       recipeId: null,
       contextSnapshots: [],
       inputValues: {},
+      status: 'prepared',
+      evaluation: null,
     });
+    expect(standard.dataset.runs[0].createdAt).toBe(
+      standard.dataset.runs[0].updatedAt,
+    );
     expect(standard.dataset.links[0]).toMatchObject({ role: null });
     expect(standard.dataset.links[0].title).not.toBeNull();
   });
@@ -150,21 +152,26 @@ describe('developer data scenario catalog', () => {
     expect(dense.expectations.dashboard.recentRunIds).toEqual(
       expectedRecentIds,
     );
-    const activeCounts = dense.dataset.runs.map(
+    const allRunActiveCounts = dense.dataset.runs.map(
       ({ id }) =>
         dense.dataset.links.filter(
           ({ runId, deletedAt }) => runId === id && deletedAt === null,
         ).length,
     );
-    expect(activeCounts).toContain(0);
-    expect(activeCounts).toContain(1);
-    expect(activeCounts.some((count) => count > 1)).toBe(true);
+    expect(allRunActiveCounts).toContain(0);
+    expect(allRunActiveCounts).toContain(1);
+    expect(allRunActiveCounts.some((count) => count > 1)).toBe(true);
     expect(
       dense.dataset.links.some(({ deletedAt }) => deletedAt !== null),
     ).toBe(true);
-    expect(
-      dense.expectations.dashboard.relatedLinkCounts.map(({ count }) => count),
-    ).toEqual(activeCounts);
+    expect(dense.expectations.dashboard.relatedLinkCounts).toEqual(
+      expectedRecentIds.map((runId) => ({
+        runId,
+        count: dense.dataset.links.filter(
+          (link) => link.runId === runId && link.deletedAt === null,
+        ).length,
+      })),
+    );
   });
 
   it('preserves the legacy Recipe Run and unnamed external Link', () => {

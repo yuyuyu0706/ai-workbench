@@ -19,7 +19,7 @@ export type DeveloperScenarioDataset = {
   readonly links: readonly Link[];
 };
 
-/** Expected active record counts after loading a scenario. */
+/** Total record counts persisted when loading a scenario. */
 export type DeveloperScenarioExpectedCounts = {
   readonly projects: number;
   readonly prompts: number;

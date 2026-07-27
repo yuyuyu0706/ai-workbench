@@ -142,12 +142,12 @@ export const denseScenario: DeveloperDataScenario = {
     contexts: 0,
     recipes: 0,
     runs: 7,
-    links: 3,
+    links: 4,
   },
   expectations: {
     dashboard: {
       recentRunIds: recentRuns.map(({ id }) => id),
-      relatedLinkCounts: runs.map(({ id }) => ({
+      relatedLinkCounts: recentRuns.map(({ id }) => ({
         runId: id,
         count: links.filter(
           (link) => link.runId === id && link.deletedAt === null,
