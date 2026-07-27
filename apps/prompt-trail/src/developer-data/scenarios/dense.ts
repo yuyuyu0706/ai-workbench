@@ -24,7 +24,7 @@ const runSpecs: readonly DenseRunSpec[] = [
   {
     sequence: '01',
     title:
-      '長いTrail名と複数行PromptがDashboardおよびRun Detailで安全に折り返され、情報階層を崩さないことを確認するための開発用シナリオ',
+      '長いTrail名と複数行PromptがDashboardおよびRun Detailで安全に折り返され、情報階層を崩さないことを確認するための開発用シナリオとして、desktopとmobileの双方で一覧性を検証する',
     body: 'Dashboardの最新5件表示を確認してください。\n長いタイトル、長い本文、関連Linkの件数が画面幅を超えないことも確認してください。',
     status: 'in-progress',
     createdAt: '2026-08-03T00:10:00.000Z',
