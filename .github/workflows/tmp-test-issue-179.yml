@@ -1,0 +1,27 @@
+name: Temporary Issue 179 Unit Log
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  unit-log:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10.28.1'
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.20.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Capture unit test log
+        run: pnpm --filter prompt-trail test > issue-179-unit.log 2>&1 || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: issue-179-unit-log
+          path: issue-179-unit.log
+          if-no-files-found: error
