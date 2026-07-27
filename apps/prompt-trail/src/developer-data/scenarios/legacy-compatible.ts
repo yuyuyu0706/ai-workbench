@@ -1,11 +1,4 @@
-import type {
-  Context,
-  Link,
-  Project,
-  Prompt,
-  Recipe,
-  Run,
-} from '../../domain';
+import type { Context, Link, Project, Prompt, Recipe, Run } from '../../domain';
 import type { DeveloperDataScenario } from '../developer-data-scenario';
 import { scenarioValue } from '../scenario-ids';
 
