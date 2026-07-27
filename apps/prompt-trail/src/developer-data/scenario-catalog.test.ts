@@ -204,9 +204,9 @@ describe('Developer Data Scenario Catalog', () => {
       status: 'done',
     });
     expect(scenario.dataset.links.length).toBeGreaterThan(0);
-    expect(allRecords(scenario).some((record) => 'reusedFromId' in record)).toBe(
-      false,
-    );
+    expect(
+      allRecords(scenario).some((record) => 'reusedFromId' in record),
+    ).toBe(false);
   });
 
   it('provides dense ordering, boundary strings, and varied active Link counts', () => {
@@ -217,9 +217,7 @@ describe('Developer Data Scenario Catalog', () => {
     expect(activeRuns.length).toBeGreaterThanOrEqual(6);
 
     const expectedRecentRunIds = [...activeRuns]
-      .sort((first, second) =>
-        second.updatedAt.localeCompare(first.updatedAt),
-      )
+      .sort((first, second) => second.updatedAt.localeCompare(first.updatedAt))
       .slice(0, 5)
       .map((run) => run.id);
     expect(scenario.expectations.dashboard.recentRunIds).toEqual(
@@ -252,12 +250,12 @@ describe('Developer Data Scenario Catalog', () => {
     expect(scenario.dataset.runs[0]?.recipeId).toBe(
       scenario.dataset.recipes[0]?.id,
     );
-    expect(
-      scenario.dataset.links.some((link) => link.role !== null),
-    ).toBe(true);
-    expect(scenario.dataset.links.some((link) => link.type === 'external')).toBe(
+    expect(scenario.dataset.links.some((link) => link.role !== null)).toBe(
       true,
     );
+    expect(
+      scenario.dataset.links.some((link) => link.type === 'external'),
+    ).toBe(true);
 
     const untitledLinkIds = scenario.dataset.links
       .filter((link) => link.title === null)
