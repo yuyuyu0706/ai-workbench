@@ -10,3 +10,13 @@ export {
   developerDataScenarios,
   getDeveloperDataScenario,
 } from './scenario-catalog';
+export {
+  DeveloperDataService,
+  DeveloperScenarioCountMismatchError,
+} from './developer-data-service';
+export type {
+  DeveloperRecordCounts,
+  LoadDeveloperScenarioResult,
+  ResetAndLoadDeveloperScenarioResult,
+  ResetDeveloperDatabaseResult,
+} from './developer-data-service';
