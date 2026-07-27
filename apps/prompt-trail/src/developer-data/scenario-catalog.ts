@@ -6,13 +6,14 @@ import { legacyCompatibleScenario } from './scenarios/legacy-compatible';
 import { reuseReadyScenario } from './scenarios/reuse-ready';
 import { standardScenario } from './scenarios/standard';
 
-export const developerDataScenarios: readonly DeveloperDataScenario[] = [
-  emptyScenario,
-  standardScenario,
-  reuseReadyScenario,
-  denseScenario,
-  legacyCompatibleScenario,
-];
+export const developerDataScenarios: readonly DeveloperDataScenario[] =
+  Object.freeze([
+    emptyScenario,
+    standardScenario,
+    reuseReadyScenario,
+    denseScenario,
+    legacyCompatibleScenario,
+  ]);
 
 export function getDeveloperDataScenario(
   id: DeveloperDataScenarioId,

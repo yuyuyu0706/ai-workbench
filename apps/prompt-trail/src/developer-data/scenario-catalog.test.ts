@@ -29,6 +29,7 @@ describe('developer data scenario catalog', () => {
     expect(developerDataScenarios.map(({ id }) => id)).toEqual(
       DEVELOPER_DATA_SCENARIO_IDS,
     );
+    expect(Object.isFrozen(developerDataScenarios)).toBe(true);
     expect(new Set(DEVELOPER_DATA_SCENARIO_IDS)).toHaveLength(5);
     for (const scenario of developerDataScenarios) {
       expect(getDeveloperDataScenario(scenario.id)).toBe(scenario);
