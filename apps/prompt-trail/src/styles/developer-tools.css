@@ -1,0 +1,79 @@
+.developer-tools {
+  border-bottom: 1px solid var(--pt-color-border);
+  background: var(--pt-color-surface);
+}
+
+.developer-tools__bar,
+.developer-tools__panel {
+  width: min(100%, var(--pt-content-max));
+  margin: 0 auto;
+  padding: var(--pt-space-3) var(--pt-space-4);
+}
+
+.developer-tools__panel,
+.developer-tools__section {
+  display: grid;
+  gap: var(--pt-space-4);
+}
+
+.developer-tools__panel {
+  border-top: 1px solid var(--pt-color-border);
+}
+
+.developer-tools__heading,
+.developer-tools__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pt-space-3);
+}
+
+.developer-tools__eyebrow {
+  margin-bottom: var(--pt-space-1);
+  color: var(--pt-color-accent);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.developer-tools__counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: var(--pt-space-2);
+  margin: 0;
+}
+
+.developer-tools__counts div,
+.developer-tools__confirmation {
+  padding: var(--pt-space-3);
+  border: 1px solid var(--pt-color-border);
+  border-radius: var(--pt-radius-sm);
+  background: var(--pt-color-surface-subtle);
+}
+
+.developer-tools__counts dd {
+  margin: 0;
+  color: var(--pt-color-text-strong);
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.developer-tools__field {
+  display: grid;
+  gap: var(--pt-space-2);
+  max-width: 32rem;
+  font-weight: 700;
+}
+
+.developer-tools__field select {
+  width: 100%;
+  min-width: 0;
+  padding: var(--pt-space-2);
+}
+
+@media (max-width: 360px) {
+  .developer-tools__actions > .pt-button {
+    width: 100%;
+  }
+}

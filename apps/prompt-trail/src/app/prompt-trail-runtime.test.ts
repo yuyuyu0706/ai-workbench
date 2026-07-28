@@ -40,4 +40,31 @@ describe('createPromptTrailRuntime', () => {
 
     databaseTestScope.releaseDatabase(database);
   });
+
+  it('only exposes developer data operations when explicitly enabled', async () => {
+    const disabledDatabase = databaseTestScope.createDatabase();
+    const enabledDatabase = databaseTestScope.createDatabase();
+    const disabledRuntime = createPromptTrailRuntime(disabledDatabase);
+    const enabledRuntime = createPromptTrailRuntime(enabledDatabase, {
+      enableDeveloperTools: true,
+    });
+
+    expect(disabledRuntime.developerTools).toBeNull();
+    expect(enabledRuntime.developerTools).not.toBeNull();
+
+    await enabledRuntime.initialize();
+    await expect(
+      enabledRuntime.developerTools?.dataService.loadScenario('standard'),
+    ).resolves.toMatchObject({ status: 'loaded', scenarioId: 'standard' });
+    await expect(
+      enabledRuntime.repository.listActiveProjects(),
+    ).resolves.toHaveLength(1);
+
+    disabledRuntime.dispose();
+    enabledRuntime.dispose();
+    databaseTestScope.releaseDatabase(disabledDatabase);
+    databaseTestScope.releaseDatabase(enabledDatabase);
+    await disabledDatabase.delete();
+    await enabledDatabase.delete();
+  });
 });

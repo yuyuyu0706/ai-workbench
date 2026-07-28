@@ -1,9 +1,14 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { MemoryRouter } from 'react-router-dom';
 
 import { PromptTrailRepositoryProvider } from '../app/PromptTrailRepositoryContext';
+import {
+  PromptTrailDataRevisionProvider,
+  usePromptTrailDataRevision,
+} from '../app/PromptTrailDataRevisionContext';
 import { buildRunDetailPath } from '../app/routes';
 import { createPromptTrailRuntime } from '../app/prompt-trail-runtime';
 import type { Link, Project, Recipe, Run, RunStatus } from '../domain';
@@ -65,6 +70,32 @@ describe('DashboardPage', () => {
         'Fresh DBでは自動Seedせず、Repository読み取り後の正常なEmpty Stateとして表示しています。',
       ),
     ).toBeInTheDocument();
+  });
+
+  it('reads the repository again when data revision changes', async () => {
+    const repository = {
+      listActiveProjects: vi.fn(async () => []),
+    } as unknown as PromptTrailRepository;
+
+    render(
+      <MemoryRouter>
+        <PromptTrailRepositoryProvider repository={repository}>
+          <PromptTrailDataRevisionProvider>
+            <DashboardPage />
+            <DataRevisionTrigger />
+          </PromptTrailDataRevisionProvider>
+        </PromptTrailRepositoryProvider>
+      </MemoryRouter>,
+    );
+    await screen.findByText('Repositoryに表示できるRunがまだありません。');
+    expect(repository.listActiveProjects).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Notify data changed' }),
+    );
+    await waitFor(() =>
+      expect(repository.listActiveProjects).toHaveBeenCalledTimes(2),
+    );
   });
 
   it('shows a dashboard failure state without exposing the internal error value', async () => {
@@ -327,6 +358,11 @@ function renderDashboardPage(repository: PromptTrailRepository) {
       </PromptTrailRepositoryProvider>
     </MemoryRouter>,
   );
+}
+
+function DataRevisionTrigger() {
+  const { notifyDataChanged } = usePromptTrailDataRevision();
+  return <button onClick={notifyDataChanged}>Notify data changed</button>;
 }
 
 type ResolvedDataRepositoryOptions = {

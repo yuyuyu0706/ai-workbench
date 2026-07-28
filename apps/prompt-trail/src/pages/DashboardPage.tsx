@@ -5,6 +5,7 @@ import { buildRunDetailPath, routePaths } from '../app/routes';
 import { loadDashboardDataState, type DashboardDataState } from '../dashboard';
 import type { DashboardReadModel, DashboardRecentRun } from '../dashboard';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
+import { usePromptTrailDataRevision } from '../app/PromptTrailDataRevisionContext';
 import { PageHeader, PageSection, StateMessage } from '../components/ui';
 import type { RunStatus } from '../domain';
 
@@ -21,6 +22,7 @@ type DashboardPageStateSnapshot = {
 
 export function DashboardPage() {
   const repository = usePromptTrailRepository();
+  const { revision } = usePromptTrailDataRevision();
   const [pageStateSnapshot, setPageStateSnapshot] =
     useState<DashboardPageStateSnapshot>({
       repository,
@@ -45,7 +47,7 @@ export function DashboardPage() {
     return () => {
       isActive = false;
     };
-  }, [repository]);
+  }, [repository, revision]);
 
   return (
     <section className="prompt-trail-page">

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { GlobalNavigation } from './GlobalNavigation';
+import { DeveloperToolsPanel } from '../developer-tools/DeveloperToolsPanel';
 
 export interface AppShellProps {
   children: ReactNode;
@@ -16,6 +17,7 @@ export function AppShell({ children }: AppShellProps) {
         </div>
       </header>
       <GlobalNavigation />
+      <DeveloperToolsPanel />
       <main className="app-shell__main" id="main-content">
         {children}
       </main>

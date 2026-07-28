@@ -1,6 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 
 import { StateMessage } from '../components/ui';
+import { DeveloperToolsProvider } from '../developer-tools/DeveloperToolsContext';
+import { PromptTrailDataRevisionProvider } from './PromptTrailDataRevisionContext';
 import { PromptTrailRepositoryProvider } from './PromptTrailRepositoryContext';
 import type { PromptTrailRuntime } from './prompt-trail-runtime';
 
@@ -60,7 +62,11 @@ export function ApplicationBootstrap({
 
   return (
     <PromptTrailRepositoryProvider repository={runtime.repository}>
-      {children}
+      <PromptTrailDataRevisionProvider>
+        <DeveloperToolsProvider value={runtime.developerTools}>
+          {children}
+        </DeveloperToolsProvider>
+      </PromptTrailDataRevisionProvider>
     </PromptTrailRepositoryProvider>
   );
 }
