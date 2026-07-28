@@ -30,6 +30,7 @@ type Feedback =
 export function DeveloperToolsPanel() {
   const developerTools = useDeveloperTools();
   const [isOpen, setIsOpen] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
 
   if (developerTools === null) return null;
 
@@ -41,7 +42,11 @@ export function DeveloperToolsPanel() {
           type="button"
           aria-expanded={isOpen}
           aria-controls={PANEL_ID}
-          onClick={() => setIsOpen((current) => !current)}
+          disabled={isBusy}
+          onClick={() => {
+            if (!isOpen) setIsBusy(true);
+            setIsOpen((current) => !current);
+          }}
         >
           Developer Tools
         </button>
@@ -50,6 +55,7 @@ export function DeveloperToolsPanel() {
         <DeveloperToolsPanelContent
           panelId={PANEL_ID}
           requestClose={() => setIsOpen(false)}
+          onBusyChange={setIsBusy}
         />
       ) : null}
     </section>
@@ -59,17 +65,23 @@ export function DeveloperToolsPanel() {
 function DeveloperToolsPanelContent({
   panelId,
   requestClose,
+  onBusyChange,
 }: {
   panelId: string;
   requestClose(): void;
+  onBusyChange(isBusy: boolean): void;
 }) {
   const developerTools = useDeveloperTools();
   const { notifyDataChanged } = usePromptTrailDataRevision();
   const navigate = useNavigate();
   const [scenarioId, setScenarioId] =
     useState<DeveloperDataScenarioId>('standard');
-  const [counts, setCounts] = useState<DeveloperRecordCounts | null>(null);
-  const [isBusy, setIsBusy] = useState(true);
+  const [countsState, setCountsState] = useState<
+    | { readonly status: 'loading' }
+    | { readonly status: 'ready'; readonly counts: DeveloperRecordCounts }
+    | { readonly status: 'failed' }
+  >({ status: 'loading' });
+  const [isOperating, setIsOperating] = useState(false);
   const [confirmation, setConfirmation] = useState<DestructiveOperation | null>(
     null,
   );
@@ -80,28 +92,54 @@ function DeveloperToolsPanelContent({
     throw new Error('Developer Tools Panel requires an enabled capability.');
   const service = developerTools.dataService;
 
+  const isBusy = countsState.status === 'loading' || isOperating;
+
+  useEffect(() => onBusyChange(isBusy), [isBusy, onBusyChange]);
+
+  function loadCounts() {
+    const currentRequest = ++requestId.current;
+    setCountsState({ status: 'loading' });
+    setFeedback(null);
+    service
+      .getRecordCounts()
+      .then((nextCounts) => {
+        if (requestId.current === currentRequest)
+          setCountsState({ status: 'ready', counts: nextCounts });
+      })
+      .catch(() => {
+        if (requestId.current === currentRequest) {
+          setCountsState({ status: 'failed' });
+          setFeedback({
+            kind: 'error',
+            message: '件数を読み込めませんでした。再試行してください。',
+          });
+        }
+      });
+  }
+
   useEffect(() => {
     const currentRequest = ++requestId.current;
     service
       .getRecordCounts()
       .then((nextCounts) => {
-        if (requestId.current === currentRequest) setCounts(nextCounts);
+        if (requestId.current === currentRequest)
+          setCountsState({ status: 'ready', counts: nextCounts });
       })
       .catch(() => {
-        if (requestId.current === currentRequest)
+        if (requestId.current === currentRequest) {
+          setCountsState({ status: 'failed' });
           setFeedback({
             kind: 'error',
-            message: '件数を読み込めませんでした。再度Panelを開いてください。',
+            message: '件数を読み込めませんでした。再試行してください。',
           });
-      })
-      .finally(() => {
-        if (requestId.current === currentRequest) setIsBusy(false);
+        }
       });
-  }, [service]);
+    return () => onBusyChange(false);
+  }, [onBusyChange, service]);
 
   async function execute(operation: 'load' | DestructiveOperation) {
     const currentRequest = ++requestId.current;
-    setIsBusy(true);
+    setIsOperating(true);
     setFeedback(null);
     setConfirmation(null);
     try {
@@ -112,7 +150,7 @@ function DeveloperToolsPanelContent({
             ? await service.resetDatabase()
             : await service.resetAndLoadScenario(scenarioId);
       if (requestId.current !== currentRequest) return;
-      setCounts(result.counts);
+      setCountsState({ status: 'ready', counts: result.counts });
       if (result.status === 'database-not-empty') {
         setFeedback({
           kind: 'rejected',
@@ -138,7 +176,7 @@ function DeveloperToolsPanelContent({
             'データ操作に失敗し、変更を完了できませんでした。もう一度お試しください。',
         });
     } finally {
-      if (requestId.current === currentRequest) setIsBusy(false);
+      if (requestId.current === currentRequest) setIsOperating(false);
     }
   }
 
@@ -170,17 +208,25 @@ function DeveloperToolsPanelContent({
         <h3 id="data-scenario-heading">Data Scenario</h3>
         <div>
           <h4>Current Record Counts</h4>
-          {counts === null ? (
+          {countsState.status === 'loading' ? (
             <p role="status">6 Storeの件数を読み込んでいます...</p>
-          ) : (
+          ) : countsState.status === 'ready' ? (
             <dl className="developer-tools__counts">
               {STORE_LABELS.map(([name, label]) => (
                 <div key={name}>
                   <dt>{label}</dt>
-                  <dd>{counts[name]}</dd>
+                  <dd>{countsState.counts[name]}</dd>
                 </div>
               ))}
             </dl>
+          ) : (
+            <button
+              className="pt-button pt-button--secondary"
+              type="button"
+              onClick={loadCounts}
+            >
+              件数を再読み込み
+            </button>
           )}
         </div>
 
@@ -188,7 +234,7 @@ function DeveloperToolsPanelContent({
           <span>Scenario</span>
           <select
             value={scenarioId}
-            disabled={isBusy}
+            disabled={isBusy || countsState.status !== 'ready'}
             onChange={(event) => {
               setScenarioId(event.target.value as DeveloperDataScenarioId);
               setConfirmation(null);
@@ -215,7 +261,7 @@ function DeveloperToolsPanelContent({
           <button
             className="pt-button pt-button--primary"
             type="button"
-            disabled={isBusy}
+            disabled={isBusy || countsState.status !== 'ready'}
             onClick={() => void execute('load')}
           >
             Load
@@ -263,7 +309,7 @@ function DeveloperToolsPanelContent({
             </div>
           </div>
         ) : null}
-        {isBusy && counts !== null ? (
+        {isOperating ? (
           <p role="status">データ操作を実行しています...</p>
         ) : null}
         {feedback ? (

@@ -54,18 +54,11 @@ describe('createPromptTrailRuntime', () => {
 
     await enabledRuntime.initialize();
     await expect(
-      enabledRuntime.developerTools?.dataService.getRecordCounts(),
-    ).resolves.toEqual({
-      projects: 0,
-      prompts: 0,
-      contexts: 0,
-      recipes: 0,
-      runs: 0,
-      links: 0,
-    });
+      enabledRuntime.developerTools?.dataService.loadScenario('standard'),
+    ).resolves.toMatchObject({ status: 'loaded', scenarioId: 'standard' });
     await expect(
       enabledRuntime.repository.listActiveProjects(),
-    ).resolves.toEqual([]);
+    ).resolves.toHaveLength(1);
 
     disabledRuntime.dispose();
     enabledRuntime.dispose();
