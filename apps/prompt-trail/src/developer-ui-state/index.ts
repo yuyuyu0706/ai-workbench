@@ -3,6 +3,7 @@ export {
   isDeveloperUiStateOverride,
   type DeveloperUiStateOverride,
 } from './catalog';
+export { getBrowserDeveloperUiStateStorage } from './browser-storage';
 export {
   createDeveloperUiStateStore,
   DEVELOPER_UI_STATE_STORAGE_KEY,
