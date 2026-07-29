@@ -10,6 +10,18 @@
   padding: var(--pt-space-3) var(--pt-space-4);
 }
 
+.developer-tools__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pt-space-3);
+}
+
+.developer-tools__active-override {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .developer-tools__panel,
 .developer-tools__section {
   display: grid;
@@ -32,16 +44,6 @@
 
 .developer-tools__state-actions {
   justify-content: flex-start;
-}
-
-.developer-tools__state-actions [aria-pressed='true'] {
-  border-color: var(--pt-color-accent);
-  background: var(--pt-color-surface-subtle);
-  color: var(--pt-color-accent-strong);
-}
-
-.developer-tools__clear-override {
-  justify-self: start;
 }
 
 .developer-tools__eyebrow {
