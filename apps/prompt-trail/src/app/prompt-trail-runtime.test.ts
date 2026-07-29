@@ -47,10 +47,14 @@ describe('createPromptTrailRuntime', () => {
     const disabledRuntime = createPromptTrailRuntime(disabledDatabase);
     const enabledRuntime = createPromptTrailRuntime(enabledDatabase, {
       enableDeveloperTools: true,
+      developerUiStateStorage: localStorage,
     });
 
     expect(disabledRuntime.developerTools).toBeNull();
     expect(enabledRuntime.developerTools).not.toBeNull();
+    expect(enabledRuntime.developerTools?.uiStateStore.getSnapshot()).toEqual({
+      activeOverride: null,
+    });
 
     await enabledRuntime.initialize();
     await expect(
@@ -66,5 +70,26 @@ describe('createPromptTrailRuntime', () => {
     databaseTestScope.releaseDatabase(enabledDatabase);
     await disabledDatabase.delete();
     await enabledDatabase.delete();
+  });
+
+  it('does not access storage when disabled and requires it when enabled', () => {
+    const database = databaseTestScope.createDatabase();
+    const storage = {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    };
+
+    const runtime = createPromptTrailRuntime(database, {
+      developerUiStateStorage: storage,
+    });
+    expect(runtime.developerTools).toBeNull();
+    expect(storage.getItem).not.toHaveBeenCalled();
+    expect(() =>
+      createPromptTrailRuntime(database, { enableDeveloperTools: true }),
+    ).toThrow('developerUiStateStorage is required');
+
+    runtime.dispose();
+    databaseTestScope.releaseDatabase(database);
   });
 });

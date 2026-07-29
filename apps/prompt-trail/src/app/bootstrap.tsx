@@ -20,12 +20,16 @@ export function mountPromptTrailApplication(
   rootElement: HTMLElement,
   options: MountPromptTrailApplicationOptions = {},
 ): PromptTrailApplicationHandle {
+  const enableDeveloperTools =
+    import.meta.env.DEV ||
+    import.meta.env.VITE_ENABLE_DEVELOPER_TOOLS === 'true';
   const runtime =
     options.runtime ??
     createPromptTrailRuntime(undefined, {
-      enableDeveloperTools:
-        import.meta.env.DEV ||
-        import.meta.env.VITE_ENABLE_DEVELOPER_TOOLS === 'true',
+      enableDeveloperTools,
+      developerUiStateStorage: enableDeveloperTools
+        ? window.localStorage
+        : undefined,
     });
   const root: Root = createRoot(rootElement);
 
