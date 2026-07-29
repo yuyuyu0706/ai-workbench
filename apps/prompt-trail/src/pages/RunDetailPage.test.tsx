@@ -1,14 +1,27 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { PromptTrailRepositoryProvider } from '../app/PromptTrailRepositoryContext';
+import type { DeveloperToolsRuntime } from '../app/prompt-trail-runtime';
+import { DeveloperToolsProvider } from '../developer-tools/DeveloperToolsContext';
+import {
+  createDeveloperUiStateStore,
+  type DeveloperUiStateStore,
+} from '../developer-ui-state';
 import type { PromptTrailRepository } from '../repository';
 import { RunDetailPage } from './RunDetailPage';
 function renderPage(
   repository: PromptTrailRepository,
   id = 'run-1',
   state?: { trailCreated: true },
+  uiStateStore?: DeveloperUiStateStore,
 ) {
   return render(
     <MemoryRouter
@@ -17,9 +30,15 @@ function renderPage(
       ]}
     >
       <PromptTrailRepositoryProvider repository={repository}>
-        <Routes>
-          <Route path="/runs/:runId" element={<RunDetailPage />} />
-        </Routes>
+        <DeveloperToolsProvider
+          value={
+            uiStateStore ? ({ uiStateStore } as DeveloperToolsRuntime) : null
+          }
+        >
+          <Routes>
+            <Route path="/runs/:runId" element={<RunDetailPage />} />
+          </Routes>
+        </DeveloperToolsProvider>
       </PromptTrailRepositoryProvider>
     </MemoryRouter>,
   );
@@ -34,7 +53,203 @@ const direct = {
   createdAt: '2026-01-01',
   updatedAt: '2026-01-01',
 };
+
+function createTrailLink(id: string, title: string) {
+  return {
+    id,
+    runId: 'run-1',
+    title,
+    url: `https://example.com/${id}`,
+    type: 'document',
+    role: null,
+    summary: null,
+    externalId: null,
+    createdAt: '2026-01-01',
+    updatedAt: '2026-01-01',
+    deletedAt: null,
+  };
+}
+
+function createDetailRepository(
+  links: readonly ReturnType<typeof createTrailLink>[],
+) {
+  return {
+    getRun: vi.fn(async () => direct),
+    getProject: vi.fn(async () => ({ name: 'Project' })),
+    listActiveLinks: vi.fn(async () => links),
+    saveLink: vi.fn(async (link) => link),
+    softDeleteLink: vi.fn(async (_runId, linkId) => ({
+      ...links.find((link) => link.id === linkId),
+      deletedAt: '2026-01-02',
+    })),
+  } as any;
+}
+
+function createTestUiStateStore() {
+  const values = new Map<string, string>();
+  return createDeveloperUiStateStore({
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+    removeItem: (key) => values.delete(key),
+  });
+}
+
 describe('RunDetailPage', () => {
+  it('applies every page override and restores already-loaded data when cleared', async () => {
+    const repository = createDetailRepository([]);
+    const store = createTestUiStateStore();
+    store.setActiveOverride({ target: 'run-detail-page', state: 'loading' });
+    renderPage(repository, 'run-1', undefined, store);
+
+    expect(screen.getByText('Runを読み込んでいます...')).toBeVisible();
+    await waitFor(() => expect(repository.getRun).toHaveBeenCalledOnce());
+    act(() =>
+      store.setActiveOverride({
+        target: 'run-detail-page',
+        state: 'not-found',
+      }),
+    );
+    expect(screen.getByText('指定されたRunが見つかりません。')).toBeVisible();
+    act(() =>
+      store.setActiveOverride({ target: 'run-detail-page', state: 'failure' }),
+    );
+    expect(screen.getByText('Runの読み込みに失敗しました。')).toBeVisible();
+
+    act(() => store.clearActiveOverride());
+    expect(await screen.findByText('Body A')).toBeVisible();
+    expect(repository.getRun).toHaveBeenCalledOnce();
+  });
+
+  it('does not apply a Link Form override while the real page is not data', () => {
+    const store = createTestUiStateStore();
+    store.setActiveOverride({
+      target: 'run-detail-link-form',
+      state: 'submitting',
+    });
+    const repository = {
+      getRun: vi.fn(() => new Promise(() => undefined)),
+    } as unknown as PromptTrailRepository;
+    renderPage(repository, 'run-1', undefined, store);
+
+    expect(screen.getByText('Runを読み込んでいます...')).toBeVisible();
+    expect(screen.queryByRole('button', { name: '保存中...' })).toBeNull();
+  });
+
+  it('applies Link Form overrides, blocks saving, and hides then restores a real success notice', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const repository = createDetailRepository([]);
+    const store = createTestUiStateStore();
+    renderPage(repository, 'run-1', undefined, store);
+    await screen.findByText('Body A');
+    await user.type(screen.getByLabelText('Link名称'), 'Saved link');
+    await user.type(screen.getByLabelText('URL'), 'https://example.com/saved');
+    await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
+    await user.click(screen.getByRole('button', { name: '関連リンクを登録' }));
+    expect(await screen.findByText('関連リンクを登録しました。')).toBeVisible();
+
+    act(() =>
+      store.setActiveOverride({
+        target: 'run-detail-link-form',
+        state: 'submitting',
+      }),
+    );
+    expect(screen.getByRole('button', { name: '保存中...' })).toBeDisabled();
+    expect(screen.queryByText('関連リンクを登録しました。')).toBeNull();
+    act(() =>
+      store.setActiveOverride({
+        target: 'run-detail-link-form',
+        state: 'save-failure',
+      }),
+    );
+    expect(screen.getByText(/Linkを保存できませんでした/)).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '関連リンクを登録' }));
+    expect(repository.saveLink).toHaveBeenCalledOnce();
+
+    act(() => store.clearActiveOverride());
+    expect(screen.getByText('関連リンクを登録しました。')).toBeVisible();
+  });
+
+  it('targets the selected Link then the first Link for delete overrides without deleting', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const links = [
+      createTrailLink('link-1', 'First'),
+      createTrailLink('link-2', 'Second'),
+    ];
+    const repository = createDetailRepository(links);
+    const store = createTestUiStateStore();
+    renderPage(repository, 'run-1', undefined, store);
+    await user.click(
+      await screen.findByRole('button', { name: 'Secondを削除' }),
+    );
+
+    act(() =>
+      store.setActiveOverride({
+        target: 'run-detail-link-delete',
+        state: 'delete-failure',
+      }),
+    );
+    expect(screen.getByText('「Second」を削除しますか？')).toBeVisible();
+    expect(screen.getByText(/関連リンクを削除できませんでした/)).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '削除する' }));
+    expect(repository.softDeleteLink).not.toHaveBeenCalled();
+
+    act(() => store.clearActiveOverride());
+    await user.click(screen.getByRole('button', { name: 'キャンセル' }));
+    act(() =>
+      store.setActiveOverride({
+        target: 'run-detail-link-delete',
+        state: 'confirming',
+      }),
+    );
+    expect(screen.getByText('「First」を削除しますか？')).toBeVisible();
+    act(() =>
+      store.setActiveOverride({
+        target: 'run-detail-link-delete',
+        state: 'deleting',
+      }),
+    );
+    expect(screen.getByRole('button', { name: '削除中...' })).toBeDisabled();
+    expect(repository.softDeleteLink).not.toHaveBeenCalled();
+  });
+
+  it('does not fabricate a delete target when no Links exist', async () => {
+    const store = createTestUiStateStore();
+    store.setActiveOverride({
+      target: 'run-detail-link-delete',
+      state: 'delete-failure',
+    });
+    renderPage(createDetailRepository([]), 'run-1', undefined, store);
+    await screen.findByText('Body A');
+
+    expect(screen.queryByText(/を削除しますか/)).toBeNull();
+    expect(screen.queryByText(/関連リンクを削除できませんでした/)).toBeNull();
+  });
+
+  it('hides a real delete success notice only while a delete override is active', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const repository = createDetailRepository([
+      createTrailLink('link-1', 'First'),
+      createTrailLink('link-2', 'Second'),
+    ]);
+    const store = createTestUiStateStore();
+    renderPage(repository, 'run-1', undefined, store);
+    await user.click(
+      await screen.findByRole('button', { name: 'Secondを削除' }),
+    );
+    await user.click(screen.getByRole('button', { name: '削除する' }));
+    expect(await screen.findByText('関連リンクを削除しました。')).toBeVisible();
+
+    act(() =>
+      store.setActiveOverride({
+        target: 'run-detail-link-delete',
+        state: 'confirming',
+      }),
+    );
+    expect(screen.queryByText('関連リンクを削除しました。')).toBeNull();
+    act(() => store.clearActiveOverride());
+    expect(screen.getByText('関連リンクを削除しました。')).toBeVisible();
+  });
+
   it('confirms, cancels, and deletes only after repository success', async () => {
     const user = (await import('@testing-library/user-event')).default.setup();
     const trailLink = {

@@ -7,6 +7,8 @@ import type { DashboardReadModel, DashboardRecentRun } from '../dashboard';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { usePromptTrailDataRevision } from '../app/PromptTrailDataRevisionContext';
 import { PageHeader, PageSection, StateMessage } from '../components/ui';
+import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
+import { selectActiveDeveloperUiState } from '../developer-ui-state';
 import type { RunStatus } from '../domain';
 
 import { formatDateTime } from './date-time';
@@ -23,6 +25,7 @@ type DashboardPageStateSnapshot = {
 export function DashboardPage() {
   const repository = usePromptTrailRepository();
   const { revision } = usePromptTrailDataRevision();
+  const uiStateSnapshot = useDeveloperUiStateSnapshot();
   const [pageStateSnapshot, setPageStateSnapshot] =
     useState<DashboardPageStateSnapshot>({
       repository,
@@ -32,6 +35,16 @@ export function DashboardPage() {
     pageStateSnapshot.repository === repository
       ? pageStateSnapshot.state
       : ({ status: 'loading' } as const);
+  const pageOverride = selectActiveDeveloperUiState(
+    uiStateSnapshot,
+    'dashboard-page',
+  );
+  const displayedPageState: DashboardPageState =
+    pageOverride === 'failure'
+      ? { status: 'failure', error: undefined }
+      : pageOverride === 'loading' || pageOverride === 'empty'
+        ? { status: pageOverride }
+        : pageState;
 
   useEffect(() => {
     let isActive = true;
@@ -64,9 +77,9 @@ export function DashboardPage() {
           </RouterLink>
         }
       />
-      <DashboardStateMessage pageState={pageState} />
-      {pageState.status === 'data' ? (
-        <DashboardDataSections data={pageState.data} />
+      <DashboardStateMessage pageState={displayedPageState} />
+      {displayedPageState.status === 'data' ? (
+        <DashboardDataSections data={displayedPageState.data} />
       ) : null}
     </section>
   );
