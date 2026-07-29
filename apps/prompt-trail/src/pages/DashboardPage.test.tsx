@@ -11,6 +11,12 @@ import {
 } from '../app/PromptTrailDataRevisionContext';
 import { buildRunDetailPath } from '../app/routes';
 import { createPromptTrailRuntime } from '../app/prompt-trail-runtime';
+import type { DeveloperToolsRuntime } from '../app/prompt-trail-runtime';
+import { DeveloperToolsProvider } from '../developer-tools/DeveloperToolsContext';
+import {
+  createDeveloperUiStateStore,
+  type DeveloperUiStateStore,
+} from '../developer-ui-state';
 import type { Link, Project, Recipe, Run, RunStatus } from '../domain';
 import type { PromptTrailRepository } from '../repository';
 import { sampleDataset, seedSampleData } from '../sample-data';
@@ -26,6 +32,40 @@ afterEach(async () => {
 });
 
 describe('DashboardPage', () => {
+  it('applies every page override while reads continue and restores real data when cleared', async () => {
+    const repository = createResolvedDataRepository();
+    const store = createTestUiStateStore();
+    store.setActiveOverride({ target: 'dashboard-page', state: 'loading' });
+    renderDashboardPage(repository, store);
+
+    expect(
+      screen.getByText('Dashboardデータを読み込んでいます...'),
+    ).toBeVisible();
+    await waitFor(() =>
+      expect(repository.listActiveProjects).toHaveBeenCalledOnce(),
+    );
+
+    act(() =>
+      store.setActiveOverride({ target: 'dashboard-page', state: 'empty' }),
+    );
+    expect(
+      screen.getByText('Repositoryに表示できるRunがまだありません。'),
+    ).toBeVisible();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+
+    act(() =>
+      store.setActiveOverride({ target: 'dashboard-page', state: 'failure' }),
+    );
+    expect(
+      screen.getByText('Dashboardデータの読み込みに失敗しました。'),
+    ).toBeVisible();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+
+    act(() => store.clearActiveOverride());
+    expect(await screen.findByRole('table')).toBeVisible();
+    expect(repository.listActiveProjects).toHaveBeenCalledOnce();
+  });
+
   it('formats an ISO date in the browser local timezone', () => {
     const isoDateTime = '2026-07-25T19:59:00.000Z';
     const date = new Date(isoDateTime);
@@ -350,14 +390,32 @@ describe('DashboardPage', () => {
   });
 });
 
-function renderDashboardPage(repository: PromptTrailRepository) {
+function renderDashboardPage(
+  repository: PromptTrailRepository,
+  uiStateStore?: DeveloperUiStateStore,
+) {
   return render(
     <MemoryRouter>
       <PromptTrailRepositoryProvider repository={repository}>
-        <DashboardPage />
+        <DeveloperToolsProvider
+          value={
+            uiStateStore ? ({ uiStateStore } as DeveloperToolsRuntime) : null
+          }
+        >
+          <DashboardPage />
+        </DeveloperToolsProvider>
       </PromptTrailRepositoryProvider>
     </MemoryRouter>,
   );
+}
+
+function createTestUiStateStore() {
+  const values = new Map<string, string>();
+  return createDeveloperUiStateStore({
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+    removeItem: (key) => values.delete(key),
+  });
 }
 
 function DataRevisionTrigger() {

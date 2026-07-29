@@ -531,7 +531,7 @@ export function RunDetailPage() {
                         : 'Linkを保存できませんでした。入力内容を保持しています。もう一度お試しください。'}
               </p>
             ) : null}
-            {form.successNotice ? (
+            {formOverride === null && form.successNotice ? (
               <p className="pt-success-notice" role="status">
                 関連リンクを登録しました。
               </p>
@@ -634,7 +634,7 @@ export function RunDetailPage() {
               })}
             </ul>
           ) : null}
-          {deletion.successNotice ? (
+          {deleteOverride === null && deletion.successNotice ? (
             <p className="pt-success-notice" role="status">
               関連リンクを削除しました。
             </p>
