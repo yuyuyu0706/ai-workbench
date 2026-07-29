@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { routePaths } from '../app/routes';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageHeader, PageSection, StateMessage } from '../components/ui';
+import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
+import { selectActiveDeveloperUiState } from '../developer-ui-state';
 import type {
   Link as TrailLink,
   LinkId,
@@ -23,6 +25,7 @@ export function RunDetailPage() {
   const { runId = '' } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const uiStateSnapshot = useDeveloperUiStateSnapshot();
   const linkInformationId = useId();
   const linkInformationRef = useRef<HTMLDivElement>(null);
   const linkInformationButtonRef = useRef<HTMLButtonElement>(null);
@@ -82,6 +85,32 @@ export function RunDetailPage() {
           status: 'idle' as const,
           successNotice: false,
         };
+  const pageOverride = selectActiveDeveloperUiState(
+    uiStateSnapshot,
+    'run-detail-page',
+  );
+  const displayedState: typeof state = pageOverride
+    ? { status: pageOverride }
+    : state;
+  const formOverride =
+    state.status === 'data'
+      ? selectActiveDeveloperUiState(uiStateSnapshot, 'run-detail-link-form')
+      : null;
+  const displayedFormStatus =
+    formOverride === 'submitting'
+      ? 'submitting'
+      : formOverride === 'save-failure'
+        ? 'failure'
+        : form.status;
+  const deleteOverride =
+    state.status === 'data' && links.length > 0
+      ? selectActiveDeveloperUiState(uiStateSnapshot, 'run-detail-link-delete')
+      : null;
+  const overrideDeleteLinkId = deleteOverride
+    ? links.some((link) => link.id === deletion.linkId)
+      ? deletion.linkId
+      : links[0]?.id
+    : null;
   useEffect(() => {
     if (trailCreated) {
       void navigate(`${location.pathname}${location.search}${location.hash}`, {
@@ -135,7 +164,12 @@ export function RunDetailPage() {
     };
   }, [isLinkInformationOpen]);
   useEffect(() => {
-    if (deletion.linkId === null || deletion.status === 'deleting') return;
+    if (
+      deleteOverride !== null ||
+      deletion.linkId === null ||
+      deletion.status === 'deleting'
+    )
+      return;
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key !== 'Escape' || deletion.linkId === null) return;
       const button = deleteButtonRefs.current.get(deletion.linkId);
@@ -150,9 +184,10 @@ export function RunDetailPage() {
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [deletion.linkId, deletion.status, repository, runId]);
+  }, [deleteOverride, deletion.linkId, deletion.status, repository, runId]);
 
   function cancelDelete(linkId: LinkId) {
+    if (deleteOverride !== null) return;
     const button = deleteButtonRefs.current.get(linkId);
     setDeleteSnapshot({
       repository,
@@ -165,7 +200,12 @@ export function RunDetailPage() {
   }
 
   async function deleteLink(linkId: LinkId) {
-    if (deletion.status === 'deleting' || state.status !== 'data') return;
+    if (
+      deleteOverride !== null ||
+      deletion.status === 'deleting' ||
+      state.status !== 'data'
+    )
+      return;
     setDeleteSnapshot({
       repository,
       runId,
@@ -214,7 +254,12 @@ export function RunDetailPage() {
   }
   async function saveLink(event: React.FormEvent) {
     event.preventDefault();
-    if (state.status !== 'data' || form.status === 'submitting') return;
+    if (
+      formOverride !== null ||
+      state.status !== 'data' ||
+      form.status === 'submitting'
+    )
+      return;
     const title = form.title.trim();
     if (title.length === 0) {
       setFormSnapshot({
@@ -300,7 +345,7 @@ export function RunDetailPage() {
       );
     }
   }
-  if (state.status === 'loading')
+  if (displayedState.status === 'loading')
     return (
       <DetailMessage
         variant="loading"
@@ -308,7 +353,7 @@ export function RunDetailPage() {
         description="RepositoryからRunとTrailを取得しています。"
       />
     );
-  if (state.status === 'not-found')
+  if (displayedState.status === 'not-found')
     return (
       <DetailMessage
         variant="empty"
@@ -316,7 +361,7 @@ export function RunDetailPage() {
         description="Dashboardから別のRunを選択してください。"
       />
     );
-  if (state.status === 'failure')
+  if (displayedState.status === 'failure')
     return (
       <DetailMessage
         variant="error"
@@ -324,7 +369,7 @@ export function RunDetailPage() {
         description="ページを再読み込みするか、Dashboardへ戻ってください。"
       />
     );
-  const { run, project, recipe } = state.data;
+  const { run, project, recipe } = displayedState.data;
   return (
     <section className="prompt-trail-page">
       <PageHeader
@@ -433,7 +478,7 @@ export function RunDetailPage() {
                   successNotice: false,
                 })
               }
-              disabled={form.status === 'submitting'}
+              disabled={displayedFormStatus === 'submitting'}
             />
             <label htmlFor="link-url">URL</label>
             <input
@@ -449,7 +494,7 @@ export function RunDetailPage() {
                   successNotice: false,
                 })
               }
-              disabled={form.status === 'submitting'}
+              disabled={displayedFormStatus === 'submitting'}
             />
             <label htmlFor="link-type">Link種別</label>
             <select
@@ -464,7 +509,7 @@ export function RunDetailPage() {
                   successNotice: false,
                 })
               }
-              disabled={form.status === 'submitting'}
+              disabled={displayedFormStatus === 'submitting'}
             >
               <option value="">選択してください</option>
               {SELECTABLE_LINK_TYPES.map((value) => (
@@ -473,15 +518,17 @@ export function RunDetailPage() {
                 </option>
               ))}
             </select>
-            {form.status === 'failure' ? (
+            {displayedFormStatus === 'failure' ? (
               <p className="pt-form__error">
-                {form.error === 'title'
-                  ? 'Link名称を入力してください。'
-                  : form.error === 'type'
-                    ? 'Link種別を選択してください。'
-                    : form.error === 'url'
-                      ? 'http または https のURLを入力してください。'
-                      : 'Linkを保存できませんでした。入力内容を保持しています。もう一度お試しください。'}
+                {formOverride === 'save-failure'
+                  ? 'Linkを保存できませんでした。入力内容を保持しています。もう一度お試しください。'
+                  : form.error === 'title'
+                    ? 'Link名称を入力してください。'
+                    : form.error === 'type'
+                      ? 'Link種別を選択してください。'
+                      : form.error === 'url'
+                        ? 'http または https のURLを入力してください。'
+                        : 'Linkを保存できませんでした。入力内容を保持しています。もう一度お試しください。'}
               </p>
             ) : null}
             {form.successNotice ? (
@@ -491,16 +538,28 @@ export function RunDetailPage() {
             ) : null}
             <button
               className="pt-button pt-button--primary pt-run-link-submit"
-              disabled={form.status === 'submitting'}
+              disabled={displayedFormStatus === 'submitting'}
             >
-              {form.status === 'submitting' ? '保存中...' : '関連リンクを登録'}
+              {displayedFormStatus === 'submitting'
+                ? '保存中...'
+                : '関連リンクを登録'}
             </button>
           </form>
           {links.length > 0 ? (
             <ul className="pt-link-list">
               {links.map((link) => {
                 const label = link.title?.trim() || link.url;
-                const isConfirming = deletion.linkId === link.id;
+                const isConfirming = deleteOverride
+                  ? overrideDeleteLinkId === link.id
+                  : deletion.linkId === link.id;
+                const displayedDeleteStatus =
+                  deleteOverride && overrideDeleteLinkId === link.id
+                    ? deleteOverride === 'confirming'
+                      ? 'idle'
+                      : deleteOverride === 'deleting'
+                        ? 'deleting'
+                        : 'failure'
+                    : deletion.status;
                 return (
                   <li key={link.id} className="pt-run-link-row">
                     <div className="pt-run-link-row__content">
@@ -523,6 +582,7 @@ export function RunDetailPage() {
                       type="button"
                       aria-label={`${label}を削除`}
                       onClick={() => {
+                        if (deleteOverride !== null) return;
                         if (deletion.status === 'deleting') return;
                         setDeleteSnapshot({
                           repository,
@@ -532,14 +592,17 @@ export function RunDetailPage() {
                           successNotice: false,
                         });
                       }}
-                      disabled={deletion.status === 'deleting'}
+                      disabled={
+                        deleteOverride !== null ||
+                        displayedDeleteStatus === 'deleting'
+                      }
                     >
                       削除
                     </button>
                     {isConfirming ? (
                       <div className="pt-run-link-confirmation">
                         <p>「{label}」を削除しますか？</p>
-                        {deletion.status === 'failure' ? (
+                        {displayedDeleteStatus === 'failure' ? (
                           <p className="pt-form__error">
                             関連リンクを削除できませんでした。もう一度お試しください。
                           </p>
@@ -548,17 +611,17 @@ export function RunDetailPage() {
                           <button
                             className="pt-button pt-button--primary"
                             type="button"
-                            disabled={deletion.status === 'deleting'}
+                            disabled={displayedDeleteStatus === 'deleting'}
                             onClick={() => void deleteLink(link.id)}
                           >
-                            {deletion.status === 'deleting'
+                            {displayedDeleteStatus === 'deleting'
                               ? '削除中...'
                               : '削除する'}
                           </button>
                           <button
                             className="pt-button pt-button--secondary"
                             type="button"
-                            disabled={deletion.status === 'deleting'}
+                            disabled={displayedDeleteStatus === 'deleting'}
                             onClick={() => cancelDelete(link.id)}
                           >
                             キャンセル
