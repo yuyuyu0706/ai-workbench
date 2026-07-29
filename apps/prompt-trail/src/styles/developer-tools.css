@@ -21,12 +21,27 @@
 }
 
 .developer-tools__heading,
-.developer-tools__actions {
+.developer-tools__actions,
+.developer-tools__state-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--pt-space-3);
+}
+
+.developer-tools__state-actions {
+  justify-content: flex-start;
+}
+
+.developer-tools__state-actions [aria-pressed='true'] {
+  border-color: var(--pt-color-accent);
+  background: var(--pt-color-surface-subtle);
+  color: var(--pt-color-accent-strong);
+}
+
+.developer-tools__clear-override {
+  justify-self: start;
 }
 
 .developer-tools__eyebrow {

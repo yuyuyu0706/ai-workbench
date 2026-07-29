@@ -189,7 +189,7 @@ describe('DeveloperToolsPanel', () => {
     expect(toggle).toBeDisabled();
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('button', { name: '閉じる' })).toBeDisabled();
-    expect(screen.getByRole('combobox')).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: 'Scenario' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Load' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Reset' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Reset & Load' })).toBeDisabled();
@@ -225,5 +225,40 @@ describe('DeveloperToolsPanel', () => {
     );
     expect(await screen.findByText('Projects')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Load' })).toBeEnabled();
+  });
+
+  it('applies one UI state override at a time and clears it', async () => {
+    const service = createService();
+    renderPanel(service);
+    await openReadyPanel();
+
+    expect(screen.getByText('Active Override: None')).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Clear Override' }),
+    ).toBeDisabled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Loading' }));
+    expect(
+      screen.getByText('Active Override: dashboard-page / loading'),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Loading' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Target' }),
+      'new-trail-form',
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Save failure' }));
+    expect(
+      screen.getByText('Active Override: new-trail-form / save-failure'),
+    ).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Loading' })).toBeNull();
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Clear Override' }),
+    );
+    expect(screen.getByText('Active Override: None')).toBeVisible();
   });
 });
