@@ -421,7 +421,7 @@ describe('DeveloperToolsPanel', () => {
       await userEvent.click(screen.getByRole('button', { name: '適用' }));
 
       await userEvent.click(
-        screen.getByRole('button', { name: operation, exact: true }),
+        screen.getByRole('button', { name: new RegExp(`^${operation}$`) }),
       );
       if (operation !== 'Load') {
         await userEvent.click(screen.getByRole('button', { name: '実行する' }));
