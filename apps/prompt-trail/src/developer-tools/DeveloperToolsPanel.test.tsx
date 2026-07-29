@@ -12,6 +12,7 @@ import type {
   DeveloperRecordCounts,
 } from '../developer-data';
 import type { DeveloperToolsRuntime } from '../app/prompt-trail-runtime';
+import { createDeveloperUiStateStore } from '../developer-ui-state';
 import { DeveloperToolsProvider } from './DeveloperToolsContext';
 import { DeveloperToolsPanel } from './DeveloperToolsPanel';
 
@@ -61,6 +62,11 @@ function renderPanel(service: ReturnType<typeof createService> | null) {
   const developerTools = service
     ? ({
         dataService: service as unknown as DeveloperDataService,
+        uiStateStore: createDeveloperUiStateStore({
+          getItem: () => null,
+          setItem: () => undefined,
+          removeItem: () => undefined,
+        }),
       } satisfies DeveloperToolsRuntime)
     : null;
   return render(

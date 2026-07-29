@@ -7,6 +7,7 @@ import {
   createPromptTrailRuntime,
   type PromptTrailRuntime,
 } from './prompt-trail-runtime';
+import { getBrowserDeveloperUiStateStorage } from '../developer-ui-state';
 
 export interface PromptTrailApplicationHandle {
   dispose(): void;
@@ -20,12 +21,16 @@ export function mountPromptTrailApplication(
   rootElement: HTMLElement,
   options: MountPromptTrailApplicationOptions = {},
 ): PromptTrailApplicationHandle {
+  const enableDeveloperTools =
+    import.meta.env.DEV ||
+    import.meta.env.VITE_ENABLE_DEVELOPER_TOOLS === 'true';
   const runtime =
     options.runtime ??
     createPromptTrailRuntime(undefined, {
-      enableDeveloperTools:
-        import.meta.env.DEV ||
-        import.meta.env.VITE_ENABLE_DEVELOPER_TOOLS === 'true',
+      enableDeveloperTools,
+      developerUiStateStorage: enableDeveloperTools
+        ? getBrowserDeveloperUiStateStorage(window)
+        : undefined,
     });
   const root: Root = createRoot(rootElement);
 

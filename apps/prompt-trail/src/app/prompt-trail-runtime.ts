@@ -1,9 +1,15 @@
 import { createPromptTrailDatabase, type PromptTrailDatabase } from '../db';
 import { DeveloperDataService } from '../developer-data';
+import {
+  createDeveloperUiStateStore,
+  type DeveloperUiStateStorage,
+  type DeveloperUiStateStore,
+} from '../developer-ui-state';
 import { PromptTrailRepository } from '../repository';
 
 export interface DeveloperToolsRuntime {
   readonly dataService: DeveloperDataService;
+  readonly uiStateStore: DeveloperUiStateStore;
 }
 
 export interface PromptTrailRuntime {
@@ -21,11 +27,21 @@ class DefaultPromptTrailRuntime implements PromptTrailRuntime {
   constructor(
     private readonly database: PromptTrailDatabase,
     enableDeveloperTools: boolean,
+    developerUiStateStorage?: DeveloperUiStateStorage,
   ) {
     this.repository = new PromptTrailRepository(database);
-    this.developerTools = enableDeveloperTools
-      ? { dataService: new DeveloperDataService(database) }
-      : null;
+    if (enableDeveloperTools && developerUiStateStorage === undefined) {
+      throw new Error(
+        'developerUiStateStorage is required when Developer Tools are enabled',
+      );
+    }
+    this.developerTools =
+      enableDeveloperTools && developerUiStateStorage
+        ? {
+            dataService: new DeveloperDataService(database),
+            uiStateStore: createDeveloperUiStateStore(developerUiStateStorage),
+          }
+        : null;
   }
 
   initialize(): Promise<void> {
@@ -41,10 +57,14 @@ class DefaultPromptTrailRuntime implements PromptTrailRuntime {
 
 export function createPromptTrailRuntime(
   database: PromptTrailDatabase = createPromptTrailDatabase(),
-  options: { readonly enableDeveloperTools?: boolean } = {},
+  options: {
+    readonly enableDeveloperTools?: boolean;
+    readonly developerUiStateStorage?: DeveloperUiStateStorage;
+  } = {},
 ): PromptTrailRuntime {
   return new DefaultPromptTrailRuntime(
     database,
     options.enableDeveloperTools ?? false,
+    options.developerUiStateStorage,
   );
 }
