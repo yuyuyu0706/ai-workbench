@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildRunDetailPath,
+  buildNewTrailReusePath,
   routeDefinitions,
   routeIds,
   routePaths,
@@ -57,6 +58,12 @@ describe('route contract', () => {
   it('builds URL-encoded Run Detail paths', () => {
     expect(buildRunDetailPath('run 1/with symbols?')).toBe(
       '/runs/run%201%2Fwith%20symbols%3F',
+    );
+  });
+
+  it('builds URL-encoded New Trail reuse paths', () => {
+    expect(buildNewTrailReusePath('run 1/with symbols?&')).toBe(
+      '/runs/new?sourceRunId=run+1%2Fwith+symbols%3F%26',
     );
   });
 });
