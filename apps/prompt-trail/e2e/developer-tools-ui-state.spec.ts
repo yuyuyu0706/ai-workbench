@@ -100,6 +100,34 @@ test.describe('Developer Tools UI state overrides', () => {
       ).toHaveCount(0);
       await expect(page.getByText(/UI State:/)).toHaveCount(0);
     }
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Not Found' }),
+    ).toBeVisible();
+    await expect(page.getByText('未知のURLです。')).toBeVisible();
+  });
+
+  test('enables override controls in an explicit Development Preview build', async ({
+    page,
+  }) => {
+    await page.goto('http://127.0.0.1:4175/dashboard');
+    await expect(
+      page.getByRole('button', { name: 'Developer Tools' }),
+    ).toBeVisible();
+
+    await applyOverride(page, 'dashboard-page', 'loading');
+    await expect(page.getByText('UI State Override')).toBeVisible();
+    await expect(
+      page.getByText('UI State: Dashboard Page / Loading'),
+    ).toBeVisible();
+    await expect(
+      page.getByText('Dashboardデータを読み込んでいます...'),
+    ).toBeVisible();
+
+    await page.getByRole('button', { name: '解除' }).click();
+    await expect(page.getByText('UI State: なし（通常状態）')).toBeVisible();
+    await expect(
+      page.getByText('Repositoryに表示できるRunがまだありません。'),
+    ).toBeVisible();
   });
 
   test('is operable without horizontal overflow at 320px', async ({ page }) => {
