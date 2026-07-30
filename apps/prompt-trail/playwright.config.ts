@@ -27,6 +27,13 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
+    {
+      command:
+        'rm -rf /tmp/prompt-trail-developer-preview && VITE_ENABLE_DEVELOPER_TOOLS=true pnpm exec vite build --outDir /tmp/prompt-trail-developer-preview --emptyOutDir && pnpm exec vite preview --outDir /tmp/prompt-trail-developer-preview --host 127.0.0.1 --port 4175 --strictPort',
+      url: 'http://127.0.0.1:4175',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
   ],
   projects: [
     {

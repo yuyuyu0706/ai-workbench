@@ -12,7 +12,11 @@ import type {
   DeveloperRecordCounts,
 } from '../developer-data';
 import type { DeveloperToolsRuntime } from '../app/prompt-trail-runtime';
-import { createDeveloperUiStateStore } from '../developer-ui-state';
+import {
+  createDeveloperUiStateStore,
+  DEVELOPER_UI_STATE_CATALOG,
+  type DeveloperUiStateStorage,
+} from '../developer-ui-state';
 import { DeveloperToolsProvider } from './DeveloperToolsContext';
 import { DeveloperToolsPanel } from './DeveloperToolsPanel';
 
@@ -58,15 +62,27 @@ function RevisionProbe() {
   return <output aria-label="Data revision">{revision}</output>;
 }
 
-function renderPanel(service: ReturnType<typeof createService> | null) {
+function createStorage(initialValue: string | null = null) {
+  let value = initialValue;
+  return {
+    getItem: vi.fn(() => value),
+    setItem: vi.fn((_key: string, nextValue: string) => {
+      value = nextValue;
+    }),
+    removeItem: vi.fn(() => {
+      value = null;
+    }),
+  } satisfies DeveloperUiStateStorage;
+}
+
+function renderPanel(
+  service: ReturnType<typeof createService> | null,
+  storage: DeveloperUiStateStorage = createStorage(),
+) {
   const developerTools = service
     ? ({
         dataService: service as unknown as DeveloperDataService,
-        uiStateStore: createDeveloperUiStateStore({
-          getItem: () => null,
-          setItem: () => undefined,
-          removeItem: () => undefined,
-        }),
+        uiStateStore: createDeveloperUiStateStore(storage),
       } satisfies DeveloperToolsRuntime)
     : null;
   return render(
@@ -189,7 +205,7 @@ describe('DeveloperToolsPanel', () => {
     expect(toggle).toBeDisabled();
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('button', { name: '閉じる' })).toBeDisabled();
-    expect(screen.getByRole('combobox')).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: 'Scenario' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Load' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Reset' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Reset & Load' })).toBeDisabled();
@@ -226,4 +242,195 @@ describe('DeveloperToolsPanel', () => {
     expect(await screen.findByText('Projects')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Load' })).toBeEnabled();
   });
+
+  it('renders all catalog targets and their 13 states in catalog order', async () => {
+    renderPanel(createService());
+    await openReadyPanel();
+
+    const target = screen.getByRole('combobox', { name: 'Target' });
+    expect(
+      [...target.querySelectorAll('option')].map((option) => option.value),
+    ).toEqual(DEVELOPER_UI_STATE_CATALOG.map((entry) => entry.target));
+
+    const states: string[] = [];
+    for (const entry of DEVELOPER_UI_STATE_CATALOG) {
+      await userEvent.selectOptions(target, entry.target);
+      states.push(
+        ...[
+          ...screen
+            .getByRole('combobox', { name: 'State' })
+            .querySelectorAll('option'),
+        ].map((option) => option.value),
+      );
+    }
+    expect(states).toEqual(
+      DEVELOPER_UI_STATE_CATALOG.flatMap((entry) =>
+        entry.states.map((state) => state.state),
+      ),
+    );
+    expect(states).toHaveLength(13);
+  });
+
+  it('keeps target and state selection as a draft until explicitly applied', async () => {
+    const service = createService();
+    const storage = createStorage();
+    renderPanel(service, storage);
+    await openReadyPanel();
+
+    const target = screen.getByRole('combobox', { name: 'Target' });
+    const state = screen.getByRole('combobox', { name: 'State' });
+    await userEvent.selectOptions(state, 'empty');
+    expect(storage.setItem).not.toHaveBeenCalled();
+    expect(screen.getAllByText(/なし（通常状態）/)).toHaveLength(2);
+
+    await userEvent.click(screen.getByRole('button', { name: '適用' }));
+    expect(storage.setItem).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: '適用' })).toBeDisabled();
+    expect(screen.getAllByText(/Dashboard Page \/ Empty/)).toHaveLength(2);
+
+    await userEvent.selectOptions(target, 'new-trail-form');
+    expect(state).toHaveValue('submitting');
+    expect(storage.setItem).toHaveBeenCalledTimes(1);
+    await userEvent.selectOptions(target, 'dashboard-page');
+    await userEvent.selectOptions(state, 'empty');
+    expect(screen.getByRole('button', { name: '適用' })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole('button', { name: '解除' }));
+    expect(storage.removeItem).toHaveBeenCalledTimes(1);
+    expect(screen.getAllByText(/なし（通常状態）/)).toHaveLength(2);
+    expect(screen.getByRole('button', { name: '解除' })).toBeDisabled();
+    expect(service.loadScenario).not.toHaveBeenCalled();
+    expect(service.resetDatabase).not.toHaveBeenCalled();
+    expect(service.resetAndLoadScenario).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Data revision')).toHaveTextContent('0');
+  });
+
+  it('shows and restores the active override while the panel is closed and reopened', async () => {
+    const storage = createStorage(
+      JSON.stringify({
+        version: 1,
+        activeOverride: { target: 'new-trail-form', state: 'save-failure' },
+      }),
+    );
+    renderPanel(createService(), storage);
+
+    expect(
+      screen.getByText(/UI State: New Trail Form \/ Save failure/),
+    ).toBeVisible();
+    await openReadyPanel();
+    expect(screen.getAllByText(/New Trail Form \/ Save failure/)).toHaveLength(
+      2,
+    );
+    await userEvent.click(screen.getByRole('button', { name: '閉じる' }));
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/UI State: New Trail Form \/ Save failure/),
+    ).toBeVisible();
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Developer Tools' }),
+    );
+    expect(screen.getAllByText(/New Trail Form \/ Save failure/)).toHaveLength(
+      2,
+    );
+  });
+
+  it.each([
+    ['setItem', '保存できませんでした'],
+    ['removeItem', '解除できませんでした'],
+  ] as const)(
+    'keeps the snapshot and draft when %s fails',
+    async (method, message) => {
+      const storage = createStorage();
+      if (method === 'removeItem') {
+        storage.getItem = vi.fn(() =>
+          JSON.stringify({
+            version: 1,
+            activeOverride: { target: 'dashboard-page', state: 'loading' },
+          }),
+        );
+      }
+      if (method === 'setItem') {
+        storage.setItem = vi.fn((key: string, value: string) => {
+          void key;
+          void value;
+          throw new Error('blocked');
+        });
+      } else {
+        storage.removeItem = vi.fn(() => {
+          throw new Error('blocked');
+        });
+      }
+      renderPanel(createService(), storage);
+      await openReadyPanel();
+
+      if (method === 'setItem') {
+        await userEvent.selectOptions(
+          screen.getByRole('combobox', { name: 'State' }),
+          'empty',
+        );
+        await userEvent.click(screen.getByRole('button', { name: '適用' }));
+        expect(screen.getByRole('combobox', { name: 'State' })).toHaveValue(
+          'empty',
+        );
+        expect(screen.getAllByText(/なし（通常状態）/)).toHaveLength(2);
+      } else {
+        await userEvent.click(screen.getByRole('button', { name: '解除' }));
+        expect(screen.getAllByText(/Dashboard Page \/ Loading/)).toHaveLength(
+          2,
+        );
+      }
+      expect(screen.getByRole('alert')).toHaveTextContent(message);
+    },
+  );
+
+  it('keeps UI state operations independent during and after data operations', async () => {
+    const service = createService();
+    let resolveLoad!: (
+      value: Awaited<ReturnType<DeveloperDataService['loadScenario']>>,
+    ) => void;
+    service.loadScenario.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveLoad = resolve;
+      }),
+    );
+    renderPanel(service);
+    await openReadyPanel();
+    await userEvent.click(screen.getByRole('button', { name: 'Load' }));
+    expect(screen.getByRole('combobox', { name: 'Target' })).toBeEnabled();
+    expect(screen.getByRole('combobox', { name: 'State' })).toBeEnabled();
+    await userEvent.click(screen.getByRole('button', { name: '適用' }));
+    expect(screen.getAllByText(/Dashboard Page \/ Loading/)).toHaveLength(2);
+
+    resolveLoad({
+      status: 'loaded',
+      scenarioId: 'standard',
+      counts: standardCounts,
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Load' })).toBeEnabled(),
+    );
+    expect(screen.getAllByText(/Dashboard Page \/ Loading/)).toHaveLength(2);
+    expect(screen.getByLabelText('Data revision')).toHaveTextContent('1');
+  });
+
+  it.each(['Load', 'Reset', 'Reset & Load'] as const)(
+    'keeps the active override after %s completes',
+    async (operation) => {
+      renderPanel(createService());
+      await openReadyPanel();
+      await userEvent.click(screen.getByRole('button', { name: '適用' }));
+
+      await userEvent.click(
+        screen.getByRole('button', { name: new RegExp(`^${operation}$`) }),
+      );
+      if (operation !== 'Load') {
+        await userEvent.click(screen.getByRole('button', { name: '実行する' }));
+      }
+
+      await waitFor(() =>
+        expect(screen.getByLabelText('Data revision')).toHaveTextContent('1'),
+      );
+      expect(screen.getAllByText(/Dashboard Page \/ Loading/)).toHaveLength(2);
+    },
+  );
 });

@@ -10,6 +10,18 @@
   padding: var(--pt-space-3) var(--pt-space-4);
 }
 
+.developer-tools__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pt-space-3);
+}
+
+.developer-tools__active-override {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .developer-tools__panel,
 .developer-tools__section {
   display: grid;
@@ -21,12 +33,17 @@
 }
 
 .developer-tools__heading,
-.developer-tools__actions {
+.developer-tools__actions,
+.developer-tools__state-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--pt-space-3);
+}
+
+.developer-tools__state-actions {
+  justify-content: flex-start;
 }
 
 .developer-tools__eyebrow {

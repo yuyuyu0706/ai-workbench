@@ -8,7 +8,15 @@ import {
   type DeveloperDataScenarioId,
   type DeveloperRecordCounts,
 } from '../developer-data';
-import { useDeveloperTools } from './DeveloperToolsContext';
+import {
+  DEVELOPER_UI_STATE_CATALOG,
+  type DeveloperUiStateOverride,
+  type DeveloperUiStateSnapshot,
+} from '../developer-ui-state';
+import {
+  useDeveloperTools,
+  useDeveloperUiStateSnapshot,
+} from './DeveloperToolsContext';
 
 const PANEL_ID = 'developer-tools-panel';
 const STORE_LABELS: ReadonlyArray<
@@ -29,10 +37,11 @@ type Feedback =
 
 export function DeveloperToolsPanel() {
   const developerTools = useDeveloperTools();
+  const uiStateSnapshot = useDeveloperUiStateSnapshot();
   const [isOpen, setIsOpen] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
 
-  if (developerTools === null) return null;
+  if (developerTools === null || uiStateSnapshot === null) return null;
 
   return (
     <section className="developer-tools" aria-label="Developer Tools">
@@ -50,12 +59,16 @@ export function DeveloperToolsPanel() {
         >
           Developer Tools
         </button>
+        <p className="developer-tools__active-override">
+          UI State: {getActiveOverrideLabel(uiStateSnapshot)}
+        </p>
       </div>
       {isOpen ? (
         <DeveloperToolsPanelContent
           panelId={PANEL_ID}
           requestClose={() => setIsOpen(false)}
           onBusyChange={setIsBusy}
+          uiStateSnapshot={uiStateSnapshot}
         />
       ) : null}
     </section>
@@ -66,10 +79,12 @@ function DeveloperToolsPanelContent({
   panelId,
   requestClose,
   onBusyChange,
+  uiStateSnapshot,
 }: {
   panelId: string;
   requestClose(): void;
   onBusyChange(isBusy: boolean): void;
+  uiStateSnapshot: DeveloperUiStateSnapshot;
 }) {
   const developerTools = useDeveloperTools();
   const { notifyDataChanged } = usePromptTrailDataRevision();
@@ -87,10 +102,18 @@ function DeveloperToolsPanelContent({
   );
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const requestId = useRef(0);
+  const [uiStateTarget, setUiStateTarget] = useState(
+    DEVELOPER_UI_STATE_CATALOG[0].target as DeveloperUiStateOverride['target'],
+  );
+  const [uiState, setUiState] = useState<string>(
+    DEVELOPER_UI_STATE_CATALOG[0].states[0].state,
+  );
+  const [uiStateError, setUiStateError] = useState<string | null>(null);
 
   if (developerTools === null)
     throw new Error('Developer Tools Panel requires an enabled capability.');
   const service = developerTools.dataService;
+  const uiStateStore = developerTools.uiStateStore;
 
   const isBusy = countsState.status === 'loading' || isOperating;
 
@@ -183,6 +206,38 @@ function DeveloperToolsPanelContent({
   const selectedScenario = developerDataScenarios.find(
     (scenario) => scenario.id === scenarioId,
   )!;
+  const selectedUiStateEntry = DEVELOPER_UI_STATE_CATALOG.find(
+    (entry) => entry.target === uiStateTarget,
+  )!;
+  const draftOverride = {
+    target: uiStateTarget,
+    state: uiState,
+  } as DeveloperUiStateOverride;
+  const isDraftActive =
+    uiStateSnapshot.activeOverride?.target === draftOverride.target &&
+    uiStateSnapshot.activeOverride.state === draftOverride.state;
+
+  function applyUiStateOverride() {
+    setUiStateError(null);
+    try {
+      uiStateStore.setActiveOverride(draftOverride);
+    } catch {
+      setUiStateError(
+        'UI State Overrideを保存できませんでした。もう一度お試しください。',
+      );
+    }
+  }
+
+  function clearUiStateOverride() {
+    setUiStateError(null);
+    try {
+      uiStateStore.clearActiveOverride();
+    } catch {
+      setUiStateError(
+        'UI State Overrideを解除できませんでした。もう一度お試しください。',
+      );
+    }
+  }
 
   return (
     <aside className="developer-tools__panel" id={panelId}>
@@ -318,6 +373,87 @@ function DeveloperToolsPanelContent({
           </p>
         ) : null}
       </section>
+
+      <section
+        className="developer-tools__section"
+        aria-labelledby="ui-state-heading"
+      >
+        <h3 id="ui-state-heading">UI State Override</h3>
+        <p>実データを変更せず、確認したい画面状態を一度に1つだけ固定します。</p>
+        <p aria-live="polite">
+          Active Override: {getActiveOverrideLabel(uiStateSnapshot)}
+        </p>
+        <label className="developer-tools__field">
+          <span>Target</span>
+          <select
+            value={uiStateTarget}
+            onChange={(event) => {
+              const target = event.target
+                .value as DeveloperUiStateOverride['target'];
+              const entry = DEVELOPER_UI_STATE_CATALOG.find(
+                (candidate) => candidate.target === target,
+              )!;
+              setUiStateTarget(target);
+              setUiState(entry.states[0].state);
+              setUiStateError(null);
+            }}
+          >
+            {DEVELOPER_UI_STATE_CATALOG.map((entry) => (
+              <option key={entry.target} value={entry.target}>
+                {entry.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="developer-tools__field">
+          <span>State</span>
+          <select
+            value={uiState}
+            onChange={(event) => {
+              setUiState(event.target.value);
+              setUiStateError(null);
+            }}
+          >
+            {selectedUiStateEntry.states.map((state) => (
+              <option key={state.state} value={state.state}>
+                {state.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="developer-tools__state-actions">
+          <button
+            className="pt-button pt-button--primary"
+            type="button"
+            disabled={isDraftActive}
+            onClick={applyUiStateOverride}
+          >
+            適用
+          </button>
+          <button
+            className="pt-button pt-button--secondary"
+            type="button"
+            disabled={uiStateSnapshot.activeOverride === null}
+            onClick={clearUiStateOverride}
+          >
+            解除
+          </button>
+        </div>
+        {uiStateError ? <p role="alert">{uiStateError}</p> : null}
+      </section>
     </aside>
   );
+}
+
+function getActiveOverrideLabel(snapshot: DeveloperUiStateSnapshot): string {
+  const activeOverride = snapshot.activeOverride;
+  if (activeOverride === null) return 'なし（通常状態）';
+
+  const entry = DEVELOPER_UI_STATE_CATALOG.find(
+    (candidate) => candidate.target === activeOverride.target,
+  )!;
+  const state = entry.states.find(
+    (candidate) => candidate.state === activeOverride.state,
+  )!;
+  return `${entry.label} / ${state.label}`;
 }
