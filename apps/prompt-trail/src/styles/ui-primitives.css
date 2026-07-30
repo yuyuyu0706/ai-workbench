@@ -189,6 +189,15 @@
   color: var(--pt-color-danger);
   margin: 0;
 }
+.pt-reuse-source {
+  display: grid;
+  gap: var(--pt-space-3);
+  min-width: 0;
+}
+.pt-reuse-source p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
 .pt-success-notice {
   width: min(100%, var(--pt-content-max));
   margin: 0 auto;

@@ -19,9 +19,10 @@ function LocationProbe() {
 function renderPage(
   repository: PromptTrailRepository,
   uiStateStore?: DeveloperUiStateStore,
+  initialEntry = '/runs/new',
 ) {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <PromptTrailRepositoryProvider repository={repository}>
         <DeveloperToolsProvider
           value={
@@ -153,6 +154,79 @@ describe('NewTrailPage', () => {
     await user.click(screen.getByRole('button', { name: '作成中...' }));
     expect(repository.createDirectRunBundle).toHaveBeenCalledOnce();
     resolve({ run: { id: 'run-1' } });
+  });
+
+  it('loads a source Run snapshot, allows editing, and creates an independent Trail', async () => {
+    const user = userEvent.setup();
+    const sourceRun = {
+      id: 'run-source',
+      promptSnapshot: { title: 'Source prompt', body: 'original snapshot' },
+    };
+    const createDirectRunBundle = vi.fn(async (bundle: any) => ({
+      ...bundle,
+      run: { ...bundle.run, id: 'run-reused' },
+    }));
+    const repository = {
+      getRun: vi.fn(async () => sourceRun),
+      createDirectRunBundle,
+    } as unknown as PromptTrailRepository;
+    renderPage(repository, undefined, '/runs/new?sourceRunId=run-source');
+
+    const input = await screen.findByDisplayValue('original snapshot');
+    expect(screen.getByText(/Source prompt/)).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: '元のTrailを確認' }),
+    ).toHaveAttribute('href', '/runs/run-source');
+    await user.clear(input);
+    await user.type(input, 'edited snapshot');
+    await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
+
+    expect(createDirectRunBundle).toHaveBeenCalledOnce();
+    expect(createDirectRunBundle.mock.calls[0]?.[0].run).toMatchObject({
+      promptSnapshot: { body: 'edited snapshot' },
+      contextSnapshots: [],
+      recipeId: null,
+      evaluation: null,
+      improvementNote: null,
+    });
+    expect(sourceRun.promptSnapshot.body).toBe('original snapshot');
+  });
+
+  it('does not overwrite user input when a delayed source load completes', async () => {
+    const user = userEvent.setup();
+    let resolve!: (value: any) => void;
+    const repository = {
+      getRun: vi.fn(() => new Promise((done) => (resolve = done))),
+    } as unknown as PromptTrailRepository;
+    renderPage(repository, undefined, '/runs/new?sourceRunId=slow-run');
+
+    const input = screen.getByLabelText('Prompt本文');
+    await user.type(input, 'my draft');
+    await act(async () =>
+      resolve({
+        id: 'slow-run',
+        promptSnapshot: { title: 'Slow', body: 'late snapshot' },
+      }),
+    );
+    expect(input).toHaveValue('my draft');
+  });
+
+  it('offers safe recovery for missing and failed source Runs', async () => {
+    const user = userEvent.setup();
+    const repository = {
+      getRun: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('temporary'))
+        .mockResolvedValueOnce(null),
+    } as unknown as PromptTrailRepository;
+    renderPage(repository, undefined, '/runs/new?sourceRunId=unavailable');
+
+    expect(await screen.findByText(/読み込めませんでした/)).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '再試行' }));
+    expect(await screen.findByText(/見つかりません/)).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: '空のPromptから始める' }),
+    ).toHaveAttribute('href', '/runs/new');
   });
 });
 

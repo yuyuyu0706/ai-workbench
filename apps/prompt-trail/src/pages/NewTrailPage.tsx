@@ -1,20 +1,42 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { buildRunDetailPath, routePaths } from '../app/routes';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageHeader, PageSection } from '../components/ui';
 import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
 import { selectActiveDeveloperUiState } from '../developer-ui-state';
 import { createDirectTrail } from '../trail-creation/create-direct-trail';
+import {
+  loadReusableRun,
+  type ReusableRunState,
+} from '../trail-creation/load-reusable-run';
 export function NewTrailPage() {
   const repository = usePromptTrailRepository();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sourceRunId = searchParams.get('sourceRunId');
   const uiStateSnapshot = useDeveloperUiStateSnapshot();
   const [body, setBody] = useState('');
+  const editVersion = useRef(0);
+  const [retryVersion, setRetryVersion] = useState(0);
+  const [reuseSnapshot, setReuseSnapshot] = useState<{
+    repository: typeof repository;
+    sourceRunId: string;
+    retryVersion: number;
+    state: ReusableRunState | { status: 'loading' };
+  } | null>(null);
   const [status, setStatus] = useState<'idle' | 'submitting' | 'failure'>(
     'idle',
   );
   const valid = body.trim().length > 0;
+  const reuseState =
+    sourceRunId === null
+      ? null
+      : reuseSnapshot?.repository === repository &&
+          reuseSnapshot.sourceRunId === sourceRunId &&
+          reuseSnapshot.retryVersion === retryVersion
+        ? reuseSnapshot.state
+        : ({ status: 'loading' } as const);
   const formOverride = selectActiveDeveloperUiState(
     uiStateSnapshot,
     'new-trail-form',
@@ -25,6 +47,24 @@ export function NewTrailPage() {
       : formOverride === 'save-failure'
         ? 'failure'
         : status;
+  useEffect(() => {
+    if (sourceRunId === null) return;
+    let active = true;
+    const initialEditVersion = editVersion.current;
+    void loadReusableRun(repository, sourceRunId).then((state) => {
+      if (!active) return;
+      setReuseSnapshot({ repository, sourceRunId, retryVersion, state });
+      if (
+        state.status === 'data' &&
+        editVersion.current === initialEditVersion
+      ) {
+        setBody(state.run.promptSnapshot.body);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [repository, retryVersion, sourceRunId]);
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (formOverride !== null || !valid || status === 'submitting') return;
@@ -46,6 +86,49 @@ export function NewTrailPage() {
         description="AIに依頼する内容を入力してください。作業後に関連リンクを追加すると、依頼から成果までをTrailとして残せます。"
       />
       <div className="prompt-trail-page__sections">
+        {reuseState === null ? null : (
+          <PageSection title="再利用元">
+            {reuseState.status === 'loading' ? (
+              <p role="status">再利用元のRunを読み込んでいます...</p>
+            ) : reuseState.status === 'data' ? (
+              <div className="pt-reuse-source">
+                <p>
+                  「{reuseState.run.promptSnapshot.title}
+                  」のPrompt本文を引き継ぎました。編集して新しいTrailを作成できます。
+                </p>
+                <Link to={buildRunDetailPath(reuseState.run.id)}>
+                  元のTrailを確認
+                </Link>
+              </div>
+            ) : (
+              <div className="pt-reuse-source" role="alert">
+                <p>
+                  {reuseState.status === 'not-found'
+                    ? '再利用元のRunが見つかりません。'
+                    : '再利用元のRunを読み込めませんでした。'}
+                  空のPromptから通常のTrailを作成できます。
+                </p>
+                <div className="prompt-trail-page__actions">
+                  {reuseState.status === 'failure' ? (
+                    <button
+                      className="pt-button pt-button--secondary"
+                      type="button"
+                      onClick={() => setRetryVersion((value) => value + 1)}
+                    >
+                      再試行
+                    </button>
+                  ) : null}
+                  <Link
+                    className="pt-button pt-button--secondary"
+                    to={routePaths.newTrail}
+                  >
+                    空のPromptから始める
+                  </Link>
+                </div>
+              </div>
+            )}
+          </PageSection>
+        )}
         <PageSection
           title="Prompt"
           description="Promptの最初の行がTrailタイトルになります。"
@@ -55,7 +138,10 @@ export function NewTrailPage() {
             <textarea
               id="prompt-body"
               value={body}
-              onChange={(event) => setBody(event.target.value)}
+              onChange={(event) => {
+                editVersion.current += 1;
+                setBody(event.target.value);
+              }}
               rows={12}
               disabled={displayedStatus === 'submitting'}
             />

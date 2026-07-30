@@ -56,3 +56,8 @@ export const routeDefinitions = [
 export function buildRunDetailPath(runId: string) {
   return `/runs/${encodeURIComponent(runId)}`;
 }
+
+export function buildNewTrailReusePath(runId: string) {
+  const search = new URLSearchParams({ sourceRunId: runId });
+  return `${routePaths.newTrail}?${search.toString()}`;
+}

@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { routePaths } from '../app/routes';
+import { buildNewTrailReusePath, routePaths } from '../app/routes';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageHeader, PageSection, StateMessage } from '../components/ui';
 import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
@@ -421,7 +421,17 @@ export function RunDetailPage() {
             )}
           </dl>
         </PageSection>
-        <PageSection title="Prompt">
+        <PageSection
+          title="Prompt"
+          actions={
+            <Link
+              className="pt-button pt-button--secondary"
+              to={buildNewTrailReusePath(run.id)}
+            >
+              このPromptを再利用
+            </Link>
+          }
+        >
           <h3>{run.promptSnapshot.title}</h3>
           <pre className="pt-snapshot">{run.promptSnapshot.body}</pre>
         </PageSection>

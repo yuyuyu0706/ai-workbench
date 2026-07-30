@@ -95,6 +95,14 @@ function createTestUiStateStore() {
 }
 
 describe('RunDetailPage', () => {
+  it('links the Prompt snapshot to the encoded New Trail reuse URL', async () => {
+    renderPage(createDetailRepository([]));
+
+    expect(
+      await screen.findByRole('link', { name: 'このPromptを再利用' }),
+    ).toHaveAttribute('href', '/runs/new?sourceRunId=run-1');
+  });
+
   it('applies every page override and restores already-loaded data when cleared', async () => {
     const repository = createDetailRepository([]);
     const store = createTestUiStateStore();
