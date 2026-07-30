@@ -15,7 +15,9 @@ export async function loadReusableRun(
 
   try {
     const run = await repository.getRun(sourceRunId as Run['id']);
-    return run === null ? { status: 'not-found' } : { status: 'data', run };
+    return run === null || run.deletedAt !== null
+      ? { status: 'not-found' }
+      : { status: 'data', run };
   } catch {
     return { status: 'failure' };
   }

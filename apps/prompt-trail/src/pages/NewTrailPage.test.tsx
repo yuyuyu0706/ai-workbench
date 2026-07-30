@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, useLocation } from 'react-router-dom';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { PromptTrailRepositoryProvider } from '../app/PromptTrailRepositoryContext';
 import type { DeveloperToolsRuntime } from '../app/prompt-trail-runtime';
@@ -16,10 +16,25 @@ function LocationProbe() {
   const location = useLocation();
   return <output>{JSON.stringify([location.pathname, location.state])}</output>;
 }
+function QueryControls() {
+  const navigate = useNavigate();
+  return (
+    <nav aria-label="Test query controls">
+      <button onClick={() => navigate('/runs/new?sourceRunId=run-a')}>
+        Run A
+      </button>
+      <button onClick={() => navigate('/runs/new?sourceRunId=run-b')}>
+        Run B
+      </button>
+      <button onClick={() => navigate('/runs/new')}>通常New Trail</button>
+    </nav>
+  );
+}
 function renderPage(
   repository: PromptTrailRepository,
   uiStateStore?: DeveloperUiStateStore,
   initialEntry = '/runs/new',
+  withQueryControls = false,
 ) {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
@@ -30,6 +45,7 @@ function renderPage(
           }
         >
           <NewTrailPage />
+          {withQueryControls ? <QueryControls /> : null}
           <LocationProbe />
         </DeveloperToolsProvider>
       </PromptTrailRepositoryProvider>
@@ -160,6 +176,7 @@ describe('NewTrailPage', () => {
     const user = userEvent.setup();
     const sourceRun = {
       id: 'run-source',
+      deletedAt: null,
       promptSnapshot: { title: 'Source prompt', body: 'original snapshot' },
     };
     const createDirectRunBundle = vi.fn(async (bundle: any) => ({
@@ -205,6 +222,7 @@ describe('NewTrailPage', () => {
     await act(async () =>
       resolve({
         id: 'slow-run',
+        deletedAt: null,
         promptSnapshot: { title: 'Slow', body: 'late snapshot' },
       }),
     );
@@ -227,8 +245,92 @@ describe('NewTrailPage', () => {
     expect(
       screen.getByRole('link', { name: '空のPromptから始める' }),
     ).toHaveAttribute('href', '/runs/new');
+    await user.type(screen.getByLabelText('Prompt本文'), 'discard this');
+    await user.click(
+      screen.getByRole('link', { name: '空のPromptから始める' }),
+    );
+    expect(screen.getByLabelText('Prompt本文')).toHaveValue('');
+  });
+
+  it('clears Run A while Run B loads and binds the form to Run B', async () => {
+    const user = userEvent.setup();
+    let resolveRunB!: (value: any) => void;
+    const repository = {
+      getRun: vi.fn((id: string) =>
+        id === 'run-a'
+          ? Promise.resolve(reusableRun('run-a', 'Run A body'))
+          : new Promise((resolve) => (resolveRunB = resolve)),
+      ),
+    } as unknown as PromptTrailRepository;
+    renderPage(repository, undefined, '/runs/new?sourceRunId=run-a', true);
+    const input = await screen.findByDisplayValue('Run A body');
+
+    await user.click(screen.getByRole('button', { name: 'Run B' }));
+    expect(input).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Trailを作成' })).toBeDisabled();
+    await act(async () => resolveRunB(reusableRun('run-b', 'Run B body')));
+    expect(input).toHaveValue('Run B body');
+  });
+
+  it('clears the reuse form when navigating to the normal New Trail URL', async () => {
+    const user = userEvent.setup();
+    const repository = {
+      getRun: vi.fn(async () => reusableRun('run-a', 'Run A body')),
+    } as unknown as PromptTrailRepository;
+    renderPage(repository, undefined, '/runs/new?sourceRunId=run-a', true);
+    const input = await screen.findByDisplayValue('Run A body');
+
+    await user.click(screen.getByRole('button', { name: '通常New Trail' }));
+    expect(input).toHaveValue('');
+    expect(screen.queryByRole('heading', { name: '再利用元' })).toBeNull();
+  });
+
+  it('keeps session edits when retry succeeds after a load failure', async () => {
+    const user = userEvent.setup();
+    const repository = {
+      getRun: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('temporary'))
+        .mockResolvedValueOnce(reusableRun('run-a', 'Snapshot body')),
+    } as unknown as PromptTrailRepository;
+    renderPage(repository, undefined, '/runs/new?sourceRunId=run-a');
+    await screen.findByText(/読み込めませんでした/);
+    const input = screen.getByLabelText('Prompt本文');
+    await user.type(input, 'User draft');
+
+    await user.click(screen.getByRole('button', { name: '再試行' }));
+    await screen.findByText(/Prompt本文を引き継ぎました/);
+    expect(input).toHaveValue('User draft');
+  });
+
+  it('ignores a delayed response from the previous query session', async () => {
+    const user = userEvent.setup();
+    let resolveRunA!: (value: any) => void;
+    const repository = {
+      getRun: vi.fn((id: string) =>
+        id === 'run-a'
+          ? new Promise((resolve) => (resolveRunA = resolve))
+          : Promise.resolve(reusableRun('run-b', 'Current Run B body')),
+      ),
+    } as unknown as PromptTrailRepository;
+    renderPage(repository, undefined, '/runs/new?sourceRunId=run-a', true);
+
+    await user.click(screen.getByRole('button', { name: 'Run B' }));
+    const input = await screen.findByDisplayValue('Current Run B body');
+    await act(async () =>
+      resolveRunA(reusableRun('run-a', 'Stale Run A body')),
+    );
+    expect(input).toHaveValue('Current Run B body');
   });
 });
+
+function reusableRun(id: string, body: string) {
+  return {
+    id,
+    deletedAt: null,
+    promptSnapshot: { title: `${id} title`, body },
+  };
+}
 
 function createTestUiStateStore() {
   const values = new Map<string, string>();

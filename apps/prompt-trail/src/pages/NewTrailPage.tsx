@@ -1,5 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom';
 import { buildRunDetailPath, routePaths } from '../app/routes';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageHeader, PageSection } from '../components/ui';
@@ -13,27 +18,48 @@ import {
 export function NewTrailPage() {
   const repository = usePromptTrailRepository();
   const navigate = useNavigate();
+  const location = useLocation();
+  const reuseSessionKey = location.key;
   const [searchParams] = useSearchParams();
   const sourceRunId = searchParams.get('sourceRunId');
   const uiStateSnapshot = useDeveloperUiStateSnapshot();
-  const [body, setBody] = useState('');
-  const editVersion = useRef(0);
+  const [formSnapshot, setFormSnapshot] = useState(() => ({
+    repository,
+    sourceRunId,
+    reuseSessionKey,
+    body: '',
+    dirty: false,
+    status: 'idle' as 'idle' | 'submitting' | 'failure',
+  }));
   const [retryVersion, setRetryVersion] = useState(0);
   const [reuseSnapshot, setReuseSnapshot] = useState<{
     repository: typeof repository;
     sourceRunId: string;
+    reuseSessionKey: string;
     retryVersion: number;
     state: ReusableRunState | { status: 'loading' };
   } | null>(null);
-  const [status, setStatus] = useState<'idle' | 'submitting' | 'failure'>(
-    'idle',
-  );
+  const form =
+    formSnapshot.repository === repository &&
+    formSnapshot.sourceRunId === sourceRunId &&
+    formSnapshot.reuseSessionKey === reuseSessionKey
+      ? formSnapshot
+      : {
+          repository,
+          sourceRunId,
+          reuseSessionKey,
+          body: '',
+          dirty: false,
+          status: 'idle' as const,
+        };
+  const { body } = form;
   const valid = body.trim().length > 0;
   const reuseState =
     sourceRunId === null
       ? null
       : reuseSnapshot?.repository === repository &&
           reuseSnapshot.sourceRunId === sourceRunId &&
+          reuseSnapshot.reuseSessionKey === reuseSessionKey &&
           reuseSnapshot.retryVersion === retryVersion
         ? reuseSnapshot.state
         : ({ status: 'loading' } as const);
@@ -46,36 +72,65 @@ export function NewTrailPage() {
       ? 'submitting'
       : formOverride === 'save-failure'
         ? 'failure'
-        : status;
+        : form.status;
   useEffect(() => {
     if (sourceRunId === null) return;
     let active = true;
-    const initialEditVersion = editVersion.current;
     void loadReusableRun(repository, sourceRunId).then((state) => {
       if (!active) return;
-      setReuseSnapshot({ repository, sourceRunId, retryVersion, state });
-      if (
-        state.status === 'data' &&
-        editVersion.current === initialEditVersion
-      ) {
-        setBody(state.run.promptSnapshot.body);
-      }
+      setReuseSnapshot({
+        repository,
+        sourceRunId,
+        reuseSessionKey,
+        retryVersion,
+        state,
+      });
+      if (state.status === 'data')
+        setFormSnapshot((current) => {
+          if (
+            current.repository === repository &&
+            current.sourceRunId === sourceRunId &&
+            current.reuseSessionKey === reuseSessionKey &&
+            current.dirty
+          )
+            return current;
+          return {
+            repository,
+            sourceRunId,
+            reuseSessionKey,
+            body: state.run.promptSnapshot.body,
+            dirty: false,
+            status: 'idle',
+          };
+        });
     });
     return () => {
       active = false;
     };
-  }, [repository, retryVersion, sourceRunId]);
+  }, [repository, retryVersion, reuseSessionKey, sourceRunId]);
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (formOverride !== null || !valid || status === 'submitting') return;
-    setStatus('submitting');
+    if (
+      formOverride !== null ||
+      !valid ||
+      form.status === 'submitting' ||
+      reuseState?.status === 'loading'
+    )
+      return;
+    setFormSnapshot({ ...form, status: 'submitting' });
     try {
       const run = await createDirectTrail(repository, { promptBody: body });
       navigate(buildRunDetailPath(run.id), {
         state: { trailCreated: true },
       });
     } catch {
-      setStatus('failure');
+      setFormSnapshot((current) =>
+        current.repository === repository &&
+        current.sourceRunId === sourceRunId &&
+        current.reuseSessionKey === reuseSessionKey
+          ? { ...current, status: 'failure' }
+          : current,
+      );
     }
   }
   return (
@@ -139,8 +194,12 @@ export function NewTrailPage() {
               id="prompt-body"
               value={body}
               onChange={(event) => {
-                editVersion.current += 1;
-                setBody(event.target.value);
+                setFormSnapshot({
+                  ...form,
+                  body: event.target.value,
+                  dirty: true,
+                  status: 'idle',
+                });
               }}
               rows={12}
               disabled={displayedStatus === 'submitting'}
@@ -156,7 +215,11 @@ export function NewTrailPage() {
             <div className="prompt-trail-page__actions">
               <button
                 className="pt-button pt-button--primary"
-                disabled={!valid || displayedStatus === 'submitting'}
+                disabled={
+                  !valid ||
+                  displayedStatus === 'submitting' ||
+                  reuseState?.status === 'loading'
+                }
               >
                 {displayedStatus === 'submitting' ? '作成中...' : 'Trailを作成'}
               </button>
