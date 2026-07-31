@@ -1,55 +1,60 @@
 import { render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
+import { publicAlphaFeedbackUrl } from '../app/public-alpha';
 import { WelcomePage } from './WelcomePage';
 
-const managementModels = ['Prompt', 'Context', 'Recipe', 'Run', 'Link'];
-
 describe('WelcomePage', () => {
-  it('renders the main heading and PromptTrail management model list', () => {
-    render(<WelcomePage />);
+  it('introduces the Public Alpha core flow and Dashboard action', () => {
+    render(
+      <MemoryRouter>
+        <WelcomePage />
+      </MemoryRouter>,
+    );
 
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      '次の仕事に活かせるTrailへ',
+    );
     expect(
-      screen.getByRole('heading', {
-        level: 1,
-        name: 'AIへの依頼から成果までを、再利用できるTrailに。',
-      }),
+      screen.getByRole('link', { name: 'PromptTrailを試す' }),
+    ).toHaveAttribute('href', '/dashboard');
+    const steps = screen.getByRole('list', { name: 'PromptTrailの使い方' });
+    expect(within(steps).getAllByRole('listitem')).toHaveLength(3);
+    expect(within(steps).getByText('1. Trailを作る')).toBeInTheDocument();
+    expect(within(steps).getByText('2. Linkを残す')).toBeInTheDocument();
+    expect(
+      within(steps).getByText('3. Promptを再利用する'),
     ).toBeInTheDocument();
-
-    const modelList = screen.getByRole('list', {
-      name: 'PromptTrail management model',
-    });
-    const modelItems = within(modelList).getAllByRole('listitem');
-
-    expect(modelItems).toHaveLength(5);
-
-    for (const model of managementModels) {
-      expect(
-        within(modelList).getByRole('heading', { level: 3, name: model }),
-      ).toBeInTheDocument();
-    }
   });
 
-  it('renders the local-first assumption and current Phase 0 status', () => {
-    render(<WelcomePage />);
+  it('explains storage, security, and safe feedback behavior', () => {
+    render(
+      <MemoryRouter>
+        <WelcomePage />
+      </MemoryRouter>,
+    );
 
-    const assumptions = screen.getByRole('region', {
-      name: 'PromptTrail assumptions and current phase',
-    });
+    const storage = screen
+      .getByRole('heading', { name: 'Public Alphaを試す前にご確認ください' })
+      .closest('article');
+    expect(storage).not.toBeNull();
+    expect(storage).toHaveTextContent('browser origin単位のIndexedDB');
+    expect(storage).toHaveTextContent(
+      'browser、端末、originをまたいだ同期は行われません',
+    );
+    expect(storage).toHaveTextContent('データを失う可能性');
+    expect(storage).toHaveTextContent('Backup、Restore、Cloud Sync');
+    expect(storage).toHaveTextContent('API Key、Token');
 
-    expect(within(assumptions).getByText('Local first')).toBeInTheDocument();
-    expect(within(assumptions).getByText('Phase 0')).toBeInTheDocument();
+    const feedback = screen.getByRole('link', { name: 'Feedbackを送る' });
+    expect(feedback).toHaveAttribute('href', publicAlphaFeedbackUrl);
+    expect(feedback).toHaveAttribute('target', '_blank');
+    expect(feedback).toHaveAttribute('rel', 'noopener noreferrer');
     expect(
-      within(assumptions).getByRole('heading', {
-        level: 2,
-        name: 'まずは手元の作業資産として安全に育てる',
-      }),
-    ).toBeInTheDocument();
-    expect(
-      within(assumptions).getByRole('heading', {
-        level: 2,
-        name: '現在地はアプリ基盤と初期画面の整備',
-      }),
+      screen.getByText(
+        /アプリ内のPrompt、Run、Link、保存データが自動送信されることはありません/,
+      ),
     ).toBeInTheDocument();
   });
 });

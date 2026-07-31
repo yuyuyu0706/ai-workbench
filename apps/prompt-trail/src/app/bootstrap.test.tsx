@@ -42,7 +42,9 @@ describe('mountPromptTrailApplication', () => {
     const application = mountPromptTrailApplication(rootElement);
 
     expect(
-      await screen.findByRole('heading', { name: 'Dashboard' }),
+      await screen.findByRole('heading', {
+        name: 'AIへの依頼から成果までを、次の仕事に活かせるTrailへ。',
+      }),
     ).toBeInTheDocument();
 
     application.dispose();

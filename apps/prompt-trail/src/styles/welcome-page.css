@@ -1,6 +1,5 @@
 .welcome-page {
-  min-height: 100vh;
-  padding: clamp(var(--pt-space-6), 5vw, var(--pt-space-7));
+  padding: 0;
   background:
     radial-gradient(
       circle at top left,
@@ -55,6 +54,19 @@
   font-size: clamp(1.05rem, 2vw, 1.3rem);
 }
 
+.welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pt-space-3);
+  margin-top: var(--pt-space-5);
+}
+
+.welcome-feedback-note {
+  margin-top: var(--pt-space-3);
+  color: var(--pt-color-text-muted);
+  font-size: 0.9rem;
+}
+
 .welcome-section {
   margin-top: clamp(var(--pt-space-6), 5vw, var(--pt-space-7));
 }
@@ -81,7 +93,7 @@
 
 .model-list {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--pt-space-4);
   padding: 0;
   margin: 0;
@@ -114,9 +126,17 @@
   background: var(--pt-color-surface-subtle);
 }
 
+.welcome-storage ul {
+  display: grid;
+  gap: var(--pt-space-2);
+  padding-left: var(--pt-space-5);
+  margin-bottom: 0;
+  color: var(--pt-color-text-muted);
+}
+
 @media (max-width: 60rem) {
   .model-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .welcome-grid {
@@ -126,7 +146,7 @@
 
 @media (max-width: 38rem) {
   .welcome-page {
-    padding: var(--pt-space-4);
+    padding: 0;
   }
 
   .welcome-hero,

@@ -149,13 +149,15 @@ Sample Dataset は、公開可能なデモデータのみとします。
 
 Hosted Preview の主要 Route 受入対象は、現行の Route 定義に合わせて次の通り固定します。存在しない Route はこの checklist のために新設しません。
 
-- `/` → `/dashboard` へ遷移する入口。
+- `/` → Public Alpha Guide。価値、主要操作、Local-firstの保存制約を案内し、DashboardとFeedbackへ接続する入口。
 - `/dashboard`。
 - `/prompts`。
 - `/contexts`。
 - `/recipes/builder`。
 - `/runs/:runId`。
 - unknown route → Not Found / dashboard recovery。
+
+Public AlphaのGlobal Navigationは「はじめに」と「Dashboard」に限定します。Prompt Library、Context Library、Recipe Builderは主要Navigationから外しますが、既存URLへのdirect accessは維持します。FeedbackはGitHub Issue Formで受け付け、リンクにアプリ内データを含めません。GitHubアカウントが必要であることと、Prompt、Run、Link等が自動送信されないことをGuideで案内します。
 
 ### GitHub Pages
 

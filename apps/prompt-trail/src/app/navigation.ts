@@ -1,10 +1,7 @@
 import { routeIds, routePaths, type RouteId } from './routes';
 
 export type GlobalNavigationRouteId =
-  | typeof routeIds.dashboard
-  | typeof routeIds.promptLibrary
-  | typeof routeIds.contextLibrary
-  | typeof routeIds.recipeBuilder;
+  typeof routeIds.root | typeof routeIds.dashboard;
 
 export type ContextualRouteId =
   typeof routeIds.newTrail | typeof routeIds.runDetail;
@@ -26,24 +23,14 @@ export const recoveryRouteIds = [
 
 export const globalNavigationItems = [
   {
+    id: routeIds.root,
+    label: 'はじめに',
+    path: routePaths.root,
+  },
+  {
     id: routeIds.dashboard,
     label: 'Dashboard',
     path: routePaths.dashboard,
-  },
-  {
-    id: routeIds.promptLibrary,
-    label: 'Prompt Library',
-    path: routePaths.promptLibrary,
-  },
-  {
-    id: routeIds.contextLibrary,
-    label: 'Context Library',
-    path: routePaths.contextLibrary,
-  },
-  {
-    id: routeIds.recipeBuilder,
-    label: 'Recipe Builder',
-    path: routePaths.recipeBuilder,
   },
 ] as const satisfies readonly NavigationItem[];
 
