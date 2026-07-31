@@ -159,6 +159,8 @@ Hosted Preview の主要 Route 受入対象は、現行の Route 定義に合わ
 
 Public AlphaのGlobal Navigationは「はじめに」と「Dashboard」に限定します。Prompt Library、Context Library、Recipe Builderは主要Navigationから外しますが、既存URLへのdirect accessは維持します。FeedbackはGitHub Issue Formで受け付け、リンクにアプリ内データを含めません。GitHubアカウントが必要であることと、Prompt、Run、Link等が自動送信されないことをGuideで案内します。
 
+Phase 2のValidation Readiness受入では、実データ接続後のPrompt Libraryを主要NavigationとHosted受入対象へ戻します。Context Library / Recipe Builderは利用可能になるまで主要Navigationへ表示せず、direct accessの回帰確認だけを継続します。Prompt登録・編集・Trail作成・論理削除後の過去Run保持、Trail名・Trail種別、6件目以降への到達性、Dashboard / Run Detailの表記整合をPhase 1 Golden Pathと併せて確認してからUser Validationへ進みます。
+
 ### GitHub Pages
 
 - [ ] `codex/**` push で deploy できる。

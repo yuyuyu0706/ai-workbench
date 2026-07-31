@@ -151,12 +151,12 @@ Canonical Sample Dataset
 
 ## 8. Route、AppShell、Page の現行状態
 
-`AppShell` は header、Global Navigation、main 領域を提供します。`AppRouter` は `/` を `/dashboard` へ redirect し、各 route を Page へ接続します。Global Navigation は Dashboard、Prompt Library、Context Library、Recipe Builder の常設 route のみを表示します。Run Detail は contextual route、Not Found は recovery route であり、いずれも常設 Navigation の active 項目にはなりません。Not Found は Dashboard への復帰導線を提供します。
+`AppShell` は header、Global Navigation、main 領域を提供します。`AppRouter` は `/` を Public Alpha Guide へ接続し、各 route を Page へ接続します。現行Global Navigationは「はじめに」と「Dashboard」に限定しています。Run DetailとNew Trailはcontextual route、Not Foundはrecovery routeであり、常設Navigationのactive項目にはなりません。Not FoundはDashboardへの復帰導線を提供します。
 
 | 画面 / Route                        | 現行状態                             | 責務                                                        |
 | ----------------------------------- | ------------------------------------ | ----------------------------------------------------------- |
 | Dashboard (`/dashboard`)            | Repository 接続済み                  | loading / empty / failure / data を実データとして表示する   |
-| Prompt Library (`/prompts`)         | 静的 start state                     | Prompt 管理の画面入口を示す。Repository 読み取りは未接続    |
+| Prompt Library (`/prompts`)         | 静的 start state                     | Prompt 管理の画面入口。Phase 2でRepositoryへ接続予定        |
 | Context Library (`/contexts`)       | 静的 start state                     | Context 管理の画面入口を示す。Repository 読み取りは未接続   |
 | Recipe Builder (`/recipes/builder`) | 静的 start state                     | Recipe 構築の画面入口を示す。Repository 読み取りは未接続    |
 | New Trail (`/runs/new`)             | contextual route                     | Prompt から Direct Run を作成する                           |
@@ -164,6 +164,10 @@ Canonical Sample Dataset
 | Not Found (`*`)                     | recovery route                       | 未知 URL を示し、Dashboard へ復帰させる                     |
 
 Prompt / Context / Recipe など、Dashboard 以外で未接続の Page は、Phase 0 の画面骨格です。これらの `StateMessage` は Repository 取得後の empty / failure を表すものではありません。
+
+Phase 2ではPrompt Libraryを実データへ接続し、接続完了時に主要Navigationへ戻します。Context Library / Recipe Builderは未完成の間はdirect routeだけを維持し、主要Navigationには表示しません。あわせてRunへPrompt資産とは独立したTrail名・Trail種別を追加します。既存Runのmigrationは`trailTitle = promptSnapshot.title`、`trailKind = other`相当で補完します。
+
+Prompt Repositoryが扱うPromptは編集・論理削除可能な現在の再利用資産です。一方、Run Repositoryが扱う`promptSnapshot`は実行時点の不変な証跡であり、元Promptの編集・削除を伝播させません。Prompt削除後もRunとLinkを維持します。UIはこの境界を越えてDexie / IndexedDBを直接操作しません。
 
 ## 9. Source Map
 

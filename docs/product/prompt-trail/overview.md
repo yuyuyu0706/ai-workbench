@@ -43,6 +43,14 @@ PromptTrail は、AI への依頼を一回限りのテキストではなく、�
 - **Link**: Chat、Issue、PR、Commit、Document などの外部接続を Run に紐付ける。
 - **Trail**: Chat → Issue → PR → Commit / Release の流れを後から辿れるようにする。
 
+### 再利用資産と作業証跡の境界
+
+- **Prompt** は現在利用可能な再利用資産であり、タイトル、本文、Prompt 種別を編集し、不要になれば論理削除できます。
+- **Run の Prompt Snapshot** は実行時点の証跡です。元の Prompt を編集・削除しても変更・削除しません。
+- **Prompt タイトル**は再利用する依頼資産の名前、**Trail 名**は個別作業記録の名前です。
+- **Prompt 種別**は AI への依頼内容、**Trail 種別**は今回行った作業の用途を表します。
+- Prompt Library からの利用は同じ Prompt 資産の反復利用です。過去 Run からの再利用は、過去 Snapshot を初期値として新しい Prompt 資産と Run を派生させる別の体験です。
+
 ## 管理対象
 
 | 管理対象 | 役割                                       |
@@ -54,32 +62,38 @@ PromptTrail は、AI への依頼を一回限りのテキストではなく、�
 | Run      | 実際に生成・利用した依頼の記録             |
 | Link     | Chat、Issue、PR、資料などの外部接続        |
 
-## MVP / Public Alpha の範囲
+## Public Alpha の現在地
 
-MVP は **Phase 1: Validation Release** の Public Alpha 完了時点とします。完成度より学習速度を優先し、利用者が最小の Trail を作り、再利用できる体験を公開して中核仮説を検証します。
+**Phase 1: Validation Release は完了済み**です。最小の Trail を作り再利用できる Public Alpha を Azure Static Web Apps Public Preview へ公開し、自己利用、初期利用者への案内、最初の Feedback 受領まで進みました。
 
 - Project を選択する、または既定 Project を利用する。
 - Prompt を入力、保存、表示、コピーする。
 - Prompt から Run を作成し、実行時 Prompt をスナップショットとして保存する。
 - Chat、Issue、PR、Commit、Document の URL を Link として手動登録する。
 - Run 内で AI 依頼から成果物までの Trail を確認する。
-- 過去 Prompt のコピーまたは Run 複製で次の作業へ再利用する。
-- サンプル Trail または初回利用ガイドと Feedback 導線を提供する。
+- 過去 Run の Prompt Snapshot から新しい Prompt と Run を派生させる。
+- Public Alpha Guide、Global Navigation、保存制約、Feedback Issue Form を提供する。
+- Developer Data Scenario と UI State Override を開発・受入に利用し、通常 Production には露出しない。
 
 Public Alpha は Local-first / IndexedDB の保存境界で動作します。origin ごとにデータは分かれ、端末間同期や Cloud Sync は行いません。この制約は利用者へ明示します。
 
-## Public Alpha で意図的に見送る範囲
+## Phase 2: Validation Readiness & User Validation
 
-- Context Library の完成、Prompt 更新履歴、高度なタグ・検索・絞り込み。
-- Recipe Builder の変数自動検出・入力フォーム、複数 Recipe の高度な管理。
-- JSON Backup / Restore と Settings 画面の完成。
-- GitHub API による Issue / PR 自動同期と GitHub トークンの保存。
-- Account / Plan / Administration、Authentication / Authorization。
-- 複数人リアルタイム共同編集、クラウド同期、RAG による Context 自動検索。
+Phase 2 は **`Validation Readiness → User Validation → Prioritize`** の順で進めます。前半では利用観察を妨げる不足を MVP の必須補完として実装し、Hosted 環境で統合受入します。
+
+- Prompt Library の実データ一覧と簡易検索、Prompt の登録・編集・論理削除。
+- 同じ Prompt 資産から複数の Run / Trail を作成する反復利用。
+- Prompt 削除後も過去 Run、Link、不変な Prompt Snapshot を維持する契約。復元は Phase 3 候補とする。
+- Run に独立した Trail 名・Trail 種別を追加し、既存 Run を `trailTitle = promptSnapshot.title`、`trailKind = other` 相当へ migration する。
+- New Trail での Trail 情報設定と Run Detail での変更。
+- Dashboard から 6 件目以降へ到達する導線と、Dashboard / Run Detail の Status、日時、見出し等の表示統一。
+- Prompt Library を利用可能になった時点で主要 Navigation へ戻し、未完成の Context Library / Recipe Builder は主要 Navigation に表示しない。
+
+Phase 2 後半では、Prompt の事前登録・改善・反復利用、同一 Prompt から複数 Trail を作る体験、過去 Run からの派生との違い、Trail の識別と再発見、Prompt 削除後の理解、初回・2 件目・離脱箇所を観察します。
 
 ## Public Alpha 後の進め方
 
-Phase 2 で初期利用者の初回 Trail 作成率、再利用率、離脱・混乱箇所、定性フィードバックを確認し、Library、Recipe、検索、GitHub 同期などから Phase 3 の投資先を利用証拠に基づいて決定します。Phase 4 では GitHub Integration を深め、Phase 5 では Productization & Administration として複数の利用者像・契約・権限・習熟度に対応します。Guest / Plus / Pro の Plan / Entitlement、Admin / Member の Authorization Role、Simple / Standard / Advanced の Persona / Experience は別軸として扱います。
+Phase 3 は Prompt 復元・版管理・高度な検索・絞り込み、Context Library、Recipe Builder 等から、Phase 2 の利用証拠が示す対象だけを選択実装します。Phase 4 では GitHub Integration を深め、Phase 5 では Productization & Administration として複数の利用者像・契約・権限・習熟度に対応します。Guest / Plus / Pro の Plan / Entitlement、Admin / Member の Authorization Role、Simple / Standard / Advanced の Persona / Experience は別軸として扱います。
 
 ## 関連ドキュメント
 
