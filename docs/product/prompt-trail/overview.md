@@ -45,11 +45,11 @@ PromptTrail は、AI への依頼を一回限りのテキストではなく、�
 
 ### 再利用資産と作業証跡の境界
 
-- **Prompt** は現在利用可能な再利用資産であり、タイトル、本文、Prompt 種別を編集し、不要になれば論理削除できます。
-- **Run の Prompt Snapshot** は実行時点の証跡です。元の Prompt を編集・削除しても変更・削除しません。
+- **Prompt** は再利用資産として扱います。タイトル、本文、Prompt 種別の編集と論理削除は、Phase 2 で実装する予定です。
+- **Run の Prompt Snapshot** は実行時点の証跡です。Phase 2 で Prompt の編集・論理削除を実装した後も、元の Prompt の変更を反映せず、削除しない契約とします。
 - **Prompt タイトル**は再利用する依頼資産の名前、**Trail 名**は個別作業記録の名前です。
 - **Prompt 種別**は AI への依頼内容、**Trail 種別**は今回行った作業の用途を表します。
-- Prompt Library からの利用は同じ Prompt 資産の反復利用です。過去 Run からの再利用は、過去 Snapshot を初期値として新しい Prompt 資産と Run を派生させる別の体験です。
+- Phase 2 では、Prompt Library から同じ Prompt 資産を反復利用する体験を実装します。これは、Phase 1 で実装済みの、過去 Run の Snapshot を初期値として新しい Prompt 資産と Run を派生させる再利用とは別の体験です。
 
 ## 管理対象
 
@@ -66,7 +66,7 @@ PromptTrail は、AI への依頼を一回限りのテキストではなく、�
 
 **Phase 1: Validation Release は完了済み**です。最小の Trail を作り再利用できる Public Alpha を Azure Static Web Apps Public Preview へ公開し、自己利用、初期利用者への案内、最初の Feedback 受領まで進みました。
 
-- Project を選択する、または既定 Project を利用する。
+- 初回作成時に既定 Project を自動作成し、その Project を自動利用する。
 - Prompt を入力、保存、表示、コピーする。
 - Prompt から Run を作成し、実行時 Prompt をスナップショットとして保存する。
 - Chat、Issue、PR、Commit、Document の URL を Link として手動登録する。
