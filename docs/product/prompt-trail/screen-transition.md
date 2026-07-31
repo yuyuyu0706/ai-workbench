@@ -2,7 +2,7 @@
 
 この資料は、PromptTrail の **画面構成・利用導線ドキュメント** です。狭義の画面遷移図ではなく、利用者から見える画面、画面責務、Prompt / Context / Recipe / Run の利用導線、画面構成イメージを整理するための正本として扱います。
 
-対象時点は **P1-1-1-2 完了時点**です。BrowserRouter、AppShell、AppRouter により、Repository 接続済みの Dashboard と Run Detail、Prompt から Direct Run を作成する contextual route の New Trail、静的 start state の Prompt Library／Context Library／Recipe Builder、recovery route の Not Found へ到達できます。Dashboard は `loading` / `empty` / `failure` / `data` を、Run Detail は `loading` / `not-found` / `failure` / `data` を表示します。
+対象時点は **Phase 1 Public Alpha完了時点**です。`/`のPublic Alpha Guide、Repository接続済みのDashboardとRun Detail、PromptからDirect Runを作成するNew Trail、静的start stateのPrompt Library、未完成画面のContext Library／Recipe Builder、Not Foundへ到達できます。Phase 2でPrompt Libraryを実データ接続し、Trailの識別・到達性を補完する計画は[Roadmap](roadmap.md)を正本とします。
 
 技術・責務境界、Runtime、Bootstrap、Provider、Repository、DB、Router、AppShell などの内部構造は [Application Architecture](application-architecture.md) を正本とし、本資料では主対象にしません。Phase 0 の横断的な実装状態は [PromptTrail Phase 0 Technical Baseline](../../architecture/prompt-trail/README.md) を参照してください。URL、route parameter、Router 契約、Not Found、直接 URL、戻る導線、到達・例外・復帰図の詳細は本資料の Route Contract を正本として扱います。
 
@@ -10,18 +10,23 @@
 
 ### 第1節 全体サマリ
 
-P1-1-1-2 完了時点の PromptTrail は、`/` から `/dashboard` へ redirect し、Dashboard を基本入口として利用者が AI 作業を再開する構成です。AppShell 配下では各画面へ到達でき、主要 4 画面のグローバルナビゲーションと Dashboard への復帰導線を通じて移動できます。Dashboard と Run Detail は Repository の実データを表示し、New Trail は Dashboard から到達する contextual route です。静的 start state を維持するのは Prompt Library、Context Library、Recipe Builder のみです。
+Phase 1完了時点のPromptTrailは、`/`をPublic Alpha Guide、「はじめに」と「Dashboard」をGlobal Navigationに持ちます。Prompt Libraryは静的start state、Context Library／Recipe Builderは機能未実装の画面であり、いずれもdirect routeだけを維持して主要Navigationには表示しません。DashboardとRun DetailはRepositoryの実データを表示し、New TrailはDashboardから到達するcontextual routeです。
+
+> 以下のPhase 0図版は将来の画面構成を検討するための構想図であり、Phase 1完了時点の実装画面や利用可能な機能を表すものではありません。
 
 ![PromptTrail screen overview at phase 0](assets/screen-transition-overview-phase0.png)
 
-- **Dashboard** は、`/dashboard` で表示される基本入口です。`/` からも redirect され、最近の Run、作業状況、再開ポイントを把握する場所として扱います。
-- **Prompt Library** と **Context Library** は、固定の一本道ではなく並列に参照できる再利用資産の管理画面です。
-- **Recipe Builder** は、Prompt と Context を案件に合わせて組み立て、Run へつなげる画面です。
-- **Run Detail** は、実行記録、成果物、Link、評価、改善メモを確認・記録し、次の改善へ戻す画面です。
+- **Public Alpha Guide** は、`/` で価値、主要操作、保存制約を案内し、Dashboard と Feedback へ接続します。
+- **Dashboard** は、`/dashboard` で最近の Run、作業状況、再開ポイントを把握する場所です。
+- **Prompt Library** は静的start stateを表示します。実データの一覧・編集・反復利用はPhase 2で実装する計画です。
+- **Context Library** と **Recipe Builder** は未完成画面です。主要機能はPhase 1完了時点では利用できません。
+- **Run Detail** は、実行時点のPrompt Snapshotと関連Linkの確認、および関連Linkの登録を中心に提供します。評価・改善メモは現行機能ではなく将来候補です。
 - **Not Found** は、未知 URL から Dashboard へ復帰するための recovery route です。
 - Browser は必要に応じて外部の器・入口として扱いますが、App / Router / AppShell などの画面を持たない内部コンポーネントは主ノードとして扱いません。
 
 ### 第2節 コンセプト
+
+> この節とPhase 0図版は将来構想を説明します。Phase 1完了時点の実装済み機能一覧ではありません。
 
 PromptTrail のコンセプトは、AI への依頼を一回限りのテキストとして消費するのではなく、再現性のある AI 作業資産として育てることです。Prompt、Context、Recipe、Run、成果・Link・評価を循環させ、次の依頼へ学びを反映することで、継続的に精度と再現性を高めます。
 
@@ -37,6 +42,8 @@ PromptTrail のコンセプトは、AI への依頼を一回限りのテキス�
 
 ## 2. ワークフロー体系図
 
+> 本節は将来のワークフロー構想です。Context Library、Recipe Builder、評価、改善メモはPhase 1完了時点では未実装です。
+
 PromptTrail のワークフローは、Prompt と Context を再利用資産として蓄積し、Recipe Builder で案件に合わせて組み立て、Run Detail で実行結果と成果へのつながりを記録する流れです。Prompt Library から Context Library へ進んで Recipe Builder に到達する固定の一本道ではなく、Prompt と Context を並列の資産として扱います。
 
 ![PromptTrail screen transition workflow at phase 0](assets/screen-transition-workflow-phase0.png)
@@ -48,6 +55,8 @@ PromptTrail のワークフローは、Prompt と Context を再利用資産と�
 - **Dashboard** は、最近の作業、Run、再開ポイント、未整理 Link を把握する入口です。
 
 ## 3. 画面別役割整理
+
+以下は将来の画面責務を整理した構想です。Phase 1完了時点ではPrompt Libraryは静的start state、Context Library／Recipe Builderは未完成画面です。Run Detailで現行利用できる中心機能はPrompt Snapshotと関連Linkの確認・登録であり、評価・改善メモは将来候補です。
 
 | 画面            | 一言定義                                                | 解決する課題                           | 主な操作                                               | 関連資産                  |
 | --------------- | ------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------ | ------------------------- |
@@ -61,7 +70,7 @@ Context Library は、何でも保存するメモ帳ではなく、**AI へ渡�
 
 ## 4. 画面構成図
 
-以下の画面構成図は、P0-4 以降の設計検討素材です。利用者が見る一覧、カード、詳細パネル、入力領域、操作導線を確認するためのものであり、P0-4-3 の実装仕様を細部まで固定するものではありません。App、Router、Repository、DB、Provider などの内部構造は描きません。
+以下のPhase 0画面構成図は将来構想の設計検討素材であり、Phase 1完了時点の実装画面ではありません。利用者が見る一覧、カード、詳細パネル、入力領域、操作導線を検討するためのものであり、P0-4-3 の実装仕様を細部まで固定するものでもありません。App、Router、Repository、DB、Provider などの内部構造は描きません。
 
 ### Dashboard
 
@@ -85,7 +94,7 @@ Context Library は、何でも保存するメモ帳ではなく、**AI へ渡�
 
 ## 5. P0-4-3 Page Skeleton Policy（設計経緯）
 
-この節は P0-4-3 で確立した静的 Page Skeleton の設計経緯です。当時は Dashboard、Prompt Library、Context Library、Recipe Builder、Run Detail が静的骨格でした。P0-5 で Dashboard が Repository 実データ表示へ移行し、P1-1-1-2 で Run Detail も Repository 接続済みへ移行しました。現在も静的 start state なのは Prompt Library、Context Library、Recipe Builder です。画面ごとの本格 CRUD、検索、Recipe 実行、Dashboard 以外の Repository 連携は Phase 0 の対象外です。
+この節は P0-4-3 で確立した静的 Page Skeleton の設計経緯です。当時は Dashboard、Prompt Library、Context Library、Recipe Builder、Run Detail が静的骨格でした。P0-5 で Dashboard が Repository 実データ表示へ移行し、P1-1-1-2 で Run Detail も Repository 接続済みへ移行しました。Phase 1完了時点ではPrompt Libraryが静的start stateであり、Context Library／Recipe Builderは主要機能が未実装の画面です。画面ごとの本格 CRUD、検索、Recipe 実行、Dashboard 以外の Repository 連携は Phase 0 の対象外です。
 
 ### 共通構成
 
@@ -123,9 +132,9 @@ P0-4-3 の状態表示は、Repository 連携前の利用開始状態と、将�
 
 ### P0-4-3 完了時点の棚卸しと後続への引き渡し
 
-- Prompt Library、Context Library、Recipe Builder は `PageHeader`、`PageSection`、`StateMessage` の組み合わせによる静的 start state です。Run Detail は P1-1-1-2 で Repository 接続済みの実データ画面へ移行しました。
+- Prompt Library は `PageHeader`、`PageSection`、`StateMessage` の組み合わせによる静的start stateです。Context Library／Recipe Builderは同じ画面骨格だけを持つ未完成画面です。Run DetailはP1-1-1-2でRepository接続済みとなり、現行ではPrompt Snapshotと関連Linkの確認・登録を担います。
 - Not Found は主要画面骨格の対象外ですが、`PageHeader` と `StateMessage variant="error"` により未知 URL と Dashboard 復帰導線を示します。
-- Run Detail の成果物 / Link / 評価は独立画面ではなく Run Detail 内 section として維持します。Run Detail と Not Found の Dashboard 復帰リンクも維持します。
+- Run Detailの評価・改善メモ等は将来候補であり、Phase 1完了時点の機能として扱いません。Run DetailとNot FoundのDashboard復帰リンクは維持します。
 - ApplicationBootstrap の loading / error と、各 Page の Page Start State、将来の Repository empty / failure state は混同しません。
 - P0-4-4 へは、主要画面導線、direct URL / root redirect / unknown URL、Run Detail / Not Found の Dashboard 復帰、Global Navigation の active 判定、Page Skeleton と `StateMessage` の表示崩れ、P0-5 以降で Repository empty / failure state に差し替える観点を引き渡します。
 
@@ -133,20 +142,20 @@ P0-4-3 の状態表示は、Repository 連携前の利用開始状態と、将�
 
 現行の Router / AppShell 実装は、画面構成・利用導線の正本である本資料と、技術・責務境界の正本である [Application Architecture](application-architecture.md) を接続するため、次の Route Contract を参照します。内部構造や Provider / Repository / DB の責務境界は Application Architecture を正本とし、本節では利用者から見える URL、画面概念、ナビゲーション上の扱いのみを固定します。
 
-| route id         | path               | 画面             | ナビ表示 | 分類 / 備考                                                                      |
-| ---------------- | ------------------ | ---------------- | -------- | -------------------------------------------------------------------------------- |
-| `root`           | `/`                | redirect / alias | なし     | `/dashboard` へ redirect する入口                                                |
-| `dashboard`      | `/dashboard`       | Dashboard        | あり     | P0-4 以降の基本入口                                                              |
-| `promptLibrary`  | `/prompts`         | Prompt Library   | あり     | Prompt 資産管理                                                                  |
-| `contextLibrary` | `/contexts`        | Context Library  | あり     | Context 資産管理                                                                 |
-| `recipeBuilder`  | `/recipes/builder` | Recipe Builder   | あり     | Recipe 作成・編集入口                                                            |
-| `newTrail`       | `/runs/new`        | New Trail        | なし     | Dashboard CTA から到達する contextual route。global navigation には含めない      |
-| `runDetail`      | `/runs/:runId`     | Run Detail       | なし     | contextual route。常設グローバルナビではなく、Run などの文脈から到達する詳細画面 |
-| `notFound`       | `*`                | Not Found        | なし     | recovery route。未知 URL から復帰導線を提示するための画面                        |
+| route id         | path               | 画面               | ナビ表示 | 分類 / 備考                                                                      |
+| ---------------- | ------------------ | ------------------ | -------- | -------------------------------------------------------------------------------- |
+| `root`           | `/`                | Public Alpha Guide | あり     | 価値、主要操作、保存制約、Dashboard / Feedbackへの入口                           |
+| `dashboard`      | `/dashboard`       | Dashboard          | あり     | P0-4 以降の基本入口                                                              |
+| `promptLibrary`  | `/prompts`         | Prompt Library     | なし     | 現行は静的start state。Phase 2の実データ接続後に主要Navigationへ戻す             |
+| `contextLibrary` | `/contexts`        | Context Library    | なし     | 未完成の間はdirect accessのみ                                                    |
+| `recipeBuilder`  | `/recipes/builder` | Recipe Builder     | なし     | 未完成の間はdirect accessのみ                                                    |
+| `newTrail`       | `/runs/new`        | New Trail          | なし     | Dashboard CTA から到達する contextual route。global navigation には含めない      |
+| `runDetail`      | `/runs/:runId`     | Run Detail         | なし     | contextual route。常設グローバルナビではなく、Run などの文脈から到達する詳細画面 |
+| `notFound`       | `*`                | Not Found          | なし     | recovery route。未知 URL から復帰導線を提示するための画面                        |
 
-グローバルナビゲーション対象は Dashboard、Prompt Library、Context Library、Recipe Builder の 4 つに限定します。Run Detail は実行文脈にひもづく contextual route、Not Found は未知 URL からの recovery route として扱い、どちらも常設グローバルナビゲーションには含めません。
+現行のグローバルナビゲーション対象は「はじめに」とDashboardです。Phase 2で実データ接続したPrompt Libraryを戻しますが、Context Library / Recipe Builderは利用可能になるまで表示しません。Run Detailは実行文脈にひもづくcontextual route、Not Foundは未知URLからのrecovery routeとして扱います。
 
-アクティブナビ判定は、現在 URL が `/dashboard`、`/prompts`、`/contexts`、`/recipes/builder` のいずれかに一致するときだけ対応するグローバルナビを active とします。`/` は `/dashboard` へ redirect されます。`/runs/:runId` と未知 URL は active nav なしとして扱います。Run Detail と Not Found の復帰導線は `routePaths.dashboard` を参照した「Dashboardへ戻る」リンクで固定し、ブラウザ履歴や `navigate(-1)` には依存しません。
+アクティブナビ判定は、現行では`/`または`/dashboard`に一致するときだけ対応項目をactiveとします。`/runs/:runId`、direct accessの未完成Library、未知URLはactive navなしとして扱います。Run DetailとNot Foundの復帰導線は`routePaths.dashboard`を参照した「Dashboardへ戻る」リンクで固定し、ブラウザ履歴や`navigate(-1)`には依存しません。
 
 ### 更新トリガー
 

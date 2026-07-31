@@ -4,10 +4,12 @@ PromptTrail は、AI を活用した作業の Trail を追跡するローカル�
 
 ## 現在のアプリケーション構成
 
-- `/` は `/dashboard` へ遷移します。
-- Dashboard と Global Navigation から Prompt Library、Context Library、Recipe Builder へ移動できます。
+- `/` は Public Alpha Guideを表示し、DashboardとFeedbackへの入口を提供します。
+- 現行のGlobal Navigationは「はじめに」と「Dashboard」です。Prompt Library、Context Library、Recipe Builderの既存routeはdirect accessできますが、未完成の間は主要Navigationに表示しません。
 - `/runs/:runId` は Run Detail、未知の URL は Not Found と Dashboard への回復導線を提供します。
 - ブラウザの IndexedDB を使うため、新しい browser / origin では Dashboard が empty state になる場合があります。これはローカル起動失敗を意味しません。
+
+Phase 1のPublic Alpha公開は完了しています。Phase 2では、Prompt Libraryを実データへ接続した時点で主要Navigationへ戻し、Prompt資産管理、Trail名・Trail種別、過去Trailへの到達性を補完してから利用観察を行う計画です。詳細は[Roadmap](../../docs/product/prompt-trail/roadmap.md)を参照してください。
 
 ## 最短起動
 

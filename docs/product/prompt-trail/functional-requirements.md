@@ -134,7 +134,8 @@ Project
  │   └─ Contexts × N
  └─ Runs
      ├─ Recipe × 0..1（Phase 1では必須としない。Phase 3以降の拡張候補）
-     ├─ Prompt Snapshot
+     ├─ Trail名 / Trail種別（Phase 2で追加）
+     ├─ Prompt Snapshot（実行時点で固定）
      ├─ Context Snapshots × N
      ├─ Input Values
      └─ Links × N
@@ -142,9 +143,11 @@ Project
 
 ### 4-2. Runを証跡の中心に置く
 
-PromptやContextは更新されるため、Runには実行時点の内容をスナップショットとして保存する。
+PromptやContextは更新されるため、Runには実行時点の内容をスナップショットとして保存する。Prompt資産は現在利用可能な内容として編集・論理削除できる一方、RunのPrompt Snapshotは元Promptの編集・削除後も変更・削除しない。
 
 これにより、後からPromptが改善されても、過去のIssueやPRがどの依頼内容を基に生まれたかを再現できる。
+
+Promptタイトルは再利用する依頼資産の名前、Trail名は個別作業記録の名前とする。Prompt種別はAIへの依頼内容、Trail種別は今回の作業用途を表し、それぞれを混同しない。
 
 ---
 
@@ -164,16 +167,18 @@ PromptやContextは更新されるため、Runには実行時点の内容をス�
 
 ### 5-2. Prompt管理
 
-| 機能       | 要件                                                                   |
-| ---------- | ---------------------------------------------------------------------- |
-| 作成・編集 | Markdown形式でPromptを作成・更新できる                                 |
-| 種別       | Chat相談、Codex依頼、Issue作成、設計レビュー、障害解析などを設定できる |
-| 変数       | `{{background}}` のような入力変数を定義できる                          |
-| タグ       | 技術領域、対象AI、用途、重要度などで分類できる                         |
-| 状態       | Draft / Active / Deprecated を設定できる                               |
-| 複製       | 既存Promptから派生版を作れる                                           |
-| 版管理     | 更新履歴を保持し、過去版を閲覧・復元できる                             |
-| 検索       | タイトル、本文、タグ、種別で検索できる                                 |
+| 機能                | 要件・Phase配置                                                                                                    |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| 一覧                | Phase 2でPrompt Libraryを実データへ接続し、更新日時順に表示できる                                                  |
+| 作成・編集          | Phase 2でタイトル、本文、Prompt種別を登録・更新できる                                                              |
+| 簡易検索            | Phase 2でタイトルと本文をキーワード検索できる                                                                      |
+| 論理削除            | Phase 2で確認後に`deletedAt`を設定し、Libraryと新規Trail作成から除外する。過去Run、Link、Prompt Snapshotは維持する |
+| 反復利用            | Libraryの同一Prompt資産を参照して複数のRunを作り、作成時点の内容を毎回Snapshotとして固定する                       |
+| 過去Runからの再利用 | 過去Snapshotを初期値として新しいPrompt資産とRunを派生させる現行契約を維持する                                      |
+| 種別                | AIへどのような依頼をするPromptかを表す。Trail種別とは分離する                                                      |
+| 変数・タグ          | 高度な管理はPhase 3で利用証拠に基づき判断する                                                                      |
+| 復元・版管理        | 復元、ゴミ箱、更新履歴、過去版閲覧・比較・ロールバックはPhase 3候補とする                                          |
+| 高度な検索          | タグ、種別、Status、全文検索、並び替え等はPhase 3候補とする                                                        |
 
 ```md
 # 開発依頼
@@ -251,6 +256,9 @@ PromptやContextは更新されるため、Runには実行時点の内容をス�
 | 改善メモ         | Prompt・Context・Recipeの改善点を残せる                                              |
 | 再実行           | 過去Runを複製して新しい依頼を作れる                                                  |
 | タイムライン     | 作成、出力、Link追加、状態変更を時系列で確認できる                                   |
+| Trail名          | Phase 2でPromptタイトルとは独立した個別作業記録名を保存し、作成時設定・後編集できる  |
+| Trail種別        | Phase 2で企画・設計、開発、調査、レビュー、障害対応、その他の最小分類を保存できる    |
+| 既存データ移行   | `trailTitle = promptSnapshot.title`、`trailKind = other`相当へ安全に補完する         |
 
 ---
 
@@ -350,12 +358,12 @@ Release v0.1.0
 
 | 画面            | 主な役割                                                                                                                                                                                                                                    |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Dashboard       | 最近利用したRecipe、進行中Run、未整理Linkを表示する                                                                                                                                                                                         |
+| Dashboard       | 最近のTrailを表示し、6件目以降を含む過去Trailへ到達できる。Trail名・Trail種別・Status・更新日時・Link件数を一貫した表記で示す                                                                                                               |
 | Projects        | Project一覧、作成、切替、アーカイブを行う                                                                                                                                                                                                   |
-| Prompt Library  | Prompt検索、作成、編集、版管理を行う                                                                                                                                                                                                        |
+| Prompt Library  | Phase 2ではPrompt一覧、簡易検索、作成、編集、論理削除、PromptからTrail作成を行う。復元・版管理・高度な検索はPhase 3候補とする                                                                                                               |
 | Context Library | Context登録、適用範囲設定、利用状況確認を行う                                                                                                                                                                                               |
 | Recipe Builder  | Prompt・Context・変数を組み立てる                                                                                                                                                                                                           |
-| Run Detail      | 実行内容、スナップショット、Link、評価、改善メモを確認する                                                                                                                                                                                  |
+| Run Detail      | 実行内容、不変なPrompt Snapshot、Linkを確認し、Phase 2ではTrail名・Trail種別を変更する                                                                                                                                                      |
 | Trail View      | Chat、Issue、PR、Releaseの関係を確認する                                                                                                                                                                                                    |
 | Settings        | JSON Export / Import / Backup / RestoreとSettings最小骨格はPhase 3で利用証拠に基づき判断する。Phase 4ではGitHub API接続に必要なIntegration設定、Phase 5では利用者のIdentity / Authentication、Account / Plan / Administration関連設定を扱う |
 
@@ -403,16 +411,18 @@ PromptTrail の中核価値を検証する最小の縦切りを Public Alpha と
 
 完了時には、新規利用者が Prompt と一つ以上の Link を含む最初の Run を作成し、Trail を確認して次の作業に再利用できる。Hosted 環境から主要操作を試せ、Local-first / IndexedDB の制約を利用者へ明示する。
 
-### Phase 2：User Validation
+### Phase 2：Validation Readiness & User Validation
 
-初期利用者の利用観察とインタビューを行い、初回 Trail 作成、2 件目の Run、Prompt / Run の再利用、離脱・混乱箇所、既存のメモやブックマークとの比較を確認する。Library、Recipe、検索、GitHub 同期のどれへ投資するかを、定性フィードバックと最小限の利用指標から決定する。
+`Validation Readiness → User Validation → Prioritize`の順で進める。前半でPrompt Libraryの一覧・簡易検索・登録・編集・論理削除・PromptからTrail作成、Trail名・Trail種別と既存Run migration、Dashboardの6件目以降への到達性、Dashboard / Run DetailのStatus・日時・見出しの統一を実装し、Hosted環境で統合受入する。Prompt Libraryは利用可能になった時点で主要Navigationへ戻し、未完成のContext Library / Recipe Builderは表示しない。
+
+後半でPromptの事前登録・改善・反復利用、同一Promptから複数Trailを作る利用、過去Runからの派生との差、Trailの識別・再発見、Prompt削除後の理解、初回・2件目・離脱箇所を観察し、Phase 3の投資対象を決定する。
 
 ### Phase 3：Evidence-driven Expansion
 
 Phase 2 の利用証拠に基づき、以下の候補を選択的に実装する。すべてを一括実装せず、小さな Release / Learn 単位へ分割する。
 
-- Project Workspace、Prompt / Context Library、Recipe Builder、変数検出と入力フォーム。
-- タグ、検索、絞り込み、Prompt 版管理。
+- Prompt復元・ゴミ箱・版管理、タグやStatusを含む高度な検索・絞り込み。
+- Project Workspace、Context Library、Recipe Builder、変数検出と入力フォーム。
 - JSON Export / Import / Backup / Restore、Settings 最小骨格。
 - Trail、Run 評価、改善メモ、再実行支援の強化。
 
@@ -428,7 +438,8 @@ Persona / Experience、Identity / Authentication、Authorization Role、Plan / E
 
 | 機能                                                              | 扱い                           |
 | ----------------------------------------------------------------- | ------------------------------ |
-| Context Library の完成、Prompt 更新履歴、高度な検索               | Phase 3 の利用証拠に基づく候補 |
+| Prompt復元・更新履歴・版管理、高度な検索                          | Phase 3 の利用証拠に基づく候補 |
+| Context Library の完成                                            | Phase 3 の利用証拠に基づく候補 |
 | Recipe の変数自動検出・入力フォーム                               | Phase 3 の利用証拠に基づく候補 |
 | JSON Backup / Restore、Settings 画面の完成                        | Phase 3 の利用証拠に基づく候補 |
 | GitHub API 連携、Link 自動同期                                    | Phase 4                        |
@@ -441,4 +452,4 @@ PromptTrail は Local-first で、IndexedDB に browser origin ごとにデー�
 
 ## 12. 結論
 
-PromptTrail は、AI への依頼、Chat、Issue、PR、成果物を Link でつなぎ、次の作業へ再利用する Trail を残すプロダクトである。最初の公開目標は Phase 1 の Public Alpha とし、Phase 2 の利用観察を通じて以後の開発優先順位を決定する。
+PromptTrail は、AI への依頼、Chat、Issue、PR、成果物を Link でつなぎ、次の作業へ再利用する Trail を残すプロダクトである。Phase 1のPublic Alpha公開は完了している。Phase 2で検証可能なMVPへ補完してから利用観察を行い、以後の開発優先順位を決定する。
