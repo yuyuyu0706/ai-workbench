@@ -66,14 +66,17 @@ test.describe('Dashboard data flow', () => {
     const seedResult = await seedCanonicalSampleDataInBrowser(page);
     expect(seedResult.status).toBe('seeded');
 
-    const navigation = getGlobalNavigation(page);
-    await navigation.getByRole('link', { name: 'Prompt Library' }).click();
+    // Placeholder routes remain directly accessible, but are intentionally no longer
+    // exposed in the Public Alpha global navigation.
+    await page.goto('/prompts');
     await expect(page).toHaveURL(/\/prompts$/);
     await expect(
       page.getByRole('heading', { level: 1, name: 'Prompt Library' }),
     ).toBeVisible();
 
-    await navigation.getByRole('link', { name: 'Dashboard' }).click();
+    await getGlobalNavigation(page)
+      .getByRole('link', { name: 'Dashboard' })
+      .click();
     await expect(page).toHaveURL(/\/dashboard$/);
     await expect(
       page.getByRole('heading', { level: 2, name: '最近のTrail' }),
