@@ -5,12 +5,7 @@ const viewports = [
   { name: 'small', size: { width: 390, height: 844 } },
 ] as const;
 
-const globalNavigationLinks = [
-  'Dashboard',
-  'Prompt Library',
-  'Context Library',
-  'Recipe Builder',
-] as const;
+const globalNavigationLinks = ['はじめに', 'Dashboard'] as const;
 
 const primaryPages = [
   {
@@ -137,11 +132,13 @@ test.describe('responsive and accessibility quality baseline', () => {
       await expect(link).toBeInViewport();
     }
 
-    await navigation.getByRole('link', { name: 'Recipe Builder' }).click();
+    await navigation.getByRole('link', { name: 'はじめに' }).click();
 
-    await expect(page).toHaveURL(/\/recipes\/builder$/);
-    await expectReadableBaseline(page, primaryPages[3]);
-    await expectCurrentNavigation(navigation, 'Recipe Builder');
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(
+      '次の仕事に活かせるTrailへ',
+    );
+    await expectCurrentNavigation(navigation, 'はじめに');
     await expectNoHorizontalOverflow(page);
   });
 
@@ -156,10 +153,14 @@ test.describe('responsive and accessibility quality baseline', () => {
       const navigation = getGlobalNavigation(page);
       await expect(navigation).toBeVisible();
       await expectReadableBaseline(page, pageInfo);
-      await expectCurrentNavigation(
-        navigation,
-        pageInfo.currentNavigationLabel,
-      );
+      if (pageInfo.path === '/dashboard') {
+        await expectCurrentNavigation(
+          navigation,
+          pageInfo.currentNavigationLabel,
+        );
+      } else {
+        await expectNoCurrentNavigation(navigation);
+      }
       await expectNoHorizontalOverflow(page);
     }
   });

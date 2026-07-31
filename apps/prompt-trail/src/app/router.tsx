@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 
 import { ContextLibraryPage } from '../pages/ContextLibraryPage';
 import { DashboardPage } from '../pages/DashboardPage';
@@ -7,15 +7,13 @@ import { NotFoundPage } from '../pages/NotFoundPage';
 import { PromptLibraryPage } from '../pages/PromptLibraryPage';
 import { RecipeBuilderPage } from '../pages/RecipeBuilderPage';
 import { RunDetailPage } from '../pages/RunDetailPage';
+import { WelcomePage } from '../pages/WelcomePage';
 import { routeIds, routePaths } from './routes';
 
 export function AppRouter() {
   return (
     <Routes>
-      <Route
-        path={routePaths[routeIds.root]}
-        element={<Navigate to={routePaths[routeIds.dashboard]} replace />}
-      />
+      <Route path={routePaths[routeIds.root]} element={<WelcomePage />} />
       <Route
         path={routePaths[routeIds.dashboard]}
         element={<DashboardPage />}

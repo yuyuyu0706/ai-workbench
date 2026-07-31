@@ -18,10 +18,18 @@ describe('AppShell', () => {
   it('renders the shared header, navigation region, and main slot', () => {
     renderAppShell();
 
-    expect(screen.getByLabelText('PromptTrail')).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('PromptTrail Public Alpha'),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('navigation', { name: 'Global navigation' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('main')).toHaveTextContent('Dashboard content');
+    expect(
+      screen.getByRole('contentinfo', { name: 'Public Alpha information' }),
+    ).toHaveTextContent('IndexedDB');
+    const feedback = screen.getByRole('link', { name: 'Feedbackを送る' });
+    expect(feedback).toHaveAttribute('target', '_blank');
+    expect(feedback).toHaveAttribute('rel', 'noopener noreferrer');
   });
 });

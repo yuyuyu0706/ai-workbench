@@ -1,85 +1,90 @@
-const trailModels = [
+import { Link } from 'react-router-dom';
+
+import { publicAlphaFeedbackUrl } from '../app/public-alpha';
+import { routePaths } from '../app/routes';
+
+const steps = [
   {
-    name: 'Prompt',
-    description: 'AIへ何を依頼したのかを、再利用できる入力資産として残します。',
+    title: '1. Trailを作る',
+    description: 'AIへ渡したPromptと実行結果を、ひとつのRunとして記録します。',
   },
   {
-    name: 'Context',
+    title: '2. Linkを残す',
     description:
-      'Issue、仕様、制約、判断材料など、依頼の背景をひとまとまりで扱います。',
+      'Chat、Issue、PR、成果物のURLをRunへ結び、経緯をたどれるようにします。',
   },
   {
-    name: 'Recipe',
+    title: '3. Promptを再利用する',
     description:
-      '成果につながった依頼手順を、次回もたどれる作業テンプレートにします。',
-  },
-  {
-    name: 'Run',
-    description:
-      '実行ごとの入力、結果、気づきを記録し、改善の履歴を追えるようにします。',
-  },
-  {
-    name: 'Link',
-    description:
-      'Chat、Issue、PR、成果物を結び、AI作業の流れを一本のTrailとして見返します。',
+      '過去のRunを出発点にPromptを引き継ぎ、新しいTrailとして改善を続けます。',
   },
 ];
 
 export function WelcomePage() {
   return (
-    <main className="welcome-page" aria-labelledby="welcome-title">
+    <div className="welcome-page" aria-labelledby="welcome-title">
       <section className="welcome-hero" aria-describedby="welcome-lead">
-        <p className="welcome-eyebrow">AI Workbench / PromptTrail</p>
+        <p className="welcome-eyebrow">PromptTrail · Public Alpha</p>
         <h1 id="welcome-title">
-          AIへの依頼から成果までを、再利用できるTrailに。
+          AIへの依頼から成果までを、次の仕事に活かせるTrailへ。
         </h1>
         <p id="welcome-lead" className="welcome-lead">
-          PromptTrailは、プロンプト、背景コンテキスト、実行結果、成果物へのリンクを整理し、
-          チームが同じ成功パターンをもう一度たどれるようにするワークベンチです。
+          PromptTrailは、Prompt、実行結果、関連リンクをひとつの流れとして記録し、うまくいった依頼を再利用するためのLocal-firstワークベンチです。
+        </p>
+        <div className="welcome-actions">
+          <Link
+            className="pt-button pt-button--primary"
+            to={routePaths.dashboard}
+          >
+            PromptTrailを試す
+          </Link>
+          <a
+            className="pt-button pt-button--secondary"
+            href={publicAlphaFeedbackUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Feedbackを送る
+          </a>
+        </div>
+        <p className="welcome-feedback-note">
+          Feedbackの送信にはGitHubアカウントが必要です。アプリ内のPrompt、Run、Link、保存データが自動送信されることはありません。
         </p>
       </section>
 
-      <section className="welcome-section" aria-labelledby="model-title">
+      <section className="welcome-section" aria-labelledby="steps-title">
         <div className="section-heading">
-          <p className="section-kicker">Management model</p>
-          <h2 id="model-title">Trailを構成する5つの記録</h2>
-          <p>
-            Phase
-            0では実データや操作機能を持たず、後続実装で扱う情報の単位を初期画面で共有します。
-          </p>
+          <p className="section-kicker">Core flow</p>
+          <h2 id="steps-title">3ステップでTrailを育てる</h2>
         </div>
-        <ul className="model-list" aria-label="PromptTrail management model">
-          {trailModels.map((model) => (
-            <li className="pt-card model-card" key={model.name}>
-              <h3>{model.name}</h3>
-              <p>{model.description}</p>
+        <ol className="model-list" aria-label="PromptTrailの使い方">
+          {steps.map((step) => (
+            <li className="pt-card model-card" key={step.title}>
+              <h3>{step.title}</h3>
+              <p>{step.description}</p>
             </li>
           ))}
-        </ul>
+        </ol>
       </section>
 
-      <section
-        className="welcome-grid"
-        aria-label="PromptTrail assumptions and current phase"
-      >
-        <article className="pt-card info-card">
-          <p className="section-kicker">Local first</p>
-          <h2>まずは手元の作業資産として安全に育てる</h2>
-          <p>
-            PromptTrailはローカルファーストを前提に、AI作業の試行錯誤を個人やチームの手元で扱える形へ整えます。
-            共有や連携は、保存モデルと画面導線が定まった後続フェーズで検討します。
-          </p>
-        </article>
-        <article className="pt-card info-card phase-card">
-          <p className="section-kicker">Phase 0</p>
-          <h2>現在地はアプリ基盤と初期画面の整備</h2>
-          <p>
-            この画面は、Router、状態管理、IndexedDB、CRUD、検索、AI実行をまだ含まない静的なWelcome
-            Pageです。
-            次の開発が迷わず進められるよう、最小構造と責務境界だけを先に整えています。
-          </p>
+      <section className="welcome-section" aria-labelledby="storage-title">
+        <article className="pt-card info-card welcome-storage">
+          <p className="section-kicker">保存とセキュリティ</p>
+          <h2 id="storage-title">Public Alphaを試す前にご確認ください</h2>
+          <ul>
+            <li>
+              データは、現在のbrowser origin単位のIndexedDBに保存されます。
+            </li>
+            <li>browser、端末、originをまたいだ同期は行われません。</li>
+            <li>
+              browser
+              storageの削除や環境の変更により、データを失う可能性があります。
+            </li>
+            <li>Backup、Restore、Cloud Syncには対応していません。</li>
+            <li>機密情報、個人情報、API Key、Tokenを入力しないでください。</li>
+          </ul>
         </article>
       </section>
-    </main>
+    </div>
   );
 }

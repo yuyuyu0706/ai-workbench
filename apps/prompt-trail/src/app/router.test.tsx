@@ -76,21 +76,16 @@ function expectNoActiveNavigationItem() {
 }
 
 describe('AppRouter', () => {
-  it('redirects the root route to the dashboard and active navigation', async () => {
-    const visitedPathnames: string[] = [];
-    renderRoute(routePaths.root, {
-      onLocationChange: (pathname) => visitedPathnames.push(pathname),
-    });
+  it('renders the Public Alpha guide at the root route', () => {
+    renderRoute(routePaths.root);
 
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      '次の仕事に活かせるTrailへ',
+    );
+    expectOnlyActiveNavigationItem('はじめに');
     expect(
-      await screen.findByRole('heading', { name: 'Dashboard' }),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText('Repositoryに表示できるRunがまだありません。'),
-    ).toBeInTheDocument();
-    expect(screen.queryByText('最近のRun')).toBeNull();
-    expectOnlyActiveNavigationItem('Dashboard');
-    expect(visitedPathnames.at(-1)).toBe(routePaths.dashboard);
+      screen.getByRole('link', { name: 'PromptTrailを試す' }),
+    ).toHaveAttribute('href', routePaths.dashboard);
   });
 
   it.each([
@@ -134,7 +129,11 @@ describe('AppRouter', () => {
       expect(
         screen.getByRole('heading', { name: heading }),
       ).toBeInTheDocument();
-      expectOnlyActiveNavigationItem(heading);
+      if (pathname === routePaths.dashboard) {
+        expectOnlyActiveNavigationItem(heading);
+      } else {
+        expectNoActiveNavigationItem();
+      }
       expect(await screen.findByText(startMessage)).toBeInTheDocument();
       expect(screen.getByText(stateDescription)).toBeInTheDocument();
 
@@ -152,7 +151,7 @@ describe('AppRouter', () => {
     expect(
       screen.getByRole('heading', { name: 'Recipe Builder' }),
     ).toBeInTheDocument();
-    expectOnlyActiveNavigationItem('Recipe Builder');
+    expectNoActiveNavigationItem();
     expect(
       screen.getByText('Recipeを組み立てる前の利用開始状態です。'),
     ).toBeInTheDocument();
