@@ -59,7 +59,12 @@ function RevisionProbe() {
 function RouteControls() {
   const navigate = useNavigate();
   return (
-    <button onClick={() => navigate('/prompts/other/edit')}>別Promptへ</button>
+    <>
+      <button onClick={() => navigate('/prompts/other/edit')}>
+        別Promptへ
+      </button>
+      <button onClick={() => navigate('/dashboard')}>Dashboardへ</button>
+    </>
   );
 }
 
@@ -98,6 +103,15 @@ function renderEditor(
                 element={
                   <>
                     <h1>Prompt Library</h1>
+                    <RevisionProbe />
+                  </>
+                }
+              />
+              <Route
+                path="/dashboard"
+                element={
+                  <>
+                    <h1>Dashboard</h1>
                     <RevisionProbe />
                   </>
                 }
@@ -253,6 +267,33 @@ describe('PromptEditorPage', () => {
       ).toBeNull(),
     );
     expect(screen.getByRole('heading', { name: 'Promptを編集' })).toBeVisible();
+  });
+
+  it('keeps the destination and revision after a save completes following Editor unmount', async () => {
+    const saving = deferred<Prompt>();
+    const user = userEvent.setup();
+    renderEditor(
+      {
+        getPrompt: vi.fn(async () => prompt),
+        savePrompt: vi.fn(() => saving.promise),
+      } as unknown as PromptTrailRepository,
+      { initialEntry: '/prompts/prompt-edit/edit' },
+    );
+    await screen.findByDisplayValue('既存タイトル');
+    await user.click(screen.getByRole('button', { name: '保存' }));
+    await user.click(screen.getByRole('button', { name: 'Dashboardへ' }));
+    expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+    expect(screen.getByLabelText('revision')).toHaveTextContent('0');
+
+    await act(() => saving.resolve(prompt));
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeVisible(),
+    );
+    expect(
+      screen.queryByRole('heading', { name: 'Prompt Library' }),
+    ).toBeNull();
+    expect(screen.getByLabelText('revision')).toHaveTextContent('0');
   });
 
   it('applies every Developer Tools override without performing a real save', async () => {

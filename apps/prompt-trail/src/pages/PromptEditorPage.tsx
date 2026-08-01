@@ -49,12 +49,10 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
     token: symbol;
   } | null>(null);
   useLayoutEffect(() => {
-    if (
-      activeIdentityRef.current.repository !== repository ||
-      activeIdentityRef.current.routeKey !== routeKey
-    )
-      submissionRef.current = null;
     activeIdentityRef.current = { repository, routeKey };
+    return () => {
+      submissionRef.current = null;
+    };
   }, [repository, routeKey]);
   const [loaded, setLoaded] = useState<{
     repository: typeof repository;
