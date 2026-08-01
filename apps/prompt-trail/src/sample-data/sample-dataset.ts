@@ -95,6 +95,8 @@ export const sampleRecipe: Recipe = {
 export const sampleRun: Run = {
   id: SAMPLE_IDS.run,
   projectId: SAMPLE_IDS.project,
+  trailTitle: samplePrompt.title,
+  trailKind: 'other',
   recipeId: SAMPLE_IDS.recipe,
   promptSnapshot: {
     promptId: SAMPLE_IDS.prompt,

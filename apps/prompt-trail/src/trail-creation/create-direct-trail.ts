@@ -54,6 +54,8 @@ export async function createDirectTrail(
     deletedAt: null,
     archivedAt: null,
     projectId: project.id,
+    trailTitle: prompt.title,
+    trailKind: 'other',
     recipeId: null,
     promptSnapshot: { promptId, title: prompt.title, body: prompt.body },
     contextSnapshots: [],

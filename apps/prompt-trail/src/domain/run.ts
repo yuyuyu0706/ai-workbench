@@ -21,6 +21,17 @@ export const RUN_EVALUATIONS = ['good', 'needs-improvement', 'failed'] as const;
 
 export type RunEvaluation = (typeof RUN_EVALUATIONS)[number];
 
+export const TRAIL_KINDS = [
+  'planning-design',
+  'development',
+  'research',
+  'review',
+  'incident-response',
+  'other',
+] as const;
+
+export type TrailKind = (typeof TRAIL_KINDS)[number];
+
 export type JsonPrimitive = string | number | boolean | null;
 
 export type JsonValue =
@@ -48,6 +59,10 @@ export interface ContextSnapshot {
  */
 export interface Run extends BaseEntity<'run'>, ArchivableEntity {
   readonly projectId: ProjectId;
+  /** User-facing name of this individual work record. */
+  readonly trailTitle: string;
+  /** Purpose of this work record, independent from PromptKind. */
+  readonly trailKind: TrailKind;
   /** null identifies a Direct Run created from a project-scoped Prompt. */
   readonly recipeId: RecipeId | null;
   readonly promptSnapshot: PromptSnapshot;

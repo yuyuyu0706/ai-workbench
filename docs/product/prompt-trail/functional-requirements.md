@@ -248,18 +248,18 @@ Promptタイトルは再利用する依頼資産の名前、Trail名は個別作
 
 ### 5-5. Run管理
 
-| 機能             | 要件                                                                                 |
-| ---------------- | ------------------------------------------------------------------------------------ |
-| Run作成          | Promptから直接実行記録を作成できる。Recipe経由のRun作成はPhase 3以降の拡張候補とする |
-| スナップショット | Prompt、Context、入力値、最終Promptを固定保存できる                                  |
-| 状態             | Draft / Prepared / Executed / In Progress / Done / Archived を設定できる             |
-| 成果評価         | Good / Needs Improvement / Failed を記録できる                                       |
-| 改善メモ         | Prompt・Context・Recipeの改善点を残せる                                              |
-| 再実行           | 過去Runを複製して新しい依頼を作れる                                                  |
-| タイムライン     | 作成、出力、Link追加、状態変更を時系列で確認できる                                   |
-| Trail名          | Phase 2でPromptタイトルとは独立した個別作業記録名を保存し、作成時設定・後編集できる  |
-| Trail種別        | Phase 2で企画・設計、開発、調査、レビュー、障害対応、その他の最小分類を保存できる    |
-| 既存データ移行   | `trailTitle = promptSnapshot.title`、`trailKind = other`相当へ安全に補完する         |
+| 機能             | 要件                                                                                                            |
+| ---------------- | --------------------------------------------------------------------------------------------------------------- |
+| Run作成          | Promptから直接実行記録を作成できる。Recipe経由のRun作成はPhase 3以降の拡張候補とする                            |
+| スナップショット | Prompt、Context、入力値、最終Promptを固定保存できる                                                             |
+| 状態             | Draft / Prepared / Executed / In Progress / Done / Archived を設定できる                                        |
+| 成果評価         | Good / Needs Improvement / Failed を記録できる                                                                  |
+| 改善メモ         | Prompt・Context・Recipeの改善点を残せる                                                                         |
+| 再実行           | 過去Runを複製して新しい依頼を作れる                                                                             |
+| タイムライン     | 作成、出力、Link追加、状態変更を時系列で確認できる                                                              |
+| Trail名          | Promptタイトルとは独立した必須の個別作業記録名をRunへ保存する。作成時入力・後編集UIは後続Issueで実装する        |
+| Trail種別        | 企画・設計、開発、調査、レビュー、障害対応、その他の必須分類をRunへ保存する。入力・編集UIは後続Issueで実装する  |
+| 既存データ移行   | schema v1からv2へのDB open時migrationで`trailTitle = promptSnapshot.title`、`trailKind = other`へ安全に補完する |
 
 ---
 

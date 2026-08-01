@@ -39,7 +39,7 @@ function buildPrompt(overrides: Partial<Prompt> = {}): Prompt {
 
 function buildRun(
   prompt: Prompt,
-  overrides: Partial<Run> = {},
+  overrides: Partial<Run & { recipeId: null }> = {},
 ): Run & { recipeId: null } {
   return {
     id: 'direct-run' as Run['id'],
@@ -48,6 +48,8 @@ function buildRun(
     deletedAt: null,
     archivedAt: null,
     projectId: DEFAULT_PROJECT_ID,
+    trailTitle: prompt.title,
+    trailKind: 'other',
     recipeId: null,
     promptSnapshot: {
       promptId: prompt.id,
@@ -61,7 +63,7 @@ function buildRun(
     evaluation: null,
     improvementNote: null,
     ...overrides,
-  } as Run & { recipeId: null };
+  };
 }
 
 describe('createDirectRunBundle', () => {
@@ -79,6 +81,10 @@ describe('createDirectRunBundle', () => {
       }),
     ).resolves.toEqual({ project: buildProject(), prompt, run });
     await expect(repository.getRun(run.id)).resolves.toEqual(run);
+    await expect(repository.getRun(run.id)).resolves.toMatchObject({
+      trailTitle: prompt.title,
+      trailKind: 'other',
+    });
     await expect(repository.getPrompt(prompt.id)).resolves.toEqual(prompt);
   });
 

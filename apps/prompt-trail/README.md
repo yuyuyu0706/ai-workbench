@@ -8,8 +8,9 @@ PromptTrail は、AI を活用した作業の Trail を追跡するローカル�
 - 現行のGlobal Navigationは「はじめに」と「Dashboard」です。Prompt Libraryはdirect accessからRepository内のActive Promptを一覧・検索・新規登録・編集でき、編集画面のDanger Zoneから確認付きで論理削除できます。主要Navigationへの復帰は後続Issueで扱い、Context Library、Recipe Builderもdirect accessのみ維持します。
 - `/runs/:runId` は Run Detail、未知の URL は Not Found と Dashboard への回復導線を提供します。
 - ブラウザの IndexedDB を使うため、新しい browser / origin では Dashboard が empty state になる場合があります。これはローカル起動失敗を意味しません。
+- IndexedDBの現行schemaはversion 2です。既存のschema v1 DBはopen時にtransactional migrationされ、全Runへ従来のPrompt Snapshotタイトルと同じ`trailTitle`および`trailKind = other`が補完されます。migrationは他fieldや他Storeを変更せず、失敗時にDBを削除しません。
 
-Phase 1のPublic Alpha公開は完了しています。Phase 2では、Prompt Libraryを実データへ接続した時点で主要Navigationへ戻し、Prompt資産管理、Trail名・Trail種別、過去Trailへの到達性を補完してから利用観察を行う計画です。詳細は[Roadmap](../../docs/product/prompt-trail/roadmap.md)を参照してください。
+Phase 1のPublic Alpha公開は完了しています。Phase 2ではRunへPrompt資産とは独立した必須のTrail名・Trail種別を保存するDomain／DB基盤まで実装済みです。New Trailでの入力とRun Detailでの表示・編集UIは未実装で、後続Issueで扱います。Prompt Libraryの主要Navigationへの復帰と過去Trailへの到達性も後続計画です。詳細は[Roadmap](../../docs/product/prompt-trail/roadmap.md)を参照してください。
 
 ## 最短起動
 

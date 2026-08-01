@@ -172,7 +172,9 @@ Canonical Sample Dataset
 
 Prompt / Context / Recipe など、Dashboard 以外で未接続の Page は、Phase 0 の画面骨格です。これらの `StateMessage` は Repository 取得後の empty / failure を表すものではありません。
 
-Phase 2ではPrompt Libraryを実データへ接続し、接続完了時に主要Navigationへ戻します。Context Library / Recipe Builderは未完成の間はdirect routeだけを維持し、主要Navigationには表示しません。あわせてRunへPrompt資産とは独立したTrail名・Trail種別を追加します。既存Runのmigrationは`trailTitle = promptSnapshot.title`、`trailKind = other`相当で補完します。
+Phase 2ではPrompt Libraryを実データへ接続し、接続完了時に主要Navigationへ戻します。Context Library / Recipe Builderは未完成の間はdirect routeだけを維持し、主要Navigationには表示しません。Run DomainにはPrompt資産とは独立した必須の`trailTitle`と`trailKind`を実装済みです。New Trailでの入力とRun Detailでの表示・編集は後続Issueの責務であり、現行UIはPrompt Snapshotタイトルを従来どおり表示します。
+
+Dexieの現行schemaはversion 2です。Database constructorは歴史的なschema v1定義をupgrade起点として保持し、既存v1 DBをopenすると同一upgrade transaction内で全Runへ`trailTitle = promptSnapshot.title`（正規化なし）、`trailKind = other`を補完します。RepositoryやUIはlegacy fallbackを持たず、open完了後の必須fieldを持つRunだけを扱います。malformed Runでmigrationが失敗した場合はtransaction全体をrollbackし、DBの削除や部分更新を行いません。
 
 Prompt Repositoryが扱うPromptは編集・論理削除可能な現在の再利用資産です。一方、Run Repositoryが扱う`promptSnapshot`は実行時点の不変な証跡であり、元Promptの編集・削除を伝播させません。Prompt削除後もRunとLinkを維持します。UIはこの境界を越えてDexie / IndexedDBを直接操作しません。
 

@@ -134,6 +134,8 @@ function buildRun(overrides: Partial<Run> = {}): Run {
     deletedAt: null,
     archivedAt: null,
     projectId: projectId('project-1'),
+    trailTitle: 'Snapshot prompt',
+    trailKind: 'other',
     recipeId: recipeId('recipe-1'),
     promptSnapshot: {
       promptId: promptId('prompt-1'),
@@ -228,6 +230,10 @@ describe('PromptTrailRepository run persistence', () => {
 
     await expect(repository.saveRun(run)).resolves.toEqual(run);
     await expect(repository.getRun(run.id)).resolves.toEqual(run);
+    await expect(repository.getRun(run.id)).resolves.toMatchObject({
+      trailTitle: 'Snapshot prompt',
+      trailKind: 'other',
+    });
     await expect(repository.listActiveRuns(run.projectId)).resolves.toEqual([
       run,
     ]);

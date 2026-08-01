@@ -21,6 +21,8 @@ describe('createDirectTrail', () => {
     const bundle = createDirectRunBundle.mock.calls[0][0];
     expect(bundle.prompt.body).toBe(`${'a'.repeat(100)}  \n body`);
     expect(bundle.prompt.title).toBe(`${'a'.repeat(79)}…`);
+    expect(bundle.run.trailTitle).toBe(bundle.prompt.title);
+    expect(bundle.run.trailKind).toBe('other');
     expect(bundle.run.promptSnapshot).toMatchObject({
       promptId: 'prompt-fixed',
       body: bundle.prompt.body,

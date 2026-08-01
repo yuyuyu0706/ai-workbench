@@ -44,6 +44,8 @@ const runs: readonly Run[] = statuses.map((status, index) => {
   return {
     id: runId(`dense-run-${ordinal}`),
     projectId: project.id,
+    trailTitle: prompt.title,
+    trailKind: 'other',
     recipeId: null,
     promptSnapshot: {
       promptId: prompt.id,

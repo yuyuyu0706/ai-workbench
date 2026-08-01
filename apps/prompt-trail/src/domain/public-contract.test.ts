@@ -10,6 +10,7 @@ import {
   PROMPT_TRAIL_ENTITY_KINDS,
   RUN_EVALUATIONS,
   RUN_STATUSES,
+  TRAIL_KINDS,
 } from './index';
 import type {
   ArchivableEntity,
@@ -43,6 +44,7 @@ import type {
   RunEvaluation,
   RunId,
   RunStatus,
+  TrailKind,
   UtcDateTimeString,
 } from './index';
 
@@ -91,6 +93,14 @@ describe('Prompt Trail domain public contract', () => {
       'done',
     ]);
     expect(RUN_EVALUATIONS).toEqual(['good', 'needs-improvement', 'failed']);
+    expect(TRAIL_KINDS).toEqual([
+      'planning-design',
+      'development',
+      'research',
+      'review',
+      'incident-response',
+      'other',
+    ]);
 
     expect(LINK_TYPES).toEqual([
       'chat',
@@ -139,6 +149,7 @@ describe('Prompt Trail domain public contract', () => {
       readonly run: Run;
       readonly runStatus: RunStatus;
       readonly runEvaluation: RunEvaluation;
+      readonly trailKind: TrailKind;
       readonly link: Link;
       readonly linkType: LinkType;
       readonly linkRole: LinkRole;
