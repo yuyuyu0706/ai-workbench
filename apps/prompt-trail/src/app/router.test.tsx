@@ -99,9 +99,9 @@ describe('AppRouter', () => {
     [
       routePaths.promptLibrary,
       'Prompt Library',
-      'Prompt資産を登録する前の利用開始状態です。',
-      'まだRepositoryからPromptを取得しないため、依頼テンプレートを蓄積する場所だけを静的に示します。P0-5以降でRepository連携後のempty stateと作成導線へ置き換えます。',
-      ['Prompt資産', '分類・検索予定', '作成導線予定', 'Recipeへの接続'],
+      'Repositoryに表示できるPromptがまだありません。',
+      '保存済みのActive Promptが作成されると、ここに表示されます。',
+      [],
     ],
     [
       routePaths.contextLibrary,

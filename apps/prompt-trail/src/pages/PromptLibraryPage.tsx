@@ -1,54 +1,157 @@
-import { PageHeader, PageSection, StateMessage } from '../components/ui';
+import { useEffect, useState } from 'react';
 
-const promptLibrarySections = [
-  {
-    title: 'Prompt資産',
-    description:
-      'よく使うAIへの依頼パターンを再利用可能な資産として置く領域です。',
-  },
-  {
-    title: '分類・検索予定',
-    description:
-      'Promptを探しやすくする分類、検索、タグ、フィルタは後続Issueで検討します。',
-  },
-  {
-    title: '作成導線予定',
-    description:
-      '新規Prompt作成や編集導線はまだ動かさず、今後の実装予定として場所だけを示します。',
-  },
-  {
-    title: 'Recipeへの接続',
-    description:
-      'Prompt資産をRecipe Builderで利用するための接続点を示す領域です。',
-  },
-] as const;
+import { usePromptTrailDataRevision } from '../app/PromptTrailDataRevisionContext';
+import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
+import { PageHeader, PageSection, StateMessage } from '../components/ui';
+import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
+import { selectActiveDeveloperUiState } from '../developer-ui-state';
+import {
+  loadPromptLibraryDataState,
+  searchPromptLibraryItems,
+  type PromptLibraryDataState,
+  type PromptLibraryItem,
+} from '../prompt-library';
+import { formatDateTime } from './date-time';
+
+type PageState = { readonly status: 'loading' } | PromptLibraryDataState;
+
+const KIND_LABELS: Record<PromptLibraryItem['kind'], string> = {
+  'chat-consultation': 'チャット相談',
+  'codex-request': 'Codex依頼',
+  'issue-creation': 'Issue作成',
+  'design-review': '設計レビュー',
+  'incident-analysis': '障害分析',
+  other: 'その他',
+};
 
 export function PromptLibraryPage() {
+  const repository = usePromptTrailRepository();
+  const { revision } = usePromptTrailDataRevision();
+  const snapshot = useDeveloperUiStateSnapshot();
+  const [query, setQuery] = useState('');
+  const [loaded, setLoaded] = useState<{
+    repository: typeof repository;
+    state: PageState;
+  }>({
+    repository,
+    state: { status: 'loading' },
+  });
+  const current =
+    loaded.repository === repository
+      ? loaded.state
+      : { status: 'loading' as const };
+  const override = selectActiveDeveloperUiState(
+    snapshot,
+    'prompt-library-page',
+  );
+  const state: PageState =
+    override === 'failure'
+      ? { status: 'failure', error: undefined }
+      : override === 'loading' || override === 'empty'
+        ? { status: override }
+        : current;
+
+  useEffect(() => {
+    let active = true;
+    loadPromptLibraryDataState(repository).then((next) => {
+      if (active) setLoaded({ repository, state: next });
+    });
+    return () => {
+      active = false;
+    };
+  }, [repository, revision]);
+
+  const results =
+    state.status === 'data'
+      ? searchPromptLibraryItems(state.data.prompts, query)
+      : [];
+
   return (
     <section className="prompt-trail-page">
       <PageHeader
         eyebrow="Prompt Library"
         title="Prompt Library"
-        description="よく使うAIへの依頼パターンを資産化し、再利用するための画面です。"
+        description="保存したAIへの依頼パターンを検索し、再利用可能な資産として確認できます。"
       />
-      <StateMessage
-        variant="empty"
-        title="Prompt資産を登録する前の利用開始状態です。"
-        description="まだRepositoryからPromptを取得しないため、依頼テンプレートを蓄積する場所だけを静的に示します。P0-5以降でRepository連携後のempty stateと作成導線へ置き換えます。"
-      />
-      <div className="prompt-trail-page__sections">
-        {promptLibrarySections.map((section) => (
-          <PageSection
-            key={section.title}
-            title={section.title}
-            description={section.description}
-          >
-            <p>
-              この領域は後続Issueで具体的なPrompt管理機能へ置き換えるための器です。CRUD、検索、タグ、フィルタは実装していません。
-            </p>
-          </PageSection>
-        ))}
-      </div>
+      <PromptLibraryStateMessage state={state} />
+      {state.status === 'data' ? (
+        <PageSection
+          title="保存済みPrompt"
+          description={`${state.data.prompts.length}件の利用可能なPrompt`}
+        >
+          <label className="pt-prompt-search">
+            <span>Promptを検索</span>
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="タイトルまたは本文を検索"
+            />
+          </label>
+          {results.length === 0 ? (
+            <StateMessage
+              variant="empty"
+              title="検索条件に一致するPromptがありません。"
+              description="別のキーワードを入力するか、検索条件を削除してください。"
+            />
+          ) : (
+            <ul className="pt-prompt-list" aria-label="Prompt一覧">
+              {results.map((prompt) => (
+                <PromptCard key={prompt.id} prompt={prompt} />
+              ))}
+            </ul>
+          )}
+        </PageSection>
+      ) : null}
     </section>
   );
+}
+
+function PromptCard({ prompt }: { prompt: PromptLibraryItem }) {
+  return (
+    <li className="pt-prompt-card">
+      <div className="pt-prompt-card__heading">
+        <h3>{prompt.title}</h3>
+        <span className="pt-status-pin">{KIND_LABELS[prompt.kind]}</span>
+      </div>
+      <p className="pt-prompt-card__body">{prompt.body}</p>
+      <p className="pt-prompt-card__meta">
+        <span>{prompt.scope === 'global' ? 'Global' : 'Default Project'}</span>
+        <span>
+          更新{' '}
+          <time dateTime={prompt.updatedAt}>
+            {formatDateTime(prompt.updatedAt)}
+          </time>
+        </span>
+      </p>
+    </li>
+  );
+}
+
+function PromptLibraryStateMessage({ state }: { state: PageState }) {
+  if (state.status === 'loading')
+    return (
+      <StateMessage
+        variant="loading"
+        title="Promptを読み込んでいます..."
+        description="Repositoryから利用可能なPromptを取得しています。"
+      />
+    );
+  if (state.status === 'empty')
+    return (
+      <StateMessage
+        variant="empty"
+        title="Repositoryに表示できるPromptがまだありません。"
+        description="保存済みのActive Promptが作成されると、ここに表示されます。"
+      />
+    );
+  if (state.status === 'failure')
+    return (
+      <StateMessage
+        variant="error"
+        title="Promptの読み込みに失敗しました。"
+        description="時間をおいてページを再読み込みしてください。"
+      />
+    );
+  return null;
 }
