@@ -61,7 +61,7 @@ function expectTypedTables(database: PromptTrailDatabase): PromptTrailTables {
   };
 }
 
-describe('PromptTrailDatabase schema v1', () => {
+describe('PromptTrailDatabase schema v2', () => {
   it('creates PromptTrailDatabase instances with the default and custom DB names', () => {
     const defaultDatabase = createPromptTrailDatabase();
     const customDatabase = createPromptTrailDatabase(
@@ -74,12 +74,13 @@ describe('PromptTrailDatabase schema v1', () => {
     expect(customDatabase.name).toBe('prompt-trail-schema-test');
   });
 
-  it('registers only schema version 1 from the metadata contract', () => {
+  it('registers schema version 2 from the metadata contract', () => {
     const database = createPromptTrailDatabase(
       'prompt-trail-schema-version-test',
     );
 
     expect(database.verno).toBe(PROMPT_TRAIL_SCHEMA_VERSION);
+    expect(PROMPT_TRAIL_SCHEMA_VERSION).toBe(2);
   });
 
   it('registers the six metadata store names only', () => {
@@ -98,7 +99,7 @@ describe('PromptTrailDatabase schema v1', () => {
     }
   });
 
-  it('registers the exact schema v1 minimum indexes for each store', () => {
+  it('preserves the exact minimum indexes for each store', () => {
     const database = createPromptTrailDatabase('prompt-trail-index-test');
 
     for (const storeName of PROMPT_TRAIL_STORE_NAMES) {

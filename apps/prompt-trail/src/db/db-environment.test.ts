@@ -20,7 +20,7 @@ describe('PromptTrail DB environment', () => {
 
   it('publishes DB metadata through the DB public entrypoint', () => {
     expect(PROMPT_TRAIL_DB_NAME).toBe('prompt-trail');
-    expect(PROMPT_TRAIL_SCHEMA_VERSION).toBe(1);
+    expect(PROMPT_TRAIL_SCHEMA_VERSION).toBe(2);
   });
 
   it('publishes the six schema v1 store names without duplicates', () => {

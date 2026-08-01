@@ -83,6 +83,8 @@ describe('loadDashboardReadModel', () => {
       deletedAt: null,
       archivedAt: null,
       projectId: DEFAULT_PROJECT_ID,
+      trailTitle: directPrompt.title,
+      trailKind: 'other',
       recipeId: null,
       promptSnapshot: {
         promptId: directPrompt.id,

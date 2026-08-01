@@ -55,6 +55,8 @@ const recipe: Recipe = {
 const run: Run = {
   id: runId('legacy-compatible-run-recipe'),
   projectId: project.id,
+  trailTitle: prompt.title,
+  trailKind: 'other',
   recipeId: recipe.id,
   promptSnapshot: {
     promptId: prompt.id,

@@ -30,6 +30,8 @@ const prompt: Prompt = {
 const run: Run = {
   id: runId('reuse-ready-run-completed-source'),
   projectId: project.id,
+  trailTitle: prompt.title,
+  trailKind: 'other',
   recipeId: null,
   promptSnapshot: {
     promptId: prompt.id,

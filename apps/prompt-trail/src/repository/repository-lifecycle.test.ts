@@ -155,6 +155,8 @@ function buildRun(overrides: Partial<Run> = {}): Run {
     deletedAt: null,
     archivedAt: null,
     projectId: projectId('project-lifecycle'),
+    trailTitle: 'Initial prompt title',
+    trailKind: 'other',
     recipeId: recipeId('recipe-lifecycle'),
     promptSnapshot: {
       promptId: promptId('prompt-lifecycle'),

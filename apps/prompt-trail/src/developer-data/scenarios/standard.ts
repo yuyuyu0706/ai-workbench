@@ -20,6 +20,8 @@ const prompt: Prompt = {
 const run: Run = {
   id: runId('standard-run-direct-review'),
   projectId: DEFAULT_PROJECT_ID,
+  trailTitle: prompt.title,
+  trailKind: 'other',
   recipeId: null,
   promptSnapshot: {
     promptId: prompt.id,

@@ -8,7 +8,7 @@ Prompt Trail の Data Model 正本です。P0-5 完了時点の Domain、Dexie �
 
 - Project、Prompt、Context、Recipe、Run、Link の 6 Domain Model と共通規約
 - 所有、scope、可変参照、Snapshot
-- `prompt-trail` の schema version 1、Store、主キー、索引、保存境界
+- `prompt-trail` の schema version 2、Store、主キー、索引、migration、保存境界
 - Repository の公開 API、参照整合性、error、transaction、lifecycle
 - Fresh DB と明示的な Sample Seed のデータ契約
 
@@ -58,14 +58,14 @@ Project は Recipe と Run の所有境界です。Prompt と Context は global
 
 すべての model は `BaseEntity<Kind>`、すなわち `id: <Model>Id`、`createdAt: UtcDateTimeString`、`updatedAt: UtcDateTimeString`、`deletedAt: UtcDateTimeString | null` を持ちます。Project と Run はさらに `archivedAt: UtcDateTimeString | null` を持ちます。
 
-| Model   | 公開フィールドと型                                                                                                                                                                                                                                                                                                                    |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Project | `name: string`、`description: string \| null`、`tags: readonly string[]`、`repositoryUrl: string \| null`                                                                                                                                                                                                                             |
-| Prompt  | `scope: "global"` または `scope: "project"; projectId: ProjectId`、`title: string`、`body: string`、`kind: PromptKind`、`status: PromptStatus`、`tags: readonly string[]`                                                                                                                                                             |
-| Context | `scope: "global"` または `scope: "project"; projectId: ProjectId`、`title: string`、`body: string`、`kind: ContextKind`、`status: ContextStatus`、`tags: readonly string[]`                                                                                                                                                           |
-| Recipe  | `projectId: ProjectId`、`title: string`、`description: string \| null`、`promptId: PromptId`、`contextIds: readonly ContextId[]`（順序付き）                                                                                                                                                                                          |
-| Run     | `projectId: ProjectId`、`recipeId: RecipeId \| null`、`promptSnapshot: PromptSnapshot`、`contextSnapshots: readonly ContextSnapshot[]`（順序付き）、`inputValues: { readonly [variableName: string]: JsonValue }`、`finalPrompt: string`、`status: RunStatus`、`evaluation: RunEvaluation \| null`、`improvementNote: string \| null` |
-| Link    | `runId: RunId`、`url: string`、`title: string \| null`、`type: LinkType`、`role: LinkRole`、`summary: string \| null`、`externalId: string \| null`                                                                                                                                                                                   |
+| Model   | 公開フィールドと型                                                                                                                                                                                                                                                                                                                                                                  |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Project | `name: string`、`description: string \| null`、`tags: readonly string[]`、`repositoryUrl: string \| null`                                                                                                                                                                                                                                                                           |
+| Prompt  | `scope: "global"` または `scope: "project"; projectId: ProjectId`、`title: string`、`body: string`、`kind: PromptKind`、`status: PromptStatus`、`tags: readonly string[]`                                                                                                                                                                                                           |
+| Context | `scope: "global"` または `scope: "project"; projectId: ProjectId`、`title: string`、`body: string`、`kind: ContextKind`、`status: ContextStatus`、`tags: readonly string[]`                                                                                                                                                                                                         |
+| Recipe  | `projectId: ProjectId`、`title: string`、`description: string \| null`、`promptId: PromptId`、`contextIds: readonly ContextId[]`（順序付き）                                                                                                                                                                                                                                        |
+| Run     | `projectId: ProjectId`、`trailTitle: string`、`trailKind: TrailKind`、`recipeId: RecipeId \| null`、`promptSnapshot: PromptSnapshot`、`contextSnapshots: readonly ContextSnapshot[]`（順序付き）、`inputValues: { readonly [variableName: string]: JsonValue }`、`finalPrompt: string`、`status: RunStatus`、`evaluation: RunEvaluation \| null`、`improvementNote: string \| null` |
+| Link    | `runId: RunId`、`url: string`、`title: string \| null`、`type: LinkType`、`role: LinkRole`、`summary: string \| null`、`externalId: string \| null`                                                                                                                                                                                                                                 |
 
 | Contract          | Shape / allowed values                                                                                      |
 | ----------------- | ----------------------------------------------------------------------------------------------------------- |
@@ -75,6 +75,7 @@ Project は Recipe と Run の所有境界です。Prompt と Context は global
 | `ContextStatus`   | `enabled` / `disabled`                                                                                      |
 | `RunStatus`       | `draft` / `prepared` / `executed` / `in-progress` / `done`                                                  |
 | `RunEvaluation`   | `good` / `needs-improvement` / `failed`                                                                     |
+| `TrailKind`       | `planning-design` / `development` / `research` / `review` / `incident-response` / `other`                   |
 | `LinkType`        | `chat` / `issue` / `pull-request` / `commit` / `release` / `document` / `external`                          |
 | `LinkRole`        | `source` / `reference` / `execution` / `output` / `result`                                                  |
 | `PromptSnapshot`  | `{ promptId: PromptId; title: string; body: string }`                                                       |
@@ -96,10 +97,10 @@ Prompt の `deprecated`、Context の `disabled`、Project / Run の `archivedAt
 
 6 モデルを一括登録する `insertTrailBundle()` に加え、Public Alpha の Direct Run 用に `createDirectRunBundle()` を公開します。`DEFAULT_PROJECT_ID` は `prompt-trail-default-project` で、Sample Project の ID とは別です。
 
-## Dexie 永続化: schema version 1
+## Dexie 永続化: schema version 2
 
 - Database name: `prompt-trail`
-- Schema version: `1`
+- Schema version: `2`
 - 1 モデルにつき 1 Store
 - 各 Store の主キーは model の `id`。auto increment は使用しません。
 
@@ -112,7 +113,7 @@ Prompt の `deprecated`、Context の `disabled`、Project / Run の `archivedAt
 | `runs`     | `id`        | `projectId`, `recipeId`, `status`, `updatedAt`, `archivedAt`, `deletedAt` | Snapshot、`inputValues`、`finalPrompt` を record に埋め込み |
 | `links`    | `id`        | `runId`, `createdAt`, `deletedAt`                                         | Run に属する Link を独立 record として保存                  |
 
-schema v1 は外部キー制約を提供しません。複合索引、全文検索索引、tags、本文、URL、Snapshot 内部項目の索引も追加しません。参照整合性は Repository 境界で検証します。
+schema v2 はschema v1と同じ6 Store・主キー・索引を維持し、`trailTitle`と`trailKind`を索引へ追加しません。schema v1定義はupgrade起点として保持します。v1からv2へのupgrade transactionは全Runへ`trailTitle = promptSnapshot.title`（正規化なし）と`trailKind = other`を追加し、他fieldや他Storeを変更しません。不正なPrompt Snapshotを持つRunではupgradeを中断し、transaction全体をrollbackします。
 
 ## Repository 公開契約
 
@@ -184,7 +185,7 @@ schema v1 は外部キー制約を提供しません。複合索引、全文検�
 
 `createDirectRunBundle()` は Direct Run 専用の公開契約です。既定 Project が未登録なら bundle の Project を作成し、既存なら上書きしません。既存 Project が削除または archive 済みなら `reference-unavailable` とし、復活させません。Prompt / Run の ID 重複と Direct Run の参照・Snapshot 不変条件を同じ transaction で検証するため、失敗時に Project や Prompt だけが残りません。既存の `insertTrailBundle()` は Recipe Run と Sample Dataset 用として維持します。
 
-`recipeId: null` は schema version 1 の既存 `runs` Store に保存します。Store 定義、schema version、migration は変更せず、Direct Run の一覧・取得は `recipeId` index に依存しません。
+`recipeId: null` は schema version 2 の既存 `runs` Store に保存します。Direct Run の一覧・取得は `recipeId` index に依存しません。
 
 ## Fresh DB と Sample Seed
 

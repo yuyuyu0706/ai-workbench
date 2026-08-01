@@ -20,6 +20,7 @@ import {
   PROMPT_TRAIL_SCHEMA_VERSION,
   type PromptTrailStoreName,
 } from './metadata';
+import { migrateRunFromV1 } from './migrations/v1-to-v2';
 
 const schemaV1 = {
   projects: 'id, updatedAt, archivedAt, deletedAt',
@@ -41,7 +42,13 @@ export class PromptTrailDatabase extends Dexie {
   constructor(name = PROMPT_TRAIL_DB_NAME) {
     super(name);
 
-    this.version(PROMPT_TRAIL_SCHEMA_VERSION).stores(schemaV1);
+    // Keep the historical schema registration as the upgrade starting point.
+    this.version(1).stores(schemaV1);
+    this.version(PROMPT_TRAIL_SCHEMA_VERSION)
+      .stores(schemaV1)
+      .upgrade((transaction) =>
+        transaction.table('runs').toCollection().modify(migrateRunFromV1),
+      );
   }
 }
 

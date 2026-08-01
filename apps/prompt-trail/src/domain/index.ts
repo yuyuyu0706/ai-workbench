@@ -36,8 +36,9 @@ export type {
   Run,
   RunEvaluation,
   RunStatus,
+  TrailKind,
 } from './run';
-export { RUN_EVALUATIONS, RUN_STATUSES } from './run';
+export { RUN_EVALUATIONS, RUN_STATUSES, TRAIL_KINDS } from './run';
 
 export type { Link, LinkRole, LinkType } from './link';
 export { LINK_ROLES, LINK_TYPES } from './link';
