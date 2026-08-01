@@ -10,7 +10,9 @@ import { selectActiveDeveloperUiState } from '../developer-ui-state';
 import { PROMPT_KINDS, type Prompt, type PromptId } from '../domain';
 import {
   createPrompt,
+  deletePrompt,
   loadPromptEditorDataState,
+  PromptDeleteTargetError,
   PromptUpdateTargetError,
   updatePrompt,
   validatePromptEditorValues,
@@ -41,6 +43,10 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
   const { promptId = '' } = useParams();
   const snapshot = useDeveloperUiStateSnapshot();
   const override = selectActiveDeveloperUiState(snapshot, 'prompt-editor-page');
+  const deleteOverride = selectActiveDeveloperUiState(
+    snapshot,
+    'prompt-editor-delete',
+  );
   const routeKey = mode === 'create' ? 'new' : promptId;
   const activeIdentityRef = useRef({ repository, routeKey });
   const submissionRef = useRef<{
@@ -48,10 +54,19 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
     routeKey: string;
     token: symbol;
   } | null>(null);
+  const deletionRef = useRef<{
+    repository: typeof repository;
+    routeKey: string;
+    promptId: PromptId;
+    token: symbol;
+  } | null>(null);
+  const deleteButtonRef = useRef<HTMLButtonElement>(null);
+  const confirmDeleteButtonRef = useRef<HTMLButtonElement>(null);
   useLayoutEffect(() => {
     activeIdentityRef.current = { repository, routeKey };
     return () => {
       submissionRef.current = null;
+      deletionRef.current = null;
     };
   }, [repository, routeKey]);
   const [loaded, setLoaded] = useState<{
@@ -79,6 +94,11 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
     errors: {},
     status: 'idle',
   }));
+  const [deletion, setDeletion] = useState<{
+    repository: typeof repository;
+    routeKey: string;
+    status: 'idle' | 'confirming' | 'deleting' | 'failure';
+  }>(() => ({ repository, routeKey, status: 'idle' }));
   const currentLoad =
     loaded.repository === repository && loaded.routeKey === routeKey
       ? loaded.state
@@ -105,6 +125,19 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
       : override === 'save-failure'
         ? 'failure'
         : currentForm.status;
+  const currentDeletion =
+    deletion.repository === repository && deletion.routeKey === routeKey
+      ? deletion.status
+      : 'idle';
+  const displayedDeletion =
+    deleteOverride === 'confirming'
+      ? 'confirming'
+      : deleteOverride === 'deleting'
+        ? 'deleting'
+        : deleteOverride === 'delete-failure'
+          ? 'failure'
+          : currentDeletion;
+  const deletionOpen = displayedDeletion !== 'idle';
 
   useEffect(() => {
     if (mode === 'create') return;
@@ -132,6 +165,19 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
     };
   }, [mode, promptId, repository, routeKey]);
 
+  useEffect(() => {
+    if (deletionOpen) confirmDeleteButtonRef.current?.focus();
+  }, [deletionOpen]);
+
+  useEffect(() => {
+    if (!deletionOpen || displayedDeletion === 'deleting') return;
+    const cancelOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') cancelDeletion();
+    };
+    document.addEventListener('keydown', cancelOnEscape);
+    return () => document.removeEventListener('keydown', cancelOnEscape);
+  });
+
   function change(field: keyof PromptEditorValues, value: string) {
     setForm({
       ...currentForm,
@@ -147,7 +193,8 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
       override !== null ||
       displayedLoad.status !== 'data' ||
       currentForm.status === 'submitting' ||
-      submissionRef.current !== null
+      submissionRef.current !== null ||
+      displayedDeletion !== 'idle'
     )
       return;
     const errors = validatePromptEditorValues(currentForm.values);
@@ -188,6 +235,59 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
       );
     } finally {
       if (submissionRef.current?.token === token) submissionRef.current = null;
+    }
+  }
+
+  function startDeletion() {
+    if (
+      mode !== 'edit' ||
+      displayedStatus === 'submitting' ||
+      displayedDeletion !== 'idle'
+    )
+      return;
+    setDeletion({ repository, routeKey, status: 'confirming' });
+  }
+
+  function cancelDeletion() {
+    if (deleteOverride !== null || displayedDeletion === 'deleting') return;
+    setDeletion({ repository, routeKey, status: 'idle' });
+    requestAnimationFrame(() => deleteButtonRef.current?.focus());
+  }
+
+  async function confirmDeletion() {
+    if (
+      mode !== 'edit' ||
+      deleteOverride !== null ||
+      displayedLoad.status !== 'data' ||
+      displayedDeletion === 'deleting' ||
+      displayedDeletion === 'idle' ||
+      deletionRef.current !== null ||
+      submissionRef.current !== null
+    )
+      return;
+    const targetId = displayedLoad.prompt.id;
+    const token = Symbol('prompt-deletion');
+    deletionRef.current = { repository, routeKey, promptId: targetId, token };
+    setDeletion({ repository, routeKey, status: 'deleting' });
+    const deletionIsCurrent = () =>
+      deletionRef.current?.token === token &&
+      deletionRef.current.promptId === targetId &&
+      activeIdentityRef.current.repository === repository &&
+      activeIdentityRef.current.routeKey === routeKey;
+    try {
+      await deletePrompt(repository, targetId);
+      if (!deletionIsCurrent()) return;
+      notifyDataChanged();
+      navigate(routePaths.promptLibrary, { state: { promptDeleted: true } });
+    } catch (error) {
+      if (!deletionIsCurrent()) return;
+      if (error instanceof PromptDeleteTargetError) {
+        setLoaded({ repository, routeKey, state: { status: error.status } });
+        return;
+      }
+      setDeletion({ repository, routeKey, status: 'failure' });
+    } finally {
+      if (deletionRef.current?.token === token) deletionRef.current = null;
     }
   }
 
@@ -234,7 +334,10 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
               id="prompt-title"
               value={currentForm.values.title}
               maxLength={81}
-              disabled={displayedStatus === 'submitting'}
+              disabled={
+                displayedStatus === 'submitting' ||
+                displayedDeletion === 'deleting'
+              }
               onChange={(event) => change('title', event.target.value)}
             />
             {currentForm.errors.title ? (
@@ -245,7 +348,10 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
               id="prompt-body"
               rows={14}
               value={currentForm.values.body}
-              disabled={displayedStatus === 'submitting'}
+              disabled={
+                displayedStatus === 'submitting' ||
+                displayedDeletion === 'deleting'
+              }
               onChange={(event) => change('body', event.target.value)}
             />
             {currentForm.errors.body ? (
@@ -255,7 +361,10 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
             <select
               id="prompt-kind"
               value={currentForm.values.kind}
-              disabled={displayedStatus === 'submitting'}
+              disabled={
+                displayedStatus === 'submitting' ||
+                displayedDeletion === 'deleting'
+              }
               onChange={(event) => change('kind', event.target.value)}
             >
               <option value="">選択してください</option>
@@ -276,11 +385,12 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
             <div className="prompt-trail-page__actions">
               <button
                 className="pt-button pt-button--primary"
-                disabled={displayedStatus === 'submitting'}
+                disabled={displayedStatus === 'submitting' || deletionOpen}
               >
                 {displayedStatus === 'submitting' ? '保存中...' : '保存'}
               </button>
-              {displayedStatus === 'submitting' ? (
+              {displayedStatus === 'submitting' ||
+              displayedDeletion === 'deleting' ? (
                 <button className="pt-button pt-button--secondary" disabled>
                   Prompt Libraryへ戻る
                 </button>
@@ -294,6 +404,61 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
               )}
             </div>
           </form>
+        </PageSection>
+      ) : null}
+      {mode === 'edit' && displayedLoad.status === 'data' ? (
+        <PageSection title="Danger Zone">
+          <div className="pt-prompt-danger-zone">
+            {deletionOpen ? (
+              <>
+                <p>
+                  <strong>
+                    「{displayedLoad.prompt.title}」を削除しますか？
+                  </strong>
+                </p>
+                <p>
+                  Prompt
+                  Libraryと今後のPrompt資産からのTrail作成対象から除外されます。過去Run、関連Link、実行時のPrompt内容は残ります。
+                </p>
+                {displayedDeletion === 'failure' ? (
+                  <p className="pt-form__error" role="alert">
+                    削除に失敗しました。入力内容を保持しています。再試行してください。
+                  </p>
+                ) : null}
+                <div className="pt-prompt-danger-zone__actions">
+                  <button
+                    ref={confirmDeleteButtonRef}
+                    className="pt-button pt-button--danger"
+                    disabled={displayedDeletion === 'deleting'}
+                    onClick={() => void confirmDeletion()}
+                  >
+                    {displayedDeletion === 'deleting'
+                      ? '削除中...'
+                      : '削除する'}
+                  </button>
+                  <button
+                    className="pt-button pt-button--secondary"
+                    disabled={displayedDeletion === 'deleting'}
+                    onClick={cancelDeletion}
+                  >
+                    キャンセル
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p>このPromptを今後の利用対象から除外します。</p>
+                <button
+                  ref={deleteButtonRef}
+                  className="pt-button pt-button--danger"
+                  disabled={displayedStatus === 'submitting'}
+                  onClick={startDeletion}
+                >
+                  Promptを削除
+                </button>
+              </>
+            )}
+          </div>
         </PageSection>
       ) : null}
     </section>

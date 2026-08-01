@@ -134,6 +134,51 @@ async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('PromptEditorPage', () => {
+  it('shows deletion only in edit mode and supports confirmation, cancellation, and deletion', async () => {
+    const user = userEvent.setup();
+    const createView = renderEditor({} as PromptTrailRepository);
+    expect(
+      screen.queryByRole('button', { name: 'Promptを削除' }),
+    ).not.toBeInTheDocument();
+    createView.unmount();
+
+    const softDeletePrompt = vi.fn(async () => ({
+      ...prompt,
+      deletedAt: timestamp,
+    }));
+    renderEditor(
+      {
+        getPrompt: vi.fn(async () => prompt),
+        softDeletePrompt,
+      } as unknown as PromptTrailRepository,
+      { initialEntry: '/prompts/prompt-edit/edit' },
+    );
+    const start = await screen.findByRole('button', { name: 'Promptを削除' });
+    await user.click(start);
+    const confirm = screen.getByRole('button', { name: '削除する' });
+    expect(confirm).toHaveFocus();
+    expect(screen.getByText(/既存タイトル/)).toBeVisible();
+    expect(screen.getByText(/過去Run、関連Link/)).toBeVisible();
+    await user.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Promptを削除' }),
+      ).toHaveFocus(),
+    );
+    expect(softDeletePrompt).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Promptを削除' }));
+    await user.click(screen.getByRole('button', { name: '削除する' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Prompt Library' }),
+    ).toBeVisible();
+    expect(softDeletePrompt).toHaveBeenCalledWith(
+      prompt.id,
+      expect.any(String),
+    );
+    expect(screen.getByLabelText('revision')).toHaveTextContent('1');
+  });
+
   it('renders create mode and validates while retaining entered values', async () => {
     const user = userEvent.setup();
     renderEditor({} as PromptTrailRepository);
