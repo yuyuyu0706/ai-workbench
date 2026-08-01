@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { usePromptTrailDataRevision } from '../app/PromptTrailDataRevisionContext';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
+import { buildPromptEditPath, routePaths } from '../app/routes';
 import { PageHeader, PageSection, StateMessage } from '../components/ui';
 import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
 import { selectActiveDeveloperUiState } from '../developer-ui-state';
@@ -28,6 +30,13 @@ export function PromptLibraryPage() {
   const repository = usePromptTrailRepository();
   const { revision } = usePromptTrailDataRevision();
   const snapshot = useDeveloperUiStateSnapshot();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const saved = (location.state as { promptSaved?: string } | null)
+    ?.promptSaved;
+  const [notice] = useState(() =>
+    saved === 'created' || saved === 'updated' ? saved : null,
+  );
   const [query, setQuery] = useState('');
   const [loaded, setLoaded] = useState<{
     repository: typeof repository;
@@ -61,6 +70,11 @@ export function PromptLibraryPage() {
     };
   }, [repository, revision]);
 
+  useEffect(() => {
+    if (saved === 'created' || saved === 'updated')
+      navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, navigate, saved]);
+
   const results =
     state.status === 'data'
       ? searchPromptLibraryItems(state.data.prompts, query)
@@ -72,7 +86,20 @@ export function PromptLibraryPage() {
         eyebrow="Prompt Library"
         title="Prompt Library"
         description="保存したAIへの依頼パターンを検索し、再利用可能な資産として確認できます。"
+        actions={
+          <Link
+            className="pt-button pt-button--primary"
+            to={routePaths.promptNew}
+          >
+            Promptを新規登録
+          </Link>
+        }
       />
+      {notice !== null ? (
+        <p className="pt-success-notice" role="status">
+          Promptを{notice === 'created' ? '登録' : '更新'}しました。
+        </p>
+      ) : null}
       <PromptLibraryStateMessage state={state} />
       {state.status === 'data' ? (
         <PageSection
@@ -124,6 +151,12 @@ function PromptCard({ prompt }: { prompt: PromptLibraryItem }) {
           </time>
         </span>
       </p>
+      <Link
+        className="pt-prompt-card__edit"
+        to={buildPromptEditPath(prompt.id)}
+      >
+        編集
+      </Link>
     </li>
   );
 }

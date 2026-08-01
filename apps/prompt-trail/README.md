@@ -5,7 +5,7 @@ PromptTrail は、AI を活用した作業の Trail を追跡するローカル�
 ## 現在のアプリケーション構成
 
 - `/` は Public Alpha Guideを表示し、DashboardとFeedbackへの入口を提供します。
-- 現行のGlobal Navigationは「はじめに」と「Dashboard」です。Prompt Libraryはdirect accessからRepository内のActive Promptを一覧・検索できますが、作成・編集・削除の実装までは主要Navigationに表示しません。Context Library、Recipe Builderもdirect accessのみ維持します。
+- 現行のGlobal Navigationは「はじめに」と「Dashboard」です。Prompt Libraryはdirect accessからRepository内のActive Promptを一覧・検索・新規登録・編集できます。論理削除と主要Navigationへの復帰は後続Issueで扱い、Context Library、Recipe Builderもdirect accessのみ維持します。
 - `/runs/:runId` は Run Detail、未知の URL は Not Found と Dashboard への回復導線を提供します。
 - ブラウザの IndexedDB を使うため、新しい browser / origin では Dashboard が empty state になる場合があります。これはローカル起動失敗を意味しません。
 

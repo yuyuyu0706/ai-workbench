@@ -5,6 +5,7 @@ import { DashboardPage } from '../pages/DashboardPage';
 import { NewTrailPage } from '../pages/NewTrailPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { PromptLibraryPage } from '../pages/PromptLibraryPage';
+import { PromptEditorPage } from '../pages/PromptEditorPage';
 import { RecipeBuilderPage } from '../pages/RecipeBuilderPage';
 import { RunDetailPage } from '../pages/RunDetailPage';
 import { WelcomePage } from '../pages/WelcomePage';
@@ -21,6 +22,14 @@ export function AppRouter() {
       <Route
         path={routePaths[routeIds.promptLibrary]}
         element={<PromptLibraryPage />}
+      />
+      <Route
+        path={routePaths[routeIds.promptNew]}
+        element={<PromptEditorPage mode="create" />}
+      />
+      <Route
+        path={routePaths[routeIds.promptEdit]}
+        element={<PromptEditorPage mode="edit" />}
       />
       <Route
         path={routePaths[routeIds.contextLibrary]}

@@ -7,7 +7,7 @@ import {
 
 describe('developer UI state catalog', () => {
   it('contains unique targets, states, and every supported combination', () => {
-    expect(DEVELOPER_UI_STATE_CATALOG).toHaveLength(6);
+    expect(DEVELOPER_UI_STATE_CATALOG).toHaveLength(7);
     expect(
       new Set(DEVELOPER_UI_STATE_CATALOG.map(({ target }) => target)).size,
     ).toBe(DEVELOPER_UI_STATE_CATALOG.length);

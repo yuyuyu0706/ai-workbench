@@ -2,6 +2,8 @@ export const routeIds = {
   root: 'root',
   dashboard: 'dashboard',
   promptLibrary: 'promptLibrary',
+  promptNew: 'promptNew',
+  promptEdit: 'promptEdit',
   contextLibrary: 'contextLibrary',
   recipeBuilder: 'recipeBuilder',
   newTrail: 'newTrail',
@@ -15,6 +17,8 @@ export const routePaths = {
   [routeIds.root]: '/',
   [routeIds.dashboard]: '/dashboard',
   [routeIds.promptLibrary]: '/prompts',
+  [routeIds.promptNew]: '/prompts/new',
+  [routeIds.promptEdit]: '/prompts/:promptId/edit',
   [routeIds.contextLibrary]: '/contexts',
   [routeIds.recipeBuilder]: '/recipes/builder',
   [routeIds.newTrail]: '/runs/new',
@@ -38,6 +42,12 @@ export const routeDefinitions = [
     path: routePaths.promptLibrary,
     label: 'Prompt Library',
   },
+  { id: routeIds.promptNew, path: routePaths.promptNew, label: 'New Prompt' },
+  {
+    id: routeIds.promptEdit,
+    path: routePaths.promptEdit,
+    label: 'Edit Prompt',
+  },
   {
     id: routeIds.contextLibrary,
     path: routePaths.contextLibrary,
@@ -55,6 +65,10 @@ export const routeDefinitions = [
 
 export function buildRunDetailPath(runId: string) {
   return `/runs/${encodeURIComponent(runId)}`;
+}
+
+export function buildPromptEditPath(promptId: string) {
+  return `/prompts/${encodeURIComponent(promptId)}/edit`;
 }
 
 export function buildNewTrailReusePath(runId: string) {

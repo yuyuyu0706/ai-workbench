@@ -18,6 +18,17 @@ export const DEVELOPER_UI_STATE_CATALOG = [
     ],
   },
   {
+    target: 'prompt-editor-page',
+    label: 'Prompt Editor Page',
+    states: [
+      { state: 'loading', label: 'Loading' },
+      { state: 'not-found', label: 'Not found' },
+      { state: 'failure', label: 'Failure' },
+      { state: 'submitting', label: 'Submitting' },
+      { state: 'save-failure', label: 'Save failure' },
+    ],
+  },
+  {
     target: 'new-trail-form',
     label: 'New Trail Form',
     states: [

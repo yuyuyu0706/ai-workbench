@@ -1,0 +1,13 @@
+.pt-prompt-editor {
+  min-width: 0;
+}
+
+.pt-prompt-editor textarea {
+  resize: vertical;
+  white-space: pre-wrap;
+}
+
+.pt-prompt-editor [aria-disabled='true'] {
+  pointer-events: none;
+  opacity: 0.62;
+}
