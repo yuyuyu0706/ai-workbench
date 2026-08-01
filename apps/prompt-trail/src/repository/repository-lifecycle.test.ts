@@ -370,6 +370,10 @@ describe('PromptTrailRepository cross-store lifecycle integration', () => {
     await expect(repository.listActiveRuns(trail.project.id)).resolves.toEqual([
       trail.run,
     ]);
+    await expect(repository.getRun(trail.run.id)).resolves.toMatchObject({
+      trailTitle: trail.run.trailTitle,
+      trailKind: trail.run.trailKind,
+    });
 
     await expect(repository.listActiveLinks(trail.run.id)).resolves.toEqual([
       trail.link,

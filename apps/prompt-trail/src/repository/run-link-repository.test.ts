@@ -230,6 +230,10 @@ describe('PromptTrailRepository run persistence', () => {
 
     await expect(repository.saveRun(run)).resolves.toEqual(run);
     await expect(repository.getRun(run.id)).resolves.toEqual(run);
+    await expect(repository.getRun(run.id)).resolves.toMatchObject({
+      trailTitle: 'Snapshot prompt',
+      trailKind: 'other',
+    });
     await expect(repository.listActiveRuns(run.projectId)).resolves.toEqual([
       run,
     ]);
