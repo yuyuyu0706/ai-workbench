@@ -156,7 +156,7 @@ Canonical Sample Dataset
 | 画面 / Route                        | 現行状態                             | 責務                                                        |
 | ----------------------------------- | ------------------------------------ | ----------------------------------------------------------- |
 | Dashboard (`/dashboard`)            | Repository 接続済み                  | loading / empty / failure / data を実データとして表示する   |
-| Prompt Library (`/prompts`)         | 静的 start state                     | Prompt 管理の画面入口。Phase 2でRepositoryへ接続予定        |
+| Prompt Library (`/prompts`)         | Repository接続済み                   | Default ProjectとGlobalのActive Promptを一覧・簡易検索する  |
 | Context Library (`/contexts`)       | 静的 start state                     | Context 管理の画面入口を示す。Repository 読み取りは未接続   |
 | Recipe Builder (`/recipes/builder`) | 静的 start state                     | Recipe 構築の画面入口を示す。Repository 読み取りは未接続    |
 | New Trail (`/runs/new`)             | contextual route                     | Prompt から Direct Run を作成する                           |

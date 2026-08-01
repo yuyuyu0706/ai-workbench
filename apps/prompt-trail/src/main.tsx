@@ -6,6 +6,7 @@ import './styles/app-shell.css';
 import './styles/developer-tools.css';
 import './styles/welcome-page.css';
 import './styles/dashboard-page.css';
+import './styles/prompt-library-page.css';
 import './styles/run-detail-page.css';
 
 const rootElement = document.getElementById('root');

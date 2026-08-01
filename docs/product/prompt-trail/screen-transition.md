@@ -2,7 +2,7 @@
 
 この資料は、PromptTrail の **画面構成・利用導線ドキュメント** です。狭義の画面遷移図ではなく、利用者から見える画面、画面責務、Prompt / Context / Recipe / Run の利用導線、画面構成イメージを整理するための正本として扱います。
 
-対象時点は **Phase 1 Public Alpha完了時点**です。`/`のPublic Alpha Guide、Repository接続済みのDashboardとRun Detail、PromptからDirect Runを作成するNew Trail、静的start stateのPrompt Library、未完成画面のContext Library／Recipe Builder、Not Foundへ到達できます。Phase 2でPrompt Libraryを実データ接続し、Trailの識別・到達性を補完する計画は[Roadmap](roadmap.md)を正本とします。
+対象時点は **Phase 2 Prompt Library読み取り機能実装時点**です。`/`のPublic Alpha Guide、Repository接続済みのDashboard、Run Detail、Prompt Library、PromptからDirect Runを作成するNew Trail、未完成画面のContext Library／Recipe Builder、Not Foundへ到達できます。Prompt LibraryのCRUDやTrail作成、Trailの識別・到達性を補完する後続計画は[Roadmap](roadmap.md)を正本とします。
 
 技術・責務境界、Runtime、Bootstrap、Provider、Repository、DB、Router、AppShell などの内部構造は [Application Architecture](application-architecture.md) を正本とし、本資料では主対象にしません。Phase 0 の横断的な実装状態は [PromptTrail Phase 0 Technical Baseline](../../architecture/prompt-trail/README.md) を参照してください。URL、route parameter、Router 契約、Not Found、直接 URL、戻る導線、到達・例外・復帰図の詳細は本資料の Route Contract を正本として扱います。
 

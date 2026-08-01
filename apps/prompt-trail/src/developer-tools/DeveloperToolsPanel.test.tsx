@@ -268,7 +268,7 @@ describe('DeveloperToolsPanel', () => {
         entry.states.map((state) => state.state),
       ),
     );
-    expect(states).toHaveLength(13);
+    expect(states).toHaveLength(16);
   });
 
   it('keeps target and state selection as a draft until explicitly applied', async () => {
