@@ -89,6 +89,57 @@ test.describe('Prompt Editor flow', () => {
     await expect(items.first()).toContainText('編集後の本文');
   });
 
+  test('confirms or cancels soft deletion, excludes the Prompt, and shows notice once', async ({
+    page,
+  }) => {
+    await page.goto('/prompts');
+    await seedEditablePrompts(page);
+    await page.goto('/prompts/prompt-edit-e2e/edit');
+    await page.getByRole('button', { name: 'Promptを削除' }).click();
+    await expect(page.getByRole('button', { name: '削除する' })).toBeFocused();
+    await expect(page.getByText(/編集対象Prompt.*削除しますか/)).toBeVisible();
+    await page.getByRole('button', { name: 'キャンセル' }).click();
+    await expect(
+      page.getByRole('button', { name: 'Promptを削除' }),
+    ).toBeFocused();
+
+    await page.getByRole('button', { name: 'Promptを削除' }).click();
+    await page.getByRole('button', { name: '削除する' }).click();
+    await expect(page).toHaveURL(/\/prompts$/);
+    await expect(page.getByText('Promptを削除しました。')).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: '編集対象Prompt' }),
+    ).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByText('Promptを削除しました。')).toHaveCount(0);
+
+    await page.goto('/prompts/prompt-edit-e2e/edit');
+    await expect(page.getByText('このPromptは編集できません。')).toBeVisible();
+  });
+
+  test('keeps delete confirmation states within a 320px viewport', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.goto('/prompts');
+    await seedEditablePrompts(page);
+    await page.goto('/prompts/prompt-edit-e2e/edit');
+    await expectNoHorizontalOverflow(page);
+    await page.getByRole('button', { name: 'Promptを削除' }).click();
+    await expectNoHorizontalOverflow(page);
+
+    await page.getByRole('button', { name: 'Developer Tools' }).click();
+    await page
+      .getByRole('combobox', { name: 'Target' })
+      .selectOption('prompt-editor-delete');
+    await page
+      .getByRole('combobox', { name: 'State' })
+      .selectOption('delete-failure');
+    await page.getByRole('button', { name: '適用' }).click();
+    await expect(page.getByText(/削除に失敗しました/)).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  });
+
   test('works without horizontal overflow at 320px and keeps a New Trail Prompt active', async ({
     page,
   }) => {

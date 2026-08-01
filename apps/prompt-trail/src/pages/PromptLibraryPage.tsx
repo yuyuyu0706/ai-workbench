@@ -34,8 +34,14 @@ export function PromptLibraryPage() {
   const navigate = useNavigate();
   const saved = (location.state as { promptSaved?: string } | null)
     ?.promptSaved;
+  const deleted = (location.state as { promptDeleted?: boolean } | null)
+    ?.promptDeleted;
   const [notice] = useState(() =>
-    saved === 'created' || saved === 'updated' ? saved : null,
+    deleted === true
+      ? 'deleted'
+      : saved === 'created' || saved === 'updated'
+        ? saved
+        : null,
   );
   const [query, setQuery] = useState('');
   const [loaded, setLoaded] = useState<{
@@ -71,9 +77,9 @@ export function PromptLibraryPage() {
   }, [repository, revision]);
 
   useEffect(() => {
-    if (saved === 'created' || saved === 'updated')
+    if (saved === 'created' || saved === 'updated' || deleted === true)
       navigate(location.pathname, { replace: true, state: null });
-  }, [location.pathname, navigate, saved]);
+  }, [deleted, location.pathname, navigate, saved]);
 
   const results =
     state.status === 'data'
@@ -97,7 +103,9 @@ export function PromptLibraryPage() {
       />
       {notice !== null ? (
         <p className="pt-success-notice" role="status">
-          Promptを{notice === 'created' ? '登録' : '更新'}しました。
+          {notice === 'deleted'
+            ? 'Promptを削除しました。'
+            : `Promptを${notice === 'created' ? '登録' : '更新'}しました。`}
         </p>
       ) : null}
       <PromptLibraryStateMessage state={state} />

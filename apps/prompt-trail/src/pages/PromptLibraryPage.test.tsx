@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, type InitialEntry } from 'react-router-dom';
 
 import {
   PromptTrailDataRevisionProvider,
@@ -148,15 +148,28 @@ describe('PromptLibraryPage', () => {
       expect(repository.listActivePrompts).toHaveBeenCalledTimes(2),
     );
   });
+
+  it('shows a delete notice once and clears navigation state for reload', async () => {
+    const repository = createRepository(prompts);
+    const view = renderPromptLibraryPage(repository, undefined, false, {
+      pathname: '/prompts',
+      state: { promptDeleted: true },
+    });
+    expect(await screen.findByText('Promptを削除しました。')).toBeVisible();
+    view.unmount();
+    renderPromptLibraryPage(repository);
+    expect(screen.queryByText('Promptを削除しました。')).toBeNull();
+  });
 });
 
 function renderPromptLibraryPage(
   repository: PromptTrailRepository,
   store?: DeveloperUiStateStore,
   withTrigger = false,
+  initialEntry: InitialEntry = '/prompts',
 ) {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <PromptTrailRepositoryProvider repository={repository}>
         <PromptTrailDataRevisionProvider>
           <DeveloperToolsProvider

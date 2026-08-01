@@ -1,6 +1,6 @@
 # PromptTrail Application Architecture
 
-このドキュメントは、**P1-1-1-2 完了時点**の PromptTrail Application Architecture の正本です。起動、依存注入、Repository 公開境界、Dashboard の実データ読み取り、画面と状態の責務を、現行実装に合わせて説明します。
+このドキュメントは、**Phase 2 Prompt新規登録・編集・論理削除機能実装時点**の PromptTrail Application Architecture の正本です。起動、依存注入、Repository 公開境界、Dashboard の実データ読み取り、画面と状態の責務を、現行実装に合わせて説明します。
 
 画面構成と利用者導線は [Screen Structure and User Flow](screen-transition.md)、6つのドメインモデルと永続化契約は [Data Model](../../architecture/prompt-trail/data-model.md) を正本とします。環境構築、障害診断、品質確認、Hosted Preview / Deploy の手順は、それぞれ [Local Development](../../development/local-development.md)、[Troubleshooting](../../development/troubleshooting.md)、[Quality Gates](../../development/quality-gates.md)、[Deployment and Hosted Preview](deployment-and-preview.md) を参照してください。本書ではそれらの手順を複製しません。
 
@@ -55,22 +55,29 @@ Mount が返す handle の `dispose()` は、React root を unmount した後に
 
 ## 3. レイヤー別の責務境界
 
-| 領域                   | 主な責務                                                                 | 非責務                          |
-| ---------------------- | ------------------------------------------------------------------------ | ------------------------------- |
-| Entry                  | DOM root の取得、application mount の呼び出し                            | DB 初期化、データ取得           |
-| Mount                  | Runtime / React root の生成、`dispose()` による unmount と Runtime close | Page のデータ状態管理           |
-| Runtime                | DB / Repository の生成、DB open / close                                  | UI 表示、Route 判断             |
-| Bootstrap              | 起動状態の管理、ready gate、Repository Provider の配置                   | Dashboard のデータ状態          |
-| Provider               | 同一 Repository instance の Context 公開                                 | DB / Dexie の公開、DB lifecycle |
-| Router / AppShell      | URL、Navigation、共通レイアウト、recovery route                          | 永続化、Read Model 構築         |
-| Page                   | Use case の呼び出し、画面固有の表示状態                                  | Dexie / IndexedDB の直接操作    |
-| Trail Creation Service | Prompt から Default Project / Direct Run bundle を構築・atomic 保存      | JSX、Dexie 直接操作             |
-| Run Detail Query       | Run / Project / optional Recipe / active Link の取得・結合               | JSX、DB schema                  |
-| Dashboard Query        | Dashboard Read Model の取得・結合                                        | JSX 表示、DB schema             |
-| Repository             | 永続化契約、ドメイン操作                                                 | 画面状態、UI 表示               |
-| DB                     | Dexie schema、IndexedDB 接続                                             | UI 判断、Page 固有の Read Model |
+| 領域                   | 主な責務                                                                 | 非責務                                 |
+| ---------------------- | ------------------------------------------------------------------------ | -------------------------------------- |
+| Entry                  | DOM root の取得、application mount の呼び出し                            | DB 初期化、データ取得                  |
+| Mount                  | Runtime / React root の生成、`dispose()` による unmount と Runtime close | Page のデータ状態管理                  |
+| Runtime                | DB / Repository の生成、DB open / close                                  | UI 表示、Route 判断                    |
+| Bootstrap              | 起動状態の管理、ready gate、Repository Provider の配置                   | Dashboard のデータ状態                 |
+| Provider               | 同一 Repository instance の Context 公開                                 | DB / Dexie の公開、DB lifecycle        |
+| Router / AppShell      | URL、Navigation、共通レイアウト、recovery route                          | 永続化、Read Model 構築                |
+| Page                   | Use case の呼び出し、画面固有の表示状態                                  | Dexie / IndexedDB の直接操作           |
+| Prompt Editor Command  | Prompt作成・更新・削除対象の再検証とRepository公開APIの呼び出し          | UI文言、Focus、Navigate、Data Revision |
+| Trail Creation Service | Prompt から Default Project / Direct Run bundle を構築・atomic 保存      | JSX、Dexie 直接操作                    |
+| Run Detail Query       | Run / Project / optional Recipe / active Link の取得・結合               | JSX、DB schema                         |
+| Dashboard Query        | Dashboard Read Model の取得・結合                                        | JSX 表示、DB schema                    |
+| Repository             | 永続化契約、ドメイン操作                                                 | 画面状態、UI 表示                      |
+| DB                     | Dexie schema、IndexedDB 接続                                             | UI 判断、Page 固有の Read Model        |
 
 ## 4. P1-1-1-2 Page データフロー
+
+### Prompt EditorのCommandと削除状態
+
+Prompt Editor Pageは作成・更新・削除を`prompt-editor/`のApplication Commandへ委譲します。`deletePrompt`は実行直前に`getPrompt(promptId)`で最新Entityを取得し、存在しない場合を`not-found`、削除済みまたは非Activeの場合を`unavailable`として扱います。利用可能な場合だけ注入可能な現在時刻を生成し、Repositoryの`softDeletePrompt(promptId, deletedAt)`を呼びます。Run、Link、Recipe、SnapshotのRepository APIは呼ばず、対象Promptの`deletedAt`以外を変更しない非Cascade境界です。
+
+削除UIは`idle → confirming → deleting → failure`をPageが所有します。保存中は削除開始を、確認・失敗・削除中は保存を無効化し、削除中はフォーム、戻る、キャンセルも無効化します。submission tokenとdeletion tokenを分離し、開始時のRepository、route key、Prompt ID、tokenが完了時にも一致する場合だけData Revision通知とPrompt Libraryへの遷移を行います。Developer Tools overrideは表示だけを再現し、Repository削除、通知、遷移を発生させません。
 
 ```mermaid
 flowchart LR

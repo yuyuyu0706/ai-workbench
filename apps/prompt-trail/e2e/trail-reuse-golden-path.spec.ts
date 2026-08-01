@@ -17,6 +17,15 @@ test.describe('Trail reuse acceptance', () => {
       .getByRole('combobox', { name: 'Scenario' })
       .selectOption('reuse-ready');
     await page.getByRole('button', { name: 'Load', exact: true }).click();
+    await expect(page.getByText(/Scenario「reuse-ready」をLoad/)).toBeVisible();
+
+    await page.goto('/prompts/reuse-ready-prompt-source/edit');
+    await page.getByRole('button', { name: 'Promptを削除' }).click();
+    await page.getByRole('button', { name: '削除する' }).click();
+    await expect(
+      page.getByRole('heading', { name: sourceTitle, exact: true }),
+    ).toHaveCount(0);
+    await page.goto('/dashboard');
 
     await page.getByRole('link', { name: sourceTitle, exact: true }).click();
     const sourceUrl = page.url();
@@ -52,7 +61,15 @@ test.describe('Trail reuse acceptance', () => {
       page.getByRole('heading', { name: reusedTitle }),
     ).toBeVisible();
 
-    await page.getByRole('link', { name: sourceTitle, exact: true }).click();
+    await page.goto('/prompts');
+    await expect(
+      page.getByRole('heading', { name: sourceTitle, exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole('heading', { name: reusedTitle }),
+    ).toBeVisible();
+
+    await page.goto(sourceUrl);
     await expect(page).toHaveURL(sourceUrl);
     await expect(page.getByText(sourceBody, { exact: true })).toBeVisible();
     await expect(

@@ -11,3 +11,23 @@
   pointer-events: none;
   opacity: 0.62;
 }
+
+.pt-prompt-danger-zone {
+  display: grid;
+  gap: var(--pt-space-4);
+  min-width: 0;
+  border: 1px solid var(--pt-color-danger, #b42318);
+  border-radius: var(--pt-radius-md);
+  padding: var(--pt-space-4);
+}
+
+.pt-prompt-danger-zone p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.pt-prompt-danger-zone__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pt-space-3);
+}

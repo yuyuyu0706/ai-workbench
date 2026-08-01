@@ -37,6 +37,15 @@ export const DEVELOPER_UI_STATE_CATALOG = [
     ],
   },
   {
+    target: 'prompt-editor-delete',
+    label: 'Prompt Editor Delete',
+    states: [
+      { state: 'confirming', label: 'Confirming' },
+      { state: 'deleting', label: 'Deleting' },
+      { state: 'delete-failure', label: 'Delete failure' },
+    ],
+  },
+  {
     target: 'run-detail-page',
     label: 'Run Detail Page',
     states: [

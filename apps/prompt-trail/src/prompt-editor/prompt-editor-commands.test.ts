@@ -6,12 +6,63 @@ import {
 } from '../domain';
 import type { PromptTrailRepository } from '../repository';
 import { createPrompt } from './create-prompt';
+import { deletePrompt } from './delete-prompt';
 import { updatePrompt } from './update-prompt';
 
 const before = '2026-01-01T00:00:00.000Z' as UtcDateTimeString;
 const after = '2026-08-01T00:00:00.000Z' as UtcDateTimeString;
 
 describe('Prompt editor commands', () => {
+  it('soft deletes only an active Prompt with an injectable time', async () => {
+    const prompt = {
+      id: 'prompt-delete' as Prompt['id'],
+      status: 'active',
+      deletedAt: null,
+    } as Prompt;
+    const softDeletePrompt = vi.fn(async () => ({
+      ...prompt,
+      deletedAt: after,
+    }));
+    const repository = {
+      getPrompt: vi.fn(async () => prompt),
+      softDeletePrompt,
+    } as unknown as PromptTrailRepository;
+
+    await deletePrompt(repository, prompt.id, { now: () => after });
+
+    expect(repository.getPrompt).toHaveBeenCalledWith(prompt.id);
+    expect(softDeletePrompt).toHaveBeenCalledWith(prompt.id, after);
+    expect(Object.keys(repository).sort()).toEqual([
+      'getPrompt',
+      'softDeletePrompt',
+    ]);
+  });
+
+  it.each([
+    [null, 'not-found'],
+    [
+      { id: 'deleted', status: 'active', deletedAt: after } as Prompt,
+      'unavailable',
+    ],
+    [
+      { id: 'draft', status: 'draft', deletedAt: null } as Prompt,
+      'unavailable',
+    ],
+  ] as const)(
+    'rejects a missing or unavailable Prompt delete target',
+    async (prompt, status) => {
+      const repository = {
+        getPrompt: vi.fn(async () => prompt),
+        softDeletePrompt: vi.fn(),
+      } as unknown as PromptTrailRepository;
+
+      await expect(
+        deletePrompt(repository, 'target' as Prompt['id']),
+      ).rejects.toMatchObject({ status });
+      expect(repository.softDeletePrompt).not.toHaveBeenCalled();
+    },
+  );
+
   it('creates a Default Project Active Prompt with injectable identity and time', async () => {
     const savePrompt = vi.fn(async (prompt: Prompt) => prompt);
     const repository = {
