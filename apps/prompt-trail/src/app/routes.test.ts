@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildPromptEditPath,
   buildRunDetailPath,
   buildNewTrailReusePath,
   routeDefinitions,
@@ -14,6 +15,8 @@ describe('route contract', () => {
       [routeIds.root]: '/',
       [routeIds.dashboard]: '/dashboard',
       [routeIds.promptLibrary]: '/prompts',
+      [routeIds.promptNew]: '/prompts/new',
+      [routeIds.promptEdit]: '/prompts/:promptId/edit',
       [routeIds.contextLibrary]: '/contexts',
       [routeIds.recipeBuilder]: '/recipes/builder',
       [routeIds.newTrail]: '/runs/new',
@@ -34,6 +37,16 @@ describe('route contract', () => {
         id: routeIds.promptLibrary,
         path: routePaths.promptLibrary,
         label: 'Prompt Library',
+      },
+      {
+        id: routeIds.promptNew,
+        path: routePaths.promptNew,
+        label: 'New Prompt',
+      },
+      {
+        id: routeIds.promptEdit,
+        path: routePaths.promptEdit,
+        label: 'Edit Prompt',
       },
       {
         id: routeIds.contextLibrary,
@@ -58,6 +71,12 @@ describe('route contract', () => {
   it('builds URL-encoded Run Detail paths', () => {
     expect(buildRunDetailPath('run 1/with symbols?')).toBe(
       '/runs/run%201%2Fwith%20symbols%3F',
+    );
+  });
+
+  it('builds URL-encoded Prompt edit paths', () => {
+    expect(buildPromptEditPath('prompt 1/with symbols?')).toBe(
+      '/prompts/prompt%201%2Fwith%20symbols%3F/edit',
     );
   });
 

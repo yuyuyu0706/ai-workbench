@@ -188,6 +188,10 @@ export function NewTrailPage() {
           title="Prompt"
           description="Promptの最初の行がTrailタイトルになります。"
         >
+          <p>
+            入力内容はActive Prompt資産として保存され、Prompt
+            Libraryから再利用できます。
+          </p>
           <form className="pt-form" onSubmit={submit}>
             <label htmlFor="prompt-body">Prompt本文</label>
             <textarea
