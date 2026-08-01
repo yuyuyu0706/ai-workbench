@@ -2,7 +2,7 @@
 
 この資料は、PromptTrail の **画面構成・利用導線ドキュメント** です。狭義の画面遷移図ではなく、利用者から見える画面、画面責務、Prompt / Context / Recipe / Run の利用導線、画面構成イメージを整理するための正本として扱います。
 
-対象時点は **Phase 2 Prompt新規登録・編集機能実装時点**です。`/`のPublic Alpha Guide、Repository接続済みのDashboard、Run Detail、Prompt Library、Prompt Editor、PromptからDirect Runを作成するNew Trail、未完成画面のContext Library／Recipe Builder、Not Foundへ到達できます。Promptの論理削除やPromptからのTrail作成、Trailの識別・到達性を補完する後続計画は[Roadmap](roadmap.md)を正本とします。
+対象時点は **Phase 2 Prompt新規登録・編集・論理削除機能実装時点**です。`/`のPublic Alpha Guide、Repository接続済みのDashboard、Run Detail、Prompt Library、Prompt Editor、PromptからDirect Runを作成するNew Trail、未完成画面のContext Library／Recipe Builder、Not Foundへ到達できます。PromptからのTrail作成、Trailの識別・到達性を補完する後続計画は[Roadmap](roadmap.md)を正本とします。
 
 技術・責務境界、Runtime、Bootstrap、Provider、Repository、DB、Router、AppShell などの内部構造は [Application Architecture](application-architecture.md) を正本とし、本資料では主対象にしません。Phase 0 の横断的な実装状態は [PromptTrail Phase 0 Technical Baseline](../../architecture/prompt-trail/README.md) を参照してください。URL、route parameter、Router 契約、Not Found、直接 URL、戻る導線、到達・例外・復帰図の詳細は本資料の Route Contract を正本として扱います。
 
@@ -148,12 +148,14 @@ P0-4-3 の状態表示は、Repository 連携前の利用開始状態と、将�
 | `dashboard`      | `/dashboard`              | Dashboard          | あり     | P0-4 以降の基本入口                                                              |
 | `promptLibrary`  | `/prompts`                | Prompt Library     | なし     | Active Promptの一覧・検索と新規登録・編集への導線。主要Navigationには未表示      |
 | `promptNew`      | `/prompts/new`            | Prompt Editor      | なし     | Default Project配下のActive Promptを新規登録するcontextual route                 |
-| `promptEdit`     | `/prompts/:promptId/edit` | Prompt Editor      | なし     | ProjectまたはGlobalのActive Promptを編集するcontextual route                     |
+| `promptEdit`     | `/prompts/:promptId/edit` | Prompt Editor      | なし     | Active Promptを編集し、Danger Zoneから確認付きで論理削除するcontextual route     |
 | `contextLibrary` | `/contexts`               | Context Library    | なし     | 未完成の間はdirect accessのみ                                                    |
 | `recipeBuilder`  | `/recipes/builder`        | Recipe Builder     | なし     | 未完成の間はdirect accessのみ                                                    |
 | `newTrail`       | `/runs/new`               | New Trail          | なし     | Dashboard CTA から到達する contextual route。global navigation には含めない      |
 | `runDetail`      | `/runs/:runId`            | Run Detail         | なし     | contextual route。常設グローバルナビではなく、Run などの文脈から到達する詳細画面 |
 | `notFound`       | `*`                       | Not Found          | なし     | recovery route。未知 URL から復帰導線を提示するための画面                        |
+
+Prompt EditorのDanger Zoneは編集Routeだけに表示し、保存済みタイトルと「今後の利用対象から除外する一方、過去Run・関連Link・実行時のPrompt Snapshotは残る」ことを確認してから`deletedAt`を設定します。削除はPromptだけに限定した非Cascade操作で、成功後はPrompt Libraryへ遷移して一回限りの通知を表示します。削除済みPromptの編集Routeはunavailableを表示します。
 
 現行のグローバルナビゲーション対象は「はじめに」とDashboardです。Prompt LibraryはP2-1-4の仕様・UI洗練後に主要Navigationへ戻し、Context Library / Recipe Builderは利用可能になるまで表示しません。Run Detailは実行文脈にひもづくcontextual route、Not Foundは未知URLからのrecovery routeとして扱います。
 

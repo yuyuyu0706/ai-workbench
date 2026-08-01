@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -124,6 +125,45 @@ function renderEditor(
   );
 }
 
+function RepositorySwitchingEditor({
+  first,
+  second,
+}: {
+  first: PromptTrailRepository;
+  second: PromptTrailRepository;
+}) {
+  const [repository, setRepository] = useState(first);
+  return (
+    <MemoryRouter initialEntries={['/prompts/prompt-edit/edit']}>
+      <PromptTrailRepositoryProvider repository={repository}>
+        <PromptTrailDataRevisionProvider>
+          <DeveloperToolsProvider value={null}>
+            <Routes>
+              <Route
+                path="/prompts/:promptId/edit"
+                element={<PromptEditorPage mode="edit" />}
+              />
+              <Route
+                path="/prompts"
+                element={
+                  <>
+                    <h1>Prompt Library</h1>
+                    <RevisionProbe />
+                  </>
+                }
+              />
+            </Routes>
+            <button onClick={() => setRepository(second)}>
+              Repository切替
+            </button>
+            <RevisionProbe />
+          </DeveloperToolsProvider>
+        </PromptTrailDataRevisionProvider>
+      </PromptTrailRepositoryProvider>
+    </MemoryRouter>
+  );
+}
+
 async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('Promptタイトル'), '新規タイトル');
   await user.type(screen.getByLabelText('Prompt本文'), '  Markdown\n  本文');
@@ -177,6 +217,152 @@ describe('PromptEditorPage', () => {
       expect.any(String),
     );
     expect(screen.getByLabelText('revision')).toHaveTextContent('1');
+  });
+
+  it('retains edits after delete failure, prevents duplicate deletion, and retries', async () => {
+    const deleting = deferred<Prompt>();
+    const softDeletePrompt = vi
+      .fn()
+      .mockImplementationOnce(() => deleting.promise)
+      .mockImplementationOnce(async () => ({
+        ...prompt,
+        deletedAt: timestamp,
+      }));
+    const user = userEvent.setup();
+    renderEditor(
+      {
+        getPrompt: vi.fn(async () => prompt),
+        softDeletePrompt,
+      } as unknown as PromptTrailRepository,
+      { initialEntry: '/prompts/prompt-edit/edit' },
+    );
+    await screen.findByDisplayValue('既存タイトル');
+    await user.clear(screen.getByLabelText('Prompt本文'));
+    await user.type(screen.getByLabelText('Prompt本文'), '保持する編集値');
+    await user.click(screen.getByRole('button', { name: 'Promptを削除' }));
+    await user.dblClick(screen.getByRole('button', { name: '削除する' }));
+    expect(softDeletePrompt).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: '削除中...' })).toBeDisabled();
+    expect(screen.getByLabelText('Prompt本文')).toBeDisabled();
+    expect(screen.getByRole('button', { name: '保存' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'キャンセル' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Prompt Libraryへ戻る' }),
+    ).toBeDisabled();
+
+    await act(() => deleting.reject(new Error('private repository error')));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '削除に失敗しました。',
+    );
+    expect(screen.queryByText('private repository error')).toBeNull();
+    expect(screen.getByLabelText('Prompt本文')).toHaveValue('保持する編集値');
+    await user.click(screen.getByRole('button', { name: '削除する' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Prompt Library' }),
+    ).toBeVisible();
+    expect(softDeletePrompt).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    [null, 'Promptが見つかりません。'],
+    [{ ...prompt, deletedAt: timestamp }, 'このPromptは編集できません。'],
+  ] as const)(
+    'maps a stale delete target to page state',
+    async (latest, message) => {
+      const getPrompt = vi
+        .fn()
+        .mockResolvedValueOnce(prompt)
+        .mockResolvedValueOnce(latest);
+      const user = userEvent.setup();
+      renderEditor(
+        {
+          getPrompt,
+          softDeletePrompt: vi.fn(),
+        } as unknown as PromptTrailRepository,
+        { initialEntry: '/prompts/prompt-edit/edit' },
+      );
+      await user.click(
+        await screen.findByRole('button', { name: 'Promptを削除' }),
+      );
+      await user.click(screen.getByRole('button', { name: '削除する' }));
+      expect(await screen.findByText(message)).toBeVisible();
+    },
+  );
+
+  it('ignores deletion completion after route switching and unmount', async () => {
+    for (const destination of ['別Promptへ', 'Dashboardへ'] as const) {
+      const deleting = deferred<Prompt>();
+      const user = userEvent.setup();
+      const view = renderEditor(
+        {
+          getPrompt: vi.fn(async (id) => ({ ...prompt, id })),
+          softDeletePrompt: vi.fn(() => deleting.promise),
+        } as unknown as PromptTrailRepository,
+        { initialEntry: '/prompts/prompt-edit/edit' },
+      );
+      await user.click(
+        await screen.findByRole('button', { name: 'Promptを削除' }),
+      );
+      await user.click(screen.getByRole('button', { name: '削除する' }));
+      await user.click(screen.getByRole('button', { name: destination }));
+      await act(() => deleting.resolve({ ...prompt, deletedAt: timestamp }));
+      expect(
+        screen.queryByRole('heading', { name: 'Prompt Library' }),
+      ).toBeNull();
+      view.unmount();
+    }
+  });
+
+  it('ignores deletion completion after repository switching', async () => {
+    const deleting = deferred<Prompt>();
+    const first = {
+      getPrompt: vi.fn(async () => prompt),
+      softDeletePrompt: vi.fn(() => deleting.promise),
+    } as unknown as PromptTrailRepository;
+    const second = {
+      getPrompt: vi.fn(async () => ({ ...prompt, title: '切替後Prompt' })),
+    } as unknown as PromptTrailRepository;
+    const user = userEvent.setup();
+    render(<RepositorySwitchingEditor first={first} second={second} />);
+    await user.click(
+      await screen.findByRole('button', { name: 'Promptを削除' }),
+    );
+    await user.click(screen.getByRole('button', { name: '削除する' }));
+    await user.click(screen.getByRole('button', { name: 'Repository切替' }));
+    expect(await screen.findByDisplayValue('切替後Prompt')).toBeVisible();
+    await act(() => deleting.resolve({ ...prompt, deletedAt: timestamp }));
+    expect(
+      screen.queryByRole('heading', { name: 'Prompt Library' }),
+    ).toBeNull();
+    expect(screen.getAllByLabelText('revision')[0]).toHaveTextContent('0');
+  });
+
+  it('renders delete overrides without repository deletion, revision, or navigation', async () => {
+    const store = createStore();
+    const softDeletePrompt = vi.fn();
+    renderEditor(
+      {
+        getPrompt: vi.fn(async () => prompt),
+        softDeletePrompt,
+      } as unknown as PromptTrailRepository,
+      { initialEntry: '/prompts/prompt-edit/edit', store },
+    );
+    await screen.findByDisplayValue('既存タイトル');
+    for (const [state, button] of [
+      ['confirming', '削除する'],
+      ['deleting', '削除中...'],
+      ['delete-failure', '削除する'],
+    ] as const) {
+      act(() =>
+        store.setActiveOverride({ target: 'prompt-editor-delete', state }),
+      );
+      expect(screen.getByRole('button', { name: button })).toBeVisible();
+    }
+    await userEvent.click(screen.getByRole('button', { name: '削除する' }));
+    expect(softDeletePrompt).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole('heading', { name: 'Prompt Library' }),
+    ).toBeNull();
   });
 
   it('renders create mode and validates while retaining entered values', async () => {
