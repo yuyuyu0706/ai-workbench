@@ -18,8 +18,7 @@ const primaryPages = [
     path: '/prompts',
     heading: 'Prompt Library',
     currentNavigationLabel: 'Prompt Library',
-    sectionHeading: 'Prompt資産',
-    startState: 'Prompt資産を登録する前の利用開始状態です。',
+    startState: 'Repositoryに表示できるPromptがまだありません。',
   },
   {
     path: '/contexts',
