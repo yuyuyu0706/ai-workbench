@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { usePromptTrailDataRevision } from '../app/PromptTrailDataRevisionContext';
@@ -11,6 +11,7 @@ import { PROMPT_KINDS, type Prompt, type PromptId } from '../domain';
 import {
   createPrompt,
   loadPromptEditorDataState,
+  PromptUpdateTargetError,
   updatePrompt,
   validatePromptEditorValues,
   type PromptEditorErrors,
@@ -41,6 +42,20 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
   const snapshot = useDeveloperUiStateSnapshot();
   const override = selectActiveDeveloperUiState(snapshot, 'prompt-editor-page');
   const routeKey = mode === 'create' ? 'new' : promptId;
+  const activeIdentityRef = useRef({ repository, routeKey });
+  const submissionRef = useRef<{
+    repository: typeof repository;
+    routeKey: string;
+    token: symbol;
+  } | null>(null);
+  useLayoutEffect(() => {
+    if (
+      activeIdentityRef.current.repository !== repository ||
+      activeIdentityRef.current.routeKey !== routeKey
+    )
+      submissionRef.current = null;
+    activeIdentityRef.current = { repository, routeKey };
+  }, [repository, routeKey]);
   const [loaded, setLoaded] = useState<{
     repository: typeof repository;
     routeKey: string;
@@ -133,7 +148,8 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
     if (
       override !== null ||
       displayedLoad.status !== 'data' ||
-      currentForm.status === 'submitting'
+      currentForm.status === 'submitting' ||
+      submissionRef.current !== null
     )
       return;
     const errors = validatePromptEditorValues(currentForm.values);
@@ -142,24 +158,38 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
       return;
     }
     setForm({ ...currentForm, errors: {}, status: 'submitting' });
+    const token = Symbol('prompt-submission');
+    submissionRef.current = { repository, routeKey, token };
+    const submissionIsCurrent = () =>
+      submissionRef.current?.token === token &&
+      activeIdentityRef.current.repository === repository &&
+      activeIdentityRef.current.routeKey === routeKey;
     try {
       if (mode === 'create') await createPrompt(repository, currentForm.values);
       else
         await updatePrompt(
           repository,
-          displayedLoad.prompt,
+          displayedLoad.prompt.id,
           currentForm.values,
         );
+      if (!submissionIsCurrent()) return;
       notifyDataChanged();
       navigate(routePaths.promptLibrary, {
         state: { promptSaved: mode === 'create' ? 'created' : 'updated' },
       });
-    } catch {
+    } catch (error) {
+      if (!submissionIsCurrent()) return;
+      if (error instanceof PromptUpdateTargetError) {
+        setLoaded({ repository, routeKey, state: { status: error.status } });
+        return;
+      }
       setForm((latest) =>
         latest.repository === repository && latest.routeKey === routeKey
           ? { ...latest, status: 'failure' }
           : latest,
       );
+    } finally {
+      if (submissionRef.current?.token === token) submissionRef.current = null;
     }
   }
 
@@ -252,13 +282,18 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
               >
                 {displayedStatus === 'submitting' ? '保存中...' : '保存'}
               </button>
-              <Link
-                className="pt-button pt-button--secondary"
-                aria-disabled={displayedStatus === 'submitting'}
-                to={routePaths.promptLibrary}
-              >
-                Prompt Libraryへ戻る
-              </Link>
+              {displayedStatus === 'submitting' ? (
+                <button className="pt-button pt-button--secondary" disabled>
+                  Prompt Libraryへ戻る
+                </button>
+              ) : (
+                <Link
+                  className="pt-button pt-button--secondary"
+                  to={routePaths.promptLibrary}
+                >
+                  Prompt Libraryへ戻る
+                </Link>
+              )}
             </div>
           </form>
         </PageSection>

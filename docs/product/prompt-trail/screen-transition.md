@@ -142,20 +142,20 @@ P0-4-3 の状態表示は、Repository 連携前の利用開始状態と、将�
 
 現行の Router / AppShell 実装は、画面構成・利用導線の正本である本資料と、技術・責務境界の正本である [Application Architecture](application-architecture.md) を接続するため、次の Route Contract を参照します。内部構造や Provider / Repository / DB の責務境界は Application Architecture を正本とし、本節では利用者から見える URL、画面概念、ナビゲーション上の扱いのみを固定します。
 
-| route id         | path                      | 画面               | ナビ表示   | 分類 / 備考                                                                      |
-| ---------------- | ------------------------- | ------------------ | ---------- | -------------------------------------------------------------------------------- |
-| `root`           | `/`                       | Public Alpha Guide | あり       | 価値、主要操作、保存制約、Dashboard / Feedbackへの入口                           |
-| `dashboard`      | `/dashboard`              | Dashboard          | あり       | P0-4 以降の基本入口                                                              |
-| `promptLibrary`  | `/prompts`                | Prompt Library     | なし       | Active Promptの一覧・検索と新規登録・編集への導線。主要Navigationには未表示      |
-| `promptNew`      | `/prompts/new`            | Prompt Editor      | なし       | Default Project配下のActive Promptを新規登録するcontextual route                 |
-| `promptEdit`     | `/prompts/:promptId/edit` | Prompt Editor      | `promptId` | ProjectまたはGlobalのActive Promptを編集するcontextual route                     |
-| `contextLibrary` | `/contexts`               | Context Library    | なし       | 未完成の間はdirect accessのみ                                                    |
-| `recipeBuilder`  | `/recipes/builder`        | Recipe Builder     | なし       | 未完成の間はdirect accessのみ                                                    |
-| `newTrail`       | `/runs/new`               | New Trail          | なし       | Dashboard CTA から到達する contextual route。global navigation には含めない      |
-| `runDetail`      | `/runs/:runId`            | Run Detail         | なし       | contextual route。常設グローバルナビではなく、Run などの文脈から到達する詳細画面 |
-| `notFound`       | `*`                       | Not Found          | なし       | recovery route。未知 URL から復帰導線を提示するための画面                        |
+| route id         | path                      | 画面               | ナビ表示 | 分類 / 備考                                                                      |
+| ---------------- | ------------------------- | ------------------ | -------- | -------------------------------------------------------------------------------- |
+| `root`           | `/`                       | Public Alpha Guide | あり     | 価値、主要操作、保存制約、Dashboard / Feedbackへの入口                           |
+| `dashboard`      | `/dashboard`              | Dashboard          | あり     | P0-4 以降の基本入口                                                              |
+| `promptLibrary`  | `/prompts`                | Prompt Library     | なし     | Active Promptの一覧・検索と新規登録・編集への導線。主要Navigationには未表示      |
+| `promptNew`      | `/prompts/new`            | Prompt Editor      | なし     | Default Project配下のActive Promptを新規登録するcontextual route                 |
+| `promptEdit`     | `/prompts/:promptId/edit` | Prompt Editor      | なし     | ProjectまたはGlobalのActive Promptを編集するcontextual route                     |
+| `contextLibrary` | `/contexts`               | Context Library    | なし     | 未完成の間はdirect accessのみ                                                    |
+| `recipeBuilder`  | `/recipes/builder`        | Recipe Builder     | なし     | 未完成の間はdirect accessのみ                                                    |
+| `newTrail`       | `/runs/new`               | New Trail          | なし     | Dashboard CTA から到達する contextual route。global navigation には含めない      |
+| `runDetail`      | `/runs/:runId`            | Run Detail         | なし     | contextual route。常設グローバルナビではなく、Run などの文脈から到達する詳細画面 |
+| `notFound`       | `*`                       | Not Found          | なし     | recovery route。未知 URL から復帰導線を提示するための画面                        |
 
-現行のグローバルナビゲーション対象は「はじめに」とDashboardです。Phase 2で実データ接続したPrompt Libraryを戻しますが、Context Library / Recipe Builderは利用可能になるまで表示しません。Run Detailは実行文脈にひもづくcontextual route、Not Foundは未知URLからのrecovery routeとして扱います。
+現行のグローバルナビゲーション対象は「はじめに」とDashboardです。Prompt LibraryはP2-1-4の仕様・UI洗練後に主要Navigationへ戻し、Context Library / Recipe Builderは利用可能になるまで表示しません。Run Detailは実行文脈にひもづくcontextual route、Not Foundは未知URLからのrecovery routeとして扱います。
 
 アクティブナビ判定は、現行では`/`または`/dashboard`に一致するときだけ対応項目をactiveとします。`/runs/:runId`、direct accessの未完成Library、未知URLはactive navなしとして扱います。Run DetailとNot Foundの復帰導線は`routePaths.dashboard`を参照した「Dashboardへ戻る」リンクで固定し、ブラウザ履歴や`navigate(-1)`には依存しません。
 

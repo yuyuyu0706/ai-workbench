@@ -56,18 +56,62 @@ describe('Prompt editor commands', () => {
       deletedAt: null,
     };
     const savePrompt = vi.fn(async (prompt: Prompt) => prompt);
+    const latest = { ...original, tags: ['latest'], body: 'other-tab body' };
+    const repository = {
+      getPrompt: vi.fn(async () => latest),
+      savePrompt,
+    } as unknown as PromptTrailRepository;
     await updatePrompt(
-      { savePrompt } as unknown as PromptTrailRepository,
-      original,
+      repository,
+      original.id,
       { title: 'new', body: 'new body', kind: 'codex-request' },
       { now: () => after },
     );
     expect(savePrompt).toHaveBeenCalledWith({
-      ...original,
+      ...latest,
       title: 'new',
       body: 'new body',
       kind: 'codex-request',
       updatedAt: after,
     });
   });
+
+  it.each([
+    [null, 'not-found'],
+    [
+      {
+        id: 'deleted' as Prompt['id'],
+        status: 'active',
+        deletedAt: after,
+      } as Prompt,
+      'unavailable',
+    ],
+    [
+      {
+        id: 'deprecated' as Prompt['id'],
+        status: 'deprecated',
+        deletedAt: null,
+      } as Prompt,
+      'unavailable',
+    ],
+  ] as const)(
+    'does not save a missing or unavailable latest Prompt',
+    async (latest, status) => {
+      const savePrompt = vi.fn();
+      const repository = {
+        getPrompt: vi.fn(async () => latest),
+        savePrompt,
+      } as unknown as PromptTrailRepository;
+
+      await expect(
+        updatePrompt(
+          repository,
+          'target' as Prompt['id'],
+          { title: 'new', body: 'new body', kind: 'other' },
+          { now: () => after },
+        ),
+      ).rejects.toMatchObject({ status });
+      expect(savePrompt).not.toHaveBeenCalled();
+    },
+  );
 });
