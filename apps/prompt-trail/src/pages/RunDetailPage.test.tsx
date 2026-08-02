@@ -15,7 +15,10 @@ import {
   createDeveloperUiStateStore,
   type DeveloperUiStateStore,
 } from '../developer-ui-state';
-import type { PromptTrailRepository } from '../repository';
+import {
+  PromptTrailRepositoryError,
+  type PromptTrailRepository,
+} from '../repository';
 import { RunDetailPage } from './RunDetailPage';
 function renderPage(
   repository: PromptTrailRepository,
@@ -280,6 +283,69 @@ describe('RunDetailPage', () => {
     await act(async () =>
       resolveSave({ ...direct, trailTitle: 'Pending Trail' }),
     );
+  });
+
+  it('ignores an old stale reload after switching to another Run', async () => {
+    const runA = {
+      ...direct,
+      id: 'run-a',
+      projectId: 'project-a',
+      trailTitle: 'Run A Trail',
+      promptSnapshot: { title: 'Prompt A', body: 'Body A' },
+    };
+    const runB = {
+      ...direct,
+      id: 'run-b',
+      projectId: 'project-b',
+      trailTitle: 'Run B Trail',
+      promptSnapshot: { title: 'Prompt B', body: 'Body B' },
+    };
+    let runAReads = 0;
+    let resolveReload!: (run: typeof runA) => void;
+    const repository = {
+      getRun: vi.fn((id: string) => {
+        if (id === 'run-b') return Promise.resolve(runB);
+        runAReads += 1;
+        return runAReads === 1
+          ? Promise.resolve(runA)
+          : new Promise<typeof runA>((resolve) => (resolveReload = resolve));
+      }),
+      getProject: vi.fn(async (id: string) => ({
+        name: id === 'project-a' ? 'Project A' : 'Project B',
+      })),
+      listActiveLinks: vi.fn(async () => []),
+      updateRunTrailMetadata: vi.fn(async () => {
+        throw new PromptTrailRepositoryError('stale-write');
+      }),
+    } as any;
+    render(
+      <MemoryRouter initialEntries={['/runs/run-a']}>
+        <PromptTrailRepositoryProvider repository={repository}>
+          <RouteSwitchProbe />
+          <Routes>
+            <Route path="/runs/:runId" element={<RunDetailPage />} />
+          </Routes>
+        </PromptTrailRepositoryProvider>
+      </MemoryRouter>,
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Trail情報を編集' }),
+    );
+    fireEvent.change(screen.getByRole('textbox', { name: 'Trail名' }), {
+      target: { value: 'Run A draft' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '変更を保存' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: '最新内容を読み込む' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Run Bへ切替' }));
+    expect(await screen.findByText('Body B')).toBeVisible();
+
+    await act(async () => resolveReload(runA));
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(screen.getByText('Body B')).toBeVisible();
+    expect(screen.getByText(/Project B のTrail: Run B Trail/)).toBeVisible();
+    expect(screen.queryByText('Body A')).not.toBeInTheDocument();
   });
 
   it('links the Prompt snapshot to the encoded New Trail reuse URL', async () => {

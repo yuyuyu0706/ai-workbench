@@ -43,6 +43,7 @@ export function RunDetailPage() {
   const metadataErrorId = useId();
   const activeIdentityRef = useRef({ repository, runId, mounted: true });
   const metadataSubmissionRef = useRef<symbol | null>(null);
+  const metadataReloadRef = useRef<symbol | null>(null);
   const linkInformationId = useId();
   const linkInformationRef = useRef<HTMLDivElement>(null);
   const linkInformationButtonRef = useRef<HTMLButtonElement>(null);
@@ -175,6 +176,7 @@ export function RunDetailPage() {
   useLayoutEffect(() => {
     activeIdentityRef.current = { repository, runId, mounted: true };
     metadataSubmissionRef.current = null;
+    metadataReloadRef.current = null;
     return () => {
       activeIdentityRef.current.mounted = false;
     };
@@ -536,7 +538,20 @@ export function RunDetailPage() {
   }
   async function reloadLatestMetadata() {
     if (metadataOverride !== null) return;
+    const token = Symbol('metadata-reload');
+    metadataReloadRef.current = token;
+    const requestedRepository = repository;
+    const requestedRunId = runId;
     const latest = await loadRunDetailDataState(repository, runId);
+    const active = activeIdentityRef.current;
+    if (
+      !active.mounted ||
+      active.repository !== requestedRepository ||
+      active.runId !== requestedRunId ||
+      metadataReloadRef.current !== token
+    )
+      return;
+    metadataReloadRef.current = null;
     if (latest.status !== 'data') return;
     setSnapshot({ repository, runId, state: latest, links: latest.data.links });
     setMetadataSnapshot({
