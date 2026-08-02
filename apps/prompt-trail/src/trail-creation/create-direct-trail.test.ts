@@ -10,7 +10,11 @@ describe('createDirectTrail', () => {
     } as unknown as PromptTrailRepository;
     const run = await createDirectTrail(
       repository,
-      { promptBody: `\n  ${'a'.repeat(100)}  \n body ` },
+      {
+        promptBody: `\n  ${'a'.repeat(100)}  \n body `,
+        trailTitle: '  Custom Trail  ',
+        trailKind: 'development',
+      },
       {
         createId: (kind) => `${kind}-fixed`,
         now: () => '2026-01-01T00:00:00.000Z' as never,
@@ -21,8 +25,10 @@ describe('createDirectTrail', () => {
     const bundle = createDirectRunBundle.mock.calls[0][0];
     expect(bundle.prompt.body).toBe(`${'a'.repeat(100)}  \n body`);
     expect(bundle.prompt.title).toBe(`${'a'.repeat(79)}…`);
-    expect(bundle.run.trailTitle).toBe(bundle.prompt.title);
-    expect(bundle.run.trailKind).toBe('other');
+    expect(bundle.run.trailTitle).toBe('Custom Trail');
+    expect(bundle.run.trailKind).toBe('development');
+    expect(bundle.prompt.kind).toBe('other');
+    expect(bundle.run.trailTitle).not.toBe(bundle.prompt.title);
     expect(bundle.run.promptSnapshot).toMatchObject({
       promptId: 'prompt-fixed',
       body: bundle.prompt.body,
@@ -36,7 +42,25 @@ describe('createDirectTrail', () => {
       }),
     } as unknown as PromptTrailRepository;
     await expect(
-      createDirectTrail(repository, { promptBody: 'text' }),
+      createDirectTrail(repository, {
+        promptBody: 'text',
+        trailTitle: 'Trail',
+        trailKind: 'other',
+      }),
     ).rejects.toThrow('failed');
+  });
+
+  it('rejects invalid metadata before writing a bundle', async () => {
+    const repository = {
+      createDirectRunBundle: vi.fn(),
+    } as unknown as PromptTrailRepository;
+    await expect(
+      createDirectTrail(repository, {
+        promptBody: 'text',
+        trailTitle: ' \n',
+        trailKind: 'other',
+      }),
+    ).rejects.toThrow('Trail metadata is invalid.');
+    expect(repository.createDirectRunBundle).not.toHaveBeenCalled();
   });
 });

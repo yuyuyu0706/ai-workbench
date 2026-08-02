@@ -166,13 +166,13 @@ Canonical Sample Dataset
 | Prompt Library (`/prompts`)         | Repository接続済み                   | Default ProjectとGlobalのActive Promptを一覧・簡易検索する  |
 | Context Library (`/contexts`)       | 静的 start state                     | Context 管理の画面入口を示す。Repository 読み取りは未接続   |
 | Recipe Builder (`/recipes/builder`) | 静的 start state                     | Recipe 構築の画面入口を示す。Repository 読み取りは未接続    |
-| New Trail (`/runs/new`)             | contextual route                     | Prompt から Direct Run を作成する                           |
+| New Trail (`/runs/new`)             | Repository接続済み contextual route  | Trail名・Trail種別・Prompt本文から Direct Run を作成する    |
 | Run Detail (`/runs/:runId`)         | Repository 接続済み contextual route | loading / not-found / failure / data と Link 登録を表示する |
 | Not Found (`*`)                     | recovery route                       | 未知 URL を示し、Dashboard へ復帰させる                     |
 
 Prompt / Context / Recipe など、Dashboard 以外で未接続の Page は、Phase 0 の画面骨格です。これらの `StateMessage` は Repository 取得後の empty / failure を表すものではありません。
 
-Phase 2ではPrompt Libraryを実データへ接続し、接続完了時に主要Navigationへ戻します。Context Library / Recipe Builderは未完成の間はdirect routeだけを維持し、主要Navigationには表示しません。Run DomainにはPrompt資産とは独立した必須の`trailTitle`と`trailKind`を実装済みです。New Trailでの入力とRun Detailでの表示・編集は後続Issueの責務であり、現行UIはPrompt Snapshotタイトルを従来どおり表示します。
+Phase 2ではPrompt Libraryを実データへ接続し、接続完了時に主要Navigationへ戻します。Context Library / Recipe Builderは未完成の間はdirect routeだけを維持し、主要Navigationには表示しません。Run DomainにはPrompt資産とは独立した必須の`trailTitle`と`trailKind`を実装済みです。New TrailはTrail名・Trail種別・Prompt本文を個別に受け取り、新しいPromptとRunを既存Bundleでatomic保存します。過去Run再利用では3項目を初期値として引き継ぎ、元Runは変更しません。Run DetailでのTrail metadata表示・編集は後続Issueの責務です。
 
 Dexieの現行schemaはversion 2です。Database constructorは歴史的なschema v1定義をupgrade起点として保持し、既存v1 DBをopenすると同一upgrade transaction内で全Runへ`trailTitle = promptSnapshot.title`（正規化なし）、`trailKind = other`を補完します。RepositoryやUIはlegacy fallbackを持たず、open完了後の必須fieldを持つRunだけを扱います。malformed Runでmigrationが失敗した場合はtransaction全体をrollbackし、DBの削除や部分更新を行いません。
 
@@ -180,22 +180,22 @@ Prompt Repositoryが扱うPromptは編集・論理削除可能な現在の再利
 
 ## 9. Source Map
 
-| 責務                     | 実装                                                                                            |
-| ------------------------ | ----------------------------------------------------------------------------------------------- |
-| Browser Entry            | `apps/prompt-trail/src/main.tsx`                                                                |
-| Application Mount        | `apps/prompt-trail/src/app/bootstrap.tsx`                                                       |
-| Runtime Lifecycle        | `apps/prompt-trail/src/app/prompt-trail-runtime.ts`                                             |
-| Startup State            | `apps/prompt-trail/src/app/ApplicationBootstrap.tsx`                                            |
-| Repository Context       | `apps/prompt-trail/src/app/PromptTrailRepositoryContext.tsx`                                    |
-| Router / Shell           | `apps/prompt-trail/src/app/App.tsx`、`router.tsx`、`AppShell.tsx`、`routes.ts`、`navigation.ts` |
-| Dashboard UI             | `apps/prompt-trail/src/pages/DashboardPage.tsx`                                                 |
-| New Trail UI / Service   | `apps/prompt-trail/src/pages/NewTrailPage.tsx`、`trail-creation/create-direct-trail.ts`         |
-| Run Detail UI / Query    | `apps/prompt-trail/src/pages/RunDetailPage.tsx`、`run-detail/`                                  |
-| Link Factory             | `apps/prompt-trail/src/trail-creation/create-run-link.ts`                                       |
-| Dashboard State          | `apps/prompt-trail/src/dashboard/dashboard-data-state.ts`                                       |
-| Dashboard Query          | `apps/prompt-trail/src/dashboard/dashboard-read-query.ts`                                       |
-| Sample Seed              | `apps/prompt-trail/src/sample-data/seed-sample-data.ts`                                         |
-| Repository / Persistence | `apps/prompt-trail/src/repository/`、`apps/prompt-trail/src/db/`                                |
+| 責務                     | 実装                                                                                                       |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| Browser Entry            | `apps/prompt-trail/src/main.tsx`                                                                           |
+| Application Mount        | `apps/prompt-trail/src/app/bootstrap.tsx`                                                                  |
+| Runtime Lifecycle        | `apps/prompt-trail/src/app/prompt-trail-runtime.ts`                                                        |
+| Startup State            | `apps/prompt-trail/src/app/ApplicationBootstrap.tsx`                                                       |
+| Repository Context       | `apps/prompt-trail/src/app/PromptTrailRepositoryContext.tsx`                                               |
+| Router / Shell           | `apps/prompt-trail/src/app/App.tsx`、`router.tsx`、`AppShell.tsx`、`routes.ts`、`navigation.ts`            |
+| Dashboard UI             | `apps/prompt-trail/src/pages/DashboardPage.tsx`                                                            |
+| New Trail UI / Service   | `apps/prompt-trail/src/pages/NewTrailPage.tsx`、`trail-creation/create-direct-trail.ts`、`trail-metadata/` |
+| Run Detail UI / Query    | `apps/prompt-trail/src/pages/RunDetailPage.tsx`、`run-detail/`                                             |
+| Link Factory             | `apps/prompt-trail/src/trail-creation/create-run-link.ts`                                                  |
+| Dashboard State          | `apps/prompt-trail/src/dashboard/dashboard-data-state.ts`                                                  |
+| Dashboard Query          | `apps/prompt-trail/src/dashboard/dashboard-read-query.ts`                                                  |
+| Sample Seed              | `apps/prompt-trail/src/sample-data/seed-sample-data.ts`                                                    |
+| Repository / Persistence | `apps/prompt-trail/src/repository/`、`apps/prompt-trail/src/db/`                                           |
 
 ## 10. 更新トリガー
 

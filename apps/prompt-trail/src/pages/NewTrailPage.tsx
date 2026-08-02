@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Link,
   useLocation,
@@ -10,56 +10,75 @@ import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageHeader, PageSection } from '../components/ui';
 import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
 import { selectActiveDeveloperUiState } from '../developer-ui-state';
-import { createDirectTrail } from '../trail-creation/create-direct-trail';
+import { TRAIL_KINDS, type TrailKind } from '../domain';
+import { TRAIL_KIND_LABELS, validateTrailMetadata } from '../trail-metadata';
+import {
+  createDirectTrail,
+  createPromptTitle,
+} from '../trail-creation/create-direct-trail';
 import {
   loadReusableRun,
   type ReusableRunState,
 } from '../trail-creation/load-reusable-run';
+
+type FormState = {
+  repository: ReturnType<typeof usePromptTrailRepository>;
+  identity: string;
+  body: string;
+  trailTitle: string;
+  trailKind: TrailKind;
+  bodyDirty: boolean;
+  titleDirty: boolean;
+  kindDirty: boolean;
+  titleOrigin: 'auto' | 'source' | 'manual';
+  status: 'idle' | 'submitting' | 'failure';
+};
+
 export function NewTrailPage() {
   const repository = usePromptTrailRepository();
   const navigate = useNavigate();
   const location = useLocation();
-  const reuseSessionKey = location.key;
   const [searchParams] = useSearchParams();
   const sourceRunId = searchParams.get('sourceRunId');
+  const identity = `${location.key}:${sourceRunId ?? ''}`;
   const uiStateSnapshot = useDeveloperUiStateSnapshot();
-  const [formSnapshot, setFormSnapshot] = useState(() => ({
-    repository,
-    sourceRunId,
-    reuseSessionKey,
-    body: '',
-    dirty: false,
-    status: 'idle' as 'idle' | 'submitting' | 'failure',
-  }));
+  const [formSnapshot, setFormSnapshot] = useState<FormState>(() =>
+    emptyForm(repository, identity),
+  );
   const [retryVersion, setRetryVersion] = useState(0);
   const [reuseSnapshot, setReuseSnapshot] = useState<{
     repository: typeof repository;
-    sourceRunId: string;
-    reuseSessionKey: string;
+    identity: string;
     retryVersion: number;
     state: ReusableRunState | { status: 'loading' };
   } | null>(null);
+  const currentIdentityRef = useRef(identity);
+  const submissionRef = useRef<{ token: symbol; identity: string } | null>(
+    null,
+  );
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+  useEffect(() => {
+    currentIdentityRef.current = identity;
+  }, [identity]);
+
   const form =
-    formSnapshot.repository === repository &&
-    formSnapshot.sourceRunId === sourceRunId &&
-    formSnapshot.reuseSessionKey === reuseSessionKey
+    formSnapshot.repository === repository && formSnapshot.identity === identity
       ? formSnapshot
-      : {
-          repository,
-          sourceRunId,
-          reuseSessionKey,
-          body: '',
-          dirty: false,
-          status: 'idle' as const,
-        };
-  const { body } = form;
-  const valid = body.trim().length > 0;
+      : emptyForm(repository, identity);
+  const metadataErrors = validateTrailMetadata(form);
+  const bodyValid = form.body.trim().length > 0;
+  const valid = bodyValid && metadataErrors.length === 0;
   const reuseState =
     sourceRunId === null
       ? null
       : reuseSnapshot?.repository === repository &&
-          reuseSnapshot.sourceRunId === sourceRunId &&
-          reuseSnapshot.reuseSessionKey === reuseSessionKey &&
+          reuseSnapshot.identity === identity &&
           reuseSnapshot.retryVersion === retryVersion
         ? reuseSnapshot.state
         : ({ status: 'loading' } as const);
@@ -73,72 +92,89 @@ export function NewTrailPage() {
       : formOverride === 'save-failure'
         ? 'failure'
         : form.status;
+  const disabled = displayedStatus === 'submitting';
+
   useEffect(() => {
     if (sourceRunId === null) return;
     let active = true;
     void loadReusableRun(repository, sourceRunId).then((state) => {
       if (!active) return;
-      setReuseSnapshot({
-        repository,
-        sourceRunId,
-        reuseSessionKey,
-        retryVersion,
-        state,
-      });
+      setReuseSnapshot({ repository, identity, retryVersion, state });
       if (state.status === 'data')
         setFormSnapshot((current) => {
-          if (
-            current.repository === repository &&
-            current.sourceRunId === sourceRunId &&
-            current.reuseSessionKey === reuseSessionKey &&
-            current.dirty
-          )
-            return current;
+          const target =
+            current.repository === repository && current.identity === identity
+              ? current
+              : emptyForm(repository, identity);
           return {
-            repository,
-            sourceRunId,
-            reuseSessionKey,
-            body: state.run.promptSnapshot.body,
-            dirty: false,
-            status: 'idle',
+            ...target,
+            body: target.bodyDirty
+              ? target.body
+              : state.run.promptSnapshot.body,
+            trailTitle: target.titleDirty
+              ? target.trailTitle
+              : state.run.trailTitle,
+            trailKind: target.kindDirty
+              ? target.trailKind
+              : state.run.trailKind,
+            titleOrigin: target.titleDirty ? target.titleOrigin : 'source',
           };
         });
     });
     return () => {
       active = false;
     };
-  }, [repository, retryVersion, reuseSessionKey, sourceRunId]);
+  }, [identity, repository, retryVersion, sourceRunId]);
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (
       formOverride !== null ||
       !valid ||
       form.status === 'submitting' ||
-      reuseState?.status === 'loading'
+      reuseState?.status === 'loading' ||
+      submissionRef.current?.identity === identity
     )
       return;
+    const token = Symbol('new-trail-submission');
+    submissionRef.current = { token, identity };
     setFormSnapshot({ ...form, status: 'submitting' });
     try {
-      const run = await createDirectTrail(repository, { promptBody: body });
-      navigate(buildRunDetailPath(run.id), {
-        state: { trailCreated: true },
+      const run = await createDirectTrail(repository, {
+        promptBody: form.body,
+        trailTitle: form.trailTitle,
+        trailKind: form.trailKind,
       });
+      if (
+        mountedRef.current &&
+        submissionRef.current?.token === token &&
+        currentIdentityRef.current === identity
+      )
+        navigate(buildRunDetailPath(run.id), {
+          state: { trailCreated: true },
+        });
     } catch {
-      setFormSnapshot((current) =>
-        current.repository === repository &&
-        current.sourceRunId === sourceRunId &&
-        current.reuseSessionKey === reuseSessionKey
-          ? { ...current, status: 'failure' }
-          : current,
-      );
+      if (
+        mountedRef.current &&
+        submissionRef.current?.token === token &&
+        currentIdentityRef.current === identity
+      )
+        setFormSnapshot((current) =>
+          current.repository === repository && current.identity === identity
+            ? { ...current, status: 'failure' }
+            : current,
+        );
+    } finally {
+      if (submissionRef.current?.token === token) submissionRef.current = null;
     }
   }
+
   return (
     <section className="prompt-trail-page">
       <PageHeader
         eyebrow="New Trail"
         title="新しいTrailを始める"
-        description="AIに依頼する内容を入力してください。作業後に関連リンクを追加すると、依頼から成果までをTrailとして残せます。"
+        description="Trailの名前と用途、AIに依頼する内容を設定してください。作業後に関連リンクを追加すると、依頼から成果までをTrailとして残せます。"
       />
       <div className="prompt-trail-page__sections">
         {reuseState === null ? null : (
@@ -149,94 +185,213 @@ export function NewTrailPage() {
               <div className="pt-reuse-source">
                 <p>
                   「{reuseState.run.promptSnapshot.title}
-                  」のPrompt本文を引き継ぎました。編集して新しいTrailを作成できます。
+                  」のTrail名、Trail種別、Prompt本文を引き継ぎました。編集して新しいTrailを作成できます。
                 </p>
-                <Link to={buildRunDetailPath(reuseState.run.id)}>
-                  元のTrailを確認
-                </Link>
+                {disabled ? (
+                  <span
+                    className="pt-button pt-button--secondary"
+                    aria-disabled="true"
+                  >
+                    元のTrailを確認
+                  </span>
+                ) : (
+                  <Link to={buildRunDetailPath(reuseState.run.id)}>
+                    元のTrailを確認
+                  </Link>
+                )}
               </div>
             ) : (
-              <div className="pt-reuse-source" role="alert">
-                <p>
-                  {reuseState.status === 'not-found'
-                    ? '再利用元のRunが見つかりません。'
-                    : '再利用元のRunを読み込めませんでした。'}
-                  空のPromptから通常のTrailを作成できます。
-                </p>
-                <div className="prompt-trail-page__actions">
-                  {reuseState.status === 'failure' ? (
-                    <button
-                      className="pt-button pt-button--secondary"
-                      type="button"
-                      onClick={() => setRetryVersion((value) => value + 1)}
-                    >
-                      再試行
-                    </button>
-                  ) : null}
-                  <Link
-                    className="pt-button pt-button--secondary"
-                    to={routePaths.newTrail}
-                  >
-                    空のPromptから始める
-                  </Link>
-                </div>
-              </div>
+              <ReuseError
+                state={reuseState.status}
+                disabled={disabled}
+                retry={() => setRetryVersion((value) => value + 1)}
+              />
             )}
           </PageSection>
         )}
         <PageSection
-          title="Prompt"
-          description="Promptの最初の行がTrailタイトルになります。"
+          title="TrailとPrompt"
+          description="Trail名は個別の作業名です。Prompt資産のタイトルはPrompt本文から別に生成されます。"
         >
-          <p>
-            入力内容はActive Prompt資産として保存され、Prompt
-            Libraryから再利用できます。
-          </p>
-          <form className="pt-form" onSubmit={submit}>
+          <form className="pt-form" onSubmit={submit} noValidate>
+            <label htmlFor="trail-title">Trail名</label>
+            <input
+              id="trail-title"
+              value={form.trailTitle}
+              maxLength={81}
+              onChange={(event) =>
+                setFormSnapshot({
+                  ...form,
+                  trailTitle: event.target.value,
+                  titleDirty: true,
+                  titleOrigin: 'manual',
+                  status: 'idle',
+                })
+              }
+              disabled={disabled}
+              aria-describedby="trail-title-help"
+              aria-invalid={metadataErrors.some((error) =>
+                error.startsWith('trail-title'),
+              )}
+            />
+            <p id="trail-title-help" className="pt-form__help">
+              必須・80文字以内。改行は使用できません。
+            </p>
+            <TrailTitleError errors={metadataErrors} />
+            <label htmlFor="trail-kind">Trail種別</label>
+            <select
+              id="trail-kind"
+              value={form.trailKind}
+              onChange={(event) =>
+                setFormSnapshot({
+                  ...form,
+                  trailKind: event.target.value as TrailKind,
+                  kindDirty: true,
+                  status: 'idle',
+                })
+              }
+              disabled={disabled}
+            >
+              {TRAIL_KINDS.map((kind) => (
+                <option key={kind} value={kind}>
+                  {TRAIL_KIND_LABELS[kind]}
+                </option>
+              ))}
+            </select>
             <label htmlFor="prompt-body">Prompt本文</label>
             <textarea
               id="prompt-body"
-              value={body}
+              value={form.body}
               onChange={(event) => {
+                const body = event.target.value;
                 setFormSnapshot({
                   ...form,
-                  body: event.target.value,
-                  dirty: true,
+                  body,
+                  bodyDirty: true,
+                  trailTitle:
+                    form.titleOrigin === 'auto'
+                      ? createPromptTitle(body)
+                      : form.trailTitle,
                   status: 'idle',
                 });
               }}
               rows={12}
-              disabled={displayedStatus === 'submitting'}
+              disabled={disabled}
             />
-            {!valid && body.length > 0 ? (
+            {!bodyValid && form.body.length > 0 ? (
               <p className="pt-form__error">Prompt本文を入力してください。</p>
             ) : null}
             {displayedStatus === 'failure' ? (
               <p className="pt-form__error">
-                保存に失敗しました。内容を確認して再試行してください。
+                保存に失敗しました。入力内容を保持しています。再試行してください。
               </p>
             ) : null}
             <div className="prompt-trail-page__actions">
               <button
                 className="pt-button pt-button--primary"
                 disabled={
-                  !valid ||
-                  displayedStatus === 'submitting' ||
-                  reuseState?.status === 'loading'
+                  !valid || disabled || reuseState?.status === 'loading'
                 }
               >
-                {displayedStatus === 'submitting' ? '作成中...' : 'Trailを作成'}
+                {disabled ? '作成中...' : 'Trailを作成'}
               </button>
-              <Link
-                className="pt-button pt-button--secondary"
-                to={routePaths.dashboard}
-              >
-                Dashboardへ戻る
-              </Link>
+              {disabled ? (
+                <span
+                  className="pt-button pt-button--secondary"
+                  aria-disabled="true"
+                >
+                  Dashboardへ戻る
+                </span>
+              ) : (
+                <Link
+                  className="pt-button pt-button--secondary"
+                  to={routePaths.dashboard}
+                >
+                  Dashboardへ戻る
+                </Link>
+              )}
             </div>
           </form>
         </PageSection>
       </div>
     </section>
+  );
+}
+
+function emptyForm(
+  repository: ReturnType<typeof usePromptTrailRepository>,
+  identity: string,
+): FormState {
+  return {
+    repository,
+    identity,
+    body: '',
+    trailTitle: '',
+    trailKind: 'other',
+    bodyDirty: false,
+    titleDirty: false,
+    kindDirty: false,
+    titleOrigin: 'auto',
+    status: 'idle',
+  };
+}
+
+function TrailTitleError({
+  errors,
+}: {
+  errors: ReturnType<typeof validateTrailMetadata>;
+}) {
+  const message = errors.includes('trail-title-newline')
+    ? 'Trail名に改行は使用できません。'
+    : errors.includes('trail-title-too-long')
+      ? 'Trail名は80文字以内で入力してください。'
+      : errors.includes('trail-title-required')
+        ? 'Trail名を入力してください。'
+        : null;
+  return message ? <p className="pt-form__error">{message}</p> : null;
+}
+
+function ReuseError({
+  state,
+  disabled,
+  retry,
+}: {
+  state: 'not-found' | 'failure';
+  disabled: boolean;
+  retry: () => void;
+}) {
+  return (
+    <div className="pt-reuse-source" role="alert">
+      <p>
+        {state === 'not-found'
+          ? '再利用元のRunが見つかりません。'
+          : '再利用元のRunを読み込めませんでした。'}
+        空のPromptから通常のTrailを作成できます。
+      </p>
+      <div className="prompt-trail-page__actions">
+        {state === 'failure' ? (
+          <button
+            className="pt-button pt-button--secondary"
+            type="button"
+            onClick={retry}
+            disabled={disabled}
+          >
+            再試行
+          </button>
+        ) : null}
+        {disabled ? (
+          <span className="pt-button pt-button--secondary" aria-disabled="true">
+            空のPromptから始める
+          </span>
+        ) : (
+          <Link
+            className="pt-button pt-button--secondary"
+            to={routePaths.newTrail}
+          >
+            空のPromptから始める
+          </Link>
+        )}
+      </div>
+    </div>
   );
 }

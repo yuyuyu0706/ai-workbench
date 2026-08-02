@@ -86,7 +86,7 @@ describe('NewTrailPage', () => {
     expect(input).toHaveValue('keep this prompt');
     expect(
       screen.getByText(
-        '保存に失敗しました。内容を確認して再試行してください。',
+        '保存に失敗しました。入力内容を保持しています。再試行してください。',
       ),
     ).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
@@ -108,11 +108,13 @@ describe('NewTrailPage', () => {
 
     expect(
       screen.getByText(
-        'AIに依頼する内容を入力してください。作業後に関連リンクを追加すると、依頼から成果までをTrailとして残せます。',
+        'Trailの名前と用途、AIに依頼する内容を設定してください。作業後に関連リンクを追加すると、依頼から成果までをTrailとして残せます。',
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText('Promptの最初の行がTrailタイトルになります。'),
+      screen.getByText(
+        'Trail名は個別の作業名です。Prompt資産のタイトルはPrompt本文から別に生成されます。',
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Default Project|Direct Run|非空行/)).toBeNull();
   });
@@ -132,7 +134,7 @@ describe('NewTrailPage', () => {
     await user.click(button);
     expect(
       await screen.findByText(
-        '保存に失敗しました。内容を確認して再試行してください。',
+        '保存に失敗しました。入力内容を保持しています。再試行してください。',
       ),
     ).toBeInTheDocument();
     expect(input).toHaveValue('keep this');
@@ -177,6 +179,8 @@ describe('NewTrailPage', () => {
     const sourceRun = {
       id: 'run-source',
       deletedAt: null,
+      trailTitle: 'Source Trail',
+      trailKind: 'research',
       promptSnapshot: { title: 'Source prompt', body: 'original snapshot' },
     };
     const createDirectRunBundle = vi.fn(async (bundle: any) => ({
@@ -223,6 +227,8 @@ describe('NewTrailPage', () => {
       resolve({
         id: 'slow-run',
         deletedAt: null,
+        trailTitle: 'Slow Trail',
+        trailKind: 'review',
         promptSnapshot: { title: 'Slow', body: 'late snapshot' },
       }),
     );
@@ -328,6 +334,8 @@ function reusableRun(id: string, body: string) {
   return {
     id,
     deletedAt: null,
+    trailTitle: `${id} Trail`,
+    trailKind: 'other',
     promptSnapshot: { title: `${id} title`, body },
   };
 }
