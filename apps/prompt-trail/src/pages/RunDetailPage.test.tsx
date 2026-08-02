@@ -15,7 +15,10 @@ import {
   createDeveloperUiStateStore,
   type DeveloperUiStateStore,
 } from '../developer-ui-state';
-import type { PromptTrailRepository } from '../repository';
+import {
+  PromptTrailRepositoryError,
+  type PromptTrailRepository,
+} from '../repository';
 import { RunDetailPage } from './RunDetailPage';
 function renderPage(
   repository: PromptTrailRepository,
@@ -45,6 +48,10 @@ function renderPage(
 }
 const direct = {
   id: 'run-1',
+  trailTitle: 'Trail A',
+  trailKind: 'development',
+  deletedAt: null,
+  archivedAt: null,
   projectId: 'project-1',
   recipeId: null,
   promptSnapshot: { title: 'Prompt A', body: 'Body A' },
@@ -95,6 +102,252 @@ function createTestUiStateStore() {
 }
 
 describe('RunDetailPage', () => {
+  it('shows Trail metadata and saves an edited title and kind', async () => {
+    const repository = createDetailRepository([]);
+    repository.updateRunTrailMetadata = vi.fn(async (update: any) => ({
+      ...direct,
+      trailTitle: update.trailTitle,
+      trailKind: update.trailKind,
+      updatedAt: update.updatedAt,
+    }));
+    renderPage(repository);
+
+    expect(await screen.findByText('Trail A')).toBeVisible();
+    expect(screen.getByText('開発')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Trail情報を編集' }));
+    const title = screen.getByRole('textbox', { name: 'Trail名' });
+    expect(title).toHaveFocus();
+    fireEvent.change(title, { target: { value: '  Updated Trail  ' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Trail種別' }), {
+      target: { value: 'research' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '変更を保存' }));
+
+    expect(await screen.findByText('Updated Trail')).toBeVisible();
+    expect(screen.getByText('調査')).toBeVisible();
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Trail情報を編集' }),
+      ).toHaveFocus(),
+    );
+    expect(repository.updateRunTrailMetadata).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedUpdatedAt: direct.updatedAt,
+        trailTitle: 'Updated Trail',
+        trailKind: 'research',
+      }),
+    );
+  });
+
+  it('keeps the draft and offers an explicit reload after a stale write', async () => {
+    const repository = createDetailRepository([]);
+    repository.updateRunTrailMetadata = vi.fn(async () => {
+      const { PromptTrailRepositoryError } = await import('../repository');
+      throw new PromptTrailRepositoryError('stale-write');
+    });
+    renderPage(repository);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Trail情報を編集' }),
+    );
+    const title = screen.getByRole('textbox', { name: 'Trail名' });
+    fireEvent.change(title, { target: { value: 'My local draft' } });
+    fireEvent.click(screen.getByRole('button', { name: '変更を保存' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '別の画面でTrail情報が更新されました',
+    );
+    expect(title).toHaveValue('My local draft');
+    expect(
+      screen.getByRole('button', { name: '最新内容を読み込む' }),
+    ).toBeVisible();
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: '最新内容を読み込む' }),
+      ).toHaveFocus(),
+    );
+    expect(title).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: 'Trail種別' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '変更を保存' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'キャンセル' })).toBeDisabled();
+
+    fireEvent.change(title, { target: { value: 'Discarded change' } });
+    fireEvent.keyDown(title, { key: 'Enter' });
+    fireEvent.keyDown(title, { key: 'Escape' });
+    fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }));
+    expect(title).toHaveValue('My local draft');
+    expect(repository.updateRunTrailMetadata).toHaveBeenCalledOnce();
+  });
+
+  it('keeps Developer Tools metadata overrides isolated from real editor state', async () => {
+    const repository = createDetailRepository([]);
+    repository.updateRunTrailMetadata = vi.fn();
+    const store = createTestUiStateStore();
+    renderPage(repository, 'run-1', undefined, store);
+    await screen.findByText('Trail A');
+
+    for (const override of [
+      'editing',
+      'submitting',
+      'save-failure',
+      'stale',
+    ] as const) {
+      act(() =>
+        store.setActiveOverride({
+          target: 'run-detail-trail-metadata',
+          state: override,
+        }),
+      );
+      expect(screen.getByRole('textbox', { name: 'Trail名' })).toHaveValue(
+        'Trail A',
+      );
+      expect(screen.getByRole('textbox', { name: 'Trail名' })).toBeDisabled();
+      fireEvent.change(screen.getByRole('textbox', { name: 'Trail名' }), {
+        target: { value: 'Override mutation' },
+      });
+      expect(repository.updateRunTrailMetadata).not.toHaveBeenCalled();
+    }
+    act(() => store.clearActiveOverride());
+    expect(screen.getByText('Trail A')).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Trail情報を編集' }),
+    ).toBeVisible();
+  });
+
+  it('associates validation errors, focuses invalid input, and disables no-op save', async () => {
+    const repository = createDetailRepository([]);
+    repository.updateRunTrailMetadata = vi.fn();
+    renderPage(repository);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Trail情報を編集' }),
+    );
+    const title = screen.getByRole('textbox', { name: 'Trail名' });
+    expect(screen.getByRole('button', { name: '変更を保存' })).toBeDisabled();
+    fireEvent.change(title, { target: { value: '   ' } });
+    fireEvent.submit(title.closest('form')!);
+    expect(await screen.findByRole('alert')).toHaveAttribute(
+      'id',
+      title.getAttribute('aria-describedby'),
+    );
+    expect(title).toHaveAttribute('aria-invalid', 'true');
+    expect(title).toHaveFocus();
+    expect(repository.updateRunTrailMetadata).not.toHaveBeenCalled();
+  });
+
+  it('retains metadata after a failure and retries successfully', async () => {
+    const repository = createDetailRepository([]);
+    repository.updateRunTrailMetadata = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('storage'))
+      .mockImplementation(async (update: any) => ({
+        ...direct,
+        trailTitle: update.trailTitle,
+        trailKind: update.trailKind,
+        updatedAt: update.updatedAt,
+      }));
+    renderPage(repository);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Trail情報を編集' }),
+    );
+    const title = screen.getByRole('textbox', { name: 'Trail名' });
+    fireEvent.change(title, { target: { value: 'Retry Trail' } });
+    fireEvent.click(screen.getByRole('button', { name: '変更を保存' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Trail情報を保存できませんでした',
+    );
+    expect(title).toHaveValue('Retry Trail');
+    fireEvent.click(screen.getByRole('button', { name: '変更を保存' }));
+    expect(await screen.findByText('Trail情報を保存しました。')).toBeVisible();
+    expect(repository.updateRunTrailMetadata).toHaveBeenCalledTimes(2);
+  });
+
+  it('blocks duplicate metadata submissions and ignores completion after unmount', async () => {
+    let resolveSave!: (run: typeof direct) => void;
+    const repository = createDetailRepository([]);
+    repository.updateRunTrailMetadata = vi.fn(
+      () => new Promise<typeof direct>((resolve) => (resolveSave = resolve)),
+    );
+    const rendered = renderPage(repository);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Trail情報を編集' }),
+    );
+    fireEvent.change(screen.getByRole('textbox', { name: 'Trail名' }), {
+      target: { value: 'Pending Trail' },
+    });
+    const form = screen
+      .getByRole('textbox', { name: 'Trail名' })
+      .closest('form')!;
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+    expect(repository.updateRunTrailMetadata).toHaveBeenCalledOnce();
+    rendered.unmount();
+    await act(async () =>
+      resolveSave({ ...direct, trailTitle: 'Pending Trail' }),
+    );
+  });
+
+  it('ignores an old stale reload after switching to another Run', async () => {
+    const runA = {
+      ...direct,
+      id: 'run-a',
+      projectId: 'project-a',
+      trailTitle: 'Run A Trail',
+      promptSnapshot: { title: 'Prompt A', body: 'Body A' },
+    };
+    const runB = {
+      ...direct,
+      id: 'run-b',
+      projectId: 'project-b',
+      trailTitle: 'Run B Trail',
+      promptSnapshot: { title: 'Prompt B', body: 'Body B' },
+    };
+    let runAReads = 0;
+    let resolveReload!: (run: typeof runA) => void;
+    const repository = {
+      getRun: vi.fn((id: string) => {
+        if (id === 'run-b') return Promise.resolve(runB);
+        runAReads += 1;
+        return runAReads === 1
+          ? Promise.resolve(runA)
+          : new Promise<typeof runA>((resolve) => (resolveReload = resolve));
+      }),
+      getProject: vi.fn(async (id: string) => ({
+        name: id === 'project-a' ? 'Project A' : 'Project B',
+      })),
+      listActiveLinks: vi.fn(async () => []),
+      updateRunTrailMetadata: vi.fn(async () => {
+        throw new PromptTrailRepositoryError('stale-write');
+      }),
+    } as any;
+    render(
+      <MemoryRouter initialEntries={['/runs/run-a']}>
+        <PromptTrailRepositoryProvider repository={repository}>
+          <RouteSwitchProbe />
+          <Routes>
+            <Route path="/runs/:runId" element={<RunDetailPage />} />
+          </Routes>
+        </PromptTrailRepositoryProvider>
+      </MemoryRouter>,
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Trail情報を編集' }),
+    );
+    fireEvent.change(screen.getByRole('textbox', { name: 'Trail名' }), {
+      target: { value: 'Run A draft' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '変更を保存' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: '最新内容を読み込む' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Run Bへ切替' }));
+    expect(await screen.findByText('Body B')).toBeVisible();
+
+    await act(async () => resolveReload(runA));
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(screen.getByText('Body B')).toBeVisible();
+    expect(screen.getByText(/Project B のTrail: Run B Trail/)).toBeVisible();
+    expect(screen.queryByText('Body A')).not.toBeInTheDocument();
+  });
+
   it('links the Prompt snapshot to the encoded New Trail reuse URL', async () => {
     renderPage(createDetailRepository([]));
 

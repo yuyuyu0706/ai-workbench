@@ -55,6 +55,16 @@ export const DEVELOPER_UI_STATE_CATALOG = [
     ],
   },
   {
+    target: 'run-detail-trail-metadata',
+    label: 'Run Detail Trail Metadata',
+    states: [
+      { state: 'editing', label: 'Editing' },
+      { state: 'submitting', label: 'Submitting' },
+      { state: 'save-failure', label: 'Save failure' },
+      { state: 'stale', label: 'Stale' },
+    ],
+  },
+  {
     target: 'run-detail-link-form',
     label: 'Run Detail Link Form',
     states: [

@@ -14,6 +14,7 @@ import type {
   RecipeId,
   Run,
   RunId,
+  TrailKind,
   UtcDateTimeString,
 } from '../domain';
 
@@ -33,6 +34,14 @@ export type DirectRunBundle = {
   readonly project: Project;
   readonly prompt: Prompt;
   readonly run: Run & { readonly recipeId: null };
+};
+
+export type RunTrailMetadataUpdate = {
+  readonly runId: RunId;
+  readonly expectedUpdatedAt: UtcDateTimeString;
+  readonly trailTitle: string;
+  readonly trailKind: TrailKind;
+  readonly updatedAt: UtcDateTimeString;
 };
 
 export class PromptTrailRepository {
@@ -304,6 +313,38 @@ export class PromptTrailRepository {
 
   async getRun(runId: RunId): Promise<Run | null> {
     return (await this.database.runs.get(runId)) ?? null;
+  }
+
+  async updateRunTrailMetadata(update: RunTrailMetadataUpdate): Promise<Run> {
+    return this.database.transaction('rw', this.database.runs, async () => {
+      const current = await this.database.runs.get(update.runId);
+      if (current === undefined) {
+        throw new PromptTrailRepositoryError(
+          'reference-not-found',
+          `Run not found: ${update.runId}`,
+        );
+      }
+      if (current.deletedAt !== null) {
+        throw new PromptTrailRepositoryError(
+          'reference-unavailable',
+          `Run is unavailable: ${update.runId}`,
+        );
+      }
+      if (current.updatedAt !== update.expectedUpdatedAt) {
+        throw new PromptTrailRepositoryError(
+          'stale-write',
+          `Run was updated: ${update.runId}`,
+        );
+      }
+      const updated: Run = {
+        ...current,
+        trailTitle: update.trailTitle,
+        trailKind: update.trailKind,
+        updatedAt: update.updatedAt,
+      };
+      await this.database.runs.put(updated);
+      return updated;
+    });
   }
 
   async listActiveRuns(projectId: ProjectId): Promise<readonly Run[]> {

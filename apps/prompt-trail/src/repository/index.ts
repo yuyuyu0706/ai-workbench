@@ -4,4 +4,8 @@ export {
 } from './errors';
 export type { PromptTrailRepositoryErrorCode } from './errors';
 export { PromptTrailRepository } from './prompt-trail-repository';
-export type { DirectRunBundle, TrailBundle } from './prompt-trail-repository';
+export type {
+  DirectRunBundle,
+  RunTrailMetadataUpdate,
+  TrailBundle,
+} from './prompt-trail-repository';
