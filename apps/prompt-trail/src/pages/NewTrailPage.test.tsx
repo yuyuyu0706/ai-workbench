@@ -30,6 +30,9 @@ function QueryControls() {
         Run B
       </button>
       <button onClick={() => navigate('/runs/new')}>通常New Trail</button>
+      <button onClick={() => navigate('/runs/new?sourcePromptId=prompt-b')}>
+        Prompt B
+      </button>
     </nav>
   );
 }
@@ -153,6 +156,90 @@ describe('NewTrailPage', () => {
     await user.click(screen.getByRole('button', { name: '作成中...' }));
     expect(repository.createDirectRunFromPrompt).toHaveBeenCalledOnce();
     resolve({});
+  });
+
+  it('discards Prompt A stale completion after Prompt B finishes loading', async () => {
+    const user = userEvent.setup();
+    let rejectPromptA!: (reason: Error) => void;
+    const repository = {
+      getPrompt: vi.fn((id: string) =>
+        Promise.resolve(
+          reusablePrompt(
+            id === 'prompt-b' ? 'Prompt B body' : 'Prompt A body',
+            id,
+          ),
+        ),
+      ),
+      createDirectRunFromPrompt: vi.fn(
+        () => new Promise((_done, reject) => (rejectPromptA = reject)),
+      ),
+    } as unknown as PromptTrailRepository;
+    renderPage(
+      repository,
+      undefined,
+      '/runs/new?sourcePromptId=prompt-a',
+      true,
+    );
+    await screen.findByDisplayValue('Prompt A body');
+    await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
+    await user.click(screen.getByRole('button', { name: 'Prompt B' }));
+    await screen.findByDisplayValue('Prompt B body');
+    await act(async () =>
+      rejectPromptA(new PromptTrailRepositoryError('stale-write')),
+    );
+    expect(screen.getByLabelText('Prompt本文')).toHaveValue('Prompt B body');
+    expect(screen.getByRole('button', { name: 'Trailを作成' })).toBeEnabled();
+    expect(
+      screen.queryByRole('button', { name: '最新のPromptを読み込む' }),
+    ).toBeNull();
+  });
+
+  it('discards stale completion after a Repository switch or unmount', async () => {
+    const user = userEvent.setup();
+    let rejectOld!: (reason: Error) => void;
+    const oldRepository = {
+      getPrompt: vi.fn().mockResolvedValue(reusablePrompt('Old body')),
+      createDirectRunFromPrompt: vi.fn(
+        () => new Promise((_done, reject) => (rejectOld = reject)),
+      ),
+    } as unknown as PromptTrailRepository;
+    const newRepository = {
+      getPrompt: vi.fn().mockResolvedValue(reusablePrompt('New body')),
+    } as unknown as PromptTrailRepository;
+    const view = renderSwitchableRepositories(
+      oldRepository,
+      newRepository,
+      '/runs/new?sourcePromptId=prompt-1',
+    );
+    await screen.findByDisplayValue('Old body');
+    await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
+    await user.click(screen.getByRole('button', { name: 'Switch Repository' }));
+    await screen.findByDisplayValue('New body');
+    await act(async () =>
+      rejectOld(new PromptTrailRepositoryError('stale-write')),
+    );
+    expect(screen.getByLabelText('Prompt本文')).toHaveValue('New body');
+    expect(screen.getByRole('button', { name: 'Trailを作成' })).toBeEnabled();
+
+    let rejectUnmounted!: (reason: Error) => void;
+    const unmountedRepository = {
+      getPrompt: vi.fn().mockResolvedValue(reusablePrompt('Unmount body')),
+      createDirectRunFromPrompt: vi.fn(
+        () => new Promise((_done, reject) => (rejectUnmounted = reject)),
+      ),
+    } as unknown as PromptTrailRepository;
+    view.unmount();
+    const unmounted = renderPage(
+      unmountedRepository,
+      undefined,
+      '/runs/new?sourcePromptId=prompt-1',
+    );
+    await screen.findByDisplayValue('Unmount body');
+    await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
+    unmounted.unmount();
+    await act(async () =>
+      rejectUnmounted(new PromptTrailRepositoryError('stale-write')),
+    );
   });
   it('applies form overrides without losing input or saving until cleared', async () => {
     const user = userEvent.setup();
@@ -534,9 +621,9 @@ function reusableRun(id: string, body: string) {
   };
 }
 
-function reusablePrompt(body: string) {
+function reusablePrompt(body: string, id = 'prompt-1') {
   return {
-    id: 'prompt-1',
+    id,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     deletedAt: null,
@@ -553,11 +640,12 @@ function reusablePrompt(body: string) {
 function renderSwitchableRepositories(
   initialRepository: PromptTrailRepository,
   nextRepository: PromptTrailRepository,
+  initialEntry = '/runs/new',
 ) {
   function Harness() {
     const [repository, setRepository] = useState(initialRepository);
     return (
-      <MemoryRouter initialEntries={['/runs/new']}>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <PromptTrailRepositoryProvider repository={repository}>
           <DeveloperToolsProvider value={null}>
             <NewTrailPage />

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   Link,
   useLocation,
@@ -84,12 +84,26 @@ export function NewTrailPage() {
     repository: typeof repository;
     identity: string;
   } | null>(null);
+  const latestReloadPendingRef = useRef(false);
+  const activeSourceRef = useRef<{
+    repository: typeof repository | null;
+    identity: string | null;
+  }>({ repository: null, identity: null });
+  useLayoutEffect(() => {
+    activeSourceRef.current = { repository, identity };
+    submissionRef.current = null;
+    latestReloadPendingRef.current = false;
+    return () => {
+      activeSourceRef.current = { repository: null, identity: null };
+      submissionRef.current = null;
+      latestReloadPendingRef.current = false;
+    };
+  }, [identity, repository]);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const kindSelectRef = useRef<HTMLSelectElement>(null);
   const bodyInputRef = useRef<HTMLTextAreaElement>(null);
   const latestPromptButtonRef = useRef<HTMLButtonElement>(null);
   const sourcePromptSectionRef = useRef<HTMLDivElement>(null);
-  const latestReloadPendingRef = useRef(false);
   const [completionSnapshot, setCompletionSnapshot] = useState<{
     repository: typeof repository;
     identity: string;
@@ -263,7 +277,14 @@ export function NewTrailPage() {
               }),
             };
       if (result.status !== 'created') {
-        if (mountedRef.current && submissionRef.current?.token === token) {
+        if (
+          mountedRef.current &&
+          activeSourceRef.current.repository === repository &&
+          activeSourceRef.current.identity === identity &&
+          submissionRef.current?.token === token &&
+          submissionRef.current.repository === repository &&
+          submissionRef.current.identity === identity
+        ) {
           setFormSnapshot((current) =>
             current.repository === repository && current.identity === identity
               ? { ...current, status: 'idle' }
