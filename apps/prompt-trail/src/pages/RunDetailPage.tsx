@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { usePromptTrailDataRevision } from '../app/PromptTrailDataRevisionContext';
 import { buildNewTrailReusePath, routePaths } from '../app/routes';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageHeader, PageSection, StateMessage } from '../components/ui';
@@ -9,8 +10,10 @@ import type {
   Link as TrailLink,
   LinkId,
   LinkType,
+  TrailKind,
   UtcDateTimeString,
 } from '../domain';
+import { TRAIL_KINDS } from '../domain';
 import {
   createRunLink,
   type SelectableLinkType,
@@ -20,12 +23,24 @@ import {
   type RunDetailDataState,
 } from '../run-detail/run-detail-data-state';
 import { formatDateTime } from './date-time';
+import { updateRunTrailMetadata } from '../run-detail/update-run-trail-metadata';
+import {
+  normalizeTrailTitle,
+  TRAIL_KIND_LABELS,
+  TRAIL_TITLE_MAX_LENGTH,
+  validateTrailMetadata,
+} from '../trail-metadata';
 export function RunDetailPage() {
   const repository = usePromptTrailRepository();
   const { runId = '' } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const uiStateSnapshot = useDeveloperUiStateSnapshot();
+  const { notifyDataChanged } = usePromptTrailDataRevision();
+  const metadataInputRef = useRef<HTMLInputElement>(null);
+  const metadataEditButtonRef = useRef<HTMLButtonElement>(null);
+  const activeIdentityRef = useRef({ repository, runId, mounted: true });
+  const metadataSubmissionRef = useRef<symbol | null>(null);
   const linkInformationId = useId();
   const linkInformationRef = useRef<HTMLDivElement>(null);
   const linkInformationButtonRef = useRef<HTMLButtonElement>(null);
@@ -58,6 +73,16 @@ export function RunDetailPage() {
     status: 'idle' as 'idle' | 'deleting' | 'failure',
     successNotice: false,
   });
+  const [metadataSnapshot, setMetadataSnapshot] = useState({
+    repository,
+    runId,
+    trailTitle: '',
+    trailKind: 'other' as TrailKind,
+    expectedUpdatedAt: '' as UtcDateTimeString,
+    status: 'view' as 'view' | 'editing' | 'submitting' | 'failure' | 'stale',
+    validationErrors: [] as readonly string[],
+    successNotice: false,
+  });
   const isCurrent =
     snapshot.repository === repository && snapshot.runId === runId;
   const state = isCurrent ? snapshot.state : ({ status: 'loading' } as const);
@@ -85,6 +110,11 @@ export function RunDetailPage() {
           status: 'idle' as const,
           successNotice: false,
         };
+  const metadata =
+    metadataSnapshot.repository === repository &&
+    metadataSnapshot.runId === runId
+      ? metadataSnapshot
+      : { ...metadataSnapshot, repository, runId, status: 'view' as const };
   const pageOverride = selectActiveDeveloperUiState(
     uiStateSnapshot,
     'run-detail-page',
@@ -102,6 +132,17 @@ export function RunDetailPage() {
       : formOverride === 'save-failure'
         ? 'failure'
         : form.status;
+  const metadataOverride =
+    state.status === 'data'
+      ? selectActiveDeveloperUiState(
+          uiStateSnapshot,
+          'run-detail-trail-metadata',
+        )
+      : null;
+  const displayedMetadataStatus =
+    metadataOverride === 'save-failure'
+      ? 'failure'
+      : (metadataOverride ?? metadata.status);
   const deleteOverride =
     state.status === 'data' && links.length > 0
       ? selectActiveDeveloperUiState(uiStateSnapshot, 'run-detail-link-delete')
@@ -111,6 +152,13 @@ export function RunDetailPage() {
       ? deletion.linkId
       : links[0]?.id
     : null;
+  useLayoutEffect(() => {
+    activeIdentityRef.current = { repository, runId, mounted: true };
+    metadataSubmissionRef.current = null;
+    return () => {
+      activeIdentityRef.current.mounted = false;
+    };
+  }, [repository, runId]);
   useEffect(() => {
     if (trailCreated) {
       void navigate(`${location.pathname}${location.search}${location.hash}`, {
@@ -140,6 +188,10 @@ export function RunDetailPage() {
       active = false;
     };
   }, [repository, runId]);
+  useEffect(() => {
+    if (displayedMetadataStatus === 'editing')
+      metadataInputRef.current?.focus();
+  }, [displayedMetadataStatus]);
   useEffect(() => {
     if (!isLinkInformationOpen) return;
 
@@ -345,6 +397,131 @@ export function RunDetailPage() {
       );
     }
   }
+  function beginMetadataEdit() {
+    if (metadataOverride !== null || state.status !== 'data') return;
+    setMetadataSnapshot({
+      repository,
+      runId,
+      trailTitle: state.data.run.trailTitle,
+      trailKind: state.data.run.trailKind,
+      expectedUpdatedAt: state.data.run.updatedAt,
+      status: 'editing',
+      validationErrors: [],
+      successNotice: false,
+    });
+  }
+  function cancelMetadataEdit() {
+    if (metadataOverride !== null || metadata.status === 'submitting') return;
+    setMetadataSnapshot({ ...metadata, status: 'view', validationErrors: [] });
+    requestAnimationFrame(() => metadataEditButtonRef.current?.focus());
+  }
+  async function saveMetadata(event: React.FormEvent) {
+    event.preventDefault();
+    if (
+      metadataOverride !== null ||
+      state.status !== 'data' ||
+      metadata.status === 'submitting' ||
+      metadataSubmissionRef.current !== null
+    )
+      return;
+    const errors = validateTrailMetadata(metadata);
+    if (errors.length > 0) {
+      setMetadataSnapshot({
+        ...metadata,
+        status: 'failure',
+        validationErrors: errors,
+      });
+      return;
+    }
+    const trailTitle = normalizeTrailTitle(metadata.trailTitle);
+    if (
+      trailTitle === state.data.run.trailTitle &&
+      metadata.trailKind === state.data.run.trailKind
+    ) {
+      setMetadataSnapshot({ ...metadata, trailTitle, status: 'view' });
+      return;
+    }
+    const token = Symbol('metadata-submission');
+    metadataSubmissionRef.current = token;
+    setMetadataSnapshot({
+      ...metadata,
+      status: 'submitting',
+      validationErrors: [],
+      successNotice: false,
+    });
+    try {
+      const result = await updateRunTrailMetadata(repository, {
+        runId: state.data.run.id,
+        expectedUpdatedAt: metadata.expectedUpdatedAt,
+        trailTitle,
+        trailKind: metadata.trailKind,
+      });
+      const active = activeIdentityRef.current;
+      if (
+        !active.mounted ||
+        active.repository !== repository ||
+        active.runId !== runId ||
+        metadataSubmissionRef.current !== token
+      )
+        return;
+      metadataSubmissionRef.current = null;
+      if (result.status === 'success') {
+        setSnapshot((current) =>
+          current.repository === repository &&
+          current.runId === runId &&
+          current.state.status === 'data'
+            ? {
+                ...current,
+                state: {
+                  status: 'data',
+                  data: { ...current.state.data, run: result.run },
+                },
+              }
+            : current,
+        );
+        setMetadataSnapshot({
+          repository,
+          runId,
+          trailTitle: result.run.trailTitle,
+          trailKind: result.run.trailKind,
+          expectedUpdatedAt: result.run.updatedAt,
+          status: 'view',
+          validationErrors: [],
+          successNotice: true,
+        });
+        notifyDataChanged();
+      } else if (result.status === 'stale') {
+        setMetadataSnapshot({ ...metadata, status: 'stale' });
+      } else {
+        setMetadataSnapshot({ ...metadata, status: 'failure' });
+      }
+    } catch {
+      if (metadataSubmissionRef.current === token) {
+        metadataSubmissionRef.current = null;
+        setMetadataSnapshot((current) =>
+          current.repository === repository && current.runId === runId
+            ? { ...current, status: 'failure' }
+            : current,
+        );
+      }
+    }
+  }
+  async function reloadLatestMetadata() {
+    if (metadataOverride !== null) return;
+    const latest = await loadRunDetailDataState(repository, runId);
+    if (latest.status !== 'data') return;
+    setSnapshot({ repository, runId, state: latest, links: latest.data.links });
+    setMetadataSnapshot({
+      repository,
+      runId,
+      trailTitle: latest.data.run.trailTitle,
+      trailKind: latest.data.run.trailKind,
+      expectedUpdatedAt: latest.data.run.updatedAt,
+      status: 'view',
+      validationErrors: [],
+      successNotice: false,
+    });
+  }
   if (displayedState.status === 'loading')
     return (
       <DetailMessage
@@ -375,7 +552,7 @@ export function RunDetailPage() {
       <PageHeader
         eyebrow="Run Detail"
         title="Run Detail"
-        description={`${project.name} のTrail: ${run.promptSnapshot.title}`}
+        description={`${project.name} のTrail: ${run.trailTitle}`}
       />
       <div className="prompt-trail-page__sections">
         {createdNoticeRunId === runId ? (
@@ -383,6 +560,132 @@ export function RunDetailPage() {
             Trailを作成しました。Promptを確認し、作業に関係する関連リンクを追加してください。
           </p>
         ) : null}
+        <PageSection
+          title="Trail情報"
+          actions={
+            run.deletedAt === null && displayedMetadataStatus === 'view' ? (
+              <button
+                ref={metadataEditButtonRef}
+                className="pt-button pt-button--secondary"
+                type="button"
+                onClick={beginMetadataEdit}
+              >
+                Trail情報を編集
+              </button>
+            ) : null
+          }
+        >
+          {displayedMetadataStatus === 'view' ? (
+            <>
+              <dl className="pt-detail-list">
+                <div>
+                  <dt>Trail名</dt>
+                  <dd>{run.trailTitle}</dd>
+                </div>
+                <div>
+                  <dt>Trail種別</dt>
+                  <dd>{TRAIL_KIND_LABELS[run.trailKind]}</dd>
+                </div>
+              </dl>
+              {metadataOverride === null && metadata.successNotice ? (
+                <p className="pt-success-notice" role="status">
+                  Trail情報を保存しました。
+                </p>
+              ) : null}
+            </>
+          ) : (
+            <form
+              className="pt-form pt-trail-metadata-form"
+              onSubmit={saveMetadata}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  event.preventDefault();
+                  cancelMetadataEdit();
+                }
+              }}
+            >
+              <label htmlFor="trail-title">Trail名</label>
+              <input
+                ref={metadataInputRef}
+                id="trail-title"
+                value={metadata.trailTitle}
+                maxLength={TRAIL_TITLE_MAX_LENGTH + 1}
+                disabled={displayedMetadataStatus === 'submitting'}
+                onChange={(event) =>
+                  setMetadataSnapshot({
+                    ...metadata,
+                    trailTitle: event.target.value,
+                    status: 'editing',
+                    validationErrors: [],
+                  })
+                }
+              />
+              <span className="pt-form__hint">必須・80文字以内・改行不可</span>
+              <label htmlFor="trail-kind">Trail種別</label>
+              <select
+                id="trail-kind"
+                value={metadata.trailKind}
+                disabled={displayedMetadataStatus === 'submitting'}
+                onChange={(event) =>
+                  setMetadataSnapshot({
+                    ...metadata,
+                    trailKind: event.target.value as TrailKind,
+                    status: 'editing',
+                    validationErrors: [],
+                  })
+                }
+              >
+                {TRAIL_KINDS.map((kind) => (
+                  <option key={kind} value={kind}>
+                    {TRAIL_KIND_LABELS[kind]}
+                  </option>
+                ))}
+              </select>
+              {displayedMetadataStatus === 'failure' ? (
+                <p className="pt-form__error" role="alert">
+                  {metadata.validationErrors.length > 0
+                    ? 'Trail名は必須・80文字以内で、改行を含めないでください。'
+                    : 'Trail情報を保存できませんでした。入力内容を保持しています。もう一度お試しください。'}
+                </p>
+              ) : null}
+              {displayedMetadataStatus === 'stale' ? (
+                <div role="alert">
+                  <p className="pt-form__error">
+                    別の画面でTrail情報が更新されました。最新内容を読み込み、変更内容を確認してください。
+                  </p>
+                  <button
+                    className="pt-button pt-button--secondary"
+                    type="button"
+                    onClick={() => void reloadLatestMetadata()}
+                  >
+                    最新内容を読み込む
+                  </button>
+                </div>
+              ) : null}
+              <div className="pt-trail-metadata-form__actions">
+                <button
+                  className="pt-button pt-button--primary"
+                  disabled={
+                    displayedMetadataStatus === 'submitting' ||
+                    displayedMetadataStatus === 'stale'
+                  }
+                >
+                  {displayedMetadataStatus === 'submitting'
+                    ? '保存中...'
+                    : '変更を保存'}
+                </button>
+                <button
+                  className="pt-button pt-button--secondary"
+                  type="button"
+                  disabled={displayedMetadataStatus === 'submitting'}
+                  onClick={cancelMetadataEdit}
+                >
+                  キャンセル
+                </button>
+              </div>
+            </form>
+          )}
+        </PageSection>
         <PageSection title="実行サマリ">
           <dl className="pt-detail-list">
             <div>

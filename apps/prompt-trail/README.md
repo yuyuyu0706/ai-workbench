@@ -63,3 +63,7 @@ pnpm --filter prompt-trail preview
 - [PromptTrail Overview](../../docs/product/prompt-trail/overview.md)
 - [Functional Requirements](../../docs/product/prompt-trail/functional-requirements.md)
 - [Roadmap](../../docs/product/prompt-trail/roadmap.md)
+
+### Run Detail の Trail 情報編集
+
+Run Detail では Trail 名と Trail 種別をインライン編集できます。保存は `expectedUpdatedAt` を用いた条件付き更新で、競合時は入力を保持したまま最新内容の明示的な再読み込みを求めます。Prompt Snapshot、Run Status、Link は変更しません。Dashboard での Trail metadata 表示は P2-3、Prompt Library 起点の作成は P2-1-3 の対象です。

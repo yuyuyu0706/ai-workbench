@@ -208,3 +208,7 @@ Prompt Repositoryが扱うPromptは編集・論理削除可能な現在の再利
 - Sample Seed の通常起動における位置づけが変わるとき。
 - UI から DB / Repository へのアクセス境界が変わるとき。
 - Phase 0 で新たな Page が Repository 接続されるとき。
+
+### Trail metadata の条件付き更新
+
+Run Detail は Application command を介して Trail metadata 専用 Repository API を呼ぶ。Repository は `runs` Store の read-write transaction 内で Run の存在、利用可能性、`expectedUpdatedAt` の一致を確認し、`trailTitle`、`trailKind`、`updatedAt` だけを atomic に更新する。不一致は `stale-write` とし、成功時だけ Read Model を更新して Data Revision を通知する。保存 identity は Repository、Run ID、submission token で管理し、画面切替後の応答を反映しない。

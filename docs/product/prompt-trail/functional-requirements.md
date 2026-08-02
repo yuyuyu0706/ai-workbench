@@ -456,3 +456,10 @@ PromptTrail は Local-first で、IndexedDB に browser origin ごとにデー�
 ## 12. 結論
 
 PromptTrail は、AI への依頼、Chat、Issue、PR、成果物を Link でつなぎ、次の作業へ再利用する Trail を残すプロダクトである。Phase 1のPublic Alpha公開は完了している。Phase 2で検証可能なMVPへ補完してから利用観察を行い、以後の開発優先順位を決定する。
+
+### Run Detail での Trail metadata 更新
+
+- Run Detail は Trail 名と日本語の Trail 種別を表示し、両項目だけをインライン編集できる。
+- Trail 名は trim 後に必須、80文字以内、改行不可とし、New Trail と同じ validation と label を用いる。
+- 保存は読み込み時の `updatedAt` を `expectedUpdatedAt` として条件付きで行い、Trail metadata と `updatedAt` 以外を変更しない。
+- 競合時は入力を保持し、自動再試行や強制上書きをせず、利用者が最新内容を明示的に再読み込みする。

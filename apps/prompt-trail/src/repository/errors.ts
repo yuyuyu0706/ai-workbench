@@ -2,6 +2,7 @@ export const PROMPT_TRAIL_REPOSITORY_ERROR_CODES = [
   'storage-failure',
   'reference-not-found',
   'reference-unavailable',
+  'stale-write',
   'scope-mismatch',
   'duplicate-context-id',
   'project-mismatch',

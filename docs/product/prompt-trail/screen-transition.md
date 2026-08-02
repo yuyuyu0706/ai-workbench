@@ -171,3 +171,7 @@ Prompt EditorのDanger Zoneは編集Routeだけに表示し、保存済みタイ
 - 画面構成イメージ、画面名、画面順序、画面内の主要領域が変わるとき。
 - Router / URL 契約が確定し、本資料の導線説明と差分が生じるとき。
 - Projects、Trail View、Settings を本資料の対象画面へ追加する判断が行われるとき。
+
+### Run Detail の Trail 情報
+
+Trail 情報は `view`、`editing`、`submitting`、`failure`、`stale` の状態を持つ。保存成功は同じ Route 上で Page Header、Trail 情報、Updated At に即時反映され、reload と直接 Route でも永続化結果を確認できる。別タブとの競合では draft を保持して「最新内容を読み込む」を表示し、明示操作後に最新 Run の view 状態へ戻る。

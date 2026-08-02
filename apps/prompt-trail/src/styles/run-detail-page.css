@@ -2,6 +2,12 @@
   position: static;
 }
 
+.pt-trail-metadata-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pt-space-2);
+}
+
 .pt-run-link-information__button {
   display: inline-flex;
   align-items: center;

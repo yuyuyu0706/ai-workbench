@@ -16,6 +16,7 @@ const expectedErrorCodes = [
   'storage-failure',
   'reference-not-found',
   'reference-unavailable',
+  'stale-write',
   'scope-mismatch',
   'duplicate-context-id',
   'project-mismatch',

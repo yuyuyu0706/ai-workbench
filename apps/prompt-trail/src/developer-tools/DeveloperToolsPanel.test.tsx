@@ -243,7 +243,7 @@ describe('DeveloperToolsPanel', () => {
     expect(screen.getByRole('button', { name: 'Load' })).toBeEnabled();
   });
 
-  it('renders all catalog targets and their 13 states in catalog order', async () => {
+  it('renders all catalog targets and states in catalog order', async () => {
     renderPanel(createService());
     await openReadyPanel();
 
@@ -268,7 +268,7 @@ describe('DeveloperToolsPanel', () => {
         entry.states.map((state) => state.state),
       ),
     );
-    expect(states).toHaveLength(24);
+    expect(states).toHaveLength(28);
   });
 
   it('keeps target and state selection as a draft until explicitly applied', async () => {
