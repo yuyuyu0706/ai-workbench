@@ -281,3 +281,70 @@ describe('createDirectRunBundle', () => {
     },
   );
 });
+
+describe('createDirectRunFromPrompt', () => {
+  it.each(['project', 'global'] as const)(
+    'atomically creates only a Run from an existing %s Prompt',
+    async (scope) => {
+      const database = databaseScope.createDatabase();
+      const repository = new PromptTrailRepository(database);
+      const project = buildProject();
+      const projectPrompt = buildPrompt();
+      const globalPrompt = structuredClone(projectPrompt) as Prompt & {
+        projectId?: Project['id'];
+      };
+      delete globalPrompt.projectId;
+      const prompt =
+        scope === 'global'
+          ? ({ ...globalPrompt, scope: 'global' } as Prompt)
+          : projectPrompt;
+      if (scope === 'project') await repository.saveProject(project);
+      await repository.savePrompt(prompt);
+      const run = buildRun(prompt);
+      const before = structuredClone(prompt);
+
+      await expect(
+        repository.createDirectRunFromPrompt({
+          project,
+          promptId: prompt.id,
+          expectedPromptUpdatedAt: prompt.updatedAt,
+          run,
+        }),
+      ).resolves.toEqual({ project, run });
+      await expect(repository.getPrompt(prompt.id)).resolves.toEqual(before);
+      await expect(database.prompts.count()).resolves.toBe(1);
+      await expect(database.runs.count()).resolves.toBe(1);
+    },
+  );
+
+  it.each([
+    ['stale-write', { expectedPromptUpdatedAt: '2026-01-02T00:00:00.000Z' }],
+    ['snapshot-mismatch', { run: { finalPrompt: 'changed' } }],
+    ['project-mismatch', { prompt: { projectId: 'other-project' } }],
+  ])('rolls back the Run on %s', async (code, overrides) => {
+    const scenario = overrides as {
+      prompt?: Partial<Prompt>;
+      run?: Partial<Run & { recipeId: null }>;
+      expectedPromptUpdatedAt?: string;
+    };
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    const project = buildProject();
+    await repository.saveProject(project);
+    const prompt = buildPrompt(scenario.prompt);
+    await database.prompts.add(prompt);
+    const run = buildRun(prompt, scenario.run);
+
+    await expect(
+      repository.createDirectRunFromPrompt({
+        project,
+        promptId: prompt.id,
+        expectedPromptUpdatedAt:
+          (scenario.expectedPromptUpdatedAt as UtcDateTimeString) ??
+          prompt.updatedAt,
+        run,
+      }),
+    ).rejects.toMatchObject({ code });
+    await expect(database.runs.count()).resolves.toBe(0);
+  });
+});

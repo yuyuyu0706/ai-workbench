@@ -36,6 +36,18 @@ export type DirectRunBundle = {
   readonly run: Run & { readonly recipeId: null };
 };
 
+export type DirectRunFromPromptCreation = {
+  readonly project: Project;
+  readonly promptId: PromptId;
+  readonly expectedPromptUpdatedAt: UtcDateTimeString;
+  readonly run: Run & { readonly recipeId: null };
+};
+
+export type DirectRunFromPromptResult = {
+  readonly project: Project;
+  readonly run: Run & { readonly recipeId: null };
+};
+
 export type RunTrailMetadataUpdate = {
   readonly runId: RunId;
   readonly expectedUpdatedAt: UtcDateTimeString;
@@ -116,6 +128,66 @@ export class PromptTrailRepository {
     );
 
     return { ...directRunBundle, project };
+  }
+
+  async createDirectRunFromPrompt(
+    creation: DirectRunFromPromptCreation,
+  ): Promise<DirectRunFromPromptResult> {
+    let project = creation.project;
+    await this.database.transaction(
+      'rw',
+      [this.database.projects, this.database.prompts, this.database.runs],
+      async () => {
+        const existingProject = await this.database.projects.get(project.id);
+        if (existingProject === undefined)
+          await this.database.projects.add(project);
+        else {
+          this.ensureProjectAvailable(existingProject);
+          project = existingProject;
+        }
+        const prompt = await this.database.prompts.get(creation.promptId);
+        if (prompt === undefined)
+          throw new PromptTrailRepositoryError(
+            'reference-not-found',
+            'Source Prompt not found',
+          );
+        if (prompt.deletedAt !== null || prompt.status !== 'active')
+          throw new PromptTrailRepositoryError(
+            'reference-unavailable',
+            'Source Prompt is unavailable',
+          );
+        if (
+          prompt.scope !== 'global' &&
+          (prompt.scope !== 'project' ||
+            prompt.projectId !== creation.run.projectId)
+        )
+          throw new PromptTrailRepositoryError(
+            'project-mismatch',
+            'Source Prompt belongs to another project',
+          );
+        if (prompt.updatedAt !== creation.expectedPromptUpdatedAt)
+          throw new PromptTrailRepositoryError(
+            'stale-write',
+            'Source Prompt was updated',
+          );
+        if (await this.database.runs.get(creation.run.id))
+          throw new PromptTrailRepositoryError(
+            'duplicate-id',
+            'Run ID already exists',
+          );
+        if (
+          creation.run.projectId !== project.id ||
+          creation.run.promptSnapshot.promptId !== prompt.id
+        )
+          throw new PromptTrailRepositoryError(
+            'project-mismatch',
+            'Run relationship is invalid',
+          );
+        await this.ensureDirectRunReferencesAvailable(creation.run);
+        await this.database.runs.add(creation.run);
+      },
+    );
+    return { project, run: creation.run };
   }
 
   async saveProject(project: Project): Promise<Project> {
@@ -577,7 +649,10 @@ export class PromptTrailRepository {
       );
     }
 
-    if (prompt.scope !== 'project' || prompt.projectId !== run.projectId) {
+    if (
+      prompt.scope !== 'global' &&
+      (prompt.scope !== 'project' || prompt.projectId !== run.projectId)
+    ) {
       throw new PromptTrailRepositoryError(
         'project-mismatch',
         `Direct Run Prompt belongs to another project: ${run.id}`,

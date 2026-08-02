@@ -10,7 +10,7 @@ PromptTrail は、AI を活用した作業の Trail を追跡するローカル�
 - ブラウザの IndexedDB を使うため、新しい browser / origin では Dashboard が empty state になる場合があります。これはローカル起動失敗を意味しません。
 - IndexedDBの現行schemaはversion 2です。既存のschema v1 DBはopen時にtransactional migrationされ、全Runへ従来のPrompt Snapshotタイトルと同じ`trailTitle`および`trailKind = other`が補完されます。migrationは他fieldや他Storeを変更せず、失敗時にDBを削除しません。
 
-Phase 1のPublic Alpha公開は完了しています。Phase 2ではRunのTrail名・Trail種別基盤とNew Trailの入力UIを実装済みです。過去Run再利用時はTrail名・Trail種別・Prompt本文を新しい作業の初期値として引き継ぎます。Run DetailでのTrail metadata表示・編集UIは後続Issueで扱います。Prompt Libraryの主要Navigationへの復帰と過去Trailへの到達性も後続計画です。詳細は[Roadmap](../../docs/product/prompt-trail/roadmap.md)を参照してください。
+Phase 1のPublic Alpha公開は完了しています。Phase 2ではRunのTrail名・Trail種別基盤とNew Trailの入力UIを実装済みです。過去Run再利用時は新しいPrompt資産を派生させますが、Prompt Library起点では同じPrompt資産を複製せず、現在内容を不変のRun Snapshotとして反復利用します。Prompt編集前に作成したSnapshotへ後の編集・削除は伝播しません。Prompt Libraryの主要Navigationへの復帰と過去Trailへの到達性は後続計画です。詳細は[Roadmap](../../docs/product/prompt-trail/roadmap.md)を参照してください。
 
 ## 最短起動
 
@@ -66,4 +66,4 @@ pnpm --filter prompt-trail preview
 
 ### Run Detail の Trail 情報編集
 
-Run Detail では Trail 名と Trail 種別をインライン編集できます。保存は `expectedUpdatedAt` を用いた条件付き更新で、競合時は入力を保持したまま最新内容の明示的な再読み込みを求めます。Prompt Snapshot、Run Status、Link は変更しません。Dashboard での Trail metadata 表示は P2-3、Prompt Library 起点の作成は P2-1-3 の対象です。
+Run Detail では Trail 名と Trail 種別をインライン編集できます。保存は `expectedUpdatedAt` を用いた条件付き更新で、競合時は入力を保持したまま最新内容の明示的な再読み込みを求めます。Prompt Snapshot、Run Status、Link は変更しません。Prompt LibraryのActive Promptからはread-onlyの本文を確認して新しいTrailを作成できます。Dashboard での Trail metadata 表示は P2-3の対象です。

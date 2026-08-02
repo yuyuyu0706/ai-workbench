@@ -12,6 +12,8 @@ import {
   type DeveloperUiStateStore,
 } from '../developer-ui-state';
 import type { PromptTrailRepository } from '../repository';
+import { PromptTrailRepositoryError } from '../repository';
+import { DEFAULT_PROJECT_ID } from '../domain';
 import { NewTrailPage } from './NewTrailPage';
 function LocationProbe() {
   const location = useLocation();
@@ -28,6 +30,9 @@ function QueryControls() {
         Run B
       </button>
       <button onClick={() => navigate('/runs/new')}>通常New Trail</button>
+      <button onClick={() => navigate('/runs/new?sourcePromptId=prompt-b')}>
+        Prompt B
+      </button>
     </nav>
   );
 }
@@ -54,6 +59,188 @@ function renderPage(
   );
 }
 describe('NewTrailPage', () => {
+  it('never writes for invalid or unavailable Prompt sources', async () => {
+    const user = userEvent.setup();
+    const repository = {
+      getPrompt: vi.fn().mockResolvedValue(null),
+      createDirectRunBundle: vi.fn(),
+      createDirectRunFromPrompt: vi.fn(),
+    } as unknown as PromptTrailRepository;
+    const invalid = renderPage(
+      repository,
+      undefined,
+      '/runs/new?sourcePromptId=a&sourceRunId=b',
+    );
+    expect(screen.getByRole('button', { name: 'Trailを作成' })).toBeDisabled();
+    invalid.container
+      .querySelector('form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    expect(repository.createDirectRunBundle).not.toHaveBeenCalled();
+    invalid.unmount();
+
+    renderPage(repository, undefined, '/runs/new?sourcePromptId=missing');
+    await screen.findByText('指定されたPromptが見つかりません。');
+    document
+      .querySelector('form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    expect(repository.createDirectRunBundle).not.toHaveBeenCalled();
+    expect(repository.createDirectRunFromPrompt).not.toHaveBeenCalled();
+    await user.click(
+      screen.getByRole('link', { name: '空のPromptから始める' }),
+    );
+  });
+
+  it('ends submission on stale, preserves metadata, focuses and reloads the latest Prompt', async () => {
+    const user = userEvent.setup();
+    const initial = reusablePrompt('Old body');
+    const latest = {
+      ...initial,
+      title: 'Latest title',
+      body: 'Latest body',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+    };
+    const repository = {
+      getPrompt: vi
+        .fn()
+        .mockResolvedValueOnce(initial)
+        .mockResolvedValueOnce(latest),
+      createDirectRunFromPrompt: vi
+        .fn()
+        .mockRejectedValueOnce(new PromptTrailRepositoryError('stale-write')),
+    } as unknown as PromptTrailRepository;
+    renderPage(repository, undefined, '/runs/new?sourcePromptId=prompt-1');
+    await screen.findByDisplayValue('Old body');
+    await user.clear(screen.getByLabelText('Trail名'));
+    await user.type(screen.getByLabelText('Trail名'), 'My draft');
+    await user.selectOptions(screen.getByLabelText('Trail種別'), 'review');
+    await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
+
+    const latestButton = await screen.findByRole('button', {
+      name: '最新のPromptを読み込む',
+    });
+    expect(latestButton).toBeEnabled();
+    expect(latestButton).toHaveFocus();
+    expect(screen.getByLabelText('Trail名')).toHaveValue('My draft');
+    expect(screen.getByLabelText('Trail種別')).toHaveValue('review');
+    await user.click(latestButton);
+    expect(await screen.findByDisplayValue('Latest body')).toHaveAttribute(
+      'readonly',
+    );
+    expect(screen.getByLabelText('Trail名')).toHaveValue('My draft');
+    expect(
+      screen.getByText('Latest title').closest('.pt-reuse-source'),
+    ).toHaveFocus();
+  });
+
+  it('disables source editing and repeated submission while creating from a Prompt', async () => {
+    const user = userEvent.setup();
+    let resolve!: (value: unknown) => void;
+    const repository = {
+      getPrompt: vi.fn().mockResolvedValue(reusablePrompt('Body')),
+      createDirectRunFromPrompt: vi.fn(
+        () => new Promise((done) => (resolve = done)),
+      ),
+    } as unknown as PromptTrailRepository;
+    renderPage(repository, undefined, '/runs/new?sourcePromptId=prompt-1');
+    const body = await screen.findByDisplayValue('Body');
+    expect(body).toHaveAttribute(
+      'aria-describedby',
+      'prompt-body-help prompt-body-error',
+    );
+    await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
+    expect(screen.queryByRole('link', { name: '元のPromptを編集' })).toBeNull();
+    expect(screen.getByText('元のPromptを編集')).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    await user.click(screen.getByRole('button', { name: '作成中...' }));
+    expect(repository.createDirectRunFromPrompt).toHaveBeenCalledOnce();
+    resolve({});
+  });
+
+  it('discards Prompt A stale completion after Prompt B finishes loading', async () => {
+    const user = userEvent.setup();
+    let rejectPromptA!: (reason: Error) => void;
+    const repository = {
+      getPrompt: vi.fn((id: string) =>
+        Promise.resolve(
+          reusablePrompt(
+            id === 'prompt-b' ? 'Prompt B body' : 'Prompt A body',
+            id,
+          ),
+        ),
+      ),
+      createDirectRunFromPrompt: vi.fn(
+        () => new Promise((_done, reject) => (rejectPromptA = reject)),
+      ),
+    } as unknown as PromptTrailRepository;
+    renderPage(
+      repository,
+      undefined,
+      '/runs/new?sourcePromptId=prompt-a',
+      true,
+    );
+    await screen.findByDisplayValue('Prompt A body');
+    await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
+    await user.click(screen.getByRole('button', { name: 'Prompt B' }));
+    await screen.findByDisplayValue('Prompt B body');
+    await act(async () =>
+      rejectPromptA(new PromptTrailRepositoryError('stale-write')),
+    );
+    expect(screen.getByLabelText('Prompt本文')).toHaveValue('Prompt B body');
+    expect(screen.getByRole('button', { name: 'Trailを作成' })).toBeEnabled();
+    expect(
+      screen.queryByRole('button', { name: '最新のPromptを読み込む' }),
+    ).toBeNull();
+  });
+
+  it('discards stale completion after a Repository switch or unmount', async () => {
+    const user = userEvent.setup();
+    let rejectOld!: (reason: Error) => void;
+    const oldRepository = {
+      getPrompt: vi.fn().mockResolvedValue(reusablePrompt('Old body')),
+      createDirectRunFromPrompt: vi.fn(
+        () => new Promise((_done, reject) => (rejectOld = reject)),
+      ),
+    } as unknown as PromptTrailRepository;
+    const newRepository = {
+      getPrompt: vi.fn().mockResolvedValue(reusablePrompt('New body')),
+    } as unknown as PromptTrailRepository;
+    const view = renderSwitchableRepositories(
+      oldRepository,
+      newRepository,
+      '/runs/new?sourcePromptId=prompt-1',
+    );
+    await screen.findByDisplayValue('Old body');
+    await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
+    await user.click(screen.getByRole('button', { name: 'Switch Repository' }));
+    await screen.findByDisplayValue('New body');
+    await act(async () =>
+      rejectOld(new PromptTrailRepositoryError('stale-write')),
+    );
+    expect(screen.getByLabelText('Prompt本文')).toHaveValue('New body');
+    expect(screen.getByRole('button', { name: 'Trailを作成' })).toBeEnabled();
+
+    let rejectUnmounted!: (reason: Error) => void;
+    const unmountedRepository = {
+      getPrompt: vi.fn().mockResolvedValue(reusablePrompt('Unmount body')),
+      createDirectRunFromPrompt: vi.fn(
+        () => new Promise((_done, reject) => (rejectUnmounted = reject)),
+      ),
+    } as unknown as PromptTrailRepository;
+    view.unmount();
+    const unmounted = renderPage(
+      unmountedRepository,
+      undefined,
+      '/runs/new?sourcePromptId=prompt-1',
+    );
+    await screen.findByDisplayValue('Unmount body');
+    await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
+    unmounted.unmount();
+    await act(async () =>
+      rejectUnmounted(new PromptTrailRepositoryError('stale-write')),
+    );
+  });
   it('applies form overrides without losing input or saving until cleared', async () => {
     const user = userEvent.setup();
     const repository = {
@@ -434,14 +621,31 @@ function reusableRun(id: string, body: string) {
   };
 }
 
+function reusablePrompt(body: string, id = 'prompt-1') {
+  return {
+    id,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    deletedAt: null,
+    scope: 'project' as const,
+    projectId: DEFAULT_PROJECT_ID,
+    title: 'Prompt title',
+    body,
+    kind: 'codex-request' as const,
+    status: 'active' as const,
+    tags: [],
+  };
+}
+
 function renderSwitchableRepositories(
   initialRepository: PromptTrailRepository,
   nextRepository: PromptTrailRepository,
+  initialEntry = '/runs/new',
 ) {
   function Harness() {
     const [repository, setRepository] = useState(initialRepository);
     return (
-      <MemoryRouter initialEntries={['/runs/new']}>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <PromptTrailRepositoryProvider repository={repository}>
           <DeveloperToolsProvider value={null}>
             <NewTrailPage />

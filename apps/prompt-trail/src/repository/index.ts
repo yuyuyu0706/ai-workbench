@@ -6,6 +6,8 @@ export type { PromptTrailRepositoryErrorCode } from './errors';
 export { PromptTrailRepository } from './prompt-trail-repository';
 export type {
   DirectRunBundle,
+  DirectRunFromPromptCreation,
+  DirectRunFromPromptResult,
   RunTrailMetadataUpdate,
   TrailBundle,
 } from './prompt-trail-repository';

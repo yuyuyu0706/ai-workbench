@@ -1,11 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   Link,
   useLocation,
   useNavigate,
   useSearchParams,
 } from 'react-router-dom';
-import { buildRunDetailPath, routePaths } from '../app/routes';
+import {
+  buildPromptEditPath,
+  buildRunDetailPath,
+  routePaths,
+} from '../app/routes';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageHeader, PageSection } from '../components/ui';
 import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
@@ -20,6 +24,12 @@ import {
   loadReusableRun,
   type ReusableRunState,
 } from '../trail-creation/load-reusable-run';
+import { createTrailFromPrompt } from '../trail-creation/create-trail-from-prompt';
+import {
+  loadReusablePrompt,
+  type ReusablePromptState,
+} from '../trail-creation/load-reusable-prompt';
+import { resolveNewTrailSource } from '../trail-creation/resolve-new-trail-source';
 
 type FormState = {
   repository: ReturnType<typeof usePromptTrailRepository>;
@@ -34,13 +44,24 @@ type FormState = {
   status: 'idle' | 'submitting' | 'failure';
 };
 
+const PROMPT_KIND_LABELS = {
+  'chat-consultation': 'チャット相談',
+  'codex-request': 'Codex依頼',
+  'issue-creation': 'Issue作成',
+  'design-review': '設計レビュー',
+  'incident-analysis': '障害分析',
+  other: 'その他',
+} as const;
+
 export function NewTrailPage() {
   const repository = usePromptTrailRepository();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const sourceRunId = searchParams.get('sourceRunId');
-  const identity = `${location.key}:${sourceRunId ?? ''}`;
+  const source = resolveNewTrailSource(searchParams);
+  const sourceRunId = source.kind === 'run' ? source.runId : null;
+  const sourcePromptId = source.kind === 'prompt' ? source.promptId : null;
+  const identity = `${location.key}:${source.kind}:${sourceRunId ?? sourcePromptId ?? ''}`;
   const uiStateSnapshot = useDeveloperUiStateSnapshot();
   const [formSnapshot, setFormSnapshot] = useState<FormState>(() =>
     emptyForm(repository, identity),
@@ -52,14 +73,37 @@ export function NewTrailPage() {
     retryVersion: number;
     state: ReusableRunState | { status: 'loading' };
   } | null>(null);
+  const [promptSnapshot, setPromptSnapshot] = useState<{
+    repository: typeof repository;
+    identity: string;
+    retryVersion: number;
+    state: ReusablePromptState | { status: 'loading' };
+  } | null>(null);
   const submissionRef = useRef<{
     token: symbol;
     repository: typeof repository;
     identity: string;
   } | null>(null);
+  const latestReloadPendingRef = useRef(false);
+  const activeSourceRef = useRef<{
+    repository: typeof repository | null;
+    identity: string | null;
+  }>({ repository: null, identity: null });
+  useLayoutEffect(() => {
+    activeSourceRef.current = { repository, identity };
+    submissionRef.current = null;
+    latestReloadPendingRef.current = false;
+    return () => {
+      activeSourceRef.current = { repository: null, identity: null };
+      submissionRef.current = null;
+      latestReloadPendingRef.current = false;
+    };
+  }, [identity, repository]);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const kindSelectRef = useRef<HTMLSelectElement>(null);
   const bodyInputRef = useRef<HTMLTextAreaElement>(null);
+  const latestPromptButtonRef = useRef<HTMLButtonElement>(null);
+  const sourcePromptSectionRef = useRef<HTMLDivElement>(null);
   const [completionSnapshot, setCompletionSnapshot] = useState<{
     repository: typeof repository;
     identity: string;
@@ -99,6 +143,14 @@ export function NewTrailPage() {
           reuseSnapshot.retryVersion === retryVersion
         ? reuseSnapshot.state
         : ({ status: 'loading' } as const);
+  const promptState =
+    sourcePromptId === null
+      ? null
+      : promptSnapshot?.repository === repository &&
+          promptSnapshot.identity === identity &&
+          promptSnapshot.retryVersion === retryVersion
+        ? promptSnapshot.state
+        : ({ status: 'loading' } as const);
   const formOverride = selectActiveDeveloperUiState(
     uiStateSnapshot,
     'new-trail-form',
@@ -110,6 +162,14 @@ export function NewTrailPage() {
         ? 'failure'
         : form.status;
   const disabled = displayedStatus === 'submitting';
+
+  useEffect(() => {
+    if (promptState?.status === 'stale') latestPromptButtonRef.current?.focus();
+    if (promptState?.status === 'data' && latestReloadPendingRef.current) {
+      latestReloadPendingRef.current = false;
+      sourcePromptSectionRef.current?.focus();
+    }
+  }, [promptState?.status]);
 
   useEffect(() => {
     if (sourceRunId === null) return;
@@ -143,8 +203,44 @@ export function NewTrailPage() {
     };
   }, [identity, repository, retryVersion, sourceRunId]);
 
+  useEffect(() => {
+    if (sourcePromptId === null) return;
+    let active = true;
+    void loadReusablePrompt(repository, sourcePromptId).then((state) => {
+      if (!active) return;
+      setPromptSnapshot({ repository, identity, retryVersion, state });
+      if (state.status === 'data')
+        setFormSnapshot((current) => {
+          const target =
+            current.repository === repository && current.identity === identity
+              ? current
+              : emptyForm(repository, identity);
+          return {
+            ...target,
+            body: state.prompt.body,
+            trailTitle: target.titleDirty
+              ? target.trailTitle
+              : state.prompt.title,
+            titleOrigin: target.titleDirty ? target.titleOrigin : 'source',
+          };
+        });
+    });
+    return () => {
+      active = false;
+    };
+  }, [identity, repository, retryVersion, sourcePromptId]);
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (
+      source.kind === 'invalid' ||
+      (source.kind === 'prompt' && promptState?.status !== 'data')
+    )
+      return;
+    const reusablePrompt =
+      source.kind === 'prompt' && promptState?.status === 'data'
+        ? promptState.prompt
+        : null;
     if (!valid) {
       if (metadataErrors.some((error) => error.startsWith('trail-title')))
         titleInputRef.current?.focus();
@@ -165,11 +261,48 @@ export function NewTrailPage() {
     submissionRef.current = { token, repository, identity };
     setFormSnapshot({ ...form, status: 'submitting' });
     try {
-      const run = await createDirectTrail(repository, {
-        promptBody: form.body,
-        trailTitle: form.trailTitle,
-        trailKind: form.trailKind,
-      });
+      const result =
+        reusablePrompt !== null
+          ? await createTrailFromPrompt(repository, {
+              sourcePrompt: reusablePrompt,
+              trailTitle: form.trailTitle,
+              trailKind: form.trailKind,
+            })
+          : {
+              status: 'created' as const,
+              run: await createDirectTrail(repository, {
+                promptBody: form.body,
+                trailTitle: form.trailTitle,
+                trailKind: form.trailKind,
+              }),
+            };
+      if (result.status !== 'created') {
+        if (
+          mountedRef.current &&
+          activeSourceRef.current.repository === repository &&
+          activeSourceRef.current.identity === identity &&
+          submissionRef.current?.token === token &&
+          submissionRef.current.repository === repository &&
+          submissionRef.current.identity === identity
+        ) {
+          setFormSnapshot((current) =>
+            current.repository === repository && current.identity === identity
+              ? { ...current, status: 'idle' }
+              : current,
+          );
+          if (result.status === 'invalid') return;
+          setPromptSnapshot({
+            repository,
+            identity,
+            retryVersion,
+            state: {
+              status: result.status,
+            },
+          });
+        }
+        return;
+      }
+      const run = result.run;
       if (mountedRef.current && submissionRef.current?.token === token)
         setCompletionSnapshot((current) =>
           current.repository === repository && current.identity === identity
@@ -196,6 +329,62 @@ export function NewTrailPage() {
         description="Trailの名前と用途、AIに依頼する内容を設定してください。作業後に関連リンクを追加すると、依頼から成果までをTrailとして残せます。"
       />
       <div className="prompt-trail-page__sections">
+        {source.kind === 'invalid' ? (
+          <PageSection title="作成元を確認できません">
+            <div role="alert">
+              <p>作成元の指定が正しくありません。</p>
+              <div className="prompt-trail-page__actions">
+                <Link to={routePaths.promptLibrary}>Prompt Libraryへ戻る</Link>
+                <Link to={routePaths.newTrail}>空のPromptから始める</Link>
+              </div>
+            </div>
+          </PageSection>
+        ) : null}
+        {promptState === null ? null : (
+          <PageSection title="再利用元Prompt">
+            {promptState.status === 'loading' ? (
+              <p role="status">Promptを読み込んでいます...</p>
+            ) : promptState.status === 'data' ? (
+              <div
+                className="pt-reuse-source"
+                ref={sourcePromptSectionRef}
+                tabIndex={-1}
+              >
+                <dl>
+                  <dt>Promptタイトル</dt>
+                  <dd>{promptState.prompt.title}</dd>
+                  <dt>Prompt種別</dt>
+                  <dd>{PROMPT_KIND_LABELS[promptState.prompt.kind]}</dd>
+                  <dt>Scope</dt>
+                  <dd>
+                    {promptState.prompt.scope === 'global'
+                      ? 'Global'
+                      : 'Default Project'}
+                  </dd>
+                </dl>
+                <p>このPromptの現在内容を実行時Snapshotとして使用します。</p>
+                {disabled ? (
+                  <span aria-disabled="true">元のPromptを編集</span>
+                ) : (
+                  <Link to={buildPromptEditPath(promptState.prompt.id)}>
+                    元のPromptを編集
+                  </Link>
+                )}
+              </div>
+            ) : (
+              <PromptSourceError
+                state={promptState.status}
+                disabled={disabled}
+                retry={() => setRetryVersion((value) => value + 1)}
+                reloadLatest={() => {
+                  latestReloadPendingRef.current = true;
+                  setRetryVersion((value) => value + 1);
+                }}
+                latestPromptButtonRef={latestPromptButtonRef}
+              />
+            )}
+          </PageSection>
+        )}
         {reuseState === null ? null : (
           <PageSection title="再利用元">
             {reuseState.status === 'loading' ? (
@@ -306,12 +495,22 @@ export function NewTrailPage() {
               }}
               rows={12}
               disabled={disabled}
-              aria-describedby="prompt-body-error"
+              readOnly={source.kind === 'prompt'}
+              aria-describedby={
+                source.kind === 'prompt'
+                  ? 'prompt-body-help prompt-body-error'
+                  : 'prompt-body-error'
+              }
               aria-invalid={!bodyValid}
             />
             <p id="prompt-body-error" className="pt-form__error">
               {!bodyValid ? 'Prompt本文を入力してください。' : null}
             </p>
+            {source.kind === 'prompt' ? (
+              <p id="prompt-body-help" className="pt-form__help">
+                Prompt本文は元の資産を変更せずSnapshotに保存するため、この画面では編集できません。
+              </p>
+            ) : null}
             {displayedStatus === 'failure' ? (
               <p className="pt-form__error" role="alert">
                 保存に失敗しました。入力内容を保持しています。再試行してください。
@@ -320,7 +519,12 @@ export function NewTrailPage() {
             <div className="prompt-trail-page__actions">
               <button
                 className="pt-button pt-button--primary"
-                disabled={disabled || reuseState?.status === 'loading'}
+                disabled={
+                  disabled ||
+                  source.kind === 'invalid' ||
+                  reuseState?.status === 'loading' ||
+                  (promptState?.status !== 'data' && promptState !== null)
+                }
               >
                 {disabled ? '作成中...' : 'Trailを作成'}
               </button>
@@ -424,6 +628,48 @@ function ReuseError({
             空のPromptから始める
           </Link>
         )}
+      </div>
+    </div>
+  );
+}
+
+function PromptSourceError({
+  state,
+  disabled,
+  retry,
+  reloadLatest,
+  latestPromptButtonRef,
+}: {
+  state: 'not-found' | 'unavailable' | 'failure' | 'stale';
+  disabled: boolean;
+  retry: () => void;
+  reloadLatest: () => void;
+  latestPromptButtonRef: React.RefObject<HTMLButtonElement | null>;
+}) {
+  const message =
+    state === 'not-found'
+      ? '指定されたPromptが見つかりません。'
+      : state === 'unavailable'
+        ? '元のPromptは削除されたか、現在は利用できません。'
+        : state === 'stale'
+          ? '元のPromptが別の画面で更新されました。最新内容を読み込み、Snapshotへ保存する内容を確認してください。'
+          : 'Promptの読み込みに失敗しました。時間をおいて再試行してください。';
+  return (
+    <div className="pt-reuse-source" role="alert">
+      <p>{message}</p>
+      <div className="prompt-trail-page__actions">
+        {state === 'failure' || state === 'stale' ? (
+          <button
+            ref={state === 'stale' ? latestPromptButtonRef : undefined}
+            type="button"
+            disabled={disabled}
+            onClick={state === 'stale' ? reloadLatest : retry}
+          >
+            {state === 'stale' ? '最新のPromptを読み込む' : '再試行'}
+          </button>
+        ) : null}
+        <Link to={routePaths.promptLibrary}>Prompt Libraryへ戻る</Link>
+        <Link to={routePaths.newTrail}>空のPromptから始める</Link>
       </div>
     </div>
   );
