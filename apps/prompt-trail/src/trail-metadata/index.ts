@@ -3,7 +3,7 @@ import { TRAIL_KINDS, type TrailKind } from '../domain';
 export const TRAIL_TITLE_MAX_LENGTH = 80;
 
 export const TRAIL_KIND_LABELS: Readonly<Record<TrailKind, string>> = {
-  'planning-design': '計画・設計',
+  'planning-design': '企画・設計',
   development: '開発',
   research: '調査',
   review: 'レビュー',

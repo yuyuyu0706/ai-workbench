@@ -10,7 +10,7 @@ import {
 describe('trail metadata', () => {
   it('provides a Japanese label for every TrailKind in domain order', () => {
     expect(TRAIL_KINDS.map((kind) => TRAIL_KIND_LABELS[kind])).toEqual([
-      '計画・設計',
+      '企画・設計',
       '開発',
       '調査',
       'レビュー',

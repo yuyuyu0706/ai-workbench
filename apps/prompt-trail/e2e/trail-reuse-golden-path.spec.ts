@@ -37,12 +37,21 @@ test.describe('Trail reuse acceptance', () => {
 
     await expect(page).toHaveURL(/\/runs\/new\?sourceRunId=/);
     await expect(page.getByLabel('Prompt本文')).toHaveValue(sourceBody);
+    await expect(page.getByLabel('Trail名')).toHaveValue(sourceTitle);
+    await expect(page.getByLabel('Trail種別')).toHaveValue('other');
     await expect(
       page.getByRole('link', { name: '元のTrailを確認' }),
     ).toHaveAttribute('href', new URL(sourceUrl).pathname);
     await expectNoHorizontalOverflow(page);
 
+    await page.getByLabel('Trail名').fill('Prevention follow-up Trail');
+    await page.getByLabel('Trail種別').selectOption('incident-response');
     await page.getByLabel('Prompt本文').fill(reusedBody);
+    await page.setViewportSize({ width: 320, height: 900 });
+    await expectNoHorizontalOverflow(page);
+    await page.getByLabel('Trail名').focus();
+    await page.keyboard.press('Tab');
+    await expect(page.getByLabel('Trail種別')).toBeFocused();
     await page.getByRole('button', { name: 'Trailを作成' }).click();
     await expect(page).toHaveURL(/\/runs\/(?!new)[^/?]+$/);
     await expect(page.getByText(reusedBody, { exact: true })).toBeVisible();

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { act, render, screen } from '@testing-library/react';
+import { useState } from 'react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -128,7 +129,16 @@ describe('NewTrailPage', () => {
     } as unknown as PromptTrailRepository;
     renderPage(repository);
     const button = screen.getByRole('button', { name: 'Trailを作成' });
-    expect(button).toBeDisabled();
+    await user.click(button);
+    expect(screen.getByLabelText('Trail名')).toHaveFocus();
+    expect(screen.getByLabelText('Trail名')).toHaveAttribute(
+      'aria-describedby',
+      'trail-title-help trail-title-error',
+    );
+    expect(screen.getByLabelText('Prompt本文')).toHaveAttribute(
+      'aria-describedby',
+      'prompt-body-error',
+    );
     const input = screen.getByLabelText('Prompt本文');
     await user.type(input, 'keep this');
     await user.click(button);
@@ -136,7 +146,7 @@ describe('NewTrailPage', () => {
       await screen.findByText(
         '保存に失敗しました。入力内容を保持しています。再試行してください。',
       ),
-    ).toBeInTheDocument();
+    ).toHaveAttribute('role', 'alert');
     expect(input).toHaveValue('keep this');
   });
   it('navigates to the created Run Detail path after a successful save', async () => {
@@ -194,7 +204,10 @@ describe('NewTrailPage', () => {
     renderPage(repository, undefined, '/runs/new?sourceRunId=run-source');
 
     const input = await screen.findByDisplayValue('original snapshot');
-    expect(screen.getByText(/Source prompt/)).toBeVisible();
+    expect(screen.getByText(/Source Trail/)).toBeVisible();
+    expect(screen.queryByText(/Source prompt/)).toBeNull();
+    expect(screen.getByLabelText('Trail名')).toHaveValue('Source Trail');
+    expect(screen.getByLabelText('Trail種別')).toHaveValue('research');
     expect(
       screen.getByRole('link', { name: '元のTrailを確認' }),
     ).toHaveAttribute('href', '/runs/run-source');
@@ -211,6 +224,87 @@ describe('NewTrailPage', () => {
       improvementNote: null,
     });
     expect(sourceRun.promptSnapshot.body).toBe('original snapshot');
+  });
+
+  it('generates a Blank title candidate, preserves manual metadata, and saves custom values', async () => {
+    const user = userEvent.setup();
+    const createDirectRunBundle = vi.fn(async (bundle: any) => bundle);
+    renderPage({ createDirectRunBundle } as unknown as PromptTrailRepository);
+
+    const body = screen.getByLabelText('Prompt本文');
+    const title = screen.getByLabelText('Trail名');
+    await user.type(body, 'Generated title\nbody');
+    expect(title).toHaveValue('Generated title');
+    await user.clear(title);
+    await user.type(title, '  Manual Trail  ');
+    await user.selectOptions(screen.getByLabelText('Trail種別'), 'review');
+    await user.type(body, ' changed');
+    expect(title).toHaveValue('  Manual Trail  ');
+    await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
+
+    expect(createDirectRunBundle.mock.calls[0]?.[0]).toMatchObject({
+      prompt: { title: 'Generated title', kind: 'other' },
+      run: { trailTitle: 'Manual Trail', trailKind: 'review' },
+    });
+  });
+
+  it('protects each field edited before a delayed source response', async () => {
+    const user = userEvent.setup();
+    let resolve!: (value: any) => void;
+    const repository = {
+      getRun: vi.fn(() => new Promise((done) => (resolve = done))),
+    } as unknown as PromptTrailRepository;
+    renderPage(repository, undefined, '/runs/new?sourceRunId=slow-run');
+
+    await user.type(screen.getByLabelText('Trail名'), 'My Trail');
+    await user.selectOptions(screen.getByLabelText('Trail種別'), 'development');
+    await user.type(screen.getByLabelText('Prompt本文'), 'My body');
+    await act(async () =>
+      resolve({
+        id: 'slow-run',
+        deletedAt: null,
+        trailTitle: 'Source Trail',
+        trailKind: 'research',
+        promptSnapshot: { title: 'Source Prompt', body: 'Source body' },
+      }),
+    );
+    expect(screen.getByLabelText('Trail名')).toHaveValue('My Trail');
+    expect(screen.getByLabelText('Trail種別')).toHaveValue('development');
+    expect(screen.getByLabelText('Prompt本文')).toHaveValue('My body');
+  });
+
+  it('discards old success and failure results after a Repository switch', async () => {
+    const user = userEvent.setup();
+    let resolve!: (value: any) => void;
+    const oldRepository = {
+      createDirectRunBundle: vi.fn(
+        () => new Promise((done) => (resolve = done)),
+      ),
+    } as unknown as PromptTrailRepository;
+    const newRepository = {} as PromptTrailRepository;
+    const successView = renderSwitchableRepositories(
+      oldRepository,
+      newRepository,
+    );
+    await user.type(screen.getByLabelText('Prompt本文'), 'Old request');
+    await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
+    await user.click(screen.getByRole('button', { name: 'Switch Repository' }));
+    await act(async () => resolve({ run: { id: 'old-run' } }));
+    expect(screen.getByText('["/runs/new",null]')).toBeInTheDocument();
+    successView.unmount();
+
+    let reject!: (reason: Error) => void;
+    const failingRepository = {
+      createDirectRunBundle: vi.fn(
+        () => new Promise((_done, fail) => (reject = fail)),
+      ),
+    } as unknown as PromptTrailRepository;
+    const view = renderSwitchableRepositories(failingRepository, newRepository);
+    await user.type(screen.getByLabelText('Prompt本文'), 'Failing request');
+    await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
+    await user.click(screen.getByRole('button', { name: 'Switch Repository' }));
+    await act(async () => reject(new Error('old failure')));
+    expect(view.container.querySelector('[role="alert"]')).toBeNull();
   });
 
   it('does not overwrite user input when a delayed source load completes', async () => {
@@ -338,6 +432,29 @@ function reusableRun(id: string, body: string) {
     trailKind: 'other',
     promptSnapshot: { title: `${id} title`, body },
   };
+}
+
+function renderSwitchableRepositories(
+  initialRepository: PromptTrailRepository,
+  nextRepository: PromptTrailRepository,
+) {
+  function Harness() {
+    const [repository, setRepository] = useState(initialRepository);
+    return (
+      <MemoryRouter initialEntries={['/runs/new']}>
+        <PromptTrailRepositoryProvider repository={repository}>
+          <DeveloperToolsProvider value={null}>
+            <NewTrailPage />
+            <button onClick={() => setRepository(nextRepository)}>
+              Switch Repository
+            </button>
+            <LocationProbe />
+          </DeveloperToolsProvider>
+        </PromptTrailRepositoryProvider>
+      </MemoryRouter>
+    );
+  }
+  return render(<Harness />);
 }
 
 function createTestUiStateStore() {

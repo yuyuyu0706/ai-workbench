@@ -10,7 +10,7 @@ import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageHeader, PageSection } from '../components/ui';
 import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
 import { selectActiveDeveloperUiState } from '../developer-ui-state';
-import { TRAIL_KINDS, type TrailKind } from '../domain';
+import { TRAIL_KINDS, type Run, type TrailKind } from '../domain';
 import { TRAIL_KIND_LABELS, validateTrailMetadata } from '../trail-metadata';
 import {
   createDirectTrail,
@@ -52,10 +52,24 @@ export function NewTrailPage() {
     retryVersion: number;
     state: ReusableRunState | { status: 'loading' };
   } | null>(null);
-  const currentIdentityRef = useRef(identity);
-  const submissionRef = useRef<{ token: symbol; identity: string } | null>(
-    null,
-  );
+  const submissionRef = useRef<{
+    token: symbol;
+    repository: typeof repository;
+    identity: string;
+  } | null>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const kindSelectRef = useRef<HTMLSelectElement>(null);
+  const bodyInputRef = useRef<HTMLTextAreaElement>(null);
+  const [completionSnapshot, setCompletionSnapshot] = useState<{
+    repository: typeof repository;
+    identity: string;
+    runId: Run['id'] | null;
+  }>(() => ({ repository, identity, runId: null }));
+  if (
+    completionSnapshot.repository !== repository ||
+    completionSnapshot.identity !== identity
+  )
+    setCompletionSnapshot({ repository, identity, runId: null });
   const mountedRef = useRef(true);
   useEffect(() => {
     mountedRef.current = true;
@@ -64,8 +78,11 @@ export function NewTrailPage() {
     };
   }, []);
   useEffect(() => {
-    currentIdentityRef.current = identity;
-  }, [identity]);
+    if (completionSnapshot.runId === null) return;
+    navigate(buildRunDetailPath(completionSnapshot.runId), {
+      state: { trailCreated: true },
+    });
+  }, [completionSnapshot.runId, navigate]);
 
   const form =
     formSnapshot.repository === repository && formSnapshot.identity === identity
@@ -128,16 +145,24 @@ export function NewTrailPage() {
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (!valid) {
+      if (metadataErrors.some((error) => error.startsWith('trail-title')))
+        titleInputRef.current?.focus();
+      else if (metadataErrors.includes('trail-kind-invalid'))
+        kindSelectRef.current?.focus();
+      else bodyInputRef.current?.focus();
+      return;
+    }
     if (
       formOverride !== null ||
-      !valid ||
       form.status === 'submitting' ||
       reuseState?.status === 'loading' ||
-      submissionRef.current?.identity === identity
+      (submissionRef.current?.identity === identity &&
+        submissionRef.current.repository === repository)
     )
       return;
     const token = Symbol('new-trail-submission');
-    submissionRef.current = { token, identity };
+    submissionRef.current = { token, repository, identity };
     setFormSnapshot({ ...form, status: 'submitting' });
     try {
       const run = await createDirectTrail(repository, {
@@ -145,20 +170,14 @@ export function NewTrailPage() {
         trailTitle: form.trailTitle,
         trailKind: form.trailKind,
       });
-      if (
-        mountedRef.current &&
-        submissionRef.current?.token === token &&
-        currentIdentityRef.current === identity
-      )
-        navigate(buildRunDetailPath(run.id), {
-          state: { trailCreated: true },
-        });
+      if (mountedRef.current && submissionRef.current?.token === token)
+        setCompletionSnapshot((current) =>
+          current.repository === repository && current.identity === identity
+            ? { ...current, runId: run.id }
+            : current,
+        );
     } catch {
-      if (
-        mountedRef.current &&
-        submissionRef.current?.token === token &&
-        currentIdentityRef.current === identity
-      )
+      if (mountedRef.current && submissionRef.current?.token === token)
         setFormSnapshot((current) =>
           current.repository === repository && current.identity === identity
             ? { ...current, status: 'failure' }
@@ -184,7 +203,7 @@ export function NewTrailPage() {
             ) : reuseState.status === 'data' ? (
               <div className="pt-reuse-source">
                 <p>
-                  「{reuseState.run.promptSnapshot.title}
+                  「{reuseState.run.trailTitle}
                   」のTrail名、Trail種別、Prompt本文を引き継ぎました。編集して新しいTrailを作成できます。
                 </p>
                 {disabled ? (
@@ -216,6 +235,7 @@ export function NewTrailPage() {
           <form className="pt-form" onSubmit={submit} noValidate>
             <label htmlFor="trail-title">Trail名</label>
             <input
+              ref={titleInputRef}
               id="trail-title"
               value={form.trailTitle}
               maxLength={81}
@@ -229,7 +249,7 @@ export function NewTrailPage() {
                 })
               }
               disabled={disabled}
-              aria-describedby="trail-title-help"
+              aria-describedby="trail-title-help trail-title-error"
               aria-invalid={metadataErrors.some((error) =>
                 error.startsWith('trail-title'),
               )}
@@ -240,6 +260,7 @@ export function NewTrailPage() {
             <TrailTitleError errors={metadataErrors} />
             <label htmlFor="trail-kind">Trail種別</label>
             <select
+              ref={kindSelectRef}
               id="trail-kind"
               value={form.trailKind}
               onChange={(event) =>
@@ -251,6 +272,8 @@ export function NewTrailPage() {
                 })
               }
               disabled={disabled}
+              aria-describedby="trail-kind-error"
+              aria-invalid={metadataErrors.includes('trail-kind-invalid')}
             >
               {TRAIL_KINDS.map((kind) => (
                 <option key={kind} value={kind}>
@@ -258,8 +281,14 @@ export function NewTrailPage() {
                 </option>
               ))}
             </select>
+            <p id="trail-kind-error" className="pt-form__error">
+              {metadataErrors.includes('trail-kind-invalid')
+                ? 'Trail種別を選択してください。'
+                : null}
+            </p>
             <label htmlFor="prompt-body">Prompt本文</label>
             <textarea
+              ref={bodyInputRef}
               id="prompt-body"
               value={form.body}
               onChange={(event) => {
@@ -277,21 +306,21 @@ export function NewTrailPage() {
               }}
               rows={12}
               disabled={disabled}
+              aria-describedby="prompt-body-error"
+              aria-invalid={!bodyValid}
             />
-            {!bodyValid && form.body.length > 0 ? (
-              <p className="pt-form__error">Prompt本文を入力してください。</p>
-            ) : null}
+            <p id="prompt-body-error" className="pt-form__error">
+              {!bodyValid ? 'Prompt本文を入力してください。' : null}
+            </p>
             {displayedStatus === 'failure' ? (
-              <p className="pt-form__error">
+              <p className="pt-form__error" role="alert">
                 保存に失敗しました。入力内容を保持しています。再試行してください。
               </p>
             ) : null}
             <div className="prompt-trail-page__actions">
               <button
                 className="pt-button pt-button--primary"
-                disabled={
-                  !valid || disabled || reuseState?.status === 'loading'
-                }
+                disabled={disabled || reuseState?.status === 'loading'}
               >
                 {disabled ? '作成中...' : 'Trailを作成'}
               </button>
@@ -348,7 +377,11 @@ function TrailTitleError({
       : errors.includes('trail-title-required')
         ? 'Trail名を入力してください。'
         : null;
-  return message ? <p className="pt-form__error">{message}</p> : null;
+  return (
+    <p id="trail-title-error" className="pt-form__error">
+      {message}
+    </p>
+  );
 }
 
 function ReuseError({
