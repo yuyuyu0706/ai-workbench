@@ -13,8 +13,10 @@ async function prepare() {
   const database = scope.createDatabase();
   const repository = new PromptTrailRepository(database);
   const project = createDefaultProject(oldTime);
-  const prompt = {
-    id: 'prompt-1',
+  const promptId = 'prompt-1' as Prompt['id'];
+  const runId = 'run-1' as Run['id'];
+  const prompt: Prompt = {
+    id: promptId,
     createdAt: oldTime,
     updatedAt: oldTime,
     deletedAt: null,
@@ -25,9 +27,9 @@ async function prepare() {
     kind: 'codex-request',
     status: 'active',
     tags: [],
-  } as Prompt;
-  const run = {
-    id: 'run-1',
+  };
+  const run: Run & { readonly recipeId: null } = {
+    id: runId,
     createdAt: oldTime,
     updatedAt: oldTime,
     deletedAt: null,
@@ -47,7 +49,7 @@ async function prepare() {
     status: 'prepared',
     evaluation: null,
     improvementNote: null,
-  } as Run & { recipeId: null };
+  };
   await repository.createDirectRunBundle({ project, prompt, run });
   return { database, repository, run };
 }
