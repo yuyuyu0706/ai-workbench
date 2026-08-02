@@ -86,4 +86,52 @@ test.describe('Prompt Library data flow', () => {
     ).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });
+
+  test('creates repeatable Trails from one Prompt without duplicating the asset', async ({
+    page,
+  }) => {
+    await page.goto('/prompts');
+    await seedPromptLibraryInBrowser(page);
+    await page.reload();
+
+    await page
+      .getByRole('link', { name: '「Codex開発依頼」からTrailを作成' })
+      .click();
+    await expect(page).toHaveURL(
+      /\/runs\/new\?sourcePromptId=prompt-library-e2e/,
+    );
+    await expect(page.getByLabel('Prompt本文')).toHaveAttribute('readonly', '');
+    await page.getByLabel('Trail名').fill('反復利用Trail 1');
+    await page.getByRole('button', { name: 'Trailを作成' }).click();
+    await expect(page).toHaveURL(/\/runs\/run-/);
+    await expect(
+      page.getByText('変更内容を確認して実装してください。'),
+    ).toBeVisible();
+
+    await page.goto('/runs/new?sourcePromptId=prompt-library-e2e');
+    await page.reload();
+    await page.getByLabel('Trail名').fill('反復利用Trail 2');
+    await page.getByRole('button', { name: 'Trailを作成' }).click();
+    await expect(page).toHaveURL(/\/runs\/run-/);
+
+    const counts = await page.evaluate(async () => {
+      const { createPromptTrailRuntime } =
+        await import('/src/app/prompt-trail-runtime.ts');
+      const runtime = createPromptTrailRuntime();
+      try {
+        await runtime.initialize();
+        const { DEFAULT_PROJECT_ID } = await import('/src/domain/index.ts');
+        return {
+          prompts: (
+            await runtime.repository.listActivePrompts(DEFAULT_PROJECT_ID)
+          ).length,
+          runs: (await runtime.repository.listActiveRuns(DEFAULT_PROJECT_ID))
+            .length,
+        };
+      } finally {
+        runtime.dispose();
+      }
+    });
+    expect(counts).toEqual({ prompts: 1, runs: 2 });
+  });
 });
