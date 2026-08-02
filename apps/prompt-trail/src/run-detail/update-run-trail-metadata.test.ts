@@ -38,6 +38,18 @@ describe('updateRunTrailMetadata', () => {
     expect(update).not.toHaveBeenCalled();
   });
 
+  it('advances one millisecond from expectedUpdatedAt when the clock is behind', async () => {
+    const update = vi.fn(async (value) => ({ ...value, id: value.runId }));
+    await updateRunTrailMetadata(
+      { updateRunTrailMetadata: update } as never,
+      input,
+      () => '2026-07-31T23:59:59.000Z' as UtcDateTimeString,
+    );
+    expect(update.mock.calls[0]?.[0].updatedAt).toBe(
+      '2026-08-01T00:00:00.001Z',
+    );
+  });
+
   it.each([
     ['reference-not-found', 'not-found'],
     ['reference-unavailable', 'unavailable'],

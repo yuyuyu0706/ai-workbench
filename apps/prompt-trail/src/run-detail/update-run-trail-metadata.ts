@@ -34,7 +34,9 @@ export async function updateRunTrailMetadata(
     return { status: 'invalid' };
   }
   let updatedAt = now();
-  if (updatedAt === input.expectedUpdatedAt) {
+  if (
+    new Date(updatedAt).getTime() <= new Date(input.expectedUpdatedAt).getTime()
+  ) {
     updatedAt = new Date(
       new Date(input.expectedUpdatedAt).getTime() + 1,
     ).toISOString() as UtcDateTimeString;

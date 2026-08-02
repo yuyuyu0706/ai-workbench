@@ -122,6 +122,11 @@ describe('RunDetailPage', () => {
 
     expect(await screen.findByText('Updated Trail')).toBeVisible();
     expect(screen.getByText('調査')).toBeVisible();
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Trail情報を編集' }),
+      ).toHaveFocus(),
+    );
     expect(repository.updateRunTrailMetadata).toHaveBeenCalledWith(
       expect.objectContaining({
         expectedUpdatedAt: direct.updatedAt,
@@ -152,6 +157,129 @@ describe('RunDetailPage', () => {
     expect(
       screen.getByRole('button', { name: '最新内容を読み込む' }),
     ).toBeVisible();
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: '最新内容を読み込む' }),
+      ).toHaveFocus(),
+    );
+    expect(title).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: 'Trail種別' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '変更を保存' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'キャンセル' })).toBeDisabled();
+
+    fireEvent.change(title, { target: { value: 'Discarded change' } });
+    fireEvent.keyDown(title, { key: 'Enter' });
+    fireEvent.keyDown(title, { key: 'Escape' });
+    fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }));
+    expect(title).toHaveValue('My local draft');
+    expect(repository.updateRunTrailMetadata).toHaveBeenCalledOnce();
+  });
+
+  it('keeps Developer Tools metadata overrides isolated from real editor state', async () => {
+    const repository = createDetailRepository([]);
+    repository.updateRunTrailMetadata = vi.fn();
+    const store = createTestUiStateStore();
+    renderPage(repository, 'run-1', undefined, store);
+    await screen.findByText('Trail A');
+
+    for (const override of [
+      'editing',
+      'submitting',
+      'save-failure',
+      'stale',
+    ] as const) {
+      act(() =>
+        store.setActiveOverride({
+          target: 'run-detail-trail-metadata',
+          state: override,
+        }),
+      );
+      expect(screen.getByRole('textbox', { name: 'Trail名' })).toHaveValue(
+        'Trail A',
+      );
+      expect(screen.getByRole('textbox', { name: 'Trail名' })).toBeDisabled();
+      fireEvent.change(screen.getByRole('textbox', { name: 'Trail名' }), {
+        target: { value: 'Override mutation' },
+      });
+      expect(repository.updateRunTrailMetadata).not.toHaveBeenCalled();
+    }
+    act(() => store.clearActiveOverride());
+    expect(screen.getByText('Trail A')).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Trail情報を編集' }),
+    ).toBeVisible();
+  });
+
+  it('associates validation errors, focuses invalid input, and disables no-op save', async () => {
+    const repository = createDetailRepository([]);
+    repository.updateRunTrailMetadata = vi.fn();
+    renderPage(repository);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Trail情報を編集' }),
+    );
+    const title = screen.getByRole('textbox', { name: 'Trail名' });
+    expect(screen.getByRole('button', { name: '変更を保存' })).toBeDisabled();
+    fireEvent.change(title, { target: { value: '   ' } });
+    fireEvent.submit(title.closest('form')!);
+    expect(await screen.findByRole('alert')).toHaveAttribute(
+      'id',
+      title.getAttribute('aria-describedby'),
+    );
+    expect(title).toHaveAttribute('aria-invalid', 'true');
+    expect(title).toHaveFocus();
+    expect(repository.updateRunTrailMetadata).not.toHaveBeenCalled();
+  });
+
+  it('retains metadata after a failure and retries successfully', async () => {
+    const repository = createDetailRepository([]);
+    repository.updateRunTrailMetadata = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('storage'))
+      .mockImplementation(async (update: any) => ({
+        ...direct,
+        trailTitle: update.trailTitle,
+        trailKind: update.trailKind,
+        updatedAt: update.updatedAt,
+      }));
+    renderPage(repository);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Trail情報を編集' }),
+    );
+    const title = screen.getByRole('textbox', { name: 'Trail名' });
+    fireEvent.change(title, { target: { value: 'Retry Trail' } });
+    fireEvent.click(screen.getByRole('button', { name: '変更を保存' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Trail情報を保存できませんでした',
+    );
+    expect(title).toHaveValue('Retry Trail');
+    fireEvent.click(screen.getByRole('button', { name: '変更を保存' }));
+    expect(await screen.findByText('Trail情報を保存しました。')).toBeVisible();
+    expect(repository.updateRunTrailMetadata).toHaveBeenCalledTimes(2);
+  });
+
+  it('blocks duplicate metadata submissions and ignores completion after unmount', async () => {
+    let resolveSave!: (run: typeof direct) => void;
+    const repository = createDetailRepository([]);
+    repository.updateRunTrailMetadata = vi.fn(
+      () => new Promise<typeof direct>((resolve) => (resolveSave = resolve)),
+    );
+    const rendered = renderPage(repository);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Trail情報を編集' }),
+    );
+    fireEvent.change(screen.getByRole('textbox', { name: 'Trail名' }), {
+      target: { value: 'Pending Trail' },
+    });
+    const form = screen
+      .getByRole('textbox', { name: 'Trail名' })
+      .closest('form')!;
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+    expect(repository.updateRunTrailMetadata).toHaveBeenCalledOnce();
+    rendered.unmount();
+    await act(async () =>
+      resolveSave({ ...direct, trailTitle: 'Pending Trail' }),
+    );
   });
 
   it('links the Prompt snapshot to the encoded New Trail reuse URL', async () => {

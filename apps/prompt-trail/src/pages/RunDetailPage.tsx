@@ -39,6 +39,8 @@ export function RunDetailPage() {
   const { notifyDataChanged } = usePromptTrailDataRevision();
   const metadataInputRef = useRef<HTMLInputElement>(null);
   const metadataEditButtonRef = useRef<HTMLButtonElement>(null);
+  const metadataReloadButtonRef = useRef<HTMLButtonElement>(null);
+  const metadataErrorId = useId();
   const activeIdentityRef = useRef({ repository, runId, mounted: true });
   const metadataSubmissionRef = useRef<symbol | null>(null);
   const linkInformationId = useId();
@@ -143,6 +145,24 @@ export function RunDetailPage() {
     metadataOverride === 'save-failure'
       ? 'failure'
       : (metadataOverride ?? metadata.status);
+  const displayedMetadata =
+    metadataOverride !== null && state.status === 'data'
+      ? {
+          ...metadata,
+          trailTitle: state.data.run.trailTitle,
+          trailKind: state.data.run.trailKind,
+          expectedUpdatedAt: state.data.run.updatedAt,
+        }
+      : metadata;
+  const metadataInteractionDisabled =
+    metadataOverride !== null ||
+    displayedMetadataStatus === 'submitting' ||
+    displayedMetadataStatus === 'stale';
+  const metadataUnchanged =
+    state.status === 'data' &&
+    normalizeTrailTitle(displayedMetadata.trailTitle) ===
+      state.data.run.trailTitle &&
+    displayedMetadata.trailKind === state.data.run.trailKind;
   const deleteOverride =
     state.status === 'data' && links.length > 0
       ? selectActiveDeveloperUiState(uiStateSnapshot, 'run-detail-link-delete')
@@ -411,7 +431,12 @@ export function RunDetailPage() {
     });
   }
   function cancelMetadataEdit() {
-    if (metadataOverride !== null || metadata.status === 'submitting') return;
+    if (
+      metadataOverride !== null ||
+      metadata.status === 'submitting' ||
+      metadata.status === 'stale'
+    )
+      return;
     setMetadataSnapshot({ ...metadata, status: 'view', validationErrors: [] });
     requestAnimationFrame(() => metadataEditButtonRef.current?.focus());
   }
@@ -431,6 +456,7 @@ export function RunDetailPage() {
         status: 'failure',
         validationErrors: errors,
       });
+      requestAnimationFrame(() => metadataInputRef.current?.focus());
       return;
     }
     const trailTitle = normalizeTrailTitle(metadata.trailTitle);
@@ -490,8 +516,10 @@ export function RunDetailPage() {
           successNotice: true,
         });
         notifyDataChanged();
+        requestAnimationFrame(() => metadataEditButtonRef.current?.focus());
       } else if (result.status === 'stale') {
         setMetadataSnapshot({ ...metadata, status: 'stale' });
+        requestAnimationFrame(() => metadataReloadButtonRef.current?.focus());
       } else {
         setMetadataSnapshot({ ...metadata, status: 'failure' });
       }
@@ -598,7 +626,11 @@ export function RunDetailPage() {
               className="pt-form pt-trail-metadata-form"
               onSubmit={saveMetadata}
               onKeyDown={(event) => {
-                if (event.key === 'Escape') {
+                if (
+                  event.key === 'Escape' &&
+                  metadataOverride === null &&
+                  metadata.status !== 'stale'
+                ) {
                   event.preventDefault();
                   cancelMetadataEdit();
                 }
@@ -608,31 +640,54 @@ export function RunDetailPage() {
               <input
                 ref={metadataInputRef}
                 id="trail-title"
-                value={metadata.trailTitle}
+                value={displayedMetadata.trailTitle}
                 maxLength={TRAIL_TITLE_MAX_LENGTH + 1}
-                disabled={displayedMetadataStatus === 'submitting'}
+                disabled={metadataInteractionDisabled}
+                aria-invalid={
+                  metadata.validationErrors.some((error) =>
+                    error.startsWith('trail-title'),
+                  ) || undefined
+                }
+                aria-describedby={
+                  metadata.validationErrors.length > 0
+                    ? metadataErrorId
+                    : undefined
+                }
                 onChange={(event) =>
-                  setMetadataSnapshot({
-                    ...metadata,
-                    trailTitle: event.target.value,
-                    status: 'editing',
-                    validationErrors: [],
-                  })
+                  metadataOverride === null && metadata.status !== 'stale'
+                    ? setMetadataSnapshot({
+                        ...metadata,
+                        trailTitle: event.target.value,
+                        status: 'editing',
+                        validationErrors: [],
+                      })
+                    : undefined
                 }
               />
               <span className="pt-form__hint">必須・80文字以内・改行不可</span>
               <label htmlFor="trail-kind">Trail種別</label>
               <select
                 id="trail-kind"
-                value={metadata.trailKind}
-                disabled={displayedMetadataStatus === 'submitting'}
+                value={displayedMetadata.trailKind}
+                disabled={metadataInteractionDisabled}
+                aria-invalid={
+                  metadata.validationErrors.includes('trail-kind-invalid') ||
+                  undefined
+                }
+                aria-describedby={
+                  metadata.validationErrors.includes('trail-kind-invalid')
+                    ? metadataErrorId
+                    : undefined
+                }
                 onChange={(event) =>
-                  setMetadataSnapshot({
-                    ...metadata,
-                    trailKind: event.target.value as TrailKind,
-                    status: 'editing',
-                    validationErrors: [],
-                  })
+                  metadataOverride === null && metadata.status !== 'stale'
+                    ? setMetadataSnapshot({
+                        ...metadata,
+                        trailKind: event.target.value as TrailKind,
+                        status: 'editing',
+                        validationErrors: [],
+                      })
+                    : undefined
                 }
               >
                 {TRAIL_KINDS.map((kind) => (
@@ -642,7 +697,7 @@ export function RunDetailPage() {
                 ))}
               </select>
               {displayedMetadataStatus === 'failure' ? (
-                <p className="pt-form__error" role="alert">
+                <p className="pt-form__error" id={metadataErrorId} role="alert">
                   {metadata.validationErrors.length > 0
                     ? 'Trail名は必須・80文字以内で、改行を含めないでください。'
                     : 'Trail情報を保存できませんでした。入力内容を保持しています。もう一度お試しください。'}
@@ -654,6 +709,7 @@ export function RunDetailPage() {
                     別の画面でTrail情報が更新されました。最新内容を読み込み、変更内容を確認してください。
                   </p>
                   <button
+                    ref={metadataReloadButtonRef}
                     className="pt-button pt-button--secondary"
                     type="button"
                     onClick={() => void reloadLatestMetadata()}
@@ -665,10 +721,7 @@ export function RunDetailPage() {
               <div className="pt-trail-metadata-form__actions">
                 <button
                   className="pt-button pt-button--primary"
-                  disabled={
-                    displayedMetadataStatus === 'submitting' ||
-                    displayedMetadataStatus === 'stale'
-                  }
+                  disabled={metadataInteractionDisabled || metadataUnchanged}
                 >
                   {displayedMetadataStatus === 'submitting'
                     ? '保存中...'
@@ -677,7 +730,7 @@ export function RunDetailPage() {
                 <button
                   className="pt-button pt-button--secondary"
                   type="button"
-                  disabled={displayedMetadataStatus === 'submitting'}
+                  disabled={metadataInteractionDisabled}
                   onClick={cancelMetadataEdit}
                 >
                   キャンセル
