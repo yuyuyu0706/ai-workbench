@@ -3,6 +3,7 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 import { expectNoHorizontalOverflow } from './support/layout';
 
 const promptTitle = 'Issue 161 Golden Path';
+const trailTitle = 'Issue 213 custom Trail';
 const promptBody = `\n${promptTitle}\n\n作成したTrailの永続性を確認する。`;
 const linkUrl = 'https://example.com/prompt-trail/issue-161';
 const linkTitle = 'Golden Path document';
@@ -44,6 +45,8 @@ test.describe('first Trail creation acceptance', () => {
     await expect(page).toHaveURL(/\/runs\/new$/);
     await expectNoHorizontalOverflow(page);
 
+    await page.getByLabel('Trail名').fill(trailTitle);
+    await page.getByLabel('Trail種別').selectOption('development');
     await page.getByLabel('Prompt本文').fill(promptBody);
     await page.getByRole('button', { name: 'Trailを作成' }).click();
 
@@ -140,6 +143,12 @@ test.describe('first Trail creation acceptance', () => {
     await expectCreatedTrail(page);
     await expectNoHorizontalOverflow(page);
 
+    await page.getByRole('link', { name: 'このPromptを再利用' }).click();
+    await expect(page.getByLabel('Trail名')).toHaveValue(trailTitle);
+    await expect(page.getByLabel('Trail種別')).toHaveValue('development');
+    await expect(page.getByLabel('Prompt本文')).toHaveValue(promptBody.trim());
+    await page.goto(runDetailUrl);
+
     const deleteButton = page.getByRole('button', {
       name: `${linkTitle}を削除`,
     });
@@ -187,9 +196,8 @@ test.describe('first Trail creation acceptance', () => {
     await expect(
       page.getByText('Prompt本文を入力してください。'),
     ).toBeVisible();
-    await expect(
-      page.getByRole('button', { name: 'Trailを作成' }),
-    ).toBeDisabled();
+    await page.getByRole('button', { name: 'Trailを作成' }).click();
+    await expect(page.getByLabel('Trail名')).toBeFocused();
     await expect(promptInput).toHaveValue('   ');
 
     await promptInput.fill(promptBody);

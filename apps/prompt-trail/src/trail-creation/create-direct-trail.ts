@@ -2,10 +2,16 @@ import {
   createDefaultProject,
   type Prompt,
   type Run,
+  type TrailKind,
   type UtcDateTimeString,
 } from '../domain';
 import type { PromptTrailRepository } from '../repository';
-export type CreateDirectTrailInput = { readonly promptBody: string };
+import { normalizeTrailTitle, validateTrailMetadata } from '../trail-metadata';
+export type CreateDirectTrailInput = {
+  readonly promptBody: string;
+  readonly trailTitle: string;
+  readonly trailKind: TrailKind;
+};
 export type CreateDirectTrailDependencies = {
   readonly createId?: (kind: 'prompt' | 'run') => string;
   readonly now?: () => UtcDateTimeString;
@@ -26,6 +32,9 @@ export async function createDirectTrail(
 ): Promise<Run> {
   const body = input.promptBody.trim();
   if (body.length === 0) throw new Error('Prompt body is required.');
+  if (validateTrailMetadata(input).length > 0)
+    throw new Error('Trail metadata is invalid.');
+  const trailTitle = normalizeTrailTitle(input.trailTitle);
   const now =
     dependencies.now ?? (() => new Date().toISOString() as UtcDateTimeString);
   const createId =
@@ -54,8 +63,8 @@ export async function createDirectTrail(
     deletedAt: null,
     archivedAt: null,
     projectId: project.id,
-    trailTitle: prompt.title,
-    trailKind: 'other',
+    trailTitle,
+    trailKind: input.trailKind,
     recipeId: null,
     promptSnapshot: { promptId, title: prompt.title, body: prompt.body },
     contextSnapshots: [],

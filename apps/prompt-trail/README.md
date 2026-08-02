@@ -10,7 +10,7 @@ PromptTrail は、AI を活用した作業の Trail を追跡するローカル�
 - ブラウザの IndexedDB を使うため、新しい browser / origin では Dashboard が empty state になる場合があります。これはローカル起動失敗を意味しません。
 - IndexedDBの現行schemaはversion 2です。既存のschema v1 DBはopen時にtransactional migrationされ、全Runへ従来のPrompt Snapshotタイトルと同じ`trailTitle`および`trailKind = other`が補完されます。migrationは他fieldや他Storeを変更せず、失敗時にDBを削除しません。
 
-Phase 1のPublic Alpha公開は完了しています。Phase 2ではRunへPrompt資産とは独立した必須のTrail名・Trail種別を保存するDomain／DB基盤まで実装済みです。New Trailでの入力とRun Detailでの表示・編集UIは未実装で、後続Issueで扱います。Prompt Libraryの主要Navigationへの復帰と過去Trailへの到達性も後続計画です。詳細は[Roadmap](../../docs/product/prompt-trail/roadmap.md)を参照してください。
+Phase 1のPublic Alpha公開は完了しています。Phase 2ではRunのTrail名・Trail種別基盤とNew Trailの入力UIを実装済みです。過去Run再利用時はTrail名・Trail種別・Prompt本文を新しい作業の初期値として引き継ぎます。Run DetailでのTrail metadata表示・編集UIは後続Issueで扱います。Prompt Libraryの主要Navigationへの復帰と過去Trailへの到達性も後続計画です。詳細は[Roadmap](../../docs/product/prompt-trail/roadmap.md)を参照してください。
 
 ## 最短起動
 

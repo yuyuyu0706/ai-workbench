@@ -20,6 +20,7 @@ Phase 1完了時点のPromptTrailは、`/`をPublic Alpha Guide、「はじめ�
 - **Dashboard** は、`/dashboard` で最近の Run、作業状況、再開ポイントを把握する場所です。
 - **Prompt Library** は静的start stateを表示します。実データの一覧・編集・反復利用はPhase 2で実装する計画です。
 - **Context Library** と **Recipe Builder** は未完成画面です。主要機能はPhase 1完了時点では利用できません。
+- **New Trail** は、Trail名・Trail種別・Prompt本文から新しい作業を作成します。過去Runからの再利用時は3項目を編集可能な初期値として引き継ぎます。
 - **Run Detail** は、実行時点のPrompt Snapshotと関連Linkの確認、および関連Linkの登録を中心に提供します。評価・改善メモは現行機能ではなく将来候補です。
 - **Not Found** は、未知 URL から Dashboard へ復帰するための recovery route です。
 - Browser は必要に応じて外部の器・入口として扱いますが、App / Router / AppShell などの画面を持たない内部コンポーネントは主ノードとして扱いません。
