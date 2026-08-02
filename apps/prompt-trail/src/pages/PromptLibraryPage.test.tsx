@@ -70,6 +70,19 @@ describe('PromptLibraryPage', () => {
       screen.getByRole('heading', { name: prompts[1].title }),
     ).toBeVisible();
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
+    expect(screen.getByText('全2件を表示')).toBeVisible();
+    expect(
+      screen.getByRole('link', {
+        name: `「${prompts[0].title}」からTrailを作成`,
+      }),
+    ).toHaveAttribute('href', '/runs/new?sourcePromptId=alpha');
+    expect(
+      screen.getByRole('link', { name: `「${prompts[0].title}」を編集` }),
+    ).toHaveAttribute('href', '/prompts/alpha/edit');
+    expect(screen.getAllByRole('time')[0]).toHaveAttribute(
+      'datetime',
+      timestamp,
+    );
   });
 
   it('filters matching Prompts, distinguishes no-match, and restores all data when cleared', async () => {
@@ -80,6 +93,7 @@ describe('PromptLibraryPage', () => {
     });
 
     await user.type(search, '  codex  ');
+    expect(screen.getByText('全2件中 1件を表示')).toBeVisible();
     expect(
       screen.getByRole('heading', { name: prompts[0].title }),
     ).toBeVisible();
@@ -87,8 +101,10 @@ describe('PromptLibraryPage', () => {
       screen.queryByRole('heading', { name: prompts[1].title }),
     ).toBeNull();
 
-    await user.clear(search);
+    await user.click(screen.getByRole('button', { name: '検索をクリア' }));
+    expect(search).toHaveValue('');
     await user.type(search, '一致なし');
+    expect(screen.getByText('全2件中 0件を表示')).toBeVisible();
     expect(
       screen.getByText('検索条件に一致するPromptがありません。'),
     ).toBeVisible();

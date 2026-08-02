@@ -62,15 +62,18 @@ test.describe('Prompt Library data flow', () => {
     ).toBeVisible();
 
     const search = page.getByRole('searchbox', { name: 'Promptを検索' });
+    await expect(page.getByText('全1件を表示')).toBeVisible();
     await search.fill('  codex  ');
+    await expect(page.getByText('全1件中 1件を表示')).toBeVisible();
     await expect(promptList.getByRole('listitem')).toHaveCount(1);
 
     await search.fill('一致しない検索条件');
+    await expect(page.getByText('全1件中 0件を表示')).toBeVisible();
     await expect(
       page.getByText('検索条件に一致するPromptがありません。'),
     ).toBeVisible();
 
-    await search.fill('');
+    await page.getByRole('button', { name: '検索をクリア' }).click();
     await expect(promptList.getByRole('listitem')).toHaveCount(1);
     await page.reload();
     await expect(
@@ -90,6 +93,12 @@ test.describe('Prompt Library data flow', () => {
       page.getByRole('searchbox', { name: 'Promptを検索' }),
     ).toBeVisible();
     await expectNoHorizontalOverflow(page);
+    await expect(
+      page.getByRole('link', { name: '「Codex開発依頼」からTrailを作成' }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('link', { name: '「Codex開発依頼」を編集' }),
+    ).toBeVisible();
     await page.goto('/runs/new?sourcePromptId=prompt-library-e2e');
     await expect(page.getByLabel('Prompt本文')).toBeVisible();
     await expectNoHorizontalOverflow(page);

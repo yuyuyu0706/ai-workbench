@@ -93,9 +93,8 @@ export function PromptLibraryPage() {
   return (
     <section className="prompt-trail-page">
       <PageHeader
-        eyebrow="Prompt Library"
         title="Prompt Library"
-        description="保存したAIへの依頼パターンを検索し、再利用可能な資産として確認できます。"
+        description="保存済みPromptを検索・改善し、新しいTrailへ再利用できます。"
         actions={
           <Link
             className="pt-button pt-button--primary"
@@ -116,17 +115,35 @@ export function PromptLibraryPage() {
       {state.status === 'data' ? (
         <PageSection
           title="保存済みPrompt"
-          description={`${state.data.prompts.length}件の利用可能なPrompt`}
+          description="利用するPromptをタイトルまたは本文から探せます。"
         >
-          <label className="pt-prompt-search">
-            <span>Promptを検索</span>
-            <input
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="タイトルまたは本文を検索"
-            />
-          </label>
+          <div className="pt-prompt-library__tools">
+            <label className="pt-prompt-search">
+              <span>Promptを検索</span>
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="タイトルまたは本文を検索"
+              />
+            </label>
+            <div className="pt-prompt-library__result-row">
+              <p className="pt-prompt-library__result-count" aria-live="polite">
+                {query.trim() === ''
+                  ? `全${state.data.prompts.length}件を表示`
+                  : `全${state.data.prompts.length}件中 ${results.length}件を表示`}
+              </p>
+              {query.trim() === '' ? null : (
+                <button
+                  className="pt-prompt-library__clear"
+                  type="button"
+                  onClick={() => setQuery('')}
+                >
+                  検索をクリア
+                </button>
+              )}
+            </div>
+          </div>
           {results.length === 0 ? (
             <StateMessage
               variant="empty"
@@ -153,7 +170,6 @@ function PromptCard({ prompt }: { prompt: PromptLibraryItem }) {
         <h3>{prompt.title}</h3>
         <span className="pt-status-pin">{KIND_LABELS[prompt.kind]}</span>
       </div>
-      <p className="pt-prompt-card__body">{prompt.body}</p>
       <p className="pt-prompt-card__meta">
         <span>{prompt.scope === 'global' ? 'Global' : 'Default Project'}</span>
         <span>
@@ -163,7 +179,8 @@ function PromptCard({ prompt }: { prompt: PromptLibraryItem }) {
           </time>
         </span>
       </p>
-      <div className="prompt-trail-page__actions">
+      <p className="pt-prompt-card__body">{prompt.body}</p>
+      <div className="pt-prompt-card__actions">
         <Link
           className="pt-button pt-button--primary"
           to={buildNewTrailFromPromptPath(prompt.id)}
@@ -172,7 +189,7 @@ function PromptCard({ prompt }: { prompt: PromptLibraryItem }) {
           Trailを作成
         </Link>
         <Link
-          className="pt-prompt-card__edit"
+          className="pt-button pt-button--secondary"
           to={buildPromptEditPath(prompt.id)}
           aria-label={`「${prompt.title}」を編集`}
         >
