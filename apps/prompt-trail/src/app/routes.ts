@@ -75,3 +75,8 @@ export function buildNewTrailReusePath(runId: string) {
   const search = new URLSearchParams({ sourceRunId: runId });
   return `${routePaths.newTrail}?${search.toString()}`;
 }
+
+export function buildNewTrailFromPromptPath(promptId: string) {
+  const search = new URLSearchParams({ sourcePromptId: promptId });
+  return `${routePaths.newTrail}?${search.toString()}`;
+}

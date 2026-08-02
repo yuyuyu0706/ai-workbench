@@ -149,7 +149,7 @@ PromptやContextは更新されるため、Runには実行時点の内容をス�
 
 Promptタイトルは再利用する依頼資産の名前、Trail名は個別作業記録の名前とする。Prompt種別はAIへの依頼内容、Trail種別は今回の作業用途を表し、それぞれを混同しない。
 
-New TrailはTrail名、Trail種別、Prompt本文を1つのformで受け取る。Trail名はtrim後必須・80文字以内・改行不可、Trail種別の初期値は「その他」とする。Blank作成ではPrompt本文からTrail名候補を生成するが、利用者が編集したTrail名は上書きしない。過去Run再利用では元RunのTrail名・Trail種別・Prompt Snapshot本文を初期値とし、新しいPromptとRunへ独立して保存する。
+New TrailはTrail名、Trail種別、Prompt本文を1つのformで受け取る。Trail名はtrim後必須・80文字以内・改行不可、Trail種別の初期値は「その他」とする。Blank作成ではPrompt本文からTrail名候補を生成するが、利用者が編集したTrail名は上書きしない。過去Run再利用では元Runの値から新しいPromptとRunを派生する。Prompt Library起点では本文をread-onlyとし、Promptを複製・更新せず、作成時点の`promptId / title / body`を新しいRunのSnapshotへ固定する。更新競合、削除、非Active化を保存transaction内で検出した場合はRunを作成しない。
 
 ---
 

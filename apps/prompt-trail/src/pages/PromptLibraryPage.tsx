@@ -3,7 +3,11 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { usePromptTrailDataRevision } from '../app/PromptTrailDataRevisionContext';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
-import { buildPromptEditPath, routePaths } from '../app/routes';
+import {
+  buildNewTrailFromPromptPath,
+  buildPromptEditPath,
+  routePaths,
+} from '../app/routes';
 import { PageHeader, PageSection, StateMessage } from '../components/ui';
 import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
 import { selectActiveDeveloperUiState } from '../developer-ui-state';
@@ -159,12 +163,22 @@ function PromptCard({ prompt }: { prompt: PromptLibraryItem }) {
           </time>
         </span>
       </p>
-      <Link
-        className="pt-prompt-card__edit"
-        to={buildPromptEditPath(prompt.id)}
-      >
-        編集
-      </Link>
+      <div className="prompt-trail-page__actions">
+        <Link
+          className="pt-button pt-button--primary"
+          to={buildNewTrailFromPromptPath(prompt.id)}
+          aria-label={`「${prompt.title}」からTrailを作成`}
+        >
+          Trailを作成
+        </Link>
+        <Link
+          className="pt-prompt-card__edit"
+          to={buildPromptEditPath(prompt.id)}
+          aria-label={`「${prompt.title}」を編集`}
+        >
+          編集
+        </Link>
+      </div>
     </li>
   );
 }

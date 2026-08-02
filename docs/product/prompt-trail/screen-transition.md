@@ -152,11 +152,13 @@ P0-4-3 の状態表示は、Repository 連携前の利用開始状態と、将�
 | `promptEdit`     | `/prompts/:promptId/edit` | Prompt Editor      | なし     | Active Promptを編集し、Danger Zoneから確認付きで論理削除するcontextual route     |
 | `contextLibrary` | `/contexts`               | Context Library    | なし     | 未完成の間はdirect accessのみ                                                    |
 | `recipeBuilder`  | `/recipes/builder`        | Recipe Builder     | なし     | 未完成の間はdirect accessのみ                                                    |
-| `newTrail`       | `/runs/new`               | New Trail          | なし     | Dashboard CTA から到達する contextual route。global navigation には含めない      |
+| `newTrail`       | `/runs/new`               | New Trail          | なし     | Blank、`sourceRunId`、`sourcePromptId`を区別するcontextual route                 |
 | `runDetail`      | `/runs/:runId`            | Run Detail         | なし     | contextual route。常設グローバルナビではなく、Run などの文脈から到達する詳細画面 |
 | `notFound`       | `*`                       | Not Found          | なし     | recovery route。未知 URL から復帰導線を提示するための画面                        |
 
 Prompt EditorのDanger Zoneは編集Routeだけに表示し、保存済みタイトルと「今後の利用対象から除外する一方、過去Run・関連Link・実行時のPrompt Snapshotは残る」ことを確認してから`deletedAt`を設定します。削除はPromptだけに限定した非Cascade操作で、成功後はPrompt Libraryへ遷移して一回限りの通知を表示します。削除済みPromptの編集Routeはunavailableを表示します。
+
+Prompt Libraryの各Active Promptから`/runs/new?sourcePromptId=<PromptId>`へ遷移できます。Prompt起点では元Prompt本文をread-onlyで確認し、独立したTrail名・Trail種別を設定します。Blankと過去Run起点は従来どおり本文を編集でき、両source keyの同時・空・重複指定はinvalidとしてRepositoryを呼ばず復旧導線を表示します。
 
 現行のグローバルナビゲーション対象は「はじめに」とDashboardです。Prompt LibraryはP2-1-4の仕様・UI洗練後に主要Navigationへ戻し、Context Library / Recipe Builderは利用可能になるまで表示しません。Run Detailは実行文脈にひもづくcontextual route、Not Foundは未知URLからのrecovery routeとして扱います。
 

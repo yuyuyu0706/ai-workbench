@@ -87,7 +87,7 @@ flowchart LR
   Repository --> Dexie
 ```
 
-`NewTrailPage` は Trail Creation Service を通じて Direct Run bundle を atomic 保存します。`RunDetailPage` は Data State と Query を介して実データを読み取り、Link 保存も Repository 境界で行います。
+`NewTrailPage` は Trail Creation Service を通じて Direct Run bundle を atomic 保存します。Prompt Library起点では`PromptLibraryPage → NewTrailPage → createTrailFromPrompt → createDirectRunFromPrompt → Dexie`の境界を使い、transaction内でPromptの存在、Active状態、Scope、`expectedPromptUpdatedAt`を再検証してRunだけを追加します。Global PromptまたはDefault Project Promptを利用でき、Prompt自体は更新しません。`RunDetailPage` は Data State と Query を介して実データを読み取り、Link 保存も Repository 境界で行います。
 
 ## 5. Dashboard の実データフロー
 
