@@ -1,6 +1,6 @@
 # PromptTrail Application Architecture
 
-このドキュメントは、**Phase 2 Prompt新規登録・編集・論理削除機能実装時点**の PromptTrail Application Architecture の正本です。起動、依存注入、Repository 公開境界、Dashboard の実データ読み取り、画面と状態の責務を、現行実装に合わせて説明します。
+このドキュメントは、**Phase 2 Prompt Library主要Navigation復帰時点**の PromptTrail Application Architecture の正本です。起動、依存注入、Repository 公開境界、Dashboard の実データ読み取り、画面と状態の責務を、現行実装に合わせて説明します。
 
 画面構成と利用者導線は [Screen Structure and User Flow](screen-transition.md)、6つのドメインモデルと永続化契約は [Data Model](../../architecture/prompt-trail/data-model.md) を正本とします。環境構築、障害診断、品質確認、Hosted Preview / Deploy の手順は、それぞれ [Local Development](../../development/local-development.md)、[Troubleshooting](../../development/troubleshooting.md)、[Quality Gates](../../development/quality-gates.md)、[Deployment and Hosted Preview](deployment-and-preview.md) を参照してください。本書ではそれらの手順を複製しません。
 
@@ -158,7 +158,7 @@ Canonical Sample Dataset
 
 ## 8. Route、AppShell、Page の現行状態
 
-`AppShell` は header、Global Navigation、main 領域を提供します。`AppRouter` は `/` を Public Alpha Guide へ接続し、各 route を Page へ接続します。現行Global Navigationは「はじめに」と「Dashboard」に限定しています。Run DetailとNew Trailはcontextual route、Not Foundはrecovery routeであり、常設Navigationのactive項目にはなりません。Not FoundはDashboardへの復帰導線を提供します。
+`AppShell` は header、Global Navigation、main 領域を提供します。`AppRouter` は `/` を Public Alpha Guide へ接続し、各 route を Page へ接続します。現行Global Navigationは「はじめに」「Dashboard」「Prompt Library」の3項目です。`/prompts`、`/prompts/new`、`/prompts/:promptId/edit`はPrompt Libraryの既知Route familyとして同じNavigation項目をactive表示します。New TrailとRun Detailはcontextual route、Not Foundはrecovery routeであり、active項目を持ちません。Context LibraryとRecipe Builderは未完成のため常設Navigationに表示しません。Not FoundはDashboardへの復帰導線を提供します。
 
 | 画面 / Route                        | 現行状態                             | 責務                                                        |
 | ----------------------------------- | ------------------------------------ | ----------------------------------------------------------- |
@@ -172,7 +172,7 @@ Canonical Sample Dataset
 
 Prompt / Context / Recipe など、Dashboard 以外で未接続の Page は、Phase 0 の画面骨格です。これらの `StateMessage` は Repository 取得後の empty / failure を表すものではありません。
 
-Phase 2ではPrompt Libraryを実データへ接続し、接続完了時に主要Navigationへ戻します。Context Library / Recipe Builderは未完成の間はdirect routeだけを維持し、主要Navigationには表示しません。Run DomainにはPrompt資産とは独立した必須の`trailTitle`と`trailKind`を実装済みです。New TrailはTrail名・Trail種別・Prompt本文を個別に受け取り、新しいPromptとRunを既存Bundleでatomic保存します。過去Run再利用では3項目を初期値として引き継ぎ、元Runは変更しません。Run DetailでのTrail metadata表示・編集は後続Issueの責務です。
+Phase 2ではPrompt Libraryを実データへ接続し、主要Navigationへ復帰済みです。Global Navigationのactive classと`aria-current="page"`は、現在のpathnameを既知Routeへ照合して得た単一のactive item IDから導出します。単純な`/prompts` prefix判定は行わないため、`/prompts/unknown`を含むNot Foundではactive項目を表示しません。Context Library / Recipe Builderは未完成の間はdirect routeだけを維持し、主要Navigationには表示しません。Run DomainにはPrompt資産とは独立した必須の`trailTitle`と`trailKind`を実装済みです。New TrailはTrail名・Trail種別・Prompt本文を個別に受け取り、新しいPromptとRunを既存Bundleでatomic保存します。過去Run再利用では3項目を初期値として引き継ぎ、元Runは変更しません。Run DetailでのTrail metadata表示・編集は後続Issueの責務です。
 
 Dexieの現行schemaはversion 2です。Database constructorは歴史的なschema v1定義をupgrade起点として保持し、既存v1 DBをopenすると同一upgrade transaction内で全Runへ`trailTitle = promptSnapshot.title`（正規化なし）、`trailKind = other`を補完します。RepositoryやUIはlegacy fallbackを持たず、open完了後の必須fieldを持つRunだけを扱います。malformed Runでmigrationが失敗した場合はtransaction全体をrollbackし、DBの削除や部分更新を行いません。
 

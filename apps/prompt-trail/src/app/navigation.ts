@@ -1,7 +1,11 @@
+import { matchPath } from 'react-router-dom';
+
 import { routeIds, routePaths, type RouteId } from './routes';
 
 export type GlobalNavigationRouteId =
-  typeof routeIds.root | typeof routeIds.dashboard;
+  | typeof routeIds.root
+  | typeof routeIds.dashboard
+  | typeof routeIds.promptLibrary;
 
 export type ContextualRouteId =
   typeof routeIds.newTrail | typeof routeIds.runDetail;
@@ -32,12 +36,32 @@ export const globalNavigationItems = [
     label: 'Dashboard',
     path: routePaths.dashboard,
   },
+  {
+    id: routeIds.promptLibrary,
+    label: 'Prompt Library',
+    path: routePaths.promptLibrary,
+  },
 ] as const satisfies readonly NavigationItem[];
+
+const promptLibraryRoutePaths = [
+  routePaths.promptLibrary,
+  routePaths.promptNew,
+  routePaths.promptEdit,
+] as const;
 
 export function getActiveNavigationItemId(
   pathname: string,
 ): GlobalNavigationRouteId | undefined {
   const normalizedPathname = normalizePathname(pathname);
+
+  if (
+    promptLibraryRoutePaths.some((path) =>
+      matchPath({ path, end: true }, normalizedPathname),
+    )
+  ) {
+    return routeIds.promptLibrary;
+  }
+
   return globalNavigationItems.find((item) => item.path === normalizedPathname)
     ?.id;
 }

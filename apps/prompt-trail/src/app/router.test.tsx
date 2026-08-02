@@ -129,7 +129,10 @@ describe('AppRouter', () => {
       expect(
         screen.getByRole('heading', { name: heading }),
       ).toBeInTheDocument();
-      if (pathname === routePaths.dashboard) {
+      if (
+        pathname === routePaths.dashboard ||
+        pathname === routePaths.promptLibrary
+      ) {
         expectOnlyActiveNavigationItem(heading);
       } else {
         expectNoActiveNavigationItem();
@@ -173,6 +176,21 @@ describe('AppRouter', () => {
     }
   });
 
+  it.each([
+    [routePaths.promptNew, 'Promptを新規登録'],
+    ['/prompts/prompt-123/edit', 'Promptを編集'],
+  ])(
+    'keeps Prompt Library active on the prompt editor route %s',
+    (pathname, heading) => {
+      renderRoute(pathname);
+
+      expect(
+        screen.getByRole('heading', { name: heading }),
+      ).toBeInTheDocument();
+      expectOnlyActiveNavigationItem('Prompt Library');
+    },
+  );
+
   it('renders a repository-backed run detail loading state with a dashboard recovery link', () => {
     const user = userEvent.setup();
     renderRoute(buildRunDetailPath('run-123'));
@@ -206,5 +224,14 @@ describe('AppRouter', () => {
     expect(
       await screen.findByRole('heading', { name: 'Dashboard' }),
     ).toBeInTheDocument();
+  });
+
+  it('does not activate Prompt Library for an unknown prompt URL', () => {
+    renderRoute('/prompts/unknown');
+
+    expect(
+      screen.getByRole('heading', { name: 'Not Found' }),
+    ).toBeInTheDocument();
+    expectNoActiveNavigationItem();
   });
 });

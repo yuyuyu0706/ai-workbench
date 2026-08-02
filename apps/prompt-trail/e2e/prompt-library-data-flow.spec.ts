@@ -42,6 +42,11 @@ test.describe('Prompt Library data flow', () => {
   }) => {
     await page.goto('/prompts');
     await expect(
+      page
+        .getByRole('navigation', { name: 'Global navigation' })
+        .getByRole('link', { name: 'Prompt Library' }),
+    ).toHaveAttribute('aria-current', 'page');
+    await expect(
       page.getByText('Repositoryに表示できるPromptがまだありません。'),
     ).toBeVisible();
 
@@ -84,6 +89,7 @@ test.describe('Prompt Library data flow', () => {
     await expect(
       page.getByRole('searchbox', { name: 'Promptを検索' }),
     ).toBeVisible();
+    await expectNoHorizontalOverflow(page);
     await page.goto('/runs/new?sourcePromptId=prompt-library-e2e');
     await expect(page.getByLabel('Prompt本文')).toBeVisible();
     await expectNoHorizontalOverflow(page);

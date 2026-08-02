@@ -370,6 +370,8 @@ Release v0.1.0
 | Trail View      | Chat、Issue、PR、Releaseの関係を確認する                                                                                                                                                                                                    |
 | Settings        | JSON Export / Import / Backup / RestoreとSettings最小骨格はPhase 3で利用証拠に基づき判断する。Phase 4ではGitHub API接続に必要なIntegration設定、Phase 5では利用者のIdentity / Authentication、Account / Plan / Administration関連設定を扱う |
 
+主要Navigationは「はじめに」「Dashboard」「Prompt Library」の3項目とする。Prompt LibraryはトップページとDashboardから到達可能とし、`/prompts`、`/prompts/new`、`/prompts/:promptId/edit`では同じ「Prompt Library」を現在地表示する。New TrailとRun Detailはcontextual route、Not Foundはrecovery routeとしてactive navigationを持たない。未完成のContext LibraryとRecipe Builderは主要Navigationへ表示しない。
+
 ---
 
 ## 8. 非機能要件

@@ -2,7 +2,7 @@
 
 この資料は、PromptTrail の **画面構成・利用導線ドキュメント** です。狭義の画面遷移図ではなく、利用者から見える画面、画面責務、Prompt / Context / Recipe / Run の利用導線、画面構成イメージを整理するための正本として扱います。
 
-対象時点は **Phase 2 Prompt新規登録・編集・論理削除機能実装時点**です。`/`のPublic Alpha Guide、Repository接続済みのDashboard、Run Detail、Prompt Library、Prompt Editor、PromptからDirect Runを作成するNew Trail、未完成画面のContext Library／Recipe Builder、Not Foundへ到達できます。PromptからのTrail作成、Trailの識別・到達性を補完する後続計画は[Roadmap](roadmap.md)を正本とします。
+対象時点は **Phase 2 Prompt Library主要Navigation復帰時点**です。`/`のPublic Alpha Guide、Repository接続済みのDashboard、Run Detail、主要Navigationから到達できるPrompt Library、Prompt Editor、PromptからDirect Runを作成するNew Trail、未完成画面のContext Library／Recipe Builder、Not Foundへ到達できます。Prompt Library画面の情報階層・UI密度とTrailの識別・到達性を補完する後続計画は[Roadmap](roadmap.md)を正本とします。
 
 技術・責務境界、Runtime、Bootstrap、Provider、Repository、DB、Router、AppShell などの内部構造は [Application Architecture](application-architecture.md) を正本とし、本資料では主対象にしません。Phase 0 の横断的な実装状態は [PromptTrail Phase 0 Technical Baseline](../../architecture/prompt-trail/README.md) を参照してください。URL、route parameter、Router 契約、Not Found、直接 URL、戻る導線、到達・例外・復帰図の詳細は本資料の Route Contract を正本として扱います。
 
@@ -10,7 +10,7 @@
 
 ### 第1節 全体サマリ
 
-Phase 1完了時点のPromptTrailは、`/`をPublic Alpha Guide、「はじめに」と「Dashboard」をGlobal Navigationに持ちます。Prompt Libraryは静的start state、Context Library／Recipe Builderは機能未実装の画面であり、いずれもdirect routeだけを維持して主要Navigationには表示しません。DashboardとRun DetailはRepositoryの実データを表示し、New TrailはDashboardから到達するcontextual routeです。
+現行のPromptTrailは、`/`をPublic Alpha Guide、「はじめに」「Dashboard」「Prompt Library」をGlobal Navigationに持ちます。Prompt LibraryはRepositoryの実データを扱う主要画面で、トップページとDashboardから到達できます。Context Library／Recipe Builderは機能未実装のため、direct routeだけを維持して主要Navigationには表示しません。DashboardとRun DetailもRepositoryの実データを表示し、New Trailはcontextual routeです。
 
 > 以下のPhase 0図版は将来の画面構成を検討するための構想図であり、Phase 1完了時点の実装画面や利用可能な機能を表すものではありません。
 
@@ -18,7 +18,7 @@ Phase 1完了時点のPromptTrailは、`/`をPublic Alpha Guide、「はじめ�
 
 - **Public Alpha Guide** は、`/` で価値、主要操作、保存制約を案内し、Dashboard と Feedback へ接続します。
 - **Dashboard** は、`/dashboard` で最近の Run、作業状況、再開ポイントを把握する場所です。
-- **Prompt Library** は静的start stateを表示します。実データの一覧・編集・反復利用はPhase 2で実装する計画です。
+- **Prompt Library** は、Active Promptの一覧・検索・登録・編集・論理削除と、PromptからのTrail作成を提供します。
 - **Context Library** と **Recipe Builder** は未完成画面です。主要機能はPhase 1完了時点では利用できません。
 - **New Trail** は、Trail名・Trail種別・Prompt本文から新しい作業を作成します。過去Runからの再利用時は3項目を編集可能な初期値として引き継ぎます。
 - **Run Detail** は、実行時点のPrompt Snapshotと関連Linkの確認、および関連Linkの登録を中心に提供します。評価・改善メモは現行機能ではなく将来候補です。
@@ -147,9 +147,9 @@ P0-4-3 の状態表示は、Repository 連携前の利用開始状態と、将�
 | ---------------- | ------------------------- | ------------------ | -------- | -------------------------------------------------------------------------------- |
 | `root`           | `/`                       | Public Alpha Guide | あり     | 価値、主要操作、保存制約、Dashboard / Feedbackへの入口                           |
 | `dashboard`      | `/dashboard`              | Dashboard          | あり     | P0-4 以降の基本入口                                                              |
-| `promptLibrary`  | `/prompts`                | Prompt Library     | なし     | Active Promptの一覧・検索と新規登録・編集への導線。主要Navigationには未表示      |
-| `promptNew`      | `/prompts/new`            | Prompt Editor      | なし     | Default Project配下のActive Promptを新規登録するcontextual route                 |
-| `promptEdit`     | `/prompts/:promptId/edit` | Prompt Editor      | なし     | Active Promptを編集し、Danger Zoneから確認付きで論理削除するcontextual route     |
+| `promptLibrary`  | `/prompts`                | Prompt Library     | あり     | Active Promptの一覧・検索と新規登録・編集への導線                                |
+| `promptNew`      | `/prompts/new`            | Prompt Editor      | なし     | Prompt Libraryをactive表示し、Default Project配下のActive Promptを新規登録する   |
+| `promptEdit`     | `/prompts/:promptId/edit` | Prompt Editor      | なし     | Prompt Libraryをactive表示し、Active Promptを編集・論理削除する                  |
 | `contextLibrary` | `/contexts`               | Context Library    | なし     | 未完成の間はdirect accessのみ                                                    |
 | `recipeBuilder`  | `/recipes/builder`        | Recipe Builder     | なし     | 未完成の間はdirect accessのみ                                                    |
 | `newTrail`       | `/runs/new`               | New Trail          | なし     | Blank、`sourceRunId`、`sourcePromptId`を区別するcontextual route                 |
@@ -160,9 +160,9 @@ Prompt EditorのDanger Zoneは編集Routeだけに表示し、保存済みタイ
 
 Prompt Libraryの各Active Promptから`/runs/new?sourcePromptId=<PromptId>`へ遷移できます。Prompt起点では元Prompt本文をread-onlyで確認し、独立したTrail名・Trail種別を設定します。Blankと過去Run起点は従来どおり本文を編集でき、両source keyの同時・空・重複指定はinvalidとしてRepositoryを呼ばず復旧導線を表示します。
 
-現行のグローバルナビゲーション対象は「はじめに」とDashboardです。Prompt LibraryはP2-1-4の仕様・UI洗練後に主要Navigationへ戻し、Context Library / Recipe Builderは利用可能になるまで表示しません。Run Detailは実行文脈にひもづくcontextual route、Not Foundは未知URLからのrecovery routeとして扱います。
+現行のグローバルナビゲーション対象は「はじめに」「Dashboard」「Prompt Library」です。root／DashboardからPrompt Libraryへ移動できます。Context Library / Recipe Builderは利用可能になるまで表示しません。Run Detailは実行文脈にひもづくcontextual route、Not Foundは未知URLからのrecovery routeとして扱います。
 
-アクティブナビ判定は、現行では`/`または`/dashboard`に一致するときだけ対応項目をactiveとします。`/runs/:runId`、direct accessの未完成Library、未知URLはactive navなしとして扱います。Run DetailとNot Foundの復帰導線は`routePaths.dashboard`を参照した「Dashboardへ戻る」リンクで固定し、ブラウザ履歴や`navigate(-1)`には依存しません。
+アクティブナビ判定は、`/`と`/dashboard`に加え、既知のPrompt Routeである`/prompts`、`/prompts/new`、`/prompts/:promptId/edit`をPrompt Library familyとして扱います。Prompt LibraryからNew Trail、Run Detailへ進んだ後はactive navigationを持ちません。`/prompts/unknown`を含む未知URL、未完成のContext Library / Recipe Builderもactive navなしとし、Not FoundでPrompt Libraryを誤表示しません。active classと`aria-current="page"`は同じ判定から導出します。Run DetailとNot Foundの復帰導線は`routePaths.dashboard`を参照した「Dashboardへ戻る」リンクで固定し、ブラウザ履歴や`navigate(-1)`には依存しません。
 
 ### 更新トリガー
 
