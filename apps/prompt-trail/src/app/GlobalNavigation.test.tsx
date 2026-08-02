@@ -38,6 +38,12 @@ describe('GlobalNavigation', () => {
     expect(
       within(navigation).queryByRole('link', { name: 'Root' }),
     ).not.toBeInTheDocument();
+    expect(
+      within(navigation).queryByRole('link', { name: 'Context Library' }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(navigation).queryByRole('link', { name: 'Recipe Builder' }),
+    ).not.toBeInTheDocument();
   });
 
   it.each(globalNavigationItems)(
@@ -52,12 +58,30 @@ describe('GlobalNavigation', () => {
     },
   );
 
+  it.each(['/prompts/new', '/prompts/prompt-123/edit'])(
+    'marks only Prompt Library active for the known child route %s',
+    (pathname) => {
+      renderNavigation(pathname);
+
+      const navigation = screen.getByRole('navigation', {
+        name: 'Global navigation',
+      });
+      const activeLinks = within(navigation).getAllByRole('link', {
+        current: 'page',
+      });
+
+      expect(activeLinks).toHaveLength(1);
+      expect(activeLinks[0]).toHaveAccessibleName('Prompt Library');
+      expect(activeLinks[0]).toHaveClass('global-navigation__link--active');
+    },
+  );
+
   it.each([
-    '/prompts',
     '/contexts',
     '/recipes/builder',
     '/runs/run-123',
     '/unknown-route',
+    '/prompts/unknown',
   ])('does not mark any global navigation item active for %s', (pathname) => {
     renderNavigation(pathname);
 

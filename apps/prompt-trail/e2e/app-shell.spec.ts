@@ -11,7 +11,7 @@ test.describe('Public Alpha shell', () => {
     await expect(page.getByRole('heading', { level: 1 })).toContainText(
       '次の仕事に活かせるTrailへ',
     );
-    await expect(navigation(page).getByRole('link')).toHaveCount(2);
+    await expect(navigation(page).getByRole('link')).toHaveCount(3);
     await expect(
       navigation(page).getByRole('link', { name: 'はじめに' }),
     ).toHaveAttribute('aria-current', 'page');
@@ -20,13 +20,23 @@ test.describe('Public Alpha shell', () => {
     await expect(
       page.getByRole('heading', { name: 'Dashboard' }),
     ).toBeVisible();
+
+    await navigation(page)
+      .getByRole('link', { name: 'Prompt Library' })
+      .click();
+    await expect(page).toHaveURL(/\/prompts$/);
+    await expect(
+      page.getByRole('heading', { name: 'Prompt Library' }),
+    ).toBeVisible();
+    await expect(
+      navigation(page).getByRole('link', { name: 'Prompt Library' }),
+    ).toHaveAttribute('aria-current', 'page');
   });
 
-  test('keeps placeholder routes directly accessible but outside primary navigation', async ({
+  test('keeps unfinished routes directly accessible but outside primary navigation', async ({
     page,
   }) => {
     for (const [path, heading] of [
-      ['/prompts', 'Prompt Library'],
       ['/contexts', 'Context Library'],
       ['/recipes/builder', 'Recipe Builder'],
     ] as const) {
@@ -46,6 +56,7 @@ test.describe('Public Alpha shell', () => {
   }) => {
     await page.setViewportSize({ width: 320, height: 800 });
     await page.goto('/');
+    await expect(navigation(page).getByRole('link')).toHaveCount(3);
     await expect(page.getByText(/browser origin単位のIndexedDB/)).toBeVisible();
     const feedback = page
       .getByRole('main')
@@ -59,5 +70,35 @@ test.describe('Public Alpha shell', () => {
           document.documentElement.clientWidth,
       ),
     ).toBe(true);
+  });
+
+  test('activates Prompt Library only for known prompt routes', async ({
+    page,
+  }) => {
+    for (const path of ['/prompts', '/prompts/new'] as const) {
+      await page.goto(path);
+      await expect(
+        navigation(page).getByRole('link', { name: 'Prompt Library' }),
+      ).toHaveAttribute('aria-current', 'page');
+      await expect(
+        navigation(page).locator('a[aria-current="page"]'),
+      ).toHaveCount(1);
+    }
+
+    await page.goto('/prompts/prompt-e2e/edit');
+    await expect(
+      navigation(page).getByRole('link', { name: 'Prompt Library' }),
+    ).toHaveAttribute('aria-current', 'page');
+
+    for (const path of [
+      '/runs/new',
+      '/runs/run-e2e',
+      '/prompts/unknown/path',
+    ] as const) {
+      await page.goto(path);
+      await expect(
+        navigation(page).locator('a[aria-current="page"]'),
+      ).toHaveCount(0);
+    }
   });
 });

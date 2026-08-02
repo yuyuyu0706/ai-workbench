@@ -5,12 +5,12 @@ PromptTrail は、AI を活用した作業の Trail を追跡するローカル�
 ## 現在のアプリケーション構成
 
 - `/` は Public Alpha Guideを表示し、DashboardとFeedbackへの入口を提供します。
-- 現行のGlobal Navigationは「はじめに」と「Dashboard」です。Prompt Libraryはdirect accessからRepository内のActive Promptを一覧・検索・新規登録・編集でき、編集画面のDanger Zoneから確認付きで論理削除できます。主要Navigationへの復帰は後続Issueで扱い、Context Library、Recipe Builderもdirect accessのみ維持します。
+- 現行のGlobal Navigationは「はじめに」「Dashboard」「Prompt Library」です。トップページとDashboardのどちらからもPrompt Libraryへ移動でき、一覧・新規登録・編集では「Prompt Library」を現在地として表示します。Context LibraryとRecipe Builderは未完成のためdirect accessのみ維持します。
 - `/runs/:runId` は Run Detail、未知の URL は Not Found と Dashboard への回復導線を提供します。
 - ブラウザの IndexedDB を使うため、新しい browser / origin では Dashboard が empty state になる場合があります。これはローカル起動失敗を意味しません。
 - IndexedDBの現行schemaはversion 2です。既存のschema v1 DBはopen時にtransactional migrationされ、全Runへ従来のPrompt Snapshotタイトルと同じ`trailTitle`および`trailKind = other`が補完されます。migrationは他fieldや他Storeを変更せず、失敗時にDBを削除しません。
 
-Phase 1のPublic Alpha公開は完了しています。Phase 2ではRunのTrail名・Trail種別基盤とNew Trailの入力UIを実装済みです。過去Run再利用時は新しいPrompt資産を派生させますが、Prompt Library起点では同じPrompt資産を複製せず、現在内容を不変のRun Snapshotとして反復利用します。Prompt編集前に作成したSnapshotへ後の編集・削除は伝播しません。Prompt Libraryの主要Navigationへの復帰と過去Trailへの到達性は後続計画です。詳細は[Roadmap](../../docs/product/prompt-trail/roadmap.md)を参照してください。
+Phase 1のPublic Alpha公開は完了しています。Phase 2ではRunのTrail名・Trail種別基盤とNew Trailの入力UIを実装済みです。過去Run再利用時は新しいPrompt資産を派生させますが、Prompt Library起点では同じPrompt資産を複製せず、現在内容を不変のRun Snapshotとして反復利用します。Prompt編集前に作成したSnapshotへ後の編集・削除は伝播しません。Prompt Libraryは主要Navigationへ復帰済みで、次は画面固有の情報階層とUI密度を洗練します。過去Trailへの到達性を含む詳細は[Roadmap](../../docs/product/prompt-trail/roadmap.md)を参照してください。
 
 ## 最短起動
 

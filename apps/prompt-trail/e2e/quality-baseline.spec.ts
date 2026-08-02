@@ -5,7 +5,11 @@ const viewports = [
   { name: 'small', size: { width: 390, height: 844 } },
 ] as const;
 
-const globalNavigationLinks = ['はじめに', 'Dashboard'] as const;
+const globalNavigationLinks = [
+  'はじめに',
+  'Dashboard',
+  'Prompt Library',
+] as const;
 
 const primaryPages = [
   {
@@ -152,7 +156,7 @@ test.describe('responsive and accessibility quality baseline', () => {
       const navigation = getGlobalNavigation(page);
       await expect(navigation).toBeVisible();
       await expectReadableBaseline(page, pageInfo);
-      if (pageInfo.path === '/dashboard') {
+      if (pageInfo.path === '/dashboard' || pageInfo.path === '/prompts') {
         await expectCurrentNavigation(
           navigation,
           pageInfo.currentNavigationLabel,

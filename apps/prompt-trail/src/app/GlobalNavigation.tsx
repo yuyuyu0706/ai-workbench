@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 import { getActiveNavigationItemId, globalNavigationItems } from './navigation';
 
@@ -14,17 +14,17 @@ export function GlobalNavigation() {
 
           return (
             <li key={item.id}>
-              <NavLink
+              <Link
                 aria-current={isActive ? 'page' : undefined}
-                className={({ isActive: navLinkIsActive }) =>
-                  navLinkIsActive || isActive
+                className={
+                  isActive
                     ? 'global-navigation__link global-navigation__link--active'
                     : 'global-navigation__link'
                 }
                 to={item.path}
               >
                 {item.label}
-              </NavLink>
+              </Link>
             </li>
           );
         })}
