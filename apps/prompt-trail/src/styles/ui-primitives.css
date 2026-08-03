@@ -17,7 +17,13 @@
   font-weight: 700;
   line-height: 1.2;
   text-align: center;
+  text-decoration: none;
   cursor: pointer;
+}
+
+.pt-button:hover,
+.pt-button:focus-visible {
+  text-decoration: none;
 }
 
 .pt-button:disabled {

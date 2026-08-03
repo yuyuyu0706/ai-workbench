@@ -86,7 +86,7 @@ test.describe('Prompt Editor flow', () => {
     await expect(rows.first()).toContainText('編集済みPrompt');
     await rows
       .first()
-      .getByRole('button', { name: '「編集済みPrompt」のプロンプトを表示' })
+      .getByRole('button', { name: '「編集済みPrompt」のPrompt本文を表示' })
       .click();
     await expect(
       page.getByRole('dialog', { name: 'Prompt本文' }),

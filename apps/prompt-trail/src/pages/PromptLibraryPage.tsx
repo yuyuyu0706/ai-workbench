@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -203,6 +204,14 @@ export function PromptLibraryPage() {
               tabIndex={0}
             >
               <table className="pt-prompt-table" aria-label="Prompt一覧">
+                <colgroup>
+                  <col className="pt-prompt-table__column-title" />
+                  <col className="pt-prompt-table__column-project" />
+                  <col className="pt-prompt-table__column-kind" />
+                  <col className="pt-prompt-table__column-updated-at" />
+                  <col className="pt-prompt-table__column-prompt" />
+                  <col className="pt-prompt-table__column-actions" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th scope="col">タイトル</th>
@@ -261,7 +270,15 @@ function PromptTableRow({
 }) {
   return (
     <tr>
-      <td className="pt-prompt-table__title">{prompt.title}</td>
+      <td className="pt-prompt-table__title">
+        <Link
+          className="pt-prompt-table__title-link"
+          to={buildPromptEditPath(prompt.id)}
+          aria-label={`「${prompt.title}」を編集`}
+        >
+          {prompt.title}
+        </Link>
+      </td>
       <td className="pt-prompt-table__muted">
         {prompt.scope === 'global' ? 'Global' : 'Default Project'}
       </td>
@@ -273,7 +290,7 @@ function PromptTableRow({
           {formatDateTime(prompt.updatedAt)}
         </time>
       </td>
-      <td>
+      <td className="pt-prompt-table__prompt-cell">
         <PromptBodyPopover
           prompt={prompt}
           open={bodyOpen}
@@ -282,22 +299,13 @@ function PromptTableRow({
         />
       </td>
       <td>
-        <div className="pt-prompt-table__actions">
-          <Link
-            className="pt-button pt-button--primary"
-            to={buildNewTrailFromPromptPath(prompt.id)}
-            aria-label={`「${prompt.title}」からTrailを作成`}
-          >
-            Trailを作成
-          </Link>
-          <Link
-            className="pt-button pt-button--secondary"
-            to={buildPromptEditPath(prompt.id)}
-            aria-label={`「${prompt.title}」を編集`}
-          >
-            編集
-          </Link>
-        </div>
+        <Link
+          className="pt-button pt-button--primary"
+          to={buildNewTrailFromPromptPath(prompt.id)}
+          aria-label={`「${prompt.title}」からTrailを作成`}
+        >
+          Trailを作成
+        </Link>
       </td>
     </tr>
   );
@@ -316,26 +324,60 @@ function PromptBodyPopover({
 }) {
   const reactId = useId();
   const panelId = `prompt-body-${reactId.replaceAll(':', '')}`;
+  const tooltipId = `${panelId}-tooltip`;
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState<CSSProperties>();
+  const [position, setPosition] = useState<{
+    placement: 'right-start' | 'left-start' | 'bottom-start';
+    style: CSSProperties;
+  }>();
+
+  const updatePosition = useCallback(() => {
+    const trigger = triggerRef.current;
+    const panel = panelRef.current;
+    if (trigger === null || panel === null) return;
+    const margin = 16;
+    const gap = 12;
+    const triggerRect = trigger.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    const panelWidth = panelRect.width;
+    const panelHeight = panelRect.height;
+    const top = Math.max(
+      margin,
+      Math.min(triggerRect.top, window.innerHeight - panelHeight - margin),
+    );
+    if (window.innerWidth - triggerRect.right >= panelWidth + gap) {
+      setPosition({
+        placement: 'right-start',
+        style: { left: triggerRect.right + gap, top },
+      });
+      return;
+    }
+    if (triggerRect.left >= panelWidth + gap) {
+      setPosition({
+        placement: 'left-start',
+        style: { left: triggerRect.left - panelWidth - gap, top },
+      });
+      return;
+    }
+    setPosition({
+      placement: 'bottom-start',
+      style: {
+        left: Math.max(
+          margin,
+          Math.min(triggerRect.left, window.innerWidth - panelWidth - margin),
+        ),
+        top: Math.min(
+          triggerRect.bottom + gap,
+          window.innerHeight - panelHeight - margin,
+        ),
+      },
+    });
+  }, []);
 
   useLayoutEffect(() => {
-    if (!open || triggerRef.current === null) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    const width = Math.min(448, window.innerWidth - 32);
-    setPosition({
-      left: Math.max(
-        16,
-        Math.min(
-          rect.left + rect.width / 2 - width / 2,
-          window.innerWidth - width - 16,
-        ),
-      ),
-      top: Math.min(rect.bottom + 10, window.innerHeight - 80),
-      width,
-    });
-  }, [open]);
+    if (open) updatePosition();
+  }, [open, updatePosition]);
 
   useEffect(() => {
     if (!open) return;
@@ -344,59 +386,85 @@ function PromptBodyPopover({
       triggerRef.current?.focus();
     };
     const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (
-        !panelRef.current?.contains(target) &&
-        !triggerRef.current?.contains(target)
-      )
-        closeAndFocus();
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (panelRef.current?.contains(target)) return;
+      if (triggerRef.current?.contains(target)) return;
+      closeAndFocus();
     };
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') closeAndFocus();
     };
     document.addEventListener('pointerdown', handlePointerDown);
     document.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('resize', closeAndFocus);
-    const scrollListenerTimer = window.setTimeout(
-      () => window.addEventListener('scroll', closeAndFocus, true),
-      0,
-    );
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
     return () => {
-      window.clearTimeout(scrollListenerTimer);
       document.removeEventListener('pointerdown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('resize', closeAndFocus);
-      window.removeEventListener('scroll', closeAndFocus, true);
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
     };
-  }, [onClose, open]);
+  }, [onClose, open, updatePosition]);
 
   return (
     <>
-      <button
-        ref={triggerRef}
-        className="pt-button pt-button--secondary pt-prompt-body-trigger"
-        type="button"
-        aria-controls={panelId}
-        aria-expanded={open}
-        aria-label={`「${prompt.title}」のプロンプトを表示`}
-        onClick={onToggle}
-      >
-        プロンプト
-      </button>
-      {open && position !== undefined
+      <span className="pt-prompt-body-trigger-wrap">
+        <button
+          ref={triggerRef}
+          className="pt-prompt-body-trigger"
+          type="button"
+          aria-controls={panelId}
+          aria-describedby={tooltipId}
+          aria-expanded={open}
+          aria-label={`「${prompt.title}」のPrompt本文を表示`}
+          onClick={onToggle}
+        >
+          <svg
+            aria-hidden="true"
+            className="pt-prompt-body-trigger__icon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path d="M6 3.5h8l4 4V20.5H6zM14 3.5v4h4M9 12h6M9 15.5h6" />
+          </svg>
+        </button>
+        <span
+          className="pt-prompt-body-trigger__tooltip"
+          id={tooltipId}
+          role="tooltip"
+        >
+          Prompt本文を表示
+        </span>
+      </span>
+      {open
         ? createPortal(
             <div
               ref={panelRef}
               className="pt-prompt-body-popover"
+              data-placement={position?.placement}
               id={panelId}
               role="dialog"
               aria-label="Prompt本文"
-              style={position}
+              style={
+                position?.style ?? {
+                  left: 0,
+                  top: 0,
+                  visibility: 'hidden',
+                }
+              }
             >
+              <span
+                aria-hidden="true"
+                className="pt-prompt-body-popover__arrow"
+              />
               <h3>Prompt本文</h3>
-              <p>{prompt.body}</p>
+              <div className="pt-prompt-body-popover__content">
+                <p>{prompt.body}</p>
+              </div>
               <div className="pt-prompt-body-popover__actions">
                 <button
+                  aria-label="Prompt本文を閉じる"
                   className="pt-button pt-button--secondary"
                   type="button"
                   onClick={() => {

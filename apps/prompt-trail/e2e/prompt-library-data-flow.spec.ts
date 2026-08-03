@@ -50,7 +50,12 @@ async function seedGlobalPromptInBrowser(page: Page) {
         deletedAt: null,
         scope: 'global',
         title: 'Global障害分析',
-        body: 'Global Promptの本文\n長い英数字ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+        body: [
+          'Global Promptの本文',
+          ...Array.from({ length: 55 }, (_, index) => `長文行 ${index + 1}`),
+          '長い英数字ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+          'PROMPT_BODY_END_MARKER',
+        ].join('\n'),
         kind: 'incident-analysis',
         status: 'active',
         tags: [],
@@ -64,7 +69,9 @@ async function seedGlobalPromptInBrowser(page: Page) {
 test.describe('Prompt Library data flow', () => {
   test('supports direct access, repository data, search, and reload', async ({
     page,
-  }) => {
+  }, testInfo) => {
+    if (testInfo.project.name === 'chromium-desktop')
+      await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto('/prompts');
     await expect(
       page
@@ -87,6 +94,20 @@ test.describe('Prompt Library data flow', () => {
     await expect(promptTable.getByRole('row')).toHaveCount(3);
     await expect(promptTable.getByText('Codex開発依頼')).toBeVisible();
     await expect(promptTable.getByText('Global障害分析')).toBeVisible();
+    const newPromptLink = page.getByRole('link', { name: 'Promptを新規登録' });
+    const createTrailLink = page.getByRole('link', {
+      name: '「Codex開発依頼」からTrailを作成',
+    });
+    await expect(newPromptLink).toHaveCSS('text-decoration-line', 'none');
+    await expect(createTrailLink).toHaveCSS('text-decoration-line', 'none');
+    const titleLink = page.getByRole('link', {
+      name: '「Codex開発依頼」を編集',
+    });
+    await expect(titleLink).toHaveClass(/pt-prompt-table__title-link/);
+    await titleLink.click();
+    await expect(page).toHaveURL(/\/prompts\/prompt-library-e2e\/edit$/);
+    await page.goBack();
+    await expect(promptTable).toBeVisible();
 
     const search = page.getByRole('searchbox', { name: 'Promptを検索' });
     const projectFilter = page.getByRole('combobox', { name: 'プロジェクト' });
@@ -108,19 +129,48 @@ test.describe('Prompt Library data flow', () => {
     await expect(promptTable.getByRole('row')).toHaveCount(3);
 
     const projectTrigger = page.getByRole('button', {
-      name: '「Codex開発依頼」のプロンプトを表示',
+      name: '「Codex開発依頼」のPrompt本文を表示',
     });
     const globalTrigger = page.getByRole('button', {
-      name: '「Global障害分析」のプロンプトを表示',
+      name: '「Global障害分析」のPrompt本文を表示',
     });
+    await projectTrigger.hover();
+    const tooltipId = await projectTrigger.getAttribute('aria-describedby');
+    expect(tooltipId).not.toBeNull();
+    await expect(page.locator(`#${tooltipId}`)).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Prompt本文' })).toHaveCount(
+      0,
+    );
     await projectTrigger.click();
-    await expect(
-      page.getByRole('dialog', { name: 'Prompt本文' }),
-    ).toContainText('変更内容を確認して実装してください。');
+    const popover = page.getByRole('dialog', { name: 'Prompt本文' });
+    await expect(popover).toContainText('変更内容を確認して実装してください。');
+    if (testInfo.project.name === 'chromium-desktop') {
+      await expect(popover).toHaveAttribute('data-placement', 'right-start');
+      const triggerRect = await projectTrigger.boundingBox();
+      const popoverRect = await popover.boundingBox();
+      expect(triggerRect).not.toBeNull();
+      expect(popoverRect).not.toBeNull();
+      expect(popoverRect!.x).toBeGreaterThanOrEqual(
+        triggerRect!.x + triggerRect!.width,
+      );
+    }
     await globalTrigger.click();
-    await expect(
-      page.getByRole('dialog', { name: 'Prompt本文' }),
-    ).toContainText('Global Promptの本文');
+    await expect(popover).toContainText('Global Promptの本文');
+    const popoverContent = popover.locator('.pt-prompt-body-popover__content');
+    expect(
+      await popoverContent.evaluate(
+        (element) => element.scrollHeight > element.clientHeight,
+      ),
+    ).toBe(true);
+    await popoverContent.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await expect(popover).toBeVisible();
+    await expect(popover.getByText('PROMPT_BODY_END_MARKER')).toBeInViewport();
+    await popoverContent.click();
+    await expect(popover).toBeVisible();
+    await popoverContent.dispatchEvent('wheel');
+    await expect(popover).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog', { name: 'Prompt本文' })).toHaveCount(
       0,
@@ -133,7 +183,7 @@ test.describe('Prompt Library data flow', () => {
       0,
     );
     await globalTrigger.click();
-    await page.getByRole('button', { name: '閉じる' }).click();
+    await page.getByRole('button', { name: 'Prompt本文を閉じる' }).click();
     await expect(globalTrigger).toBeFocused();
     await page.reload();
     await expect(promptTable.getByText('Codex開発依頼')).toBeVisible();
@@ -160,7 +210,7 @@ test.describe('Prompt Library data flow', () => {
       ),
     ).toBe(true);
     const promptTrigger = page.getByRole('button', {
-      name: '「Codex開発依頼」のプロンプトを表示',
+      name: '「Codex開発依頼」のPrompt本文を表示',
     });
     await page.getByRole('combobox', { name: 'プロジェクト' }).focus();
     await page.keyboard.press('Tab');
@@ -169,6 +219,10 @@ test.describe('Prompt Library data flow', () => {
     ).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(tableRegion).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(
+      page.getByRole('link', { name: '「Codex開発依頼」を編集' }),
+    ).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(promptTrigger).toBeFocused();
     await page.keyboard.press('Enter');

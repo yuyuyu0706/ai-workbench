@@ -20,14 +20,14 @@ import type { PromptTrailRepository } from '../repository';
 import { PromptLibraryPage } from './PromptLibraryPage';
 
 const timestamp = '2026-08-01T00:00:00.000Z' as UtcDateTimeString;
+const longBody = [
+  '日本語の本文',
+  ...Array.from({ length: 50 }, (_, index) => `本文 ${index + 1}`),
+  'https://example.com/very-long-prompt-body-value',
+  'PROMPT_BODY_END_MARKER',
+].join('\n');
 const prompts: readonly Prompt[] = [
-  createPrompt(
-    'alpha',
-    'Alpha CODEX依頼',
-    '日本語の本文\nhttps://example.com/very-long-prompt-body-value',
-    'global',
-    'codex-request',
-  ),
+  createPrompt('alpha', 'Alpha CODEX依頼', longBody, 'global', 'codex-request'),
   createPrompt(
     'beta',
     'Beta設計レビュー'.repeat(6),
@@ -122,9 +122,17 @@ describe('PromptLibraryPage', () => {
         name: `「${prompts[0].title}」からTrailを作成`,
       }),
     ).toHaveAttribute('href', '/runs/new?sourcePromptId=alpha');
+    const titleLink = screen.getByRole('link', {
+      name: `「${prompts[0].title}」を編集`,
+    });
+    expect(titleLink).toHaveAttribute('href', '/prompts/alpha/edit');
+    expect(titleLink).toHaveClass('pt-prompt-table__title-link');
     expect(
-      screen.getByRole('link', { name: `「${prompts[0].title}」を編集` }),
-    ).toHaveAttribute('href', '/prompts/alpha/edit');
+      screen.getByRole('link', {
+        name: `「${prompts[0].title}」からTrailを作成`,
+      }),
+    ).toHaveClass('pt-button', 'pt-button--primary');
+    expect(screen.queryByRole('link', { name: '編集' })).toBeNull();
     expect(screen.getAllByRole('time')[0]).toHaveAttribute(
       'datetime',
       timestamp,
@@ -174,18 +182,35 @@ describe('PromptLibraryPage', () => {
     const user = userEvent.setup();
     renderPromptLibraryPage(createRepository(prompts));
     const alphaTrigger = await screen.findByRole('button', {
-      name: `「${prompts[0].title}」のプロンプトを表示`,
+      name: `「${prompts[0].title}」のPrompt本文を表示`,
     });
     const betaTrigger = screen.getByRole('button', {
-      name: `「${prompts[1].title}」のプロンプトを表示`,
+      name: `「${prompts[1].title}」のPrompt本文を表示`,
     });
     expect(alphaTrigger).toHaveAttribute('aria-expanded', 'false');
+    expect(alphaTrigger).toHaveAttribute('aria-controls');
+    expect(
+      screen.getAllByRole('tooltip', { name: 'Prompt本文を表示' }),
+    ).toHaveLength(2);
+    expect(screen.queryByText('プロンプト')).toBeNull();
 
     await user.click(alphaTrigger);
     expect(alphaTrigger).toHaveAttribute('aria-expanded', 'true');
     expect(
       screen.getByRole('dialog', { name: 'Prompt本文' }).textContent,
     ).toContain(prompts[0].body);
+    expect(
+      screen.getByRole('dialog', { name: 'Prompt本文' }),
+    ).toHaveTextContent('PROMPT_BODY_END_MARKER');
+    expect(screen.getByRole('dialog', { name: 'Prompt本文' })).toHaveAttribute(
+      'data-placement',
+    );
+    const content = document.querySelector('.pt-prompt-body-popover__content');
+    expect(content).not.toBeNull();
+    await user.click(content!);
+    expect(screen.getByRole('dialog', { name: 'Prompt本文' })).toBeVisible();
+    content!.dispatchEvent(new WheelEvent('wheel', { bubbles: true }));
+    expect(screen.getByRole('dialog', { name: 'Prompt本文' })).toBeVisible();
     await user.click(alphaTrigger);
     expect(screen.queryByRole('dialog', { name: 'Prompt本文' })).toBeNull();
     expect(alphaTrigger).toHaveAttribute('aria-expanded', 'false');
@@ -204,7 +229,9 @@ describe('PromptLibraryPage', () => {
     await user.pointer({ keys: '[MouseLeft]', target: document.body });
     expect(screen.queryByRole('dialog', { name: 'Prompt本文' })).toBeNull();
     await user.click(betaTrigger);
-    await user.click(screen.getByRole('button', { name: '閉じる' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Prompt本文を閉じる' }),
+    );
     expect(betaTrigger).toHaveFocus();
   });
 
@@ -213,7 +240,7 @@ describe('PromptLibraryPage', () => {
     renderPromptLibraryPage(createRepository(prompts));
     await user.click(
       await screen.findByRole('button', {
-        name: `「${prompts[0].title}」のプロンプトを表示`,
+        name: `「${prompts[0].title}」のPrompt本文を表示`,
       }),
     );
     await user.selectOptions(
