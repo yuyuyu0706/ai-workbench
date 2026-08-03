@@ -166,7 +166,7 @@ export function PromptLibraryPage() {
                   setOpenPrompt(null);
                   setQuery(event.target.value);
                 }}
-                placeholder="タイトルまたは本文を検索"
+                placeholder="Prompt名または本文を検索"
               />
             </label>
             <div className="pt-prompt-library__result-row">
@@ -203,7 +203,10 @@ export function PromptLibraryPage() {
               role="region"
               tabIndex={0}
             >
-              <table className="pt-prompt-table" aria-label="Prompt一覧">
+              <table
+                className="pt-prompt-table pt-prompt-table--compact"
+                aria-label="Prompt一覧"
+              >
                 <colgroup>
                   <col className="pt-prompt-table__column-title" />
                   <col className="pt-prompt-table__column-project" />
@@ -214,7 +217,7 @@ export function PromptLibraryPage() {
                 </colgroup>
                 <thead>
                   <tr>
-                    <th scope="col">タイトル</th>
+                    <th scope="col">Prompt名</th>
                     <th scope="col">プロジェクト</th>
                     <th scope="col">種別</th>
                     <th scope="col">更新日時</th>
@@ -300,7 +303,7 @@ function PromptTableRow({
       </td>
       <td>
         <Link
-          className="pt-button pt-button--primary"
+          className="pt-button pt-button--primary pt-button--compact"
           to={buildNewTrailFromPromptPath(prompt.id)}
           aria-label={`「${prompt.title}」からTrailを作成`}
         >
@@ -327,6 +330,10 @@ function PromptBodyPopover({
   const tooltipId = `${panelId}-tooltip`;
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const [isTriggerHovered, setIsTriggerHovered] = useState(false);
+  const [isTriggerFocused, setIsTriggerFocused] = useState(false);
+  const [suppressFocusTooltip, setSuppressFocusTooltip] = useState(false);
+  const [copyState, setCopyState] = useState<'success' | 'error' | null>(null);
   const [position, setPosition] = useState<{
     placement: 'right-start' | 'left-start' | 'bottom-start';
     style: CSSProperties;
@@ -382,8 +389,10 @@ function PromptBodyPopover({
   useEffect(() => {
     if (!open) return;
     const closeAndFocus = () => {
+      setCopyState(null);
+      setSuppressFocusTooltip(true);
       onClose();
-      triggerRef.current?.focus();
+      triggerRef.current?.focus({ preventScroll: true });
     };
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target;
@@ -407,9 +416,32 @@ function PromptBodyPopover({
     };
   }, [onClose, open, updatePosition]);
 
+  const tooltipVisible =
+    !open && (isTriggerHovered || (isTriggerFocused && !suppressFocusTooltip));
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(prompt.body);
+      setCopyState('success');
+    } catch {
+      setCopyState('error');
+    }
+  };
+
+  const handleCloseButton = () => {
+    setCopyState(null);
+    setSuppressFocusTooltip(true);
+    onClose();
+    triggerRef.current?.focus({ preventScroll: true });
+  };
+
   return (
     <>
-      <span className="pt-prompt-body-trigger-wrap">
+      <span
+        className="pt-prompt-body-trigger-wrap"
+        onMouseEnter={() => setIsTriggerHovered(true)}
+        onMouseLeave={() => setIsTriggerHovered(false)}
+      >
         <button
           ref={triggerRef}
           className="pt-prompt-body-trigger"
@@ -418,7 +450,17 @@ function PromptBodyPopover({
           aria-describedby={tooltipId}
           aria-expanded={open}
           aria-label={`「${prompt.title}」のPrompt本文を表示`}
-          onClick={onToggle}
+          onBlur={() => {
+            setIsTriggerFocused(false);
+            setSuppressFocusTooltip(false);
+          }}
+          onClick={() => {
+            setCopyState(null);
+            setIsTriggerHovered(false);
+            if (open) setSuppressFocusTooltip(true);
+            onToggle();
+          }}
+          onFocus={() => setIsTriggerFocused(true)}
         >
           <svg
             aria-hidden="true"
@@ -431,6 +473,7 @@ function PromptBodyPopover({
         </button>
         <span
           className="pt-prompt-body-trigger__tooltip"
+          data-visible={tooltipVisible}
           id={tooltipId}
           role="tooltip"
         >
@@ -458,19 +501,52 @@ function PromptBodyPopover({
                 aria-hidden="true"
                 className="pt-prompt-body-popover__arrow"
               />
-              <h3>Prompt本文</h3>
+              <header className="pt-prompt-body-popover__header">
+                <h3>Prompt本文</h3>
+                <span className="pt-prompt-body-popover__copy-wrap">
+                  <button
+                    aria-label={`「${prompt.title}」のPrompt本文をコピー`}
+                    className="pt-prompt-body-popover__copy"
+                    type="button"
+                    onClick={handleCopy}
+                  >
+                    <svg
+                      aria-hidden="true"
+                      className="pt-prompt-body-popover__copy-icon"
+                      focusable="false"
+                      viewBox="0 0 24 24"
+                    >
+                      <rect x="8" y="8" width="11" height="11" rx="2" />
+                      <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+                    </svg>
+                  </button>
+                  <span
+                    className="pt-prompt-body-popover__copy-tooltip"
+                    role="tooltip"
+                  >
+                    Prompt本文をコピー
+                  </span>
+                </span>
+              </header>
               <div className="pt-prompt-body-popover__content">
                 <p>{prompt.body}</p>
               </div>
               <div className="pt-prompt-body-popover__actions">
+                <p
+                  aria-live="polite"
+                  className="pt-prompt-body-popover__copy-status"
+                >
+                  {copyState === 'success'
+                    ? 'コピーしました'
+                    : copyState === 'error'
+                      ? 'コピーできませんでした'
+                      : null}
+                </p>
                 <button
                   aria-label="Prompt本文を閉じる"
                   className="pt-button pt-button--secondary"
                   type="button"
-                  onClick={() => {
-                    onClose();
-                    triggerRef.current?.focus();
-                  }}
+                  onClick={handleCloseButton}
                 >
                   閉じる
                 </button>

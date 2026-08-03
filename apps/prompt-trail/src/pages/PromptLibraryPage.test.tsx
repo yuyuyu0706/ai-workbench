@@ -100,7 +100,7 @@ describe('PromptLibraryPage', () => {
     expect(
       screen.getAllByRole('columnheader').map((cell) => cell.textContent),
     ).toEqual([
-      'タイトル',
+      'Prompt名',
       'プロジェクト',
       '種別',
       '更新日時',
@@ -118,6 +118,11 @@ describe('PromptLibraryPage', () => {
     );
     expect(screen.queryByRole('button', { name: '条件をクリア' })).toBeNull();
     expect(
+      screen.getByPlaceholderText('Prompt名または本文を検索'),
+    ).toBeVisible();
+    expect(screen.queryByRole('columnheader', { name: 'タイトル' })).toBeNull();
+    expect(table).toHaveClass('pt-prompt-table--compact');
+    expect(
       screen.getByRole('link', {
         name: `「${prompts[0].title}」からTrailを作成`,
       }),
@@ -131,7 +136,7 @@ describe('PromptLibraryPage', () => {
       screen.getByRole('link', {
         name: `「${prompts[0].title}」からTrailを作成`,
       }),
-    ).toHaveClass('pt-button', 'pt-button--primary');
+    ).toHaveClass('pt-button', 'pt-button--primary', 'pt-button--compact');
     expect(screen.queryByRole('link', { name: '編集' })).toBeNull();
     expect(screen.getAllByRole('time')[0]).toHaveAttribute(
       'datetime',
@@ -193,9 +198,16 @@ describe('PromptLibraryPage', () => {
       screen.getAllByRole('tooltip', { name: 'Prompt本文を表示' }),
     ).toHaveLength(2);
     expect(screen.queryByText('プロンプト')).toBeNull();
+    const alphaTooltip = document.getElementById(
+      alphaTrigger.getAttribute('aria-describedby')!,
+    );
+    expect(alphaTooltip).toHaveAttribute('data-visible', 'false');
+    act(() => alphaTrigger.focus());
+    expect(alphaTooltip).toHaveAttribute('data-visible', 'true');
 
-    await user.click(alphaTrigger);
+    await user.keyboard('{Enter}');
     expect(alphaTrigger).toHaveAttribute('aria-expanded', 'true');
+    expect(alphaTooltip).toHaveAttribute('data-visible', 'false');
     expect(
       screen.getByRole('dialog', { name: 'Prompt本文' }).textContent,
     ).toContain(prompts[0].body);
@@ -211,9 +223,16 @@ describe('PromptLibraryPage', () => {
     expect(screen.getByRole('dialog', { name: 'Prompt本文' })).toBeVisible();
     content!.dispatchEvent(new WheelEvent('wheel', { bubbles: true }));
     expect(screen.getByRole('dialog', { name: 'Prompt本文' })).toBeVisible();
+    await user.unhover(alphaTrigger);
     await user.click(alphaTrigger);
     expect(screen.queryByRole('dialog', { name: 'Prompt本文' })).toBeNull();
     expect(alphaTrigger).toHaveAttribute('aria-expanded', 'false');
+    expect(alphaTrigger).toHaveFocus();
+    act(() => {
+      betaTrigger.focus();
+      alphaTrigger.focus();
+    });
+    expect(alphaTooltip).toHaveAttribute('data-visible', 'true');
     await user.click(alphaTrigger);
     await user.click(betaTrigger);
     expect(alphaTrigger).toHaveAttribute('aria-expanded', 'false');
@@ -222,9 +241,14 @@ describe('PromptLibraryPage', () => {
       screen.getByRole('dialog', { name: 'Prompt本文' }).textContent,
     ).toContain(prompts[1].body);
 
+    await user.unhover(betaTrigger);
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog', { name: 'Prompt本文' })).toBeNull();
     expect(betaTrigger).toHaveFocus();
+    const betaTooltip = document.getElementById(
+      betaTrigger.getAttribute('aria-describedby')!,
+    );
+    expect(betaTooltip).toHaveAttribute('data-visible', 'false');
     await user.click(betaTrigger);
     await user.pointer({ keys: '[MouseLeft]', target: document.body });
     expect(screen.queryByRole('dialog', { name: 'Prompt本文' })).toBeNull();
@@ -232,7 +256,65 @@ describe('PromptLibraryPage', () => {
     await user.click(
       screen.getByRole('button', { name: 'Prompt本文を閉じる' }),
     );
-    expect(betaTrigger).toHaveFocus();
+    await waitFor(() => expect(betaTrigger).toHaveFocus());
+  });
+
+  it('copies the exact Prompt body, reports success or failure, and resets copy status', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(async () => undefined);
+    const originalClipboard = navigator.clipboard;
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    try {
+      renderPromptLibraryPage(createRepository(prompts));
+      const alphaTrigger = await screen.findByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文を表示`,
+      });
+      await user.click(alphaTrigger);
+      const copyButton = screen.getByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文をコピー`,
+      });
+      expect(
+        screen.getByRole('tooltip', { name: 'Prompt本文をコピー' }),
+      ).toBeInTheDocument();
+      await user.click(copyButton);
+      expect(writeText).toHaveBeenCalledWith(prompts[0].body);
+      expect(screen.getByText('コピーしました')).toBeVisible();
+      expect(screen.getByRole('dialog', { name: 'Prompt本文' })).toBeVisible();
+
+      await user.click(
+        screen.getByRole('button', {
+          name: `「${prompts[1].title}」のPrompt本文を表示`,
+        }),
+      );
+      expect(screen.queryByText('コピーしました')).toBeNull();
+      writeText.mockRejectedValueOnce(new Error('clipboard denied detail'));
+      await user.click(
+        screen.getByRole('button', {
+          name: `「${prompts[1].title}」のPrompt本文をコピー`,
+        }),
+      );
+      expect(screen.getByText('コピーできませんでした')).toBeVisible();
+      expect(screen.queryByText('clipboard denied detail')).toBeNull();
+      expect(screen.getByRole('dialog', { name: 'Prompt本文' })).toBeVisible();
+
+      await user.click(
+        screen.getByRole('button', { name: 'Prompt本文を閉じる' }),
+      );
+      await user.click(
+        screen.getByRole('button', {
+          name: `「${prompts[1].title}」のPrompt本文を表示`,
+        }),
+      );
+      expect(screen.queryByText('コピーできませんでした')).toBeNull();
+    } finally {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: originalClipboard,
+      });
+    }
   });
 
   it('closes an open Prompt body when filtering hides its row', async () => {

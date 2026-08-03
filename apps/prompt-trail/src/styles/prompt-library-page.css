@@ -84,7 +84,7 @@
 
 .pt-prompt-table th,
 .pt-prompt-table td {
-  padding: var(--pt-space-3);
+  padding: 0.5rem 0.65rem;
   border-bottom: 1px solid var(--pt-color-border);
   text-align: left;
   vertical-align: middle;
@@ -92,6 +92,7 @@
 }
 
 .pt-prompt-table th {
+  padding-block: 0.45rem;
   background: var(--pt-color-surface-subtle);
   color: var(--pt-color-text-strong);
   font-size: 0.875rem;
@@ -131,20 +132,24 @@
 }
 
 .pt-prompt-table__title {
-  color: var(--pt-color-text-strong);
-  font-weight: 700;
+  color: var(--pt-color-accent-strong);
 }
 
 .pt-prompt-table__title-link {
-  color: var(--pt-color-text-strong);
-  font-weight: 700;
+  color: var(--pt-color-accent-strong);
+  font-weight: 400;
+  line-height: 1.35;
   text-decoration: none;
   overflow-wrap: anywhere;
 }
 
 .pt-prompt-table__title-link:hover {
-  color: var(--pt-color-accent-strong);
+  color: var(--pt-color-accent);
   text-decoration: underline;
+}
+
+.pt-prompt-table__title-link:visited {
+  color: var(--pt-color-accent-strong);
 }
 
 .pt-prompt-table__muted {
@@ -157,10 +162,15 @@
 }
 
 .pt-prompt-table .pt-button {
-  min-height: 2.25rem;
-  padding: var(--pt-space-2) var(--pt-space-3);
+  min-height: 2.2rem;
+  padding: 0.38rem 0.65rem;
   font-size: 0.875rem;
   white-space: nowrap;
+}
+
+.pt-prompt-table .pt-status-pin {
+  padding: 0.12rem 0.45rem;
+  line-height: 1.25;
 }
 
 .pt-prompt-body-popover {
@@ -231,7 +241,16 @@
 
 .pt-prompt-body-popover__actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: var(--pt-space-3);
+}
+
+.pt-prompt-body-popover__copy-status {
+  min-height: 1.5em;
+  margin: 0 auto 0 0;
+  color: var(--pt-color-text-muted);
+  font-size: 0.875rem;
 }
 
 .pt-prompt-body-trigger-wrap {
@@ -243,8 +262,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 2.2rem;
+  min-width: 2.2rem;
+  height: 2.2rem;
+  min-height: 2.2rem;
   padding: 0;
   border: 1px solid var(--pt-color-border);
   border-radius: var(--pt-radius-sm);
@@ -289,8 +310,7 @@
     transform 120ms ease;
 }
 
-.pt-prompt-body-trigger-wrap:hover .pt-prompt-body-trigger__tooltip,
-.pt-prompt-body-trigger-wrap:focus-within .pt-prompt-body-trigger__tooltip {
+.pt-prompt-body-trigger__tooltip[data-visible='true'] {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
@@ -298,6 +318,77 @@
 .pt-prompt-body-trigger[aria-expanded='true']
   + .pt-prompt-body-trigger__tooltip {
   opacity: 0;
+}
+
+.pt-prompt-body-popover__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pt-space-3);
+}
+
+.pt-prompt-body-popover__copy-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.pt-prompt-body-popover__copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 1px solid var(--pt-color-border);
+  border-radius: var(--pt-radius-sm);
+  background: var(--pt-color-surface);
+  color: var(--pt-color-accent-strong);
+  cursor: pointer;
+}
+
+.pt-prompt-body-popover__copy:hover {
+  border-color: var(--pt-color-accent);
+  background: var(--pt-color-surface-subtle);
+}
+
+.pt-prompt-body-popover__copy-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.pt-prompt-body-popover__copy-tooltip {
+  position: absolute;
+  z-index: 1;
+  right: 0;
+  bottom: calc(100% + var(--pt-space-2));
+  width: max-content;
+  padding: var(--pt-space-1) var(--pt-space-2);
+  border-radius: var(--pt-radius-sm);
+  background: var(--pt-color-text-strong);
+  color: var(--pt-color-surface);
+  font-size: 0.75rem;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pt-prompt-body-popover__copy-wrap:hover .pt-prompt-body-popover__copy-tooltip,
+.pt-prompt-body-popover__copy-wrap:focus-within
+  .pt-prompt-body-popover__copy-tooltip {
+  opacity: 1;
+}
+
+@media (pointer: coarse) {
+  .pt-prompt-body-trigger {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    min-height: 2.75rem;
+  }
 }
 
 @media (max-width: 480px) {
