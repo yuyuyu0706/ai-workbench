@@ -23,7 +23,9 @@ test.describe('Trail reuse acceptance', () => {
     await page.getByRole('button', { name: 'Promptを削除' }).click();
     await page.getByRole('button', { name: '削除する' }).click();
     await expect(
-      page.getByRole('heading', { name: sourceTitle, exact: true }),
+      page.getByRole('table', { name: 'Prompt一覧' }).getByText(sourceTitle, {
+        exact: true,
+      }),
     ).toHaveCount(0);
     await page.goto('/dashboard');
 
@@ -72,10 +74,12 @@ test.describe('Trail reuse acceptance', () => {
 
     await page.goto('/prompts');
     await expect(
-      page.getByRole('heading', { name: sourceTitle, exact: true }),
+      page.getByRole('table', { name: 'Prompt一覧' }).getByText(sourceTitle, {
+        exact: true,
+      }),
     ).toHaveCount(0);
     await expect(
-      page.getByRole('heading', { name: reusedTitle }),
+      page.getByRole('table', { name: 'Prompt一覧' }).getByText(reusedTitle),
     ).toBeVisible();
 
     await page.goto(sourceUrl);

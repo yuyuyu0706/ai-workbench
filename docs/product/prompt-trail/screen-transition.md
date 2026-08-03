@@ -81,7 +81,7 @@ Context Library は、何でも保存するメモ帳ではなく、**AI へ渡�
 
 ![PromptTrail prompt library screen design at phase 0](assets/screen-desgin-prompt-library-phase0.png)
 
-現行画面は、保存済みPromptを検索・改善しTrailへ再利用する目的をPage Headerで示します。一覧では全件数と検索後の表示件数を区別し、検索結果0件では検索解除を案内します。カードはタイトル、種別、Scope、更新日時、本文Preview、Actionの順に統一し、Trail作成をPrimary Action、編集をSecondary Actionとして表示します。十分な幅では2列、狭幅では1列とし、長文とActionは320pxでも安全に折り返します。
+現行画面は、保存済みPromptを検索・改善しTrailへ再利用する目的をPage Headerで示します。既存Scopeから導出する「すべてのプロジェクト／Global／Default Project」とキーワード検索をAND合成し、全件数と表示件数を区別します。一覧はタイトル、プロジェクト、種別、更新日時、Prompt、操作の6列を持つSemantic tableです。本文全文はTriggerに紐づく非modal Popoverだけで表示し、Trail作成をPrimary Action、編集をSecondary Actionとします。狭幅では同じtable DOMを一覧領域内だけ横scrollさせ、PopoverはPortalでViewport内へ表示します。Paginationと列sortは実装しません。
 
 ### Context Library
 

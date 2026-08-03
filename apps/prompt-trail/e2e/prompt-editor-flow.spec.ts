@@ -54,14 +54,14 @@ test.describe('Prompt Editor flow', () => {
 
     await expect(page).toHaveURL(/\/prompts$/);
     await expect(page.getByText('Promptを登録しました。')).toBeVisible();
-    await expect(
-      page.getByRole('heading', { name: 'E2E新規Prompt' }),
-    ).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Prompt一覧' })).toContainText(
+      'E2E新規Prompt',
+    );
     await page.reload();
     await expect(page.getByText('Promptを登録しました。')).toHaveCount(0);
-    await expect(
-      page.getByRole('heading', { name: 'E2E新規Prompt' }),
-    ).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Prompt一覧' })).toContainText(
+      'E2E新規Prompt',
+    );
   });
 
   test('supports direct edit access, reload, update, and updatedAt ordering', async ({
@@ -80,13 +80,17 @@ test.describe('Prompt Editor flow', () => {
     await page.getByRole('button', { name: '保存' }).click();
 
     await expect(page.getByText('Promptを更新しました。')).toBeVisible();
-    const items = page
-      .getByRole('list', { name: 'Prompt一覧' })
-      .getByRole('listitem');
-    await expect(items.first().getByRole('heading')).toHaveText(
-      '編集済みPrompt',
-    );
-    await expect(items.first()).toContainText('編集後の本文');
+    const rows = page
+      .getByRole('table', { name: 'Prompt一覧' })
+      .locator('tbody tr');
+    await expect(rows.first()).toContainText('編集済みPrompt');
+    await rows
+      .first()
+      .getByRole('button', { name: '「編集済みPrompt」のプロンプトを表示' })
+      .click();
+    await expect(
+      page.getByRole('dialog', { name: 'Prompt本文' }),
+    ).toContainText('編集後の本文');
   });
 
   test('confirms or cancels soft deletion, excludes the Prompt, and shows notice once', async ({
@@ -108,7 +112,9 @@ test.describe('Prompt Editor flow', () => {
     await expect(page).toHaveURL(/\/prompts$/);
     await expect(page.getByText('Promptを削除しました。')).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: '編集対象Prompt' }),
+      page
+        .getByRole('table', { name: 'Prompt一覧' })
+        .getByText('編集対象Prompt'),
     ).toHaveCount(0);
     await page.reload();
     await expect(page.getByText('Promptを削除しました。')).toHaveCount(0);
@@ -158,10 +164,8 @@ test.describe('Prompt Editor flow', () => {
     await page.getByRole('button', { name: 'Trailを作成' }).click();
     await expect(page).toHaveURL(/\/runs\/run-/);
     await page.goto('/prompts');
-    await expect(
-      page.getByRole('heading', {
-        name: 'New Trailから保存されるActive Prompt',
-      }),
-    ).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Prompt一覧' })).toContainText(
+      'New Trailから保存されるActive Prompt',
+    );
   });
 });

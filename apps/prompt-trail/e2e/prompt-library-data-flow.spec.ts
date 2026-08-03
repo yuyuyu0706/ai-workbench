@@ -36,6 +36,31 @@ async function seedPromptLibraryInBrowser(page: Page) {
   });
 }
 
+async function seedGlobalPromptInBrowser(page: Page) {
+  await page.evaluate(async () => {
+    const { createPromptTrailRuntime } =
+      await import('/src/app/prompt-trail-runtime.ts');
+    const runtime = createPromptTrailRuntime();
+    try {
+      await runtime.initialize();
+      await runtime.repository.savePrompt({
+        id: 'prompt-library-global-e2e' as PromptId,
+        createdAt: '2026-08-01T01:00:00.000Z' as UtcDateTimeString,
+        updatedAt: '2026-08-01T01:00:00.000Z' as UtcDateTimeString,
+        deletedAt: null,
+        scope: 'global',
+        title: 'Global障害分析',
+        body: 'Global Promptの本文\n長い英数字ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+        kind: 'incident-analysis',
+        status: 'active',
+        tags: [],
+      });
+    } finally {
+      runtime.dispose();
+    }
+  });
+}
+
 test.describe('Prompt Library data flow', () => {
   test('supports direct access, repository data, search, and reload', async ({
     page,
@@ -51,34 +76,67 @@ test.describe('Prompt Library data flow', () => {
     ).toBeVisible();
 
     await seedPromptLibraryInBrowser(page);
+    await seedGlobalPromptInBrowser(page);
     await page.reload();
 
     await expect(
-      page.getByRole('heading', { level: 2, name: '保存済みPrompt' }),
+      page.getByRole('heading', { level: 2, name: 'Prompt一覧' }),
     ).toBeVisible();
-    const promptList = page.getByRole('list', { name: 'Prompt一覧' });
-    await expect(
-      promptList.getByRole('heading', { name: 'Codex開発依頼' }),
-    ).toBeVisible();
+    const promptTable = page.getByRole('table', { name: 'Prompt一覧' });
+    await expect(promptTable.getByRole('columnheader')).toHaveCount(6);
+    await expect(promptTable.getByRole('row')).toHaveCount(3);
+    await expect(promptTable.getByText('Codex開発依頼')).toBeVisible();
+    await expect(promptTable.getByText('Global障害分析')).toBeVisible();
 
     const search = page.getByRole('searchbox', { name: 'Promptを検索' });
-    await expect(page.getByText('全1件を表示')).toBeVisible();
+    const projectFilter = page.getByRole('combobox', { name: 'プロジェクト' });
+    await expect(page.getByText('全2件を表示')).toBeVisible();
+    await projectFilter.selectOption('project');
+    await expect(page.getByText('全2件中 1件を表示')).toBeVisible();
+    await expect(promptTable.getByText('Global障害分析')).toHaveCount(0);
     await search.fill('  codex  ');
-    await expect(page.getByText('全1件中 1件を表示')).toBeVisible();
-    await expect(promptList.getByRole('listitem')).toHaveCount(1);
+    await expect(promptTable.getByRole('row')).toHaveCount(2);
 
     await search.fill('一致しない検索条件');
-    await expect(page.getByText('全1件中 0件を表示')).toBeVisible();
+    await expect(page.getByText('全2件中 0件を表示')).toBeVisible();
     await expect(
-      page.getByText('検索条件に一致するPromptがありません。'),
+      page.getByText('条件に一致するPromptがありません。'),
     ).toBeVisible();
 
-    await page.getByRole('button', { name: '検索をクリア' }).click();
-    await expect(promptList.getByRole('listitem')).toHaveCount(1);
-    await page.reload();
+    await page.getByRole('button', { name: '条件をクリア' }).click();
+    await expect(projectFilter).toHaveValue('all');
+    await expect(promptTable.getByRole('row')).toHaveCount(3);
+
+    const projectTrigger = page.getByRole('button', {
+      name: '「Codex開発依頼」のプロンプトを表示',
+    });
+    const globalTrigger = page.getByRole('button', {
+      name: '「Global障害分析」のプロンプトを表示',
+    });
+    await projectTrigger.click();
     await expect(
-      page.getByRole('heading', { name: 'Codex開発依頼' }),
-    ).toBeVisible();
+      page.getByRole('dialog', { name: 'Prompt本文' }),
+    ).toContainText('変更内容を確認して実装してください。');
+    await globalTrigger.click();
+    await expect(
+      page.getByRole('dialog', { name: 'Prompt本文' }),
+    ).toContainText('Global Promptの本文');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: 'Prompt本文' })).toHaveCount(
+      0,
+    );
+    await globalTrigger.click();
+    await page
+      .getByRole('heading', { level: 1, name: 'Prompt Library' })
+      .click();
+    await expect(page.getByRole('dialog', { name: 'Prompt本文' })).toHaveCount(
+      0,
+    );
+    await globalTrigger.click();
+    await page.getByRole('button', { name: '閉じる' }).click();
+    await expect(globalTrigger).toBeFocused();
+    await page.reload();
+    await expect(promptTable.getByText('Codex開発依頼')).toBeVisible();
   });
 
   test('keeps search and prompt data within a 320px viewport', async ({
@@ -93,6 +151,44 @@ test.describe('Prompt Library data flow', () => {
       page.getByRole('searchbox', { name: 'Promptを検索' }),
     ).toBeVisible();
     await expectNoHorizontalOverflow(page);
+    const tableRegion = page.getByRole('region', {
+      name: 'Prompt一覧テーブル',
+    });
+    expect(
+      await tableRegion.evaluate(
+        (element) => element.scrollWidth > element.clientWidth,
+      ),
+    ).toBe(true);
+    const promptTrigger = page.getByRole('button', {
+      name: '「Codex開発依頼」のプロンプトを表示',
+    });
+    await page.getByRole('combobox', { name: 'プロジェクト' }).focus();
+    await page.keyboard.press('Tab');
+    await expect(
+      page.getByRole('searchbox', { name: 'Promptを検索' }),
+    ).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(tableRegion).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(promptTrigger).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(
+      page.getByRole('dialog', { name: 'Prompt本文' }),
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(promptTrigger).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(
+      page.getByRole('link', { name: '「Codex開発依頼」からTrailを作成' }),
+    ).toBeFocused();
+    await promptTrigger.click();
+    const popoverBox = await page
+      .getByRole('dialog', { name: 'Prompt本文' })
+      .boundingBox();
+    expect(popoverBox).not.toBeNull();
+    expect(popoverBox!.x).toBeGreaterThanOrEqual(0);
+    expect(popoverBox!.x + popoverBox!.width).toBeLessThanOrEqual(320);
+    await page.keyboard.press('Escape');
     await expect(
       page.getByRole('link', { name: '「Codex開発依頼」からTrailを作成' }),
     ).toBeVisible();
