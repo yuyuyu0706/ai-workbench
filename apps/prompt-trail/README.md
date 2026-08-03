@@ -10,7 +10,7 @@ PromptTrail は、AI を活用した作業の Trail を追跡するローカル�
 - ブラウザの IndexedDB を使うため、新しい browser / origin では Dashboard が empty state になる場合があります。これはローカル起動失敗を意味しません。
 - IndexedDBの現行schemaはversion 2です。既存のschema v1 DBはopen時にtransactional migrationされ、全Runへ従来のPrompt Snapshotタイトルと同じ`trailTitle`および`trailKind = other`が補完されます。migrationは他fieldや他Storeを変更せず、失敗時にDBを削除しません。
 
-Phase 1のPublic Alpha公開は完了しています。Phase 2ではRunのTrail名・Trail種別基盤とNew Trailの入力UIを実装済みです。過去Run再利用時は新しいPrompt資産を派生させますが、Prompt Library起点では同じPrompt資産を複製せず、現在内容を不変のRun Snapshotとして反復利用します。Prompt編集前に作成したSnapshotへ後の編集・削除は伝播しません。Prompt Libraryは主要Navigationへ復帰済みで、次は画面固有の情報階層とUI密度を洗練します。過去Trailへの到達性を含む詳細は[Roadmap](../../docs/product/prompt-trail/roadmap.md)を参照してください。
+Phase 1のPublic Alpha公開は完了しています。Phase 2ではRunのTrail名・Trail種別基盤とNew Trailの入力UIを実装済みです。過去Run再利用時は新しいPrompt資産を派生させますが、Prompt Library起点では同じPrompt資産を複製せず、現在内容を不変のRun Snapshotとして反復利用します。Prompt編集前に作成したSnapshotへ後の編集・削除は伝播しません。Prompt Libraryは主要Navigationから到達でき、ProjectとキーワードのAND条件、全件数・表示件数、6列のcompactなSemantic table、全文を必要時だけ示してコピーできるPopoverを備えています。Prompt名から編集し、Trail作成を操作列のPrimary Actionとします。狭幅では一覧領域だけを横scrollできます。過去Trailへの到達性を含む詳細は[Roadmap](../../docs/product/prompt-trail/roadmap.md)を参照してください。
 
 ## 最短起動
 

@@ -3,6 +3,12 @@ import { expect, type Page, test } from '@playwright/test';
 import type { PromptId, UtcDateTimeString } from '../src/domain';
 
 import { expectNoHorizontalOverflow } from './support/layout';
+const GLOBAL_PROMPT_BODY = [
+  'Global Promptの本文',
+  ...Array.from({ length: 55 }, (_, index) => `長文行 ${index + 1}`),
+  '長い英数字ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+  'PROMPT_BODY_END_MARKER',
+].join('\n');
 async function seedPromptLibraryInBrowser(page: Page) {
   await page.evaluate(async () => {
     const [{ createPromptTrailRuntime }, domain] = await Promise.all([
@@ -36,10 +42,39 @@ async function seedPromptLibraryInBrowser(page: Page) {
   });
 }
 
+async function seedGlobalPromptInBrowser(page: Page) {
+  await page.evaluate(async (body) => {
+    const { createPromptTrailRuntime } =
+      await import('/src/app/prompt-trail-runtime.ts');
+    const runtime = createPromptTrailRuntime();
+    try {
+      await runtime.initialize();
+      await runtime.repository.savePrompt({
+        id: 'prompt-library-global-e2e' as PromptId,
+        createdAt: '2026-08-01T01:00:00.000Z' as UtcDateTimeString,
+        updatedAt: '2026-08-01T01:00:00.000Z' as UtcDateTimeString,
+        deletedAt: null,
+        scope: 'global',
+        title: 'Global障害分析',
+        body,
+        kind: 'incident-analysis',
+        status: 'active',
+        tags: [],
+      });
+    } finally {
+      runtime.dispose();
+    }
+  }, GLOBAL_PROMPT_BODY);
+}
+
 test.describe('Prompt Library data flow', () => {
   test('supports direct access, repository data, search, and reload', async ({
+    context,
     page,
-  }) => {
+  }, testInfo) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    if (testInfo.project.name === 'chromium-desktop')
+      await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto('/prompts');
     await expect(
       page
@@ -51,31 +86,177 @@ test.describe('Prompt Library data flow', () => {
     ).toBeVisible();
 
     await seedPromptLibraryInBrowser(page);
+    await seedGlobalPromptInBrowser(page);
     await page.reload();
 
     await expect(
-      page.getByRole('heading', { level: 2, name: '保存済みPrompt' }),
+      page.getByRole('heading', { level: 2, name: 'Prompt一覧' }),
     ).toBeVisible();
-    const promptList = page.getByRole('list', { name: 'Prompt一覧' });
+    const promptTable = page.getByRole('table', { name: 'Prompt一覧' });
+    await expect(promptTable.getByRole('columnheader')).toHaveCount(6);
     await expect(
-      promptList.getByRole('heading', { name: 'Codex開発依頼' }),
+      promptTable.getByRole('columnheader', { name: 'Prompt名' }),
     ).toBeVisible();
+    await expect(
+      promptTable.getByRole('columnheader', { name: 'タイトル' }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByPlaceholder('Prompt名または本文を検索'),
+    ).toBeVisible();
+    await expect(promptTable.getByRole('row')).toHaveCount(3);
+    await expect(promptTable.getByText('Codex開発依頼')).toBeVisible();
+    await expect(promptTable.getByText('Global障害分析')).toBeVisible();
+    await expect(promptTable).toHaveClass(/pt-prompt-table--compact/);
+    const shortRow = promptTable.locator('tbody tr', {
+      hasText: 'Codex開発依頼',
+    });
+    await expect(shortRow.locator('td').first()).toHaveCSS(
+      'padding-top',
+      '8px',
+    );
+    if (testInfo.project.name === 'chromium-desktop') {
+      const shortRowBox = await shortRow.boundingBox();
+      expect(shortRowBox).not.toBeNull();
+      expect(shortRowBox!.height).toBeLessThan(64);
+    }
+    const newPromptLink = page.getByRole('link', { name: 'Promptを新規登録' });
+    const createTrailLink = page.getByRole('link', {
+      name: '「Codex開発依頼」からTrailを作成',
+    });
+    await expect(newPromptLink).toHaveCSS('text-decoration-line', 'none');
+    await expect(createTrailLink).toHaveCSS('text-decoration-line', 'none');
+    const titleLink = page.getByRole('link', {
+      name: '「Codex開発依頼」を編集',
+    });
+    expect(
+      await titleLink.evaluate(
+        (element) => getComputedStyle(element).fontWeight,
+      ),
+    ).toBe('400');
+    await expect(titleLink).toHaveClass(/pt-prompt-table__title-link/);
+    await titleLink.click();
+    await expect(page).toHaveURL(/\/prompts\/prompt-library-e2e\/edit$/);
+    await page.goBack();
+    await expect(promptTable).toBeVisible();
 
     const search = page.getByRole('searchbox', { name: 'Promptを検索' });
+    const projectFilter = page.getByRole('combobox', { name: 'プロジェクト' });
+    await expect(page.getByText('全2件を表示')).toBeVisible();
+    await projectFilter.selectOption('project');
+    await expect(page.getByText('全2件中 1件を表示')).toBeVisible();
+    await expect(promptTable.getByText('Global障害分析')).toHaveCount(0);
     await search.fill('  codex  ');
-    await expect(promptList.getByRole('listitem')).toHaveCount(1);
+    await expect(promptTable.getByRole('row')).toHaveCount(2);
 
     await search.fill('一致しない検索条件');
+    await expect(page.getByText('全2件中 0件を表示')).toBeVisible();
     await expect(
-      page.getByText('検索条件に一致するPromptがありません。'),
+      page.getByText('条件に一致するPromptがありません。'),
     ).toBeVisible();
 
-    await search.fill('');
-    await expect(promptList.getByRole('listitem')).toHaveCount(1);
+    await page.getByRole('button', { name: '条件をクリア' }).click();
+    await expect(projectFilter).toHaveValue('all');
+    await expect(promptTable.getByRole('row')).toHaveCount(3);
+
+    const projectTrigger = page.getByRole('button', {
+      name: '「Codex開発依頼」のPrompt本文を表示',
+    });
+    const globalTrigger = page.getByRole('button', {
+      name: '「Global障害分析」のPrompt本文を表示',
+    });
+    await projectTrigger.hover();
+    const tooltipId = await projectTrigger.getAttribute('aria-describedby');
+    expect(tooltipId).not.toBeNull();
+    await expect(page.locator(`#${tooltipId}`)).toHaveCSS('opacity', '1');
+    await expect(page.getByRole('dialog', { name: 'Prompt本文' })).toHaveCount(
+      0,
+    );
+    await projectTrigger.click();
+    const popover = page.getByRole('dialog', { name: 'Prompt本文' });
+    await expect(popover).toContainText('変更内容を確認して実装してください。');
+    if (testInfo.project.name === 'chromium-desktop') {
+      await expect(popover).toHaveAttribute('data-placement', 'right-start');
+      const triggerRect = await projectTrigger.boundingBox();
+      const popoverRect = await popover.boundingBox();
+      expect(triggerRect).not.toBeNull();
+      expect(popoverRect).not.toBeNull();
+      expect(popoverRect!.x).toBeGreaterThanOrEqual(
+        triggerRect!.x + triggerRect!.width,
+      );
+    }
+    await globalTrigger.click();
+    await expect(popover).toContainText('Global Promptの本文');
+    const popoverContent = popover.locator('.pt-prompt-body-popover__content');
+    expect(
+      await popoverContent.evaluate(
+        (element) => element.scrollHeight > element.clientHeight,
+      ),
+    ).toBe(true);
+    await popoverContent.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    const scrollTopBeforeCopy = await popoverContent.evaluate(
+      (element) => element.scrollTop,
+    );
+    await popover
+      .getByRole('button', { name: '「Global障害分析」のPrompt本文をコピー' })
+      .click();
+    await expect(popover.getByText('コピーしました')).toBeVisible();
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+      GLOBAL_PROMPT_BODY,
+    );
+    expect(await popoverContent.evaluate((element) => element.scrollTop)).toBe(
+      scrollTopBeforeCopy,
+    );
+    await expect(popover).toBeVisible();
+    await expect(popover.getByText('PROMPT_BODY_END_MARKER')).toBeInViewport();
+    await popoverContent.click();
+    await expect(popover).toBeVisible();
+    await popoverContent.dispatchEvent('wheel');
+    await expect(popover).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: 'Prompt本文' })).toHaveCount(
+      0,
+    );
+    const globalTooltipId =
+      await globalTrigger.getAttribute('aria-describedby');
+    expect(globalTooltipId).not.toBeNull();
+    if (testInfo.project.name === 'chromium-desktop') {
+      await expect(page.locator(`#${globalTooltipId}`)).toHaveCSS(
+        'opacity',
+        '0',
+      );
+      await globalTrigger.hover();
+      await expect(page.locator(`#${globalTooltipId}`)).toHaveCSS(
+        'opacity',
+        '1',
+      );
+    }
+    await page
+      .getByRole('heading', { level: 1, name: 'Prompt Library' })
+      .hover();
+    await globalTrigger.click();
+    await page
+      .getByRole('heading', { level: 1, name: 'Prompt Library' })
+      .click();
+    await expect(page.getByRole('dialog', { name: 'Prompt本文' })).toHaveCount(
+      0,
+    );
+    if (testInfo.project.name === 'chromium-desktop')
+      await expect(page.locator(`#${globalTooltipId}`)).toHaveCSS(
+        'opacity',
+        '0',
+      );
+    await globalTrigger.click();
+    await page.getByRole('button', { name: 'Prompt本文を閉じる' }).click();
+    await expect(globalTrigger).toBeFocused();
+    if (testInfo.project.name === 'chromium-desktop')
+      await expect(page.locator(`#${globalTooltipId}`)).toHaveCSS(
+        'opacity',
+        '0',
+      );
     await page.reload();
-    await expect(
-      page.getByRole('heading', { name: 'Codex開発依頼' }),
-    ).toBeVisible();
+    await expect(promptTable.getByText('Codex開発依頼')).toBeVisible();
   });
 
   test('keeps search and prompt data within a 320px viewport', async ({
@@ -90,6 +271,54 @@ test.describe('Prompt Library data flow', () => {
       page.getByRole('searchbox', { name: 'Promptを検索' }),
     ).toBeVisible();
     await expectNoHorizontalOverflow(page);
+    const tableRegion = page.getByRole('region', {
+      name: 'Prompt一覧テーブル',
+    });
+    expect(
+      await tableRegion.evaluate(
+        (element) => element.scrollWidth > element.clientWidth,
+      ),
+    ).toBe(true);
+    const promptTrigger = page.getByRole('button', {
+      name: '「Codex開発依頼」のPrompt本文を表示',
+    });
+    await page.getByRole('combobox', { name: 'プロジェクト' }).focus();
+    await page.keyboard.press('Tab');
+    await expect(
+      page.getByRole('searchbox', { name: 'Promptを検索' }),
+    ).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(tableRegion).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(
+      page.getByRole('link', { name: '「Codex開発依頼」を編集' }),
+    ).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(promptTrigger).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(
+      page.getByRole('dialog', { name: 'Prompt本文' }),
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(promptTrigger).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(
+      page.getByRole('link', { name: '「Codex開発依頼」からTrailを作成' }),
+    ).toBeFocused();
+    await promptTrigger.click();
+    const popoverBox = await page
+      .getByRole('dialog', { name: 'Prompt本文' })
+      .boundingBox();
+    expect(popoverBox).not.toBeNull();
+    expect(popoverBox!.x).toBeGreaterThanOrEqual(0);
+    expect(popoverBox!.x + popoverBox!.width).toBeLessThanOrEqual(320);
+    await page.keyboard.press('Escape');
+    await expect(
+      page.getByRole('link', { name: '「Codex開発依頼」からTrailを作成' }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('link', { name: '「Codex開発依頼」を編集' }),
+    ).toBeVisible();
     await page.goto('/runs/new?sourcePromptId=prompt-library-e2e');
     await expect(page.getByLabel('Prompt本文')).toBeVisible();
     await expectNoHorizontalOverflow(page);
