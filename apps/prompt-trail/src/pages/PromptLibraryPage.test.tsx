@@ -227,8 +227,18 @@ describe('PromptLibraryPage', () => {
     const closeButton = within(dialog).getByRole('button', {
       name: 'Prompt本文を閉じる',
     });
-    expect(editLink).toHaveTextContent('Promptを編集する');
+    expect(editLink).toHaveTextContent('');
     expect(editLink).toHaveAttribute('href', '/prompts/alpha/edit');
+    expect(editLink.querySelector('svg')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
+    expect(
+      within(dialog).getByRole('tooltip', { name: 'Promptを編集する' }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByText('Promptを編集する', { selector: 'a' }),
+    ).toBeNull();
     expect(
       Boolean(
         editLink.compareDocumentPosition(copyButton) &
@@ -417,6 +427,25 @@ describe('PromptLibraryPage', () => {
     expect(nameHeader).toHaveAttribute('aria-sort', 'none');
     expect(updatedHeader).toHaveAttribute('aria-sort', 'descending');
     expect(screen.getByText('全3件中 2件を表示')).toBeVisible();
+  });
+
+  it('uses dedicated alignment classes only for Prompt and action columns', async () => {
+    renderPromptLibraryPage(createRepository(prompts));
+    const table = await screen.findByRole('table', { name: 'Prompt一覧' });
+    const headers = within(table).getAllByRole('columnheader');
+    expect(headers[4]).toHaveClass('pt-prompt-table__prompt-heading');
+    expect(headers[5]).toHaveClass('pt-prompt-table__action-heading');
+    headers.slice(0, 4).forEach((header) => {
+      expect(header).not.toHaveClass(
+        'pt-prompt-table__prompt-heading',
+        'pt-prompt-table__action-heading',
+      );
+    });
+    const cells = within(within(table).getAllByRole('row')[1]).getAllByRole(
+      'cell',
+    );
+    expect(cells[4]).toHaveClass('pt-prompt-table__prompt-cell');
+    expect(cells[5]).toHaveClass('pt-prompt-table__action-cell');
   });
 
   it('applies loading, empty, and failure Developer Tools overrides and restores data', async () => {

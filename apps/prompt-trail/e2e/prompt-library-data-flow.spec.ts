@@ -141,6 +141,11 @@ test.describe('Prompt Library data flow', () => {
 
     const search = page.getByRole('searchbox', { name: 'Promptを検索' });
     const projectFilter = page.getByRole('combobox', { name: 'プロジェクト' });
+    await expect(search).toHaveCSS('font-weight', '400');
+    await expect(page.getByText('Promptを検索', { exact: true })).toHaveCSS(
+      'font-weight',
+      '700',
+    );
     await expect(page.getByText('全2件を表示')).toBeVisible();
     const nameHeader = promptTable.getByRole('columnheader').first();
     const updatedHeader = promptTable.getByRole('columnheader', {
@@ -195,6 +200,19 @@ test.describe('Prompt Library data flow', () => {
     await expect(
       popover.getByRole('link', { name: '「Codex開発依頼」を編集' }),
     ).toHaveAttribute('href', '/prompts/prompt-library-e2e/edit');
+    await expect(popover.getByText('Promptを編集する')).toHaveCount(1);
+    const editAction = popover.getByRole('link', {
+      name: '「Codex開発依頼」を編集',
+    });
+    await expect(editAction).toHaveText('');
+    await expect(editAction.locator('svg')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
+    await editAction.hover();
+    await expect(
+      popover.getByRole('tooltip', { name: 'Promptを編集する' }),
+    ).toHaveCSS('opacity', '1');
     await expect(
       popover.getByRole('tooltip', { name: '閉じる' }),
     ).toBeAttached();
@@ -207,6 +225,8 @@ test.describe('Prompt Library data flow', () => {
       const popoverRect = await popover.boundingBox();
       expect(triggerRect).not.toBeNull();
       expect(popoverRect).not.toBeNull();
+      expect(popoverRect!.width).toBeGreaterThanOrEqual(360);
+      expect(popoverRect!.width).toBeLessThanOrEqual(400);
       const placement = await popover.getAttribute('data-placement');
       if (placement === 'right-start')
         expect(popoverRect!.x).toBeGreaterThanOrEqual(
@@ -217,6 +237,27 @@ test.describe('Prompt Library data flow', () => {
           triggerRect!.x,
         );
     }
+    const promptHeading = promptTable.getByRole('columnheader', {
+      name: 'Prompt',
+      exact: true,
+    });
+    const actionHeading = promptTable.getByRole('columnheader', {
+      name: '操作',
+    });
+    await expect(promptHeading).toHaveCSS('text-align', 'center');
+    await expect(actionHeading).toHaveCSS('text-align', 'center');
+    await expect(shortRow.locator('.pt-prompt-table__prompt-cell')).toHaveCSS(
+      'text-align',
+      'center',
+    );
+    await expect(shortRow.locator('.pt-prompt-table__action-cell')).toHaveCSS(
+      'text-align',
+      'center',
+    );
+    await editAction.click();
+    await expect(page).toHaveURL(/\/prompts\/prompt-library-e2e\/edit$/);
+    await page.goBack();
+    await expect(promptTable).toBeVisible();
     await globalTrigger.click();
     await expect(popover).toContainText('Global Promptの本文');
     const popoverContent = popover.locator('.pt-prompt-body-popover__content');

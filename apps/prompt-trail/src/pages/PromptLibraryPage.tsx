@@ -273,8 +273,12 @@ export function PromptLibraryPage() {
                     >
                       更新日時
                     </th>
-                    <th scope="col">Prompt</th>
-                    <th scope="col">操作</th>
+                    <th className="pt-prompt-table__prompt-heading" scope="col">
+                      Prompt
+                    </th>
+                    <th className="pt-prompt-table__action-heading" scope="col">
+                      操作
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -566,13 +570,28 @@ function PromptBodyPopover({
               <header className="pt-prompt-body-popover__header">
                 <h3>Prompt本文</h3>
                 <div className="pt-prompt-body-popover__header-actions">
-                  <Link
-                    aria-label={`「${prompt.title}」を編集`}
-                    className="pt-prompt-body-popover__edit"
-                    to={buildPromptEditPath(prompt.id)}
-                  >
-                    Promptを編集する
-                  </Link>
+                  <span className="pt-prompt-body-popover__edit-wrap">
+                    <Link
+                      aria-label={`「${prompt.title}」を編集`}
+                      className="pt-prompt-body-popover__edit"
+                      to={buildPromptEditPath(prompt.id)}
+                    >
+                      <svg
+                        aria-hidden="true"
+                        focusable="false"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="m4 20 4.25-1 10.5-10.5a2.12 2.12 0 0 0-3-3L5.25 16Z" />
+                        <path d="m14.5 6.75 3 3M4 20h6" />
+                      </svg>
+                    </Link>
+                    <span
+                      className="pt-prompt-body-popover__edit-tooltip"
+                      role="tooltip"
+                    >
+                      Promptを編集する
+                    </span>
+                  </span>
                   <span className="pt-prompt-body-popover__copy-wrap">
                     <button
                       aria-label={`「${prompt.title}」のPrompt本文をコピー`}
