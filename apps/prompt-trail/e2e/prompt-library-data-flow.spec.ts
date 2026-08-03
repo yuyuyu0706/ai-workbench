@@ -142,6 +142,24 @@ test.describe('Prompt Library data flow', () => {
     const search = page.getByRole('searchbox', { name: 'Promptを検索' });
     const projectFilter = page.getByRole('combobox', { name: 'プロジェクト' });
     await expect(page.getByText('全2件を表示')).toBeVisible();
+    const nameHeader = promptTable.getByRole('columnheader').first();
+    const updatedHeader = promptTable.getByRole('columnheader', {
+      name: '更新日時',
+    });
+    await expect(nameHeader).toHaveAttribute('aria-sort', 'none');
+    await expect(updatedHeader).toHaveAttribute('aria-sort', 'descending');
+    await nameHeader
+      .getByRole('button', { name: 'Prompt名を昇順に並べ替え' })
+      .click();
+    await expect(nameHeader).toHaveAttribute('aria-sort', 'ascending');
+    await nameHeader
+      .getByRole('button', { name: 'Prompt名を降順に並べ替え' })
+      .click();
+    await expect(nameHeader).toHaveAttribute('aria-sort', 'descending');
+    await nameHeader
+      .getByRole('button', { name: '更新日時降順へ戻す' })
+      .click();
+    await expect(updatedHeader).toHaveAttribute('aria-sort', 'descending');
     await projectFilter.selectOption('project');
     await expect(page.getByText('全2件中 1件を表示')).toBeVisible();
     await expect(promptTable.getByText('Global障害分析')).toHaveCount(0);
@@ -174,15 +192,30 @@ test.describe('Prompt Library data flow', () => {
     await projectTrigger.click();
     const popover = page.getByRole('dialog', { name: 'Prompt本文' });
     await expect(popover).toContainText('変更内容を確認して実装してください。');
+    await expect(
+      popover.getByRole('link', { name: '「Codex開発依頼」を編集' }),
+    ).toHaveAttribute('href', '/prompts/prompt-library-e2e/edit');
+    await expect(
+      popover.getByRole('tooltip', { name: '閉じる' }),
+    ).toBeAttached();
     if (testInfo.project.name === 'chromium-desktop') {
-      await expect(popover).toHaveAttribute('data-placement', 'right-start');
+      await expect(popover).toHaveAttribute(
+        'data-placement',
+        /^(right|left)-start$/,
+      );
       const triggerRect = await projectTrigger.boundingBox();
       const popoverRect = await popover.boundingBox();
       expect(triggerRect).not.toBeNull();
       expect(popoverRect).not.toBeNull();
-      expect(popoverRect!.x).toBeGreaterThanOrEqual(
-        triggerRect!.x + triggerRect!.width,
-      );
+      const placement = await popover.getAttribute('data-placement');
+      if (placement === 'right-start')
+        expect(popoverRect!.x).toBeGreaterThanOrEqual(
+          triggerRect!.x + triggerRect!.width,
+        );
+      else
+        expect(popoverRect!.x + popoverRect!.width).toBeLessThanOrEqual(
+          triggerRect!.x,
+        );
     }
     await globalTrigger.click();
     await expect(popover).toContainText('Global Promptの本文');
@@ -291,6 +324,10 @@ test.describe('Prompt Library data flow', () => {
     await expect(tableRegion).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(
+      page.getByRole('button', { name: 'Prompt名を昇順に並べ替え' }),
+    ).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(
       page.getByRole('link', { name: '「Codex開発依頼」を編集' }),
     ).toBeFocused();
     await page.keyboard.press('Tab');
@@ -298,6 +335,13 @@ test.describe('Prompt Library data flow', () => {
     await page.keyboard.press('Enter');
     await expect(
       page.getByRole('dialog', { name: 'Prompt本文' }),
+    ).toBeVisible();
+    const mobilePopover = page.getByRole('dialog', { name: 'Prompt本文' });
+    await expect(
+      mobilePopover.getByRole('link', { name: '「Codex開発依頼」を編集' }),
+    ).toBeVisible();
+    await expect(
+      mobilePopover.getByRole('button', { name: 'Prompt本文を閉じる' }),
     ).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(promptTrigger).toBeFocused();

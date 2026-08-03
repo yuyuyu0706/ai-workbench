@@ -14,13 +14,32 @@ export type PromptLibraryReadModel = {
   readonly prompts: readonly PromptLibraryItem[];
 };
 
+export type PromptSortMode = 'updated-desc' | 'name-asc' | 'name-desc';
+
+export function sortPromptLibraryItems(
+  prompts: readonly PromptLibraryItem[],
+  mode: PromptSortMode,
+): readonly PromptLibraryItem[] {
+  return [...prompts].sort((first, second) => {
+    if (mode === 'updated-desc') return compareByUpdatedAtDesc(first, second);
+    const name = first.title.localeCompare(second.title, 'ja', {
+      numeric: true,
+      sensitivity: 'base',
+    });
+    return (
+      (mode === 'name-desc' ? -name : name) ||
+      compareByUpdatedAtDesc(first, second)
+    );
+  });
+}
+
 export async function loadPromptLibraryReadModel(
   repository: PromptTrailRepository,
 ): Promise<PromptLibraryReadModel> {
   const prompts = await repository.listActivePrompts(DEFAULT_PROJECT_ID);
 
   return {
-    prompts: prompts.map(toItem).sort(compareByUpdatedAtDesc),
+    prompts: sortPromptLibraryItems(prompts.map(toItem), 'updated-desc'),
   };
 }
 

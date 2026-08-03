@@ -5,6 +5,7 @@ import type { PromptTrailRepository } from '../repository';
 import {
   loadPromptLibraryReadModel,
   searchPromptLibraryItems,
+  sortPromptLibraryItems,
 } from './prompt-library-read-query';
 
 const utc = (value: string) => value as UtcDateTimeString;
@@ -57,5 +58,27 @@ describe('Prompt Library read query', () => {
     expect(searchPromptLibraryItems(items, '本文')).toHaveLength(1);
     expect(searchPromptLibraryItems(items, '   ')).toBe(items);
     expect(searchPromptLibraryItems(items, 'missing')).toEqual([]);
+  });
+
+  it('sorts names naturally without mutation and retains deterministic tie-breakers', () => {
+    const items = [
+      prompt('ten', 'Prompt 10', '', '2026-08-01T00:00:00.000Z'),
+      prompt('two', 'prompt 2', '', '2026-08-01T00:00:00.000Z'),
+      prompt('old', '同名', '', '2026-07-01T00:00:00.000Z'),
+      prompt('b', '同名', '', '2026-08-01T00:00:00.000Z'),
+      prompt('a', '同名', '', '2026-08-01T00:00:00.000Z'),
+      prompt('ja', 'あいう', '', '2026-06-01T00:00:00.000Z'),
+    ];
+    const original = [...items];
+    expect(
+      sortPromptLibraryItems(items, 'name-asc').map(({ id }) => id),
+    ).toEqual(['two', 'ten', 'ja', 'a', 'b', 'old']);
+    expect(
+      sortPromptLibraryItems(items, 'name-desc').map(({ id }) => id),
+    ).toEqual(['a', 'b', 'old', 'ja', 'ten', 'two']);
+    expect(
+      sortPromptLibraryItems(items, 'updated-desc').map(({ id }) => id),
+    ).toEqual(['a', 'b', 'ten', 'two', 'old', 'ja']);
+    expect(items).toEqual(original);
   });
 });

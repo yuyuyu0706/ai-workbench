@@ -23,8 +23,10 @@ import { selectActiveDeveloperUiState } from '../developer-ui-state';
 import {
   loadPromptLibraryDataState,
   searchPromptLibraryItems,
+  sortPromptLibraryItems,
   type PromptLibraryDataState,
   type PromptLibraryItem,
+  type PromptSortMode,
 } from '../prompt-library';
 import { formatDateTime } from './date-time';
 
@@ -59,6 +61,7 @@ export function PromptLibraryPage() {
   );
   const [query, setQuery] = useState('');
   const [projectFilter, setProjectFilter] = useState<ProjectFilter>('all');
+  const [sortMode, setSortMode] = useState<PromptSortMode>('updated-desc');
   const [openPrompt, setOpenPrompt] = useState<{
     id: PromptLibraryItem['id'];
     revision: number;
@@ -108,7 +111,11 @@ export function PromptLibraryPage() {
     state.status === 'data'
       ? filterPromptLibraryItemsByProject(state.data.prompts, projectFilter)
       : [];
-  const results = searchPromptLibraryItems(projectFilteredPrompts, query);
+  const searchedPrompts = searchPromptLibraryItems(
+    projectFilteredPrompts,
+    query,
+  );
+  const results = sortPromptLibraryItems(searchedPrompts, sortMode);
   const hasConditions = projectFilter !== 'all' || query.trim() !== '';
   const openPromptId =
     openPrompt !== null &&
@@ -217,10 +224,55 @@ export function PromptLibraryPage() {
                 </colgroup>
                 <thead>
                   <tr>
-                    <th scope="col">Prompt名</th>
+                    <th
+                      scope="col"
+                      aria-sort={
+                        sortMode === 'name-asc'
+                          ? 'ascending'
+                          : sortMode === 'name-desc'
+                            ? 'descending'
+                            : 'none'
+                      }
+                    >
+                      <button
+                        className="pt-prompt-table__sort"
+                        type="button"
+                        aria-label={
+                          sortMode === 'updated-desc'
+                            ? 'Prompt名を昇順に並べ替え'
+                            : sortMode === 'name-asc'
+                              ? 'Prompt名を降順に並べ替え'
+                              : '更新日時降順へ戻す'
+                        }
+                        onClick={() => {
+                          setOpenPrompt(null);
+                          setSortMode((current) =>
+                            current === 'updated-desc'
+                              ? 'name-asc'
+                              : current === 'name-asc'
+                                ? 'name-desc'
+                                : 'updated-desc',
+                          );
+                        }}
+                      >
+                        <span>Prompt名</span>
+                        <span
+                          aria-hidden="true"
+                          data-sort={sortMode}
+                          className="pt-prompt-table__sort-icon"
+                        />
+                      </button>
+                    </th>
                     <th scope="col">プロジェクト</th>
                     <th scope="col">種別</th>
-                    <th scope="col">更新日時</th>
+                    <th
+                      scope="col"
+                      aria-sort={
+                        sortMode === 'updated-desc' ? 'descending' : 'none'
+                      }
+                    >
+                      更新日時
+                    </th>
                     <th scope="col">Prompt</th>
                     <th scope="col">操作</th>
                   </tr>
@@ -301,14 +353,24 @@ function PromptTableRow({
           onClose={onBodyClose}
         />
       </td>
-      <td>
-        <Link
-          className="pt-button pt-button--primary pt-button--compact"
-          to={buildNewTrailFromPromptPath(prompt.id)}
-          aria-label={`「${prompt.title}」からTrailを作成`}
-        >
-          Trailを作成
-        </Link>
+      <td className="pt-prompt-table__action-cell">
+        <span className="pt-prompt-trail-action-wrap">
+          <Link
+            className="pt-prompt-trail-action"
+            to={buildNewTrailFromPromptPath(prompt.id)}
+            aria-label={`「${prompt.title}」からTrailを作成`}
+          >
+            <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+              <path d="M6 4v5a4 4 0 0 0 4 4h4M6 20v-3a4 4 0 0 1 4-4M14 8h6M17 5v6" />
+              <circle cx="6" cy="4" r="2" />
+              <circle cx="6" cy="20" r="2" />
+              <path d="m15 13 3 3 3-3" />
+            </svg>
+          </Link>
+          <span className="pt-prompt-trail-action__tooltip" role="tooltip">
+            Trailを作成
+          </span>
+        </span>
       </td>
     </tr>
   );
@@ -503,53 +565,74 @@ function PromptBodyPopover({
               />
               <header className="pt-prompt-body-popover__header">
                 <h3>Prompt本文</h3>
-                <span className="pt-prompt-body-popover__copy-wrap">
-                  <button
-                    aria-label={`「${prompt.title}」のPrompt本文をコピー`}
-                    className="pt-prompt-body-popover__copy"
-                    type="button"
-                    onClick={handleCopy}
+                <div className="pt-prompt-body-popover__header-actions">
+                  <Link
+                    aria-label={`「${prompt.title}」を編集`}
+                    className="pt-prompt-body-popover__edit"
+                    to={buildPromptEditPath(prompt.id)}
                   >
-                    <svg
-                      aria-hidden="true"
-                      className="pt-prompt-body-popover__copy-icon"
-                      focusable="false"
-                      viewBox="0 0 24 24"
+                    Promptを編集する
+                  </Link>
+                  <span className="pt-prompt-body-popover__copy-wrap">
+                    <button
+                      aria-label={`「${prompt.title}」のPrompt本文をコピー`}
+                      className="pt-prompt-body-popover__copy"
+                      type="button"
+                      onClick={handleCopy}
                     >
-                      <rect x="8" y="8" width="11" height="11" rx="2" />
-                      <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
-                    </svg>
-                  </button>
-                  <span
-                    className="pt-prompt-body-popover__copy-tooltip"
-                    role="tooltip"
-                  >
-                    Prompt本文をコピー
+                      <svg
+                        aria-hidden="true"
+                        className="pt-prompt-body-popover__copy-icon"
+                        focusable="false"
+                        viewBox="0 0 24 24"
+                      >
+                        <rect x="8" y="8" width="11" height="11" rx="2" />
+                        <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+                      </svg>
+                    </button>
+                    <span
+                      className="pt-prompt-body-popover__copy-tooltip"
+                      role="tooltip"
+                    >
+                      Prompt本文をコピー
+                    </span>
                   </span>
-                </span>
+                  <span className="pt-prompt-body-popover__close-wrap">
+                    <button
+                      aria-label="Prompt本文を閉じる"
+                      className="pt-prompt-body-popover__close"
+                      type="button"
+                      onClick={handleCloseButton}
+                    >
+                      <svg
+                        aria-hidden="true"
+                        focusable="false"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M6 6l12 12M18 6 6 18" />
+                      </svg>
+                    </button>
+                    <span
+                      className="pt-prompt-body-popover__close-tooltip"
+                      role="tooltip"
+                    >
+                      閉じる
+                    </span>
+                  </span>
+                </div>
               </header>
+              <p
+                aria-live="polite"
+                className="pt-prompt-body-popover__copy-status"
+              >
+                {copyState === 'success'
+                  ? 'コピーしました'
+                  : copyState === 'error'
+                    ? 'コピーできませんでした'
+                    : null}
+              </p>
               <div className="pt-prompt-body-popover__content">
                 <p>{prompt.body}</p>
-              </div>
-              <div className="pt-prompt-body-popover__actions">
-                <p
-                  aria-live="polite"
-                  className="pt-prompt-body-popover__copy-status"
-                >
-                  {copyState === 'success'
-                    ? 'コピーしました'
-                    : copyState === 'error'
-                      ? 'コピーできませんでした'
-                      : null}
-                </p>
-                <button
-                  aria-label="Prompt本文を閉じる"
-                  className="pt-button pt-button--secondary"
-                  type="button"
-                  onClick={handleCloseButton}
-                >
-                  閉じる
-                </button>
               </div>
             </div>,
             document.body,
