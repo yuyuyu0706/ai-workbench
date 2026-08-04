@@ -136,7 +136,13 @@ describe('PromptLibraryPage', () => {
       screen.getByRole('link', {
         name: `「${prompts[0].title}」からTrailを作成`,
       }),
-    ).toHaveClass('pt-button', 'pt-button--primary', 'pt-button--compact');
+    ).toHaveClass('pt-prompt-trail-action');
+    expect(
+      screen.getAllByRole('tooltip', { name: 'Trailを作成' }),
+    ).toHaveLength(2);
+    expect(
+      within(table).queryByRole('link', { name: 'Trailを作成' }),
+    ).toBeNull();
     expect(screen.queryByRole('link', { name: '編集' })).toBeNull();
     expect(screen.getAllByRole('time')[0]).toHaveAttribute(
       'datetime',
@@ -211,6 +217,46 @@ describe('PromptLibraryPage', () => {
     expect(
       screen.getByRole('dialog', { name: 'Prompt本文' }).textContent,
     ).toContain(prompts[0].body);
+    const dialog = screen.getByRole('dialog', { name: 'Prompt本文' });
+    const editLink = within(dialog).getByRole('link', {
+      name: `「${prompts[0].title}」を編集`,
+    });
+    const copyButton = within(dialog).getByRole('button', {
+      name: `「${prompts[0].title}」のPrompt本文をコピー`,
+    });
+    const closeButton = within(dialog).getByRole('button', {
+      name: 'Prompt本文を閉じる',
+    });
+    expect(editLink).toHaveTextContent('');
+    expect(editLink).toHaveAttribute('href', '/prompts/alpha/edit');
+    expect(editLink.querySelector('svg')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
+    expect(
+      within(dialog).getByRole('tooltip', { name: 'Promptを編集する' }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByText('Promptを編集する', { selector: 'a' }),
+    ).toBeNull();
+    expect(
+      Boolean(
+        editLink.compareDocumentPosition(copyButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      ),
+    ).toBe(true);
+    expect(
+      Boolean(
+        copyButton.compareDocumentPosition(closeButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      ),
+    ).toBe(true);
+    expect(
+      within(dialog).getByRole('tooltip', { name: '閉じる' }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByText('閉じる', { selector: 'button' }),
+    ).toBeNull();
     expect(
       screen.getByRole('dialog', { name: 'Prompt本文' }),
     ).toHaveTextContent('PROMPT_BODY_END_MARKER');
@@ -330,6 +376,76 @@ describe('PromptLibraryPage', () => {
       'project',
     );
     expect(screen.queryByRole('dialog', { name: 'Prompt本文' })).toBeNull();
+  });
+
+  it('cycles Prompt name sorting after filters and closes an open popover', async () => {
+    const user = userEvent.setup();
+    const values = [
+      createPrompt('ten', 'Prompt 10', 'match', 'global'),
+      createPrompt('two', 'Prompt 2', 'match', 'global'),
+      createPrompt('ja', 'あいう', 'other', 'project'),
+    ];
+    renderPromptLibraryPage(createRepository(values));
+    const table = await screen.findByRole('table', { name: 'Prompt一覧' });
+    const nameHeader = within(table).getByRole('columnheader', {
+      name: /Prompt名/,
+    });
+    const updatedHeader = within(table).getByRole('columnheader', {
+      name: '更新日時',
+    });
+    expect(nameHeader).toHaveAttribute('aria-sort', 'none');
+    expect(updatedHeader).toHaveAttribute('aria-sort', 'descending');
+    await user.type(
+      screen.getByRole('searchbox', { name: 'Promptを検索' }),
+      'match',
+    );
+    await user.click(
+      screen.getByRole('button', { name: '「Prompt 10」のPrompt本文を表示' }),
+    );
+    await user.click(
+      within(nameHeader).getByRole('button', {
+        name: 'Prompt名を昇順に並べ替え',
+      }),
+    );
+    expect(screen.queryByRole('dialog', { name: 'Prompt本文' })).toBeNull();
+    expect(
+      within(table)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => within(row).getAllByRole('cell')[0].textContent),
+    ).toEqual(['Prompt 2', 'Prompt 10']);
+    expect(nameHeader).toHaveAttribute('aria-sort', 'ascending');
+    await user.click(
+      within(nameHeader).getByRole('button', {
+        name: 'Prompt名を降順に並べ替え',
+      }),
+    );
+    expect(nameHeader).toHaveAttribute('aria-sort', 'descending');
+    await user.click(
+      within(nameHeader).getByRole('button', { name: '更新日時降順へ戻す' }),
+    );
+    expect(nameHeader).toHaveAttribute('aria-sort', 'none');
+    expect(updatedHeader).toHaveAttribute('aria-sort', 'descending');
+    expect(screen.getByText('全3件中 2件を表示')).toBeVisible();
+  });
+
+  it('uses dedicated alignment classes only for Prompt and action columns', async () => {
+    renderPromptLibraryPage(createRepository(prompts));
+    const table = await screen.findByRole('table', { name: 'Prompt一覧' });
+    const headers = within(table).getAllByRole('columnheader');
+    expect(headers[4]).toHaveClass('pt-prompt-table__prompt-heading');
+    expect(headers[5]).toHaveClass('pt-prompt-table__action-heading');
+    headers.slice(0, 4).forEach((header) => {
+      expect(header).not.toHaveClass(
+        'pt-prompt-table__prompt-heading',
+        'pt-prompt-table__action-heading',
+      );
+    });
+    const cells = within(within(table).getAllByRole('row')[1]).getAllByRole(
+      'cell',
+    );
+    expect(cells[4]).toHaveClass('pt-prompt-table__prompt-cell');
+    expect(cells[5]).toHaveClass('pt-prompt-table__action-cell');
   });
 
   it('applies loading, empty, and failure Developer Tools overrides and restores data', async () => {
