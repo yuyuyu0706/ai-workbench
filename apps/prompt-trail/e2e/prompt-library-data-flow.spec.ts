@@ -409,6 +409,71 @@ test.describe('Prompt Library data flow', () => {
     await expectNoHorizontalOverflow(page);
   });
 
+  test('keeps all Prompt Library actions operable at a 200% zoom equivalent viewport', async ({
+    context,
+    page,
+  }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    // A 1440 × 1000 browser surface at 200% zoom exposes a 720 × 500 CSS viewport.
+    await page.setViewportSize({ width: 720, height: 500 });
+    await page.goto('/prompts');
+    await seedPromptLibraryInBrowser(page);
+    await seedGlobalPromptInBrowser(page);
+    await page.reload();
+
+    await expectNoHorizontalOverflow(page);
+    const projectFilter = page.getByRole('combobox', { name: 'プロジェクト' });
+    const search = page.getByRole('searchbox', { name: 'Promptを検索' });
+    await projectFilter.selectOption('project');
+    await search.fill('Codex');
+    await expect(page.getByText('全2件中 1件を表示')).toBeVisible();
+    await page.getByRole('button', { name: '条件をクリア' }).click();
+
+    const tableRegion = page.getByRole('region', {
+      name: 'Prompt一覧テーブル',
+    });
+    expect(
+      await tableRegion.evaluate(
+        (element) => element.scrollWidth > element.clientWidth,
+      ),
+    ).toBe(true);
+    await page
+      .getByRole('button', { name: 'Prompt名を昇順に並べ替え' })
+      .click();
+
+    const promptTrigger = page.getByRole('button', {
+      name: '「Codex開発依頼」のPrompt本文を表示',
+    });
+    await promptTrigger.click();
+    const popover = page.getByRole('dialog', { name: 'Prompt本文' });
+    await expect(popover).toBeVisible();
+    await popover
+      .getByRole('button', { name: '「Codex開発依頼」のPrompt本文をコピー' })
+      .click();
+    await expect(popover.getByText('コピーしました')).toBeVisible();
+    await page.getByRole('button', { name: 'Prompt本文を閉じる' }).click();
+    await expect(promptTrigger).toBeFocused();
+
+    await promptTrigger.click();
+    const editLink = popover.getByRole('link', {
+      name: '「Codex開発依頼」を編集',
+    });
+    await expect(editLink).toBeVisible();
+    await editLink.click();
+    await expect(page).toHaveURL(/\/prompts\/prompt-library-e2e\/edit$/);
+    await page.goBack();
+    await expect(page.getByRole('table', { name: 'Prompt一覧' })).toBeVisible();
+    const trailLink = page.getByRole('link', {
+      name: '「Codex開発依頼」からTrailを作成',
+    });
+    await trailLink.focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(
+      /\/runs\/new\?sourcePromptId=prompt-library-e2e$/,
+    );
+    await expectNoHorizontalOverflow(page);
+  });
+
   test('creates repeatable Trails from one Prompt without duplicating the asset', async ({
     page,
   }) => {
