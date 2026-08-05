@@ -593,6 +593,43 @@ test.describe('Prompt Library data flow', () => {
     await expect(copyTooltip).toHaveCSS('opacity', '1');
   });
 
+  test('saves Prompt body edits across desktop, 320px, and 200% zoom viewports', async ({
+    page,
+  }) => {
+    for (const [label, viewport] of [
+      ['desktop', { width: 1000, height: 700 }],
+      ['320px', { width: 320, height: 640 }],
+      ['200% zoom equivalent', { width: 720, height: 500 }],
+    ] as const) {
+      await page.setViewportSize(viewport);
+      await page.goto('/prompts');
+      await seedPromptLibraryInBrowser(page);
+      await page.reload();
+      await expectNoHorizontalOverflow(page);
+
+      const trigger = page.getByRole('button', {
+        name: '「Codex開発依頼」のPrompt本文を表示',
+      });
+      await trigger.click();
+      const popover = page.getByRole('dialog', { name: 'Prompt本文' });
+      await expect(popover).toBeVisible();
+      await popover
+        .getByRole('button', { name: '「Codex開発依頼」のPrompt本文を編集' })
+        .click();
+      await popover
+        .getByRole('textbox', { name: 'Prompt本文' })
+        .fill(`E2E更新本文 ${label}`);
+      await popover.getByRole('button', { name: '保存' }).click();
+      await expect(page.getByText('Prompt本文を更新しました。')).toBeVisible();
+      await expect(trigger).toBeFocused();
+
+      await trigger.click();
+      await expect(popover).toContainText(`E2E更新本文 ${label}`);
+      await page.getByRole('button', { name: 'Prompt本文を閉じる' }).click();
+      await expectNoHorizontalOverflow(page);
+    }
+  });
+
   test('keeps the Prompt body popover arrow connected after clamp and edit resize', async ({
     page,
   }) => {

@@ -16,7 +16,10 @@ import {
   type DeveloperUiStateStore,
 } from '../developer-ui-state';
 import type { Prompt, UtcDateTimeString } from '../domain';
-import type { PromptTrailRepository } from '../repository';
+import {
+  PromptTrailRepositoryError,
+  type PromptTrailRepository,
+} from '../repository';
 import { PromptLibraryPage } from './PromptLibraryPage';
 
 const timestamp = '2026-08-01T00:00:00.000Z' as UtcDateTimeString;
@@ -598,6 +601,171 @@ describe('PromptLibraryPage', () => {
       restoreLayout();
       restoreViewport();
     }
+  });
+
+  it('saves a body edit once, reloads the list once, updates row content, keeps sort, and returns focus', async () => {
+    const user = userEvent.setup();
+    let values = [...prompts];
+    let resolveSave: (prompt: Prompt) => void = () => {};
+    const repository = {
+      listActivePrompts: vi.fn(async () => values),
+      updatePromptBody: vi.fn(
+        (update) =>
+          new Promise<Prompt>((resolve) => {
+            const updated = {
+              ...values[0],
+              body: update.body,
+              updatedAt: '2026-08-02T00:00:00.000Z' as UtcDateTimeString,
+            };
+            values = [updated, values[1]];
+            resolveSave = resolve;
+          }),
+      ),
+      getPrompt: vi.fn(),
+    } as unknown as PromptTrailRepository;
+    renderPromptLibraryPage(repository);
+
+    const trigger = await screen.findByRole('button', {
+      name: `「${prompts[0].title}」のPrompt本文を表示`,
+    });
+    await user.click(
+      screen.getByRole('button', { name: 'Prompt名を昇順に並べ替え' }),
+    );
+    await user.click(trigger);
+    await user.click(
+      screen.getByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文を編集`,
+      }),
+    );
+    await user.clear(screen.getByRole('textbox', { name: 'Prompt本文' }));
+    await user.type(
+      screen.getByRole('textbox', { name: 'Prompt本文' }),
+      '更新本文',
+    );
+    await user.click(screen.getByRole('button', { name: '保存' }));
+    await user.click(screen.getByRole('button', { name: '保存中...' }));
+
+    expect(repository.updatePromptBody).toHaveBeenCalledOnce();
+    resolveSave(values[0]);
+    expect(await screen.findByText('Prompt本文を更新しました。')).toBeVisible();
+    expect(repository.listActivePrompts).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(trigger).toHaveFocus());
+    await user.click(trigger);
+    expect(
+      screen.getByRole('dialog', { name: 'Prompt本文' }),
+    ).toHaveTextContent('更新本文');
+    expect(
+      screen.getByRole('button', { name: 'Prompt名を降順に並べ替え' }),
+    ).toBeInTheDocument();
+  });
+
+  it('guards dirty drafts for controls, trigger toggles, prompt switches, and links', async () => {
+    const user = userEvent.setup();
+    renderPromptLibraryPage(createRepository(prompts));
+    const alphaTrigger = await screen.findByRole('button', {
+      name: `「${prompts[0].title}」のPrompt本文を表示`,
+    });
+    const betaTrigger = screen.getByRole('button', {
+      name: `「${prompts[1].title}」のPrompt本文を表示`,
+    });
+    await user.click(alphaTrigger);
+    await user.click(
+      screen.getByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文を編集`,
+      }),
+    );
+    await user.type(
+      screen.getByRole('textbox', { name: 'Prompt本文' }),
+      ' dirty',
+    );
+
+    expect(
+      screen.getByRole('combobox', { name: 'プロジェクト' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('searchbox', { name: 'Promptを検索' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Prompt名を昇順に並べ替え' }),
+    ).toBeDisabled();
+
+    await user.click(betaTrigger);
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '編集中のPrompt本文を破棄しますか？',
+    );
+    expect(alphaTrigger).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('textbox', { name: 'Prompt本文' })).toHaveValue(
+      `${prompts[0].body} dirty`,
+    );
+    await user.click(screen.getByRole('button', { name: '編集を続ける' }));
+    await user.click(alphaTrigger);
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '編集中のPrompt本文を破棄しますか？',
+    );
+    await user.click(screen.getByRole('button', { name: '編集を続ける' }));
+    await user.click(
+      screen.getAllByRole('link', { name: `「${prompts[0].title}」を編集` })[0],
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '編集中のPrompt本文を破棄しますか？',
+    );
+    await user.click(screen.getByRole('button', { name: '破棄する' }));
+    expect(screen.queryByRole('dialog', { name: 'Prompt本文' })).toBeNull();
+  });
+
+  it('keeps stale drafts, requires latest body reload, and saves with the refreshed baseline', async () => {
+    const user = userEvent.setup();
+    const latest = {
+      ...prompts[0],
+      body: 'latest body',
+      updatedAt: '2026-08-03T00:00:00.000Z' as UtcDateTimeString,
+    };
+    const updatePromptBody = vi
+      .fn()
+      .mockRejectedValueOnce(new PromptTrailRepositoryError('stale-write'))
+      .mockResolvedValueOnce({ ...latest, body: 'draft body' });
+    const repository = {
+      listActivePrompts: vi.fn(async () => prompts),
+      updatePromptBody,
+      getPrompt: vi.fn(async () => latest),
+    } as unknown as PromptTrailRepository;
+    renderPromptLibraryPage(repository);
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文を表示`,
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文を編集`,
+      }),
+    );
+    await user.clear(screen.getByRole('textbox', { name: 'Prompt本文' }));
+    await user.type(
+      screen.getByRole('textbox', { name: 'Prompt本文' }),
+      'draft body',
+    );
+    await user.click(screen.getByRole('button', { name: '保存' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '最新の本文を読み込んでから再保存してください。',
+    );
+    expect(screen.getByRole('button', { name: '保存' })).toBeDisabled();
+    await user.click(
+      screen.getByRole('button', { name: '最新の本文を読み込む' }),
+    );
+    expect(repository.getPrompt).toHaveBeenCalledWith(prompts[0].id);
+    expect(screen.getByRole('textbox', { name: 'Prompt本文' })).toHaveValue(
+      'draft body',
+    );
+    await user.click(screen.getByRole('button', { name: '保存' }));
+    expect(updatePromptBody).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        expectedUpdatedAt: latest.updatedAt,
+        body: 'draft body',
+      }),
+    );
   });
 
   it('shows a delete notice once and clears navigation state for reload', async () => {

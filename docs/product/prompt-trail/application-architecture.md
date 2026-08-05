@@ -170,6 +170,8 @@ Canonical Sample Dataset
 | Run Detail (`/runs/:runId`)         | Repository 接続済み contextual route | loading / not-found / failure / data と Link 登録を表示する |
 | Not Found (`*`)                     | recovery route                       | 未知 URL を示し、Dashboard へ復帰させる                     |
 
+Prompt LibraryのPrompt本文Popoverは、本文だけをinline編集するPage-local UIです。保存は`PromptLibraryPage → updatePromptBody command → PromptTrailRepository.updatePromptBody → Dexie`の境界で行い、Repository transaction内でPrompt ID、Active状態、`expectedUpdatedAt`を検証して`body`と`updatedAt`のみを更新します。Popoverはdirty/saving状態をPageへ公開し、Page側はFilter／Search／Sort／条件クリアをdisabledにし、外部Linkや別Prompt切替を破棄確認つきpending actionとして1回だけ実行します。staleはdraftを保持して`getPrompt`で最新body/updatedAtをbaselineへ読み込み、not-found/unavailableは保存を無効化してclose後にData Revision通知で一覧を再読込します。保存完了時もData Revisionを1回通知し、Prompt SnapshotやTrail作成契約は変更しません。
+
 Prompt / Context / Recipe など、Dashboard 以外で未接続の Page は、Phase 0 の画面骨格です。これらの `StateMessage` は Repository 取得後の empty / failure を表すものではありません。
 
 Phase 2ではPrompt Libraryを実データへ接続し、主要Navigationへ復帰済みです。Global Navigationのactive classと`aria-current="page"`は、現在のpathnameを既知Routeへ照合して得た単一のactive item IDから導出します。単純な`/prompts` prefix判定は行わないため、`/prompts/unknown`を含むNot Foundではactive項目を表示しません。Context Library / Recipe Builderは未完成の間はdirect routeだけを維持し、主要Navigationには表示しません。Run DomainにはPrompt資産とは独立した必須の`trailTitle`と`trailKind`を実装済みです。New TrailはTrail名・Trail種別・Prompt本文を個別に受け取り、新しいPromptとRunを既存Bundleでatomic保存します。過去Run再利用では3項目を初期値として引き継ぎ、元Runは変更しません。Run DetailでのTrail metadata表示・編集は後続Issueの責務です。
