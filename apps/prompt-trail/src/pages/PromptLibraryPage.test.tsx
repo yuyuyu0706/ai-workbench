@@ -497,6 +497,86 @@ describe('PromptLibraryPage', () => {
     );
   });
 
+  it('keeps the popover arrow connected to the trigger when clamped, resized, and scrolled', async () => {
+    const user = userEvent.setup();
+    const restoreViewport = setViewport(800, 600);
+    const restoreLayout = mockPromptBodyPopoverLayout({
+      trigger: { left: 700, top: 540, width: 24, height: 24 },
+      panel: { width: 384, height: 512 },
+      editorPanel: { width: 384, height: 300 },
+    });
+    try {
+      renderPromptLibraryPage(createRepository(prompts));
+      await user.click(
+        await screen.findByRole('button', {
+          name: `「${prompts[0].title}」のPrompt本文を表示`,
+        }),
+      );
+      const dialog = screen.getByRole('dialog', { name: 'Prompt本文' });
+
+      await waitFor(() => {
+        expect(dialog).toHaveAttribute('data-placement', 'left-start');
+        expect(dialog.style.top).toBe('72px');
+        expect(dialog.style.left).toBe('304px');
+        expect(dialog.style.getPropertyValue('--pt-prompt-body-arrow-y')).toBe(
+          '480px',
+        );
+      });
+
+      await user.click(
+        within(dialog).getByRole('button', {
+          name: `「${prompts[0].title}」のPrompt本文を編集`,
+        }),
+      );
+
+      await waitFor(() => {
+        expect(dialog.style.top).toBe('284px');
+        expect(dialog.style.getPropertyValue('--pt-prompt-body-arrow-y')).toBe(
+          '268px',
+        );
+      });
+
+      window.dispatchEvent(new Event('scroll'));
+      await waitFor(() => {
+        expect(dialog.style.getPropertyValue('--pt-prompt-body-arrow-y')).toBe(
+          '268px',
+        );
+      });
+    } finally {
+      restoreLayout();
+      restoreViewport();
+    }
+  });
+
+  it('uses a horizontal arrow offset for the 320px bottom fallback', async () => {
+    const user = userEvent.setup();
+    const restoreViewport = setViewport(320, 600);
+    const restoreLayout = mockPromptBodyPopoverLayout({
+      trigger: { left: 20, top: 40, width: 24, height: 24 },
+      panel: { width: 288, height: 240 },
+    });
+    try {
+      renderPromptLibraryPage(createRepository(prompts));
+      await user.click(
+        await screen.findByRole('button', {
+          name: `「${prompts[0].title}」のPrompt本文を表示`,
+        }),
+      );
+      const dialog = screen.getByRole('dialog', { name: 'Prompt本文' });
+
+      await waitFor(() => {
+        expect(dialog).toHaveAttribute('data-placement', 'bottom-start');
+        expect(dialog.style.left).toBe('16px');
+        expect(dialog.style.getPropertyValue('--pt-prompt-body-arrow-x')).toBe(
+          '16px',
+        );
+      });
+    } finally {
+      restoreLayout();
+      restoreViewport();
+    }
+  });
+
   it('shows a delete notice once and clears navigation state for reload', async () => {
     const repository = createRepository(prompts);
     const view = renderPromptLibraryPage(repository, undefined, false, {
@@ -509,6 +589,99 @@ describe('PromptLibraryPage', () => {
     expect(screen.queryByText('Promptを削除しました。')).toBeNull();
   });
 });
+
+type LayoutRect = {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+};
+
+function setViewport(width: number, height: number) {
+  const originalWidth = window.innerWidth;
+  const originalHeight = window.innerHeight;
+  Object.defineProperty(window, 'innerWidth', {
+    configurable: true,
+    value: width,
+  });
+  Object.defineProperty(window, 'innerHeight', {
+    configurable: true,
+    value: height,
+  });
+  return () => {
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      value: originalWidth,
+    });
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      value: originalHeight,
+    });
+  };
+}
+
+function mockPromptBodyPopoverLayout({
+  trigger,
+  panel,
+  editorPanel = panel,
+}: {
+  readonly trigger: LayoutRect;
+  readonly panel: Pick<LayoutRect, 'width' | 'height'>;
+  readonly editorPanel?: Pick<LayoutRect, 'width' | 'height'>;
+}) {
+  const originalAnimationFrame = window.requestAnimationFrame;
+  const originalCancelAnimationFrame = window.cancelAnimationFrame;
+  const rectSpy = vi
+    .spyOn(Element.prototype, 'getBoundingClientRect')
+    .mockImplementation(function getBoundingClientRectMock(this: Element) {
+      if (this.classList.contains('pt-prompt-body-trigger'))
+        return createDomRect(trigger);
+      if (this.classList.contains('pt-prompt-body-popover')) {
+        const nextPanel = this.querySelector('textarea') ? editorPanel : panel;
+        return createDomRect({
+          left: Number.parseFloat((this as HTMLElement).style.left) || 0,
+          top: Number.parseFloat((this as HTMLElement).style.top) || 0,
+          width: nextPanel.width,
+          height: nextPanel.height,
+        });
+      }
+      return createDomRect({ left: 0, top: 0, width: 0, height: 0 });
+    });
+  Object.defineProperty(window, 'requestAnimationFrame', {
+    configurable: true,
+    value: (callback: FrameRequestCallback) =>
+      window.setTimeout(() => callback(0), 0),
+  });
+  Object.defineProperty(window, 'cancelAnimationFrame', {
+    configurable: true,
+    value: (handle: number) => window.clearTimeout(handle),
+  });
+  return () => {
+    rectSpy.mockRestore();
+    Object.defineProperty(window, 'requestAnimationFrame', {
+      configurable: true,
+      value: originalAnimationFrame,
+    });
+    Object.defineProperty(window, 'cancelAnimationFrame', {
+      configurable: true,
+      value: originalCancelAnimationFrame,
+    });
+  };
+}
+
+function createDomRect(rect: LayoutRect): DOMRect {
+  return {
+    x: rect.left,
+    y: rect.top,
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+    height: rect.height,
+    right: rect.left + rect.width,
+    bottom: rect.top + rect.height,
+    toJSON: () => rect,
+  } as DOMRect;
+}
 
 function renderPromptLibraryPage(
   repository: PromptTrailRepository,

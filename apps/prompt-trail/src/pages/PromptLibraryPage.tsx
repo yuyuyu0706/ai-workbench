@@ -425,6 +425,8 @@ function PromptBodyPopover({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const lastPositionRef = useRef<string | null>(null);
   const [position, setPosition] = useState<{
     placement: 'right-start' | 'left-start' | 'bottom-start';
     style: CSSProperties;
@@ -436,46 +438,86 @@ function PromptBodyPopover({
     if (trigger === null || panel === null) return;
     const margin = 16;
     const gap = 12;
+    const arrowSize = 12;
+    const arrowSafeMargin = 16;
     const triggerRect = trigger.getBoundingClientRect();
     const panelRect = panel.getBoundingClientRect();
     const panelWidth = panelRect.width;
     const panelHeight = panelRect.height;
-    const top = Math.max(
-      margin,
-      Math.min(triggerRect.top, window.innerHeight - panelHeight - margin),
+    const triggerCenterX = triggerRect.left + triggerRect.width / 2;
+    const triggerCenterY = triggerRect.top + triggerRect.height / 2;
+    const maxTop = Math.max(margin, window.innerHeight - panelHeight - margin);
+    const sideTop = Math.max(margin, Math.min(triggerRect.top, maxTop));
+    const maxLeft = Math.max(margin, window.innerWidth - panelWidth - margin);
+    const bottomLeft = Math.max(margin, Math.min(triggerRect.left, maxLeft));
+    const bottomTop = Math.min(
+      triggerRect.bottom + gap,
+      Math.max(margin, window.innerHeight - panelHeight - margin),
     );
-    if (window.innerWidth - triggerRect.right >= panelWidth + gap) {
-      setPosition({
-        placement: 'right-start',
-        style: { left: triggerRect.right + gap, top },
-      });
-      return;
-    }
-    if (triggerRect.left >= panelWidth + gap) {
-      setPosition({
-        placement: 'left-start',
-        style: { left: triggerRect.left - panelWidth - gap, top },
-      });
-      return;
-    }
-    setPosition({
-      placement: 'bottom-start',
-      style: {
-        left: Math.max(
-          margin,
-          Math.min(triggerRect.left, window.innerWidth - panelWidth - margin),
-        ),
-        top: Math.min(
-          triggerRect.bottom + gap,
-          window.innerHeight - panelHeight - margin,
-        ),
-      },
-    });
+    const clampArrow = (value: number, size: number) =>
+      Math.max(
+        arrowSafeMargin,
+        Math.min(value, Math.max(arrowSafeMargin, size - arrowSafeMargin)),
+      );
+    const buildStyle = (left: number, top: number): CSSProperties =>
+      ({
+        left,
+        top,
+        '--pt-prompt-body-arrow-x': `${clampArrow(
+          triggerCenterX - left,
+          panelWidth,
+        )}px`,
+        '--pt-prompt-body-arrow-y': `${clampArrow(
+          triggerCenterY - top,
+          panelHeight,
+        )}px`,
+        '--pt-prompt-body-arrow-offset': `${arrowSize / 2}px`,
+      }) as CSSProperties;
+    const next =
+      window.innerWidth - triggerRect.right >= panelWidth + gap
+        ? {
+            placement: 'right-start' as const,
+            style: buildStyle(triggerRect.right + gap, sideTop),
+          }
+        : triggerRect.left >= panelWidth + gap
+          ? {
+              placement: 'left-start' as const,
+              style: buildStyle(triggerRect.left - panelWidth - gap, sideTop),
+            }
+          : {
+              placement: 'bottom-start' as const,
+              style: buildStyle(bottomLeft, bottomTop),
+            };
+    const nextSignature = JSON.stringify(next);
+    if (lastPositionRef.current === nextSignature) return;
+    lastPositionRef.current = nextSignature;
+    setPosition(next);
   }, []);
 
+  const schedulePositionUpdate = useCallback(() => {
+    if (animationFrameRef.current !== null) return;
+    animationFrameRef.current = requestAnimationFrame(() => {
+      animationFrameRef.current = null;
+      updatePosition();
+    });
+  }, [updatePosition]);
+
   useLayoutEffect(() => {
-    if (open) updatePosition();
-  }, [open, updatePosition]);
+    if (!open) return;
+    updatePosition();
+    const panel = panelRef.current;
+    if (panel === null || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => schedulePositionUpdate());
+    observer.observe(panel);
+    return () => observer.disconnect();
+  }, [open, schedulePositionUpdate, updatePosition]);
+
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current !== null)
+        cancelAnimationFrame(animationFrameRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (open && mode === 'edit') textareaRef.current?.focus();
@@ -499,6 +541,7 @@ function PromptBodyPopover({
         setError(
           '編集中のPrompt本文を破棄しますか？ 保存していない変更は失われます。',
         );
+        schedulePositionUpdate();
         return;
       }
       setCopyState(null);
@@ -518,15 +561,23 @@ function PromptBodyPopover({
     };
     document.addEventListener('pointerdown', handlePointerDown);
     document.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', schedulePositionUpdate);
+    window.addEventListener('scroll', schedulePositionUpdate, true);
     return () => {
       document.removeEventListener('pointerdown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('resize', updatePosition);
-      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', schedulePositionUpdate);
+      window.removeEventListener('scroll', schedulePositionUpdate, true);
     };
-  }, [baseline.body, draft, mode, onClose, open, saving, updatePosition]);
+  }, [
+    baseline.body,
+    draft,
+    mode,
+    onClose,
+    open,
+    saving,
+    schedulePositionUpdate,
+  ]);
 
   const tooltipVisible =
     !open && (isTriggerHovered || (isTriggerFocused && !suppressFocusTooltip));
@@ -556,6 +607,7 @@ function PromptBodyPopover({
       setError(
         '編集中のPrompt本文を破棄しますか？ 保存していない変更は失われます。',
       );
+      schedulePositionUpdate();
       textareaRef.current?.focus();
       return;
     }
@@ -566,6 +618,7 @@ function PromptBodyPopover({
     const validation = validatePromptBody(draft);
     if (validation !== undefined) {
       setError(validation);
+      schedulePositionUpdate();
       textareaRef.current?.focus();
       return;
     }
@@ -591,24 +644,29 @@ function PromptBodyPopover({
         );
       } else if (result.status === 'invalid') {
         setError('Prompt本文を入力してください。');
+        schedulePositionUpdate();
         textareaRef.current?.focus();
       } else if (result.status === 'stale') {
         setError(
           'このPromptは別の操作で更新されました。入力中の本文は保持しています。最新内容を確認して編集し直してください。',
         );
+        schedulePositionUpdate();
       } else if (result.status === 'not-found') {
         setError(
           'このPromptは見つかりません。一覧を更新して対象を選び直してください。',
         );
+        schedulePositionUpdate();
       } else {
         setError(
           'このPromptは編集できません。削除済みまたはActiveではないPromptです。',
         );
+        schedulePositionUpdate();
       }
     } catch {
       setError(
         '保存に失敗しました。入力内容を保持しています。再試行してください。',
       );
+      schedulePositionUpdate();
     } finally {
       setSaving(false);
     }
@@ -698,6 +756,7 @@ function PromptBodyPopover({
                           updatedAt: prompt.updatedAt,
                         });
                         setMode('edit');
+                        schedulePositionUpdate();
                       }}
                     >
                       <svg

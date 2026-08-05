@@ -306,7 +306,10 @@
 
 .pt-prompt-body-popover[data-placement='right-start']
   .pt-prompt-body-popover__arrow {
-  top: 1rem;
+  top: calc(
+    var(--pt-prompt-body-arrow-y, 1rem) -
+      var(--pt-prompt-body-arrow-offset, 0.375rem)
+  );
   left: -0.45rem;
   border-bottom: 1px solid var(--pt-color-border);
   border-left: 1px solid var(--pt-color-border);
@@ -314,7 +317,10 @@
 
 .pt-prompt-body-popover[data-placement='left-start']
   .pt-prompt-body-popover__arrow {
-  top: 1rem;
+  top: calc(
+    var(--pt-prompt-body-arrow-y, 1rem) -
+      var(--pt-prompt-body-arrow-offset, 0.375rem)
+  );
   right: -0.45rem;
   border-top: 1px solid var(--pt-color-border);
   border-right: 1px solid var(--pt-color-border);
@@ -323,7 +329,10 @@
 .pt-prompt-body-popover[data-placement='bottom-start']
   .pt-prompt-body-popover__arrow {
   top: -0.45rem;
-  left: 1rem;
+  left: calc(
+    var(--pt-prompt-body-arrow-x, 1rem) -
+      var(--pt-prompt-body-arrow-offset, 0.375rem)
+  );
   border-top: 1px solid var(--pt-color-border);
   border-left: 1px solid var(--pt-color-border);
 }

@@ -67,6 +67,46 @@ async function seedGlobalPromptInBrowser(page: Page) {
   }, GLOBAL_PROMPT_BODY);
 }
 
+async function expectArrowTracksTrigger(
+  trigger: ReturnType<Page['getByRole']>,
+  popover: ReturnType<Page['getByRole']>,
+) {
+  const [triggerBox, popoverBox, placement, arrowX, arrowY] = await Promise.all(
+    [
+      trigger.boundingBox(),
+      popover.boundingBox(),
+      popover.getAttribute('data-placement'),
+      popover.evaluate((element) =>
+        Number.parseFloat(
+          getComputedStyle(element).getPropertyValue(
+            '--pt-prompt-body-arrow-x',
+          ),
+        ),
+      ),
+      popover.evaluate((element) =>
+        Number.parseFloat(
+          getComputedStyle(element).getPropertyValue(
+            '--pt-prompt-body-arrow-y',
+          ),
+        ),
+      ),
+    ],
+  );
+  expect(triggerBox).not.toBeNull();
+  expect(popoverBox).not.toBeNull();
+  if (placement === 'bottom-start') {
+    expect(popoverBox!.x + arrowX).toBeCloseTo(
+      triggerBox!.x + triggerBox!.width / 2,
+      0,
+    );
+  } else {
+    expect(popoverBox!.y + arrowY).toBeCloseTo(
+      triggerBox!.y + triggerBox!.height / 2,
+      0,
+    );
+  }
+}
+
 test.describe('Prompt Library data flow', () => {
   test('supports direct access, repository data, search, and reload', async ({
     context,
@@ -472,6 +512,43 @@ test.describe('Prompt Library data flow', () => {
       /\/runs\/new\?sourcePromptId=prompt-library-e2e$/,
     );
     await expectNoHorizontalOverflow(page);
+  });
+
+  test('keeps the Prompt body popover arrow connected after clamp and edit resize', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 720, height: 360 });
+    await page.goto('/prompts');
+    await seedGlobalPromptInBrowser(page);
+    await page.reload();
+
+    const tableRegion = page.getByRole('region', {
+      name: 'Prompt一覧テーブル',
+    });
+    await tableRegion.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    const trigger = page.getByRole('button', {
+      name: '「Global障害分析」のPrompt本文を表示',
+    });
+    await trigger.click();
+    const popover = page.getByRole('dialog', { name: 'Prompt本文' });
+    await expect(popover).toBeVisible();
+
+    await expectArrowTracksTrigger(trigger, popover);
+    await popover
+      .getByRole('button', { name: '「Global障害分析」のPrompt本文を編集' })
+      .click();
+    await expect(
+      popover.getByRole('textbox', { name: 'Prompt本文' }),
+    ).toBeVisible();
+    await expectArrowTracksTrigger(trigger, popover);
+    await popover.getByRole('textbox', { name: 'Prompt本文' }).fill(' ');
+    await popover.getByRole('button', { name: '保存' }).click();
+    await expect(popover.getByRole('alert')).toContainText(
+      'Prompt本文を入力してください。',
+    );
+    await expectArrowTracksTrigger(trigger, popover);
   });
 
   test('creates repeatable Trails from one Prompt without duplicating the asset', async ({
