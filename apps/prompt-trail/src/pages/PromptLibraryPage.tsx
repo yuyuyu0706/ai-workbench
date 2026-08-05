@@ -28,6 +28,7 @@ import {
   type PromptLibraryItem,
   type PromptSortMode,
 } from '../prompt-library';
+import { updatePromptBody, validatePromptBody } from '../prompt-editor';
 import { formatDateTime } from './date-time';
 
 type PageState = { readonly status: 'loading' } | PromptLibraryDataState;
@@ -44,7 +45,7 @@ const KIND_LABELS: Record<PromptLibraryItem['kind'], string> = {
 
 export function PromptLibraryPage() {
   const repository = usePromptTrailRepository();
-  const { revision } = usePromptTrailDataRevision();
+  const { revision, notifyDataChanged } = usePromptTrailDataRevision();
   const snapshot = useDeveloperUiStateSnapshot();
   const location = useLocation();
   const navigate = useNavigate();
@@ -52,6 +53,7 @@ export function PromptLibraryPage() {
     ?.promptSaved;
   const deleted = (location.state as { promptDeleted?: boolean } | null)
     ?.promptDeleted;
+  const [quickEditNotice, setQuickEditNotice] = useState<string | null>(null);
   const [notice] = useState(() =>
     deleted === true
       ? 'deleted'
@@ -139,7 +141,11 @@ export function PromptLibraryPage() {
           </Link>
         }
       />
-      {notice !== null ? (
+      {quickEditNotice !== null ? (
+        <p className="pt-success-notice" role="status">
+          {quickEditNotice}
+        </p>
+      ) : notice !== null ? (
         <p className="pt-success-notice" role="status">
           {notice === 'deleted'
             ? 'Promptを削除しました。'
@@ -295,6 +301,10 @@ export function PromptLibraryPage() {
                         )
                       }
                       onBodyClose={() => setOpenPrompt(null)}
+                      onBodySaved={() => {
+                        setQuickEditNotice('Prompt本文を更新しました。');
+                        notifyDataChanged();
+                      }}
                     />
                   ))}
                 </tbody>
@@ -321,11 +331,13 @@ function PromptTableRow({
   bodyOpen,
   onBodyToggle,
   onBodyClose,
+  onBodySaved,
 }: {
   prompt: PromptLibraryItem;
   bodyOpen: boolean;
   onBodyToggle: () => void;
   onBodyClose: () => void;
+  onBodySaved: () => void;
 }) {
   return (
     <tr>
@@ -355,6 +367,7 @@ function PromptTableRow({
           open={bodyOpen}
           onToggle={onBodyToggle}
           onClose={onBodyClose}
+          onSaved={onBodySaved}
         />
       </td>
       <td className="pt-prompt-table__action-cell">
@@ -385,12 +398,15 @@ function PromptBodyPopover({
   open,
   onToggle,
   onClose,
+  onSaved,
 }: {
   prompt: PromptLibraryItem;
   open: boolean;
   onToggle: () => void;
   onClose: () => void;
+  onSaved: () => void;
 }) {
+  const repository = usePromptTrailRepository();
   const reactId = useId();
   const panelId = `prompt-body-${reactId.replaceAll(':', '')}`;
   const tooltipId = `${panelId}-tooltip`;
@@ -400,6 +416,15 @@ function PromptBodyPopover({
   const [isTriggerFocused, setIsTriggerFocused] = useState(false);
   const [suppressFocusTooltip, setSuppressFocusTooltip] = useState(false);
   const [copyState, setCopyState] = useState<'success' | 'error' | null>(null);
+  const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const [draft, setDraft] = useState(prompt.body);
+  const [baseline, setBaseline] = useState({
+    body: prompt.body,
+    updatedAt: prompt.updatedAt,
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [position, setPosition] = useState<{
     placement: 'right-start' | 'left-start' | 'bottom-start';
     style: CSSProperties;
@@ -453,8 +478,29 @@ function PromptBodyPopover({
   }, [open, updatePosition]);
 
   useEffect(() => {
+    if (open && mode === 'edit') textareaRef.current?.focus();
+  }, [mode, open]);
+
+  useEffect(() => {
+    if (!(open && mode === 'edit' && draft !== baseline.body)) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [baseline.body, draft, mode, open]);
+
+  useEffect(() => {
     if (!open) return;
     const closeAndFocus = () => {
+      if (saving) return;
+      if (mode === 'edit' && draft !== baseline.body) {
+        setError(
+          '編集中のPrompt本文を破棄しますか？ 保存していない変更は失われます。',
+        );
+        return;
+      }
       setCopyState(null);
       setSuppressFocusTooltip(true);
       onClose();
@@ -480,7 +526,7 @@ function PromptBodyPopover({
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };
-  }, [onClose, open, updatePosition]);
+  }, [baseline.body, draft, mode, onClose, open, saving, updatePosition]);
 
   const tooltipVisible =
     !open && (isTriggerHovered || (isTriggerFocused && !suppressFocusTooltip));
@@ -494,11 +540,78 @@ function PromptBodyPopover({
     }
   };
 
-  const handleCloseButton = () => {
+  const discardAndClose = () => {
+    setMode('view');
+    setDraft(baseline.body);
+    setError(null);
     setCopyState(null);
     setSuppressFocusTooltip(true);
     onClose();
     triggerRef.current?.focus({ preventScroll: true });
+  };
+
+  const handleCloseButton = () => {
+    if (saving) return;
+    if (mode === 'edit' && draft !== baseline.body) {
+      setError(
+        '編集中のPrompt本文を破棄しますか？ 保存していない変更は失われます。',
+      );
+      textareaRef.current?.focus();
+      return;
+    }
+    discardAndClose();
+  };
+
+  const handleSave = async () => {
+    const validation = validatePromptBody(draft);
+    if (validation !== undefined) {
+      setError(validation);
+      textareaRef.current?.focus();
+      return;
+    }
+    if (saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const result = await updatePromptBody(repository, {
+        promptId: prompt.id,
+        expectedUpdatedAt: baseline.updatedAt,
+        body: draft,
+      });
+      if (result.status === 'success') {
+        setBaseline({
+          body: result.prompt.body,
+          updatedAt: result.prompt.updatedAt,
+        });
+        setMode('view');
+        onClose();
+        onSaved();
+        requestAnimationFrame(() =>
+          triggerRef.current?.focus({ preventScroll: true }),
+        );
+      } else if (result.status === 'invalid') {
+        setError('Prompt本文を入力してください。');
+        textareaRef.current?.focus();
+      } else if (result.status === 'stale') {
+        setError(
+          'このPromptは別の操作で更新されました。入力中の本文は保持しています。最新内容を確認して編集し直してください。',
+        );
+      } else if (result.status === 'not-found') {
+        setError(
+          'このPromptは見つかりません。一覧を更新して対象を選び直してください。',
+        );
+      } else {
+        setError(
+          'このPromptは編集できません。削除済みまたはActiveではないPromptです。',
+        );
+      }
+    } catch {
+      setError(
+        '保存に失敗しました。入力内容を保持しています。再試行してください。',
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -571,6 +684,39 @@ function PromptBodyPopover({
                 <h3>Prompt本文</h3>
                 <div className="pt-prompt-body-popover__header-actions">
                   <span className="pt-prompt-body-popover__edit-wrap">
+                    <button
+                      aria-label={`「${prompt.title}」のPrompt本文を編集`}
+                      className="pt-prompt-body-popover__edit"
+                      type="button"
+                      disabled={saving}
+                      onClick={() => {
+                        setCopyState(null);
+                        setError(null);
+                        setDraft(prompt.body);
+                        setBaseline({
+                          body: prompt.body,
+                          updatedAt: prompt.updatedAt,
+                        });
+                        setMode('edit');
+                      }}
+                    >
+                      <svg
+                        aria-hidden="true"
+                        focusable="false"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="m4 20 4.25-1 10.5-10.5a2.12 2.12 0 0 0-3-3L5.25 16Z" />
+                        <path d="m14.5 6.75 3 3M4 20h6" />
+                      </svg>
+                    </button>
+                    <span
+                      className="pt-prompt-body-popover__edit-tooltip"
+                      role="tooltip"
+                    >
+                      Prompt本文を編集
+                    </span>
+                  </span>
+                  <span className="pt-prompt-body-popover__edit-wrap">
                     <Link
                       aria-label={`「${prompt.title}」を編集`}
                       className="pt-prompt-body-popover__edit"
@@ -581,8 +727,7 @@ function PromptBodyPopover({
                         focusable="false"
                         viewBox="0 0 24 24"
                       >
-                        <path d="m4 20 4.25-1 10.5-10.5a2.12 2.12 0 0 0-3-3L5.25 16Z" />
-                        <path d="m14.5 6.75 3 3M4 20h6" />
+                        <path d="M5 5h14M5 12h14M5 19h14" />
                       </svg>
                     </Link>
                     <span
@@ -592,30 +737,32 @@ function PromptBodyPopover({
                       Promptを編集する
                     </span>
                   </span>
-                  <span className="pt-prompt-body-popover__copy-wrap">
-                    <button
-                      aria-label={`「${prompt.title}」のPrompt本文をコピー`}
-                      className="pt-prompt-body-popover__copy"
-                      type="button"
-                      onClick={handleCopy}
-                    >
-                      <svg
-                        aria-hidden="true"
-                        className="pt-prompt-body-popover__copy-icon"
-                        focusable="false"
-                        viewBox="0 0 24 24"
+                  {mode === 'view' ? (
+                    <span className="pt-prompt-body-popover__copy-wrap">
+                      <button
+                        aria-label={`「${prompt.title}」のPrompt本文をコピー`}
+                        className="pt-prompt-body-popover__copy"
+                        type="button"
+                        onClick={handleCopy}
                       >
-                        <rect x="8" y="8" width="11" height="11" rx="2" />
-                        <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
-                      </svg>
-                    </button>
-                    <span
-                      className="pt-prompt-body-popover__copy-tooltip"
-                      role="tooltip"
-                    >
-                      Prompt本文をコピー
+                        <svg
+                          aria-hidden="true"
+                          className="pt-prompt-body-popover__copy-icon"
+                          focusable="false"
+                          viewBox="0 0 24 24"
+                        >
+                          <rect x="8" y="8" width="11" height="11" rx="2" />
+                          <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+                        </svg>
+                      </button>
+                      <span
+                        className="pt-prompt-body-popover__copy-tooltip"
+                        role="tooltip"
+                      >
+                        Prompt本文をコピー
+                      </span>
                     </span>
-                  </span>
+                  ) : null}
                   <span className="pt-prompt-body-popover__close-wrap">
                     <button
                       aria-label="Prompt本文を閉じる"
@@ -650,9 +797,61 @@ function PromptBodyPopover({
                     ? 'コピーできませんでした'
                     : null}
               </p>
-              <div className="pt-prompt-body-popover__content">
-                <p>{prompt.body}</p>
-              </div>
+              {error !== null ? (
+                <div
+                  className="pt-prompt-body-popover__error"
+                  id={`${panelId}-error`}
+                  role="alert"
+                >
+                  <p>{error}</p>
+                  {error.startsWith('編集中') ? (
+                    <div className="pt-prompt-body-popover__actions">
+                      <button type="button" onClick={() => setError(null)}>
+                        編集を続ける
+                      </button>
+                      <button type="button" onClick={discardAndClose}>
+                        破棄する
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+              {mode === 'edit' ? (
+                <div className="pt-prompt-body-popover__editor">
+                  <label htmlFor={`${panelId}-textarea`}>Prompt本文</label>
+                  <textarea
+                    ref={textareaRef}
+                    id={`${panelId}-textarea`}
+                    value={draft}
+                    disabled={saving}
+                    aria-invalid={error !== null}
+                    aria-describedby={
+                      error !== null ? `${panelId}-error` : undefined
+                    }
+                    onChange={(event) => setDraft(event.target.value)}
+                  />
+                  <div className="pt-prompt-body-popover__actions">
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={handleSave}
+                    >
+                      {saving ? '保存中...' : '保存'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={handleCloseButton}
+                    >
+                      キャンセル
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="pt-prompt-body-popover__content">
+                  <p>{prompt.body}</p>
+                </div>
+              )}
             </div>,
             document.body,
           )

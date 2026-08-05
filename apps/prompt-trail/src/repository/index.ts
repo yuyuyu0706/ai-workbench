@@ -8,6 +8,7 @@ export type {
   DirectRunBundle,
   DirectRunFromPromptCreation,
   DirectRunFromPromptResult,
+  PromptBodyUpdate,
   RunTrailMetadataUpdate,
   TrailBundle,
 } from './prompt-trail-repository';
