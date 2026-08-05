@@ -630,6 +630,52 @@ test.describe('Prompt Library data flow', () => {
     }
   });
 
+  test('guards the Prompt body popover full-edit link until discard is confirmed', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1000, height: 700 });
+    await page.goto('/prompts');
+    await seedPromptLibraryInBrowser(page);
+    await page.reload();
+
+    await page
+      .getByRole('button', { name: '「Codex開発依頼」のPrompt本文を表示' })
+      .click();
+    const popover = page.getByRole('dialog', { name: 'Prompt本文' });
+    await expect(popover).toBeVisible();
+    await popover
+      .getByRole('button', { name: '「Codex開発依頼」のPrompt本文を編集' })
+      .click();
+    const textbox = popover.getByRole('textbox', { name: 'Prompt本文' });
+    await textbox.fill('破棄確認のためのdraft');
+    const fullEditLink = popover.getByRole('link', {
+      name: '「Codex開発依頼」を編集',
+    });
+
+    await fullEditLink.click();
+    await expect(page).toHaveURL(/\/prompts$/);
+    await expect(popover.getByRole('alert')).toContainText(
+      '編集中のPrompt本文を破棄しますか？',
+    );
+    await expect(
+      popover.getByRole('button', { name: '編集を続ける' }),
+    ).toBeFocused();
+
+    await page.keyboard.press('Escape');
+    await expect(popover.getByRole('alert')).toBeHidden();
+    await expect(textbox).toBeFocused();
+    await expect(page).toHaveURL(/\/prompts$/);
+
+    await fullEditLink.click();
+    await popover.getByRole('button', { name: '編集を続ける' }).click();
+    await expect(textbox).toBeFocused();
+    await expect(page).toHaveURL(/\/prompts$/);
+
+    await fullEditLink.click();
+    await popover.getByRole('button', { name: '破棄する' }).click();
+    await expect(page).toHaveURL(/\/prompts\/prompt-library-e2e\/edit$/);
+  });
+
   test('keeps the Prompt body popover arrow connected after clamp and edit resize', async ({
     page,
   }) => {

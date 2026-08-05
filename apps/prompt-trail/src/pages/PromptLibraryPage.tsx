@@ -42,6 +42,8 @@ type PromptBodyGuardState = {
 };
 
 type PromptBodyRecoveryStatus = 'stale' | 'not-found' | 'unavailable' | null;
+type PromptBodyMessageKind =
+  'validation' | 'discard' | 'status' | 'notice' | null;
 
 const CLEAN_PROMPT_BODY_GUARD: PromptBodyGuardState = {
   dirty: false,
@@ -477,6 +479,7 @@ function PromptBodyPopover({
   onReloadRequested: () => void;
 }) {
   const repository = usePromptTrailRepository();
+  const navigate = useNavigate();
   const reactId = useId();
   const panelId = `prompt-body-${reactId.replaceAll(':', '')}`;
   const tooltipId = `${panelId}-tooltip`;
@@ -493,8 +496,11 @@ function PromptBodyPopover({
     updatedAt: prompt.updatedAt,
   });
   const [error, setError] = useState<string | null>(null);
+  const [messageKind, setMessageKind] = useState<PromptBodyMessageKind>(null);
+  const [discardConfirmVisible, setDiscardConfirmVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const continueEditingRef = useRef<HTMLButtonElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastPositionRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
@@ -637,11 +643,15 @@ function PromptBodyPopover({
         return true;
       }
       pendingDiscardActionRef.current = action;
+      setDiscardConfirmVisible(true);
+      setMessageKind('discard');
       setError(
         '編集中のPrompt本文を破棄しますか？ 保存していない変更は失われます。',
       );
       schedulePositionUpdate();
-      textareaRef.current?.focus();
+      requestAnimationFrame(() =>
+        continueEditingRef.current?.focus({ preventScroll: true }),
+      );
       return false;
     },
     [isDirty, schedulePositionUpdate],
@@ -687,7 +697,13 @@ function PromptBodyPopover({
       closeAndFocus();
     };
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeAndFocus();
+      if (event.key !== 'Escape') return;
+      if (discardConfirmVisible) {
+        event.preventDefault();
+        continueEditing();
+        return;
+      }
+      closeAndFocus();
     };
     document.addEventListener('pointerdown', handlePointerDown);
     document.addEventListener('keydown', handleKeyDown);
@@ -699,7 +715,15 @@ function PromptBodyPopover({
       window.removeEventListener('resize', schedulePositionUpdate);
       window.removeEventListener('scroll', schedulePositionUpdate, true);
     };
-  }, [isDirty, requestDiscard, onClose, open, saving, schedulePositionUpdate]);
+  }, [
+    discardConfirmVisible,
+    isDirty,
+    onClose,
+    open,
+    requestDiscard,
+    saving,
+    schedulePositionUpdate,
+  ]);
 
   const tooltipVisible =
     !open && (isTriggerHovered || (isTriggerFocused && !suppressFocusTooltip));
@@ -713,12 +737,27 @@ function PromptBodyPopover({
     }
   };
 
-  const discardDraft = () => {
+  const resetSession = () => {
     setMode('view');
     setDraft(baseline.body);
     setError(null);
+    setMessageKind(null);
+    setDiscardConfirmVisible(false);
     setRecoveryStatus(null);
+    pendingDiscardActionRef.current = null;
   };
+
+  const discardDraft = () => {
+    resetSession();
+  };
+
+  function continueEditing() {
+    pendingDiscardActionRef.current = null;
+    setDiscardConfirmVisible(false);
+    setError(null);
+    setMessageKind(null);
+    textareaRef.current?.focus({ preventScroll: true });
+  }
 
   const confirmDiscard = () => {
     const action = pendingDiscardActionRef.current;
@@ -755,6 +794,7 @@ function PromptBodyPopover({
     if (!mountedRef.current) return;
     if (latest === null) {
       setRecoveryStatus('not-found');
+      setMessageKind('status');
       setError(
         'このPromptは見つかりません。一覧を更新して対象を選び直してください。',
       );
@@ -764,6 +804,7 @@ function PromptBodyPopover({
     }
     if (latest.deletedAt !== null || latest.status !== 'active') {
       setRecoveryStatus('unavailable');
+      setMessageKind('status');
       setError(
         'このPromptは編集できません。削除済みまたはActiveではないPromptです。',
       );
@@ -773,6 +814,7 @@ function PromptBodyPopover({
     }
     setBaseline({ body: latest.body, updatedAt: latest.updatedAt });
     setRecoveryStatus(null);
+    setMessageKind('notice');
     setError(
       '最新のPrompt本文を読み込みました。編集中の本文は保持しています。',
     );
@@ -783,6 +825,7 @@ function PromptBodyPopover({
     if (savingRef.current || recoveryStatus !== null) return;
     const validation = validatePromptBody(draft);
     if (validation !== undefined) {
+      setMessageKind('validation');
       setError(validation);
       schedulePositionUpdate();
       textareaRef.current?.focus();
@@ -795,6 +838,8 @@ function PromptBodyPopover({
     const targetPromptId = prompt.id;
     const targetSession = sessionRef.current;
     setSaving(true);
+    setMessageKind(null);
+    setDiscardConfirmVisible(false);
     setError(null);
     try {
       const result = await updatePromptBody(targetRepository, {
@@ -816,6 +861,8 @@ function PromptBodyPopover({
           updatedAt: result.prompt.updatedAt,
         });
         setRecoveryStatus(null);
+        setMessageKind(null);
+        setDiscardConfirmVisible(false);
         setMode('view');
         onClose();
         onSaved();
@@ -823,17 +870,20 @@ function PromptBodyPopover({
           triggerRef.current?.focus({ preventScroll: true }),
         );
       } else if (result.status === 'invalid') {
+        setMessageKind('validation');
         setError('Prompt本文を入力してください。');
         schedulePositionUpdate();
         textareaRef.current?.focus();
       } else if (result.status === 'stale') {
         setRecoveryStatus('stale');
+        setMessageKind('status');
         setError(
           'このPromptは別の操作で更新されました。入力中の本文は保持しています。最新の本文を読み込んでから再保存してください。',
         );
         schedulePositionUpdate();
       } else if (result.status === 'not-found') {
         setRecoveryStatus('not-found');
+        setMessageKind('status');
         reloadAfterCloseRef.current = true;
         setError(
           'このPromptは見つかりません。一覧を更新して対象を選び直してください。',
@@ -841,6 +891,7 @@ function PromptBodyPopover({
         schedulePositionUpdate();
       } else {
         setRecoveryStatus('unavailable');
+        setMessageKind('status');
         reloadAfterCloseRef.current = true;
         setError(
           'このPromptは編集できません。削除済みまたはActiveではないPromptです。',
@@ -849,6 +900,7 @@ function PromptBodyPopover({
       }
     } catch {
       if (!mountedRef.current || saveTokenRef.current !== token) return;
+      setMessageKind('status');
       setError(
         '保存に失敗しました。入力内容を保持しています。再試行してください。',
       );
@@ -881,9 +933,11 @@ function PromptBodyPopover({
             setSuppressFocusTooltip(false);
           }}
           onClick={() => {
+            if (savingRef.current) return;
             setCopyState(null);
             setIsTriggerHovered(false);
             if (open) setSuppressFocusTooltip(true);
+            if (open && !isDirty) resetSession();
             onToggle();
           }}
           onFocus={() => setIsTriggerFocused(true)}
@@ -939,6 +993,8 @@ function PromptBodyPopover({
                       onClick={() => {
                         setCopyState(null);
                         setError(null);
+                        setMessageKind(null);
+                        setDiscardConfirmVisible(false);
                         setDraft(prompt.body);
                         setBaseline({
                           body: prompt.body,
@@ -974,8 +1030,11 @@ function PromptBodyPopover({
                           event.preventDefault();
                           return;
                         }
-                        requestDiscard(() => {});
-                        if (isDirty) event.preventDefault();
+                        if (!isDirty) return;
+                        event.preventDefault();
+                        requestDiscard(() =>
+                          navigate(buildPromptEditPath(prompt.id)),
+                        );
                       }}
                       to={buildPromptEditPath(prompt.id)}
                     >
@@ -1025,6 +1084,7 @@ function PromptBodyPopover({
                       aria-label="Prompt本文を閉じる"
                       className="pt-prompt-body-popover__close"
                       type="button"
+                      disabled={saving}
                       onClick={handleCloseButton}
                     >
                       <svg
@@ -1068,9 +1128,13 @@ function PromptBodyPopover({
                       </button>
                     </div>
                   ) : null}
-                  {error.startsWith('編集中') ? (
+                  {discardConfirmVisible ? (
                     <div className="pt-prompt-body-popover__actions">
-                      <button type="button" onClick={() => setError(null)}>
+                      <button
+                        ref={continueEditingRef}
+                        type="button"
+                        onClick={continueEditing}
+                      >
                         編集を続ける
                       </button>
                       <button type="button" onClick={confirmDiscard}>
@@ -1088,7 +1152,7 @@ function PromptBodyPopover({
                     id={`${panelId}-textarea`}
                     value={draft}
                     disabled={saving}
-                    aria-invalid={error !== null}
+                    aria-invalid={messageKind === 'validation'}
                     aria-describedby={
                       error !== null ? `${panelId}-error` : undefined
                     }

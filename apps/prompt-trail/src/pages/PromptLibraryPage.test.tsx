@@ -2,7 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { MemoryRouter, type InitialEntry } from 'react-router-dom';
+import { MemoryRouter, type InitialEntry, useLocation } from 'react-router-dom';
 
 import {
   PromptTrailDataRevisionProvider,
@@ -713,6 +713,142 @@ describe('PromptLibraryPage', () => {
     expect(screen.queryByRole('dialog', { name: 'Prompt本文' })).toBeNull();
   });
 
+  it('runs the Prompt body popover edit link only after confirming discard', async () => {
+    const user = userEvent.setup();
+    renderPromptLibraryPage(createRepository(prompts), undefined, false, {
+      pathname: '/prompts',
+    });
+    const alphaTrigger = await screen.findByRole('button', {
+      name: `「${prompts[0].title}」のPrompt本文を表示`,
+    });
+    await user.click(alphaTrigger);
+    await user.click(
+      screen.getByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文を編集`,
+      }),
+    );
+    const textarea = screen.getByRole('textbox', { name: 'Prompt本文' });
+    await user.type(textarea, ' dirty');
+    const popover = screen.getByRole('dialog', { name: 'Prompt本文' });
+    const popoverEditLink = within(popover).getByRole('link', {
+      name: `「${prompts[0].title}」を編集`,
+    });
+
+    await user.click(popoverEditLink);
+    expect(screen.getByLabelText('Current path')).toHaveTextContent('/prompts');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: '編集を続ける' }),
+      ).toHaveFocus(),
+    );
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(textarea).toHaveFocus();
+    expect(screen.getByLabelText('Current path')).toHaveTextContent('/prompts');
+
+    await user.click(popoverEditLink);
+    await user.click(screen.getByRole('button', { name: '編集を続ける' }));
+    expect(textarea).toHaveFocus();
+    expect(screen.getByLabelText('Current path')).toHaveTextContent('/prompts');
+
+    await user.click(popoverEditLink);
+    await user.click(screen.getByRole('button', { name: '破棄する' }));
+    expect(screen.getByLabelText('Current path')).toHaveTextContent(
+      '/prompts/alpha/edit',
+    );
+    expect(screen.queryByRole('dialog', { name: 'Prompt本文' })).toBeNull();
+  });
+
+  it('resets a clean edit session when the trigger closes the popover', async () => {
+    const user = userEvent.setup();
+    renderPromptLibraryPage(createRepository(prompts));
+    const trigger = await screen.findByRole('button', {
+      name: `「${prompts[0].title}」のPrompt本文を表示`,
+    });
+
+    await user.click(trigger);
+    await user.click(
+      screen.getByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文を編集`,
+      }),
+    );
+    expect(screen.getByRole('textbox', { name: 'Prompt本文' })).toBeVisible();
+
+    await user.click(trigger);
+    expect(screen.queryByRole('dialog', { name: 'Prompt本文' })).toBeNull();
+    await user.click(trigger);
+    expect(
+      screen.queryByRole('textbox', { name: 'Prompt本文' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文をコピー`,
+      }),
+    ).toBeVisible();
+  });
+
+  it('keeps saving operations modal and marks only validation errors as invalid', async () => {
+    const user = userEvent.setup();
+    let resolveSave!: (value: Prompt) => void;
+    const repository = {
+      listActivePrompts: vi.fn(async () => prompts),
+      updatePromptBody: vi.fn(
+        () =>
+          new Promise<Prompt>((resolve) => {
+            resolveSave = resolve;
+          }),
+      ),
+      getPrompt: vi.fn(),
+    } as unknown as PromptTrailRepository;
+    renderPromptLibraryPage(repository, undefined, false, {
+      pathname: '/prompts',
+    });
+    const trigger = await screen.findByRole('button', {
+      name: `「${prompts[0].title}」のPrompt本文を表示`,
+    });
+    await user.click(trigger);
+    await user.click(
+      screen.getByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文を編集`,
+      }),
+    );
+    const textarea = screen.getByRole('textbox', { name: 'Prompt本文' });
+    await user.clear(textarea);
+    await user.click(screen.getByRole('button', { name: '保存' }));
+    expect(textarea).toHaveAttribute('aria-invalid', 'true');
+    await user.type(textarea, '保存中本文');
+    await user.click(screen.getByRole('button', { name: '保存' }));
+
+    expect(repository.updatePromptBody).toHaveBeenCalledOnce();
+    expect(
+      screen.getByRole('button', { name: 'Prompt本文を閉じる' }),
+    ).toBeDisabled();
+    expect(
+      within(screen.getByRole('dialog', { name: 'Prompt本文' })).getByRole(
+        'link',
+        { name: `「${prompts[0].title}」を編集` },
+      ),
+    ).toHaveAttribute('aria-disabled', 'true');
+    await user.click(
+      screen.getByRole('button', { name: 'Prompt本文を閉じる' }),
+    );
+    expect(screen.getByRole('dialog', { name: 'Prompt本文' })).toBeVisible();
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Prompt本文' })).getByRole(
+        'link',
+        { name: `「${prompts[0].title}」を編集` },
+      ),
+    );
+    expect(screen.getByLabelText('Current path')).toHaveTextContent('/prompts');
+
+    resolveSave({
+      ...prompts[0],
+      body: '保存中本文',
+      updatedAt: '2026-08-02T00:00:00.000Z' as UtcDateTimeString,
+    });
+    expect(await screen.findByText('Prompt本文を更新しました。')).toBeVisible();
+  });
+
   it('keeps stale drafts, requires latest body reload, and saves with the refreshed baseline', async () => {
     const user = userEvent.setup();
     const latest = {
@@ -750,6 +886,10 @@ describe('PromptLibraryPage', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       '最新の本文を読み込んでから再保存してください。',
+    );
+    expect(screen.getByRole('textbox', { name: 'Prompt本文' })).toHaveAttribute(
+      'aria-invalid',
+      'false',
     );
     expect(screen.getByRole('button', { name: '保存' })).toBeDisabled();
     await user.click(
@@ -890,12 +1030,18 @@ function renderPromptLibraryPage(
             }
           >
             <PromptLibraryPage />
+            <LocationProbe />
             {withTrigger ? <DataRevisionTrigger /> : null}
           </DeveloperToolsProvider>
         </PromptTrailDataRevisionProvider>
       </PromptTrailRepositoryProvider>
     </MemoryRouter>,
   );
+}
+
+function LocationProbe() {
+  const location = useLocation();
+  return <div aria-label="Current path">{location.pathname}</div>;
 }
 
 function DataRevisionTrigger() {
