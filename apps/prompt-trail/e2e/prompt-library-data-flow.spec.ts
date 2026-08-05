@@ -514,6 +514,85 @@ test.describe('Prompt Library data flow', () => {
     await expectNoHorizontalOverflow(page);
   });
 
+  test('hides icon tooltips after mouse click blur contract and shows them for keyboard focus', async ({
+    context,
+    page,
+  }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.setViewportSize({ width: 1000, height: 700 });
+    await page.goto('/prompts');
+    await seedPromptLibraryInBrowser(page);
+    await page.reload();
+
+    const heading = page.getByRole('heading', {
+      level: 1,
+      name: 'Prompt Library',
+    });
+    const trailAction = page.getByRole('link', {
+      name: '「Codex開発依頼」からTrailを作成',
+    });
+    const trailTooltip = page.getByRole('tooltip', { name: 'Trailを作成' });
+    await trailAction.hover();
+    await expect(trailTooltip).toHaveCSS('opacity', '1');
+    await heading.hover();
+    await expect(trailTooltip).toHaveCSS('opacity', '0');
+
+    await page
+      .getByRole('button', { name: '「Codex開発依頼」のPrompt本文を表示' })
+      .click();
+    const popover = page.getByRole('dialog', { name: 'Prompt本文' });
+    await expect(popover).toBeVisible();
+
+    const inlineEdit = popover.getByRole('button', {
+      name: '「Codex開発依頼」のPrompt本文を編集',
+    });
+    const wholeEdit = popover.getByRole('link', {
+      name: '「Codex開発依頼」を編集',
+    });
+    const copy = popover.getByRole('button', {
+      name: '「Codex開発依頼」のPrompt本文をコピー',
+    });
+    const close = popover.getByRole('button', { name: 'Prompt本文を閉じる' });
+    const inlineEditTooltip = popover.getByRole('tooltip', {
+      name: 'Prompt本文を編集',
+    });
+    const wholeEditTooltip = popover.getByRole('tooltip', {
+      name: 'Promptを編集する',
+    });
+    const copyTooltip = popover.getByRole('tooltip', {
+      name: 'Prompt本文をコピー',
+    });
+    const closeTooltip = popover.getByRole('tooltip', { name: '閉じる' });
+
+    await inlineEdit.hover();
+    await expect(inlineEditTooltip).toHaveCSS('opacity', '1');
+    await wholeEdit.hover();
+    await expect(inlineEditTooltip).toHaveCSS('opacity', '0');
+    await expect(wholeEditTooltip).toHaveCSS('opacity', '1');
+    await close.hover();
+    await expect(wholeEditTooltip).toHaveCSS('opacity', '0');
+    await expect(closeTooltip).toHaveCSS('opacity', '1');
+    await copy.hover();
+    await expect(closeTooltip).toHaveCSS('opacity', '0');
+    await expect(copyTooltip).toHaveCSS('opacity', '1');
+
+    await copy.click();
+    await expect(copy).toBeFocused();
+    await expect(popover.getByText('コピーしました')).toBeVisible();
+    await heading.hover();
+    await expect(copyTooltip).toHaveCSS('opacity', '0');
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+      '変更内容を確認して実装してください。',
+    );
+
+    await page.keyboard.press('Tab');
+    await expect(close).toBeFocused();
+    await expect(closeTooltip).toHaveCSS('opacity', '1');
+    await page.keyboard.press('Shift+Tab');
+    await expect(copy).toBeFocused();
+    await expect(copyTooltip).toHaveCSS('opacity', '1');
+  });
+
   test('keeps the Prompt body popover arrow connected after clamp and edit resize', async ({
     page,
   }) => {

@@ -140,6 +140,11 @@ describe('PromptLibraryPage', () => {
     expect(
       screen.getAllByRole('tooltip', { name: 'Trailを作成' }),
     ).toHaveLength(2);
+    const trailAction = screen.getByRole('link', {
+      name: `「${prompts[0].title}」からTrailを作成`,
+    });
+    expect(trailAction.nextElementSibling).toHaveAttribute('role', 'tooltip');
+    expect(trailAction.nextElementSibling).toHaveTextContent('Trailを作成');
     expect(
       within(table).queryByRole('link', { name: 'Trailを作成' }),
     ).toBeNull();
@@ -218,6 +223,9 @@ describe('PromptLibraryPage', () => {
       screen.getByRole('dialog', { name: 'Prompt本文' }).textContent,
     ).toContain(prompts[0].body);
     const dialog = screen.getByRole('dialog', { name: 'Prompt本文' });
+    const quickEditButton = within(dialog).getByRole('button', {
+      name: `「${prompts[0].title}」のPrompt本文を編集`,
+    });
     const editLink = within(dialog).getByRole('link', {
       name: `「${prompts[0].title}」を編集`,
     });
@@ -227,18 +235,33 @@ describe('PromptLibraryPage', () => {
     const closeButton = within(dialog).getByRole('button', {
       name: 'Prompt本文を閉じる',
     });
+    expect(quickEditButton.nextElementSibling).toHaveAttribute(
+      'role',
+      'tooltip',
+    );
+    expect(quickEditButton.nextElementSibling).toHaveTextContent(
+      'Prompt本文を編集',
+    );
     expect(editLink).toHaveTextContent('');
     expect(editLink).toHaveAttribute('href', '/prompts/alpha/edit');
     expect(editLink.querySelector('svg')).toHaveAttribute(
       'aria-hidden',
       'true',
     );
+    expect(editLink.nextElementSibling).toHaveAttribute('role', 'tooltip');
+    expect(editLink.nextElementSibling).toHaveTextContent('Promptを編集する');
     expect(
       within(dialog).getByRole('tooltip', { name: 'Promptを編集する' }),
     ).toBeInTheDocument();
     expect(
       within(dialog).queryByText('Promptを編集する', { selector: 'a' }),
     ).toBeNull();
+    expect(copyButton.nextElementSibling).toHaveAttribute('role', 'tooltip');
+    expect(copyButton.nextElementSibling).toHaveTextContent(
+      'Prompt本文をコピー',
+    );
+    expect(closeButton.nextElementSibling).toHaveAttribute('role', 'tooltip');
+    expect(closeButton.nextElementSibling).toHaveTextContent('閉じる');
     expect(
       Boolean(
         editLink.compareDocumentPosition(copyButton) &

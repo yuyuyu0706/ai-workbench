@@ -258,14 +258,14 @@
   pointer-events: none;
 }
 .pt-prompt-trail-action-wrap:hover .pt-prompt-trail-action__tooltip,
-.pt-prompt-trail-action-wrap:focus-within .pt-prompt-trail-action__tooltip,
+.pt-prompt-trail-action:focus-visible + .pt-prompt-trail-action__tooltip,
 .pt-prompt-body-popover__edit-wrap:hover .pt-prompt-body-popover__edit-tooltip,
-.pt-prompt-body-popover__edit-wrap:focus-within
-  .pt-prompt-body-popover__edit-tooltip,
+.pt-prompt-body-popover__edit:focus-visible
+  + .pt-prompt-body-popover__edit-tooltip,
 .pt-prompt-body-popover__close-wrap:hover
   .pt-prompt-body-popover__close-tooltip,
-.pt-prompt-body-popover__close-wrap:focus-within
-  .pt-prompt-body-popover__close-tooltip {
+.pt-prompt-body-popover__close:focus-visible
+  + .pt-prompt-body-popover__close-tooltip {
   opacity: 1;
 }
 
@@ -558,8 +558,8 @@
 }
 
 .pt-prompt-body-popover__copy-wrap:hover .pt-prompt-body-popover__copy-tooltip,
-.pt-prompt-body-popover__copy-wrap:focus-within
-  .pt-prompt-body-popover__copy-tooltip {
+.pt-prompt-body-popover__copy:focus-visible
+  + .pt-prompt-body-popover__copy-tooltip {
   opacity: 1;
 }
 
