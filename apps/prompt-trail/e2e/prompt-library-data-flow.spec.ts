@@ -676,6 +676,38 @@ test.describe('Prompt Library data flow', () => {
     await expect(page).toHaveURL(/\/prompts\/prompt-library-e2e\/edit$/);
   });
 
+  test('guards global navigation while a Prompt body draft is dirty', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1000, height: 700 });
+    await page.goto('/prompts');
+    await seedPromptLibraryInBrowser(page);
+    await page.reload();
+
+    await page
+      .getByRole('button', { name: '「Codex開発依頼」のPrompt本文を表示' })
+      .click();
+    const popover = page.getByRole('dialog', { name: 'Prompt本文' });
+    await popover
+      .getByRole('button', { name: '「Codex開発依頼」のPrompt本文を編集' })
+      .click();
+    const textbox = popover.getByRole('textbox', { name: 'Prompt本文' });
+    await textbox.fill('Global Navigation guard draft');
+
+    await page.getByRole('link', { name: 'Dashboard' }).click();
+    await expect(page).toHaveURL(/\/prompts$/);
+    await expect(popover.getByRole('alert')).toContainText(
+      '編集中のPrompt本文を破棄しますか？',
+    );
+    await popover.getByRole('button', { name: '編集を続ける' }).click();
+    await expect(textbox).toBeFocused();
+
+    await page.getByRole('link', { name: 'はじめに' }).click();
+    await expect(page).toHaveURL(/\/prompts$/);
+    await popover.getByRole('button', { name: '破棄する' }).click();
+    await expect(page).toHaveURL(/\/$/);
+  });
+
   test('keeps the Prompt body popover arrow connected after clamp and edit resize', async ({
     page,
   }) => {

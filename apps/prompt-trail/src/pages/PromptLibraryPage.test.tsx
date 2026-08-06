@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { MemoryRouter, type InitialEntry, useLocation } from 'react-router-dom';
 
+import { GlobalNavigation } from '../app/GlobalNavigation';
+import { NavigationGuardProvider } from '../app/NavigationGuardContext';
 import {
   PromptTrailDataRevisionProvider,
   usePromptTrailDataRevision,
@@ -787,6 +789,91 @@ describe('PromptLibraryPage', () => {
     ).toBeVisible();
   });
 
+  it('does not expose the quick edit action again while editing a dirty draft', async () => {
+    const user = userEvent.setup();
+    renderPromptLibraryPage(createRepository(prompts));
+    const trigger = await screen.findByRole('button', {
+      name: `「${prompts[0].title}」のPrompt本文を表示`,
+    });
+
+    await user.click(trigger);
+    await user.click(
+      screen.getByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文を編集`,
+      }),
+    );
+    const textarea = screen.getByRole('textbox', { name: 'Prompt本文' });
+    await user.type(textarea, ' dirty');
+
+    expect(
+      screen.queryByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文を編集`,
+      }),
+    ).toBeNull();
+    expect(textarea).toHaveValue(`${prompts[0].body} dirty`);
+  });
+
+  it('guards global navigation while dirty or saving', async () => {
+    const user = userEvent.setup();
+    let resolveSave!: (value: Prompt) => void;
+    const repository = {
+      listActivePrompts: vi.fn(async () => prompts),
+      updatePromptBody: vi.fn(
+        () =>
+          new Promise<Prompt>((resolve) => {
+            resolveSave = resolve;
+          }),
+      ),
+      getPrompt: vi.fn(),
+    } as unknown as PromptTrailRepository;
+    renderPromptLibraryPage(repository, undefined, false, '/prompts', true);
+    const trigger = await screen.findByRole('button', {
+      name: `「${prompts[0].title}」のPrompt本文を表示`,
+    });
+    await user.click(trigger);
+    await user.click(
+      screen.getByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文を編集`,
+      }),
+    );
+    const textarea = screen.getByRole('textbox', { name: 'Prompt本文' });
+    await user.type(textarea, ' dirty');
+
+    await user.click(screen.getByRole('link', { name: 'Dashboard' }));
+    expect(screen.getByLabelText('Current path')).toHaveTextContent('/prompts');
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '編集中のPrompt本文を破棄しますか？',
+    );
+    await user.click(screen.getByRole('button', { name: '編集を続ける' }));
+    await user.click(screen.getByRole('link', { name: 'はじめに' }));
+    expect(screen.getByLabelText('Current path')).toHaveTextContent('/prompts');
+    await user.click(screen.getByRole('button', { name: '破棄する' }));
+    expect(screen.getByLabelText('Current path')).toHaveTextContent('/');
+
+    await user.click(screen.getByRole('link', { name: 'Prompt Library' }));
+    await user.click(trigger);
+    await user.click(
+      screen.getByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文を編集`,
+      }),
+    );
+    await user.clear(screen.getByRole('textbox', { name: 'Prompt本文' }));
+    await user.type(
+      screen.getByRole('textbox', { name: 'Prompt本文' }),
+      'saving draft',
+    );
+    await user.click(screen.getByRole('button', { name: '保存' }));
+    await user.click(screen.getByRole('link', { name: 'Dashboard' }));
+    expect(screen.getByLabelText('Current path')).toHaveTextContent('/prompts');
+
+    resolveSave({
+      ...prompts[0],
+      body: 'saving draft',
+      updatedAt: '2026-08-02T00:00:00.000Z' as UtcDateTimeString,
+    });
+    expect(await screen.findByText('Prompt本文を更新しました。')).toBeVisible();
+  });
+
   it('keeps saving operations modal and marks only validation errors as invalid', async () => {
     const user = userEvent.setup();
     let resolveSave!: (value: Prompt) => void;
@@ -892,18 +979,49 @@ describe('PromptLibraryPage', () => {
       'false',
     );
     expect(screen.getByRole('button', { name: '保存' })).toBeDisabled();
+
     await user.click(
       screen.getByRole('button', { name: '最新の本文を読み込む' }),
     );
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '編集中のPrompt本文を破棄しますか？',
+    );
+    await user.click(screen.getByRole('button', { name: '編集を続ける' }));
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '最新の本文を読み込んでから再保存してください。',
+    );
+    expect(
+      screen.getByRole('button', { name: '最新の本文を読み込む' }),
+    ).toBeVisible();
+
+    await user.click(
+      screen.getByRole('button', { name: '最新の本文を読み込む' }),
+    );
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '最新の本文を読み込んでから再保存してください。',
+    );
+    expect(
+      screen.getByRole('button', { name: '最新の本文を読み込む' }),
+    ).toBeVisible();
+
+    await user.click(
+      screen.getByRole('button', { name: '最新の本文を読み込む' }),
+    );
+    await user.click(screen.getByRole('button', { name: '破棄する' }));
     expect(repository.getPrompt).toHaveBeenCalledWith(prompts[0].id);
     expect(screen.getByRole('textbox', { name: 'Prompt本文' })).toHaveValue(
-      'draft body',
+      'latest body',
+    );
+    await user.type(
+      screen.getByRole('textbox', { name: 'Prompt本文' }),
+      ' reviewed',
     );
     await user.click(screen.getByRole('button', { name: '保存' }));
     expect(updatePromptBody).toHaveBeenLastCalledWith(
       expect.objectContaining({
         expectedUpdatedAt: latest.updatedAt,
-        body: 'draft body',
+        body: 'latest body reviewed',
       }),
     );
   });
@@ -1019,22 +1137,28 @@ function renderPromptLibraryPage(
   store?: DeveloperUiStateStore,
   withTrigger = false,
   initialEntry: InitialEntry = '/prompts',
+  withGlobalNavigation = false,
 ) {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
-      <PromptTrailRepositoryProvider repository={repository}>
-        <PromptTrailDataRevisionProvider>
-          <DeveloperToolsProvider
-            value={
-              store ? ({ uiStateStore: store } as DeveloperToolsRuntime) : null
-            }
-          >
-            <PromptLibraryPage />
-            <LocationProbe />
-            {withTrigger ? <DataRevisionTrigger /> : null}
-          </DeveloperToolsProvider>
-        </PromptTrailDataRevisionProvider>
-      </PromptTrailRepositoryProvider>
+      <NavigationGuardProvider>
+        <PromptTrailRepositoryProvider repository={repository}>
+          <PromptTrailDataRevisionProvider>
+            <DeveloperToolsProvider
+              value={
+                store
+                  ? ({ uiStateStore: store } as DeveloperToolsRuntime)
+                  : null
+              }
+            >
+              {withGlobalNavigation ? <GlobalNavigation /> : null}
+              <PromptLibraryPage />
+              <LocationProbe />
+              {withTrigger ? <DataRevisionTrigger /> : null}
+            </DeveloperToolsProvider>
+          </PromptTrailDataRevisionProvider>
+        </PromptTrailRepositoryProvider>
+      </NavigationGuardProvider>
     </MemoryRouter>,
   );
 }
