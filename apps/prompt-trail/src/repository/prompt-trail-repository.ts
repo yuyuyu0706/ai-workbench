@@ -48,6 +48,13 @@ export type DirectRunFromPromptResult = {
   readonly run: Run & { readonly recipeId: null };
 };
 
+export type PromptBodyUpdate = {
+  readonly promptId: PromptId;
+  readonly expectedUpdatedAt: UtcDateTimeString;
+  readonly body: string;
+  readonly updatedAt: UtcDateTimeString;
+};
+
 export type RunTrailMetadataUpdate = {
   readonly runId: RunId;
   readonly expectedUpdatedAt: UtcDateTimeString;
@@ -250,6 +257,37 @@ export class PromptTrailRepository {
 
   async getPrompt(promptId: PromptId): Promise<Prompt | null> {
     return (await this.database.prompts.get(promptId)) ?? null;
+  }
+
+  async updatePromptBody(update: PromptBodyUpdate): Promise<Prompt> {
+    return this.database.transaction('rw', this.database.prompts, async () => {
+      const current = await this.database.prompts.get(update.promptId);
+      if (current === undefined) {
+        throw new PromptTrailRepositoryError(
+          'reference-not-found',
+          `Prompt not found: ${update.promptId}`,
+        );
+      }
+      if (current.deletedAt !== null || current.status !== 'active') {
+        throw new PromptTrailRepositoryError(
+          'reference-unavailable',
+          `Prompt is unavailable: ${update.promptId}`,
+        );
+      }
+      if (current.updatedAt !== update.expectedUpdatedAt) {
+        throw new PromptTrailRepositoryError(
+          'stale-write',
+          `Prompt was updated: ${update.promptId}`,
+        );
+      }
+      const updated: Prompt = {
+        ...current,
+        body: update.body,
+        updatedAt: update.updatedAt,
+      };
+      await this.database.prompts.put(updated);
+      return updated;
+    });
   }
 
   async listActivePrompts(projectId?: ProjectId): Promise<readonly Prompt[]> {

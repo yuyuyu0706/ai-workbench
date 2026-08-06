@@ -6,10 +6,15 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type MouseEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
+import {
+  CLEAN_NAVIGATION_GUARD,
+  useSetNavigationGuard,
+} from '../app/NavigationGuardContext';
 import { usePromptTrailDataRevision } from '../app/PromptTrailDataRevisionContext';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import {
@@ -28,10 +33,32 @@ import {
   type PromptLibraryItem,
   type PromptSortMode,
 } from '../prompt-library';
+import { updatePromptBody, validatePromptBody } from '../prompt-editor';
 import { formatDateTime } from './date-time';
 
 type PageState = { readonly status: 'loading' } | PromptLibraryDataState;
 type ProjectFilter = 'all' | PromptLibraryItem['scope'];
+type PromptBodyDiscardRequest = (action: () => void) => boolean;
+type PromptBodyGuardState = {
+  readonly dirty: boolean;
+  readonly saving: boolean;
+  readonly requestDiscard: PromptBodyDiscardRequest | null;
+};
+
+type PromptBodyRecoveryStatus = 'stale' | 'not-found' | 'unavailable' | null;
+type PromptBodyMessageKind =
+  'validation' | 'discard' | 'status' | 'notice' | null;
+type PromptBodyDiscardRestore = {
+  readonly error: string | null;
+  readonly messageKind: PromptBodyMessageKind;
+  readonly recoveryStatus: PromptBodyRecoveryStatus;
+};
+
+const CLEAN_PROMPT_BODY_GUARD: PromptBodyGuardState = {
+  dirty: false,
+  saving: false,
+  requestDiscard: null,
+};
 
 const KIND_LABELS: Record<PromptLibraryItem['kind'], string> = {
   'chat-consultation': 'チャット相談',
@@ -44,7 +71,7 @@ const KIND_LABELS: Record<PromptLibraryItem['kind'], string> = {
 
 export function PromptLibraryPage() {
   const repository = usePromptTrailRepository();
-  const { revision } = usePromptTrailDataRevision();
+  const { revision, notifyDataChanged } = usePromptTrailDataRevision();
   const snapshot = useDeveloperUiStateSnapshot();
   const location = useLocation();
   const navigate = useNavigate();
@@ -52,6 +79,7 @@ export function PromptLibraryPage() {
     ?.promptSaved;
   const deleted = (location.state as { promptDeleted?: boolean } | null)
     ?.promptDeleted;
+  const [quickEditNotice, setQuickEditNotice] = useState<string | null>(null);
   const [notice] = useState(() =>
     deleted === true
       ? 'deleted'
@@ -67,6 +95,20 @@ export function PromptLibraryPage() {
     revision: number;
     snapshot: typeof snapshot;
   } | null>(null);
+  const [promptBodyGuard, setPromptBodyGuardState] =
+    useState<PromptBodyGuardState>(CLEAN_PROMPT_BODY_GUARD);
+  const setNavigationGuard = useSetNavigationGuard();
+  const setPromptBodyGuard = useCallback(
+    (guard: PromptBodyGuardState) => {
+      setPromptBodyGuardState(guard);
+      setNavigationGuard(guard);
+    },
+    [setNavigationGuard],
+  );
+
+  useEffect(() => {
+    return () => setNavigationGuard(CLEAN_NAVIGATION_GUARD);
+  }, [setNavigationGuard]);
   const [loaded, setLoaded] = useState<{
     repository: typeof repository;
     state: PageState;
@@ -124,6 +166,25 @@ export function PromptLibraryPage() {
     results.some((prompt) => prompt.id === openPrompt.id)
       ? openPrompt.id
       : null;
+  const controlsLocked = promptBodyGuard.dirty || promptBodyGuard.saving;
+
+  const runAfterPromptBodyGuard = (action: () => void) => {
+    if (promptBodyGuard.saving) return;
+    if (promptBodyGuard.dirty && promptBodyGuard.requestDiscard !== null) {
+      promptBodyGuard.requestDiscard(action);
+      return;
+    }
+    action();
+  };
+
+  const guardNavigation = (
+    event: MouseEvent<HTMLAnchorElement>,
+    path: string,
+  ) => {
+    if (!controlsLocked) return;
+    event.preventDefault();
+    runAfterPromptBodyGuard(() => navigate(path));
+  };
 
   return (
     <section className="prompt-trail-page">
@@ -133,13 +194,19 @@ export function PromptLibraryPage() {
         actions={
           <Link
             className="pt-button pt-button--primary"
+            aria-disabled={controlsLocked}
+            onClick={(event) => guardNavigation(event, routePaths.promptNew)}
             to={routePaths.promptNew}
           >
             Promptを新規登録
           </Link>
         }
       />
-      {notice !== null ? (
+      {quickEditNotice !== null ? (
+        <p className="pt-success-notice" role="status">
+          {quickEditNotice}
+        </p>
+      ) : notice !== null ? (
         <p className="pt-success-notice" role="status">
           {notice === 'deleted'
             ? 'Promptを削除しました。'
@@ -154,8 +221,8 @@ export function PromptLibraryPage() {
               <span>プロジェクト</span>
               <select
                 value={projectFilter}
+                disabled={controlsLocked}
                 onChange={(event) => {
-                  setOpenPrompt(null);
                   setProjectFilter(event.target.value as ProjectFilter);
                 }}
               >
@@ -169,8 +236,8 @@ export function PromptLibraryPage() {
               <input
                 type="search"
                 value={query}
+                disabled={controlsLocked}
                 onChange={(event) => {
-                  setOpenPrompt(null);
                   setQuery(event.target.value);
                 }}
                 placeholder="Prompt名または本文を検索"
@@ -186,8 +253,8 @@ export function PromptLibraryPage() {
                 <button
                   className="pt-prompt-library__clear"
                   type="button"
+                  disabled={controlsLocked}
                   onClick={() => {
-                    setOpenPrompt(null);
                     setProjectFilter('all');
                     setQuery('');
                   }}
@@ -244,8 +311,8 @@ export function PromptLibraryPage() {
                               ? 'Prompt名を降順に並べ替え'
                               : '更新日時降順へ戻す'
                         }
+                        disabled={controlsLocked}
                         onClick={() => {
-                          setOpenPrompt(null);
                           setSortMode((current) =>
                             current === 'updated-desc'
                               ? 'name-asc'
@@ -287,14 +354,24 @@ export function PromptLibraryPage() {
                       key={prompt.id}
                       prompt={prompt}
                       bodyOpen={openPromptId === prompt.id}
+                      controlsLocked={controlsLocked}
+                      onGuardedNavigate={guardNavigation}
                       onBodyToggle={() =>
-                        setOpenPrompt((current) =>
-                          current?.id === prompt.id
-                            ? null
-                            : { id: prompt.id, revision, snapshot },
+                        runAfterPromptBodyGuard(() =>
+                          setOpenPrompt((current) =>
+                            current?.id === prompt.id
+                              ? null
+                              : { id: prompt.id, revision, snapshot },
+                          ),
                         )
                       }
                       onBodyClose={() => setOpenPrompt(null)}
+                      onBodyGuardChange={setPromptBodyGuard}
+                      onBodySaved={() => {
+                        setQuickEditNotice('Prompt本文を更新しました。');
+                        notifyDataChanged();
+                      }}
+                      onBodyReloadRequested={() => notifyDataChanged()}
                     />
                   ))}
                 </tbody>
@@ -319,19 +396,36 @@ function filterPromptLibraryItemsByProject(
 function PromptTableRow({
   prompt,
   bodyOpen,
+  controlsLocked,
+  onGuardedNavigate,
   onBodyToggle,
   onBodyClose,
+  onBodyGuardChange,
+  onBodySaved,
+  onBodyReloadRequested,
 }: {
+  controlsLocked: boolean;
+  onGuardedNavigate: (
+    event: MouseEvent<HTMLAnchorElement>,
+    path: string,
+  ) => void;
   prompt: PromptLibraryItem;
   bodyOpen: boolean;
   onBodyToggle: () => void;
   onBodyClose: () => void;
+  onBodyGuardChange: (state: PromptBodyGuardState) => void;
+  onBodySaved: () => void;
+  onBodyReloadRequested: () => void;
 }) {
   return (
     <tr>
       <td className="pt-prompt-table__title">
         <Link
           className="pt-prompt-table__title-link"
+          aria-disabled={controlsLocked}
+          onClick={(event) =>
+            onGuardedNavigate(event, buildPromptEditPath(prompt.id))
+          }
           to={buildPromptEditPath(prompt.id)}
           aria-label={`「${prompt.title}」を編集`}
         >
@@ -355,12 +449,19 @@ function PromptTableRow({
           open={bodyOpen}
           onToggle={onBodyToggle}
           onClose={onBodyClose}
+          onGuardChange={onBodyGuardChange}
+          onSaved={onBodySaved}
+          onReloadRequested={onBodyReloadRequested}
         />
       </td>
       <td className="pt-prompt-table__action-cell">
         <span className="pt-prompt-trail-action-wrap">
           <Link
             className="pt-prompt-trail-action"
+            aria-disabled={controlsLocked}
+            onClick={(event) =>
+              onGuardedNavigate(event, buildNewTrailFromPromptPath(prompt.id))
+            }
             to={buildNewTrailFromPromptPath(prompt.id)}
             aria-label={`「${prompt.title}」からTrailを作成`}
           >
@@ -385,12 +486,20 @@ function PromptBodyPopover({
   open,
   onToggle,
   onClose,
+  onGuardChange,
+  onSaved,
+  onReloadRequested,
 }: {
   prompt: PromptLibraryItem;
   open: boolean;
   onToggle: () => void;
   onClose: () => void;
+  onGuardChange: (state: PromptBodyGuardState) => void;
+  onSaved: () => void;
+  onReloadRequested: () => void;
 }) {
+  const repository = usePromptTrailRepository();
+  const navigate = useNavigate();
   const reactId = useId();
   const panelId = `prompt-body-${reactId.replaceAll(':', '')}`;
   const tooltipId = `${panelId}-tooltip`;
@@ -400,6 +509,32 @@ function PromptBodyPopover({
   const [isTriggerFocused, setIsTriggerFocused] = useState(false);
   const [suppressFocusTooltip, setSuppressFocusTooltip] = useState(false);
   const [copyState, setCopyState] = useState<'success' | 'error' | null>(null);
+  const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const [draft, setDraft] = useState(prompt.body);
+  const [baseline, setBaseline] = useState({
+    body: prompt.body,
+    updatedAt: prompt.updatedAt,
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [messageKind, setMessageKind] = useState<PromptBodyMessageKind>(null);
+  const [discardConfirmVisible, setDiscardConfirmVisible] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const continueEditingRef = useRef<HTMLButtonElement>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const lastPositionRef = useRef<string | null>(null);
+  const mountedRef = useRef(true);
+  const savingRef = useRef(false);
+  const saveTokenRef = useRef(0);
+  const sessionRef = useRef(0);
+  const pendingDiscardActionRef = useRef<(() => void) | null>(null);
+  const pendingDiscardClosesRef = useRef(true);
+  const pendingDiscardRestoreRef = useRef<PromptBodyDiscardRestore | null>(
+    null,
+  );
+  const reloadAfterCloseRef = useRef(false);
+  const [recoveryStatus, setRecoveryStatus] =
+    useState<PromptBodyRecoveryStatus>(null);
   const [position, setPosition] = useState<{
     placement: 'right-start' | 'left-start' | 'bottom-start';
     style: CSSProperties;
@@ -411,50 +546,176 @@ function PromptBodyPopover({
     if (trigger === null || panel === null) return;
     const margin = 16;
     const gap = 12;
+    const arrowSize = 12;
+    const arrowSafeMargin = 16;
     const triggerRect = trigger.getBoundingClientRect();
     const panelRect = panel.getBoundingClientRect();
     const panelWidth = panelRect.width;
     const panelHeight = panelRect.height;
-    const top = Math.max(
-      margin,
-      Math.min(triggerRect.top, window.innerHeight - panelHeight - margin),
+    const triggerCenterX = triggerRect.left + triggerRect.width / 2;
+    const triggerCenterY = triggerRect.top + triggerRect.height / 2;
+    const maxTop = Math.max(margin, window.innerHeight - panelHeight - margin);
+    const sideTop = Math.max(margin, Math.min(triggerRect.top, maxTop));
+    const maxLeft = Math.max(margin, window.innerWidth - panelWidth - margin);
+    const bottomLeft = Math.max(margin, Math.min(triggerRect.left, maxLeft));
+    const bottomTop = Math.min(
+      triggerRect.bottom + gap,
+      Math.max(margin, window.innerHeight - panelHeight - margin),
     );
-    if (window.innerWidth - triggerRect.right >= panelWidth + gap) {
-      setPosition({
-        placement: 'right-start',
-        style: { left: triggerRect.right + gap, top },
-      });
-      return;
-    }
-    if (triggerRect.left >= panelWidth + gap) {
-      setPosition({
-        placement: 'left-start',
-        style: { left: triggerRect.left - panelWidth - gap, top },
-      });
-      return;
-    }
-    setPosition({
-      placement: 'bottom-start',
-      style: {
-        left: Math.max(
-          margin,
-          Math.min(triggerRect.left, window.innerWidth - panelWidth - margin),
-        ),
-        top: Math.min(
-          triggerRect.bottom + gap,
-          window.innerHeight - panelHeight - margin,
-        ),
-      },
-    });
+    const clampArrow = (value: number, size: number) =>
+      Math.max(
+        arrowSafeMargin,
+        Math.min(value, Math.max(arrowSafeMargin, size - arrowSafeMargin)),
+      );
+    const buildStyle = (left: number, top: number): CSSProperties =>
+      ({
+        left,
+        top,
+        '--pt-prompt-body-arrow-x': `${clampArrow(
+          triggerCenterX - left,
+          panelWidth,
+        )}px`,
+        '--pt-prompt-body-arrow-y': `${clampArrow(
+          triggerCenterY - top,
+          panelHeight,
+        )}px`,
+        '--pt-prompt-body-arrow-offset': `${arrowSize / 2}px`,
+      }) as CSSProperties;
+    const next =
+      window.innerWidth - triggerRect.right >= panelWidth + gap
+        ? {
+            placement: 'right-start' as const,
+            style: buildStyle(triggerRect.right + gap, sideTop),
+          }
+        : triggerRect.left >= panelWidth + gap
+          ? {
+              placement: 'left-start' as const,
+              style: buildStyle(triggerRect.left - panelWidth - gap, sideTop),
+            }
+          : {
+              placement: 'bottom-start' as const,
+              style: buildStyle(bottomLeft, bottomTop),
+            };
+    const nextSignature = JSON.stringify(next);
+    if (lastPositionRef.current === nextSignature) return;
+    lastPositionRef.current = nextSignature;
+    setPosition(next);
   }, []);
 
+  const schedulePositionUpdate = useCallback(() => {
+    if (animationFrameRef.current !== null) return;
+    animationFrameRef.current = requestAnimationFrame(() => {
+      animationFrameRef.current = null;
+      updatePosition();
+    });
+  }, [updatePosition]);
+
   useLayoutEffect(() => {
-    if (open) updatePosition();
-  }, [open, updatePosition]);
+    if (!open) return;
+    updatePosition();
+    const panel = panelRef.current;
+    if (panel === null || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => schedulePositionUpdate());
+    observer.observe(panel);
+    return () => observer.disconnect();
+  }, [open, schedulePositionUpdate, updatePosition]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (animationFrameRef.current !== null)
+        cancelAnimationFrame(animationFrameRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      pendingDiscardActionRef.current = null;
+      savingRef.current = false;
+      return;
+    }
+    sessionRef.current += 1;
+  }, [open, prompt.id]);
+
+  useEffect(() => {
+    if (open || !reloadAfterCloseRef.current) return;
+    reloadAfterCloseRef.current = false;
+    onReloadRequested();
+  }, [onReloadRequested, open]);
+
+  useEffect(() => {
+    if (open && mode === 'edit') textareaRef.current?.focus();
+  }, [mode, open]);
+
+  useEffect(() => {
+    if (!(open && mode === 'edit' && draft !== baseline.body)) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [baseline.body, draft, mode, open]);
+
+  const isDirty = open && mode === 'edit' && draft !== baseline.body;
+  const requestDiscard = useCallback(
+    (
+      action: () => void,
+      options: {
+        readonly closeOnConfirm?: boolean;
+        readonly restoreOnCancel?: PromptBodyDiscardRestore;
+      } = {},
+    ) => {
+      if (savingRef.current) return false;
+      if (!isDirty) {
+        action();
+        return true;
+      }
+      pendingDiscardActionRef.current = action;
+      pendingDiscardClosesRef.current = options.closeOnConfirm ?? true;
+      pendingDiscardRestoreRef.current = options.restoreOnCancel ?? null;
+      setDiscardConfirmVisible(true);
+      setMessageKind('discard');
+      setError(
+        '編集中のPrompt本文を破棄しますか？ 保存していない変更は失われます。',
+      );
+      schedulePositionUpdate();
+      requestAnimationFrame(() =>
+        continueEditingRef.current?.focus({ preventScroll: true }),
+      );
+      return false;
+    },
+    [isDirty, schedulePositionUpdate],
+  );
+
+  useEffect(() => {
+    onGuardChange({
+      dirty: isDirty,
+      saving,
+      requestDiscard: open ? requestDiscard : null,
+    });
+  }, [isDirty, onGuardChange, open, requestDiscard, saving]);
+
+  useEffect(() => {
+    return () => onGuardChange(CLEAN_PROMPT_BODY_GUARD);
+  }, [onGuardChange]);
 
   useEffect(() => {
     if (!open) return;
     const closeAndFocus = () => {
+      if (savingRef.current) return;
+      if (isDirty) {
+        requestDiscard(() => {
+          setMode('view');
+          setCopyState(null);
+          setSuppressFocusTooltip(true);
+          onClose();
+          triggerRef.current?.focus({ preventScroll: true });
+        });
+        return;
+      }
+      setMode('view');
       setCopyState(null);
       setSuppressFocusTooltip(true);
       onClose();
@@ -468,19 +729,35 @@ function PromptBodyPopover({
       closeAndFocus();
     };
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeAndFocus();
+      if (event.key !== 'Escape') return;
+      if (discardConfirmVisible) {
+        event.preventDefault();
+        continueEditing();
+        return;
+      }
+      closeAndFocus();
     };
     document.addEventListener('pointerdown', handlePointerDown);
     document.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', schedulePositionUpdate);
+    window.addEventListener('scroll', schedulePositionUpdate, true);
     return () => {
       document.removeEventListener('pointerdown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('resize', updatePosition);
-      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', schedulePositionUpdate);
+      window.removeEventListener('scroll', schedulePositionUpdate, true);
     };
-  }, [onClose, open, updatePosition]);
+    // continueEditing intentionally reads the latest pending-discard refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    discardConfirmVisible,
+    isDirty,
+    onClose,
+    open,
+    requestDiscard,
+    saving,
+    schedulePositionUpdate,
+  ]);
 
   const tooltipVisible =
     !open && (isTriggerHovered || (isTriggerFocused && !suppressFocusTooltip));
@@ -494,11 +771,228 @@ function PromptBodyPopover({
     }
   };
 
+  const resetSession = () => {
+    pendingDiscardClosesRef.current = true;
+    pendingDiscardRestoreRef.current = null;
+    setMode('view');
+    setDraft(baseline.body);
+    setError(null);
+    setMessageKind(null);
+    setDiscardConfirmVisible(false);
+    setRecoveryStatus(null);
+    pendingDiscardActionRef.current = null;
+  };
+
+  const discardDraft = () => {
+    resetSession();
+  };
+
+  function continueEditing() {
+    const restore = pendingDiscardRestoreRef.current;
+    pendingDiscardActionRef.current = null;
+    pendingDiscardClosesRef.current = true;
+    pendingDiscardRestoreRef.current = null;
+    setDiscardConfirmVisible(false);
+    if (restore !== null) {
+      setError(restore.error);
+      setMessageKind(restore.messageKind);
+      setRecoveryStatus(restore.recoveryStatus);
+    } else {
+      setError(null);
+      setMessageKind(null);
+    }
+    textareaRef.current?.focus({ preventScroll: true });
+    schedulePositionUpdate();
+  }
+
+  const confirmDiscard = () => {
+    const action = pendingDiscardActionRef.current;
+    const closeOnConfirm = pendingDiscardClosesRef.current;
+    pendingDiscardActionRef.current = null;
+    pendingDiscardClosesRef.current = true;
+    pendingDiscardRestoreRef.current = null;
+    discardDraft();
+    setCopyState(null);
+    setSuppressFocusTooltip(true);
+    if (closeOnConfirm) {
+      onClose();
+      if (action !== null) action();
+      else triggerRef.current?.focus({ preventScroll: true });
+      return;
+    }
+    if (action !== null) action();
+  };
+
   const handleCloseButton = () => {
+    if (savingRef.current) return;
+    if (isDirty) {
+      requestDiscard(() => {
+        setMode('view');
+        setCopyState(null);
+        setSuppressFocusTooltip(true);
+        onClose();
+        triggerRef.current?.focus({ preventScroll: true });
+      });
+      return;
+    }
+    discardDraft();
     setCopyState(null);
     setSuppressFocusTooltip(true);
     onClose();
     triggerRef.current?.focus({ preventScroll: true });
+  };
+
+  const loadLatestBody = async (replaceDraft: boolean) => {
+    const latest = await repository.getPrompt(prompt.id);
+    if (!mountedRef.current) return;
+    if (latest === null) {
+      setRecoveryStatus('not-found');
+      setMessageKind('status');
+      setError(
+        'このPromptは見つかりません。一覧を更新して対象を選び直してください。',
+      );
+      reloadAfterCloseRef.current = true;
+      schedulePositionUpdate();
+      return;
+    }
+    if (latest.deletedAt !== null || latest.status !== 'active') {
+      setRecoveryStatus('unavailable');
+      setMessageKind('status');
+      setError(
+        'このPromptは編集できません。削除済みまたはActiveではないPromptです。',
+      );
+      reloadAfterCloseRef.current = true;
+      schedulePositionUpdate();
+      return;
+    }
+    setBaseline({ body: latest.body, updatedAt: latest.updatedAt });
+    if (replaceDraft) {
+      setDraft(latest.body);
+      setMode('edit');
+    }
+    setRecoveryStatus(null);
+    setMessageKind('notice');
+    setError(
+      replaceDraft
+        ? '最新のPrompt本文を読み込みました。内容を確認してから保存してください。'
+        : '最新のPrompt本文を読み込みました。編集中の本文は保持しています。',
+    );
+    requestAnimationFrame(() =>
+      textareaRef.current?.focus({ preventScroll: true }),
+    );
+    schedulePositionUpdate();
+  };
+
+  const handleLoadLatestBody = async () => {
+    if (draft !== baseline.body) {
+      requestDiscard(
+        () => {
+          void loadLatestBody(true);
+        },
+        {
+          closeOnConfirm: false,
+          restoreOnCancel: {
+            error,
+            messageKind,
+            recoveryStatus,
+          },
+        },
+      );
+      return;
+    }
+    await loadLatestBody(true);
+  };
+
+  const handleSave = async () => {
+    if (savingRef.current || recoveryStatus !== null) return;
+    const validation = validatePromptBody(draft);
+    if (validation !== undefined) {
+      setMessageKind('validation');
+      setError(validation);
+      schedulePositionUpdate();
+      textareaRef.current?.focus();
+      return;
+    }
+    savingRef.current = true;
+    const token = saveTokenRef.current + 1;
+    saveTokenRef.current = token;
+    const targetRepository = repository;
+    const targetPromptId = prompt.id;
+    const targetSession = sessionRef.current;
+    setSaving(true);
+    setMessageKind(null);
+    setDiscardConfirmVisible(false);
+    setError(null);
+    try {
+      const result = await updatePromptBody(targetRepository, {
+        promptId: targetPromptId,
+        expectedUpdatedAt: baseline.updatedAt,
+        body: draft,
+      });
+      if (
+        !mountedRef.current ||
+        saveTokenRef.current !== token ||
+        repository !== targetRepository ||
+        prompt.id !== targetPromptId ||
+        sessionRef.current !== targetSession
+      )
+        return;
+      if (result.status === 'success') {
+        setBaseline({
+          body: result.prompt.body,
+          updatedAt: result.prompt.updatedAt,
+        });
+        setRecoveryStatus(null);
+        setMessageKind(null);
+        setDiscardConfirmVisible(false);
+        setMode('view');
+        onClose();
+        onSaved();
+        requestAnimationFrame(() =>
+          triggerRef.current?.focus({ preventScroll: true }),
+        );
+      } else if (result.status === 'invalid') {
+        setMessageKind('validation');
+        setError('Prompt本文を入力してください。');
+        schedulePositionUpdate();
+        textareaRef.current?.focus();
+      } else if (result.status === 'stale') {
+        setRecoveryStatus('stale');
+        setMessageKind('status');
+        setError(
+          'このPromptは別の操作で更新されました。入力中の本文は保持しています。最新の本文を読み込んでから再保存してください。',
+        );
+        schedulePositionUpdate();
+      } else if (result.status === 'not-found') {
+        setRecoveryStatus('not-found');
+        setMessageKind('status');
+        reloadAfterCloseRef.current = true;
+        setError(
+          'このPromptは見つかりません。一覧を更新して対象を選び直してください。',
+        );
+        schedulePositionUpdate();
+      } else {
+        setRecoveryStatus('unavailable');
+        setMessageKind('status');
+        reloadAfterCloseRef.current = true;
+        setError(
+          'このPromptは編集できません。削除済みまたはActiveではないPromptです。',
+        );
+        schedulePositionUpdate();
+      }
+    } catch {
+      if (!mountedRef.current || saveTokenRef.current !== token) return;
+      setMessageKind('status');
+      setError(
+        '保存に失敗しました。入力内容を保持しています。再試行してください。',
+      );
+      schedulePositionUpdate();
+    } finally {
+      if (mountedRef.current && saveTokenRef.current === token) {
+        savingRef.current = false;
+        setSaving(false);
+      }
+    }
   };
 
   return (
@@ -521,9 +1015,11 @@ function PromptBodyPopover({
             setSuppressFocusTooltip(false);
           }}
           onClick={() => {
+            if (savingRef.current) return;
             setCopyState(null);
             setIsTriggerHovered(false);
             if (open) setSuppressFocusTooltip(true);
+            if (open && !isDirty) resetSession();
             onToggle();
           }}
           onFocus={() => setIsTriggerFocused(true)}
@@ -570,10 +1066,60 @@ function PromptBodyPopover({
               <header className="pt-prompt-body-popover__header">
                 <h3>Prompt本文</h3>
                 <div className="pt-prompt-body-popover__header-actions">
+                  {mode === 'view' ? (
+                    <span className="pt-prompt-body-popover__edit-wrap">
+                      <button
+                        aria-label={`「${prompt.title}」のPrompt本文を編集`}
+                        className="pt-prompt-body-popover__edit"
+                        type="button"
+                        disabled={saving}
+                        onClick={() => {
+                          setCopyState(null);
+                          setError(null);
+                          setMessageKind(null);
+                          setDiscardConfirmVisible(false);
+                          setDraft(prompt.body);
+                          setBaseline({
+                            body: prompt.body,
+                            updatedAt: prompt.updatedAt,
+                          });
+                          setMode('edit');
+                          schedulePositionUpdate();
+                        }}
+                      >
+                        <svg
+                          aria-hidden="true"
+                          focusable="false"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="m4 20 4.25-1 10.5-10.5a2.12 2.12 0 0 0-3-3L5.25 16Z" />
+                          <path d="m14.5 6.75 3 3M4 20h6" />
+                        </svg>
+                      </button>
+                      <span
+                        className="pt-prompt-body-popover__edit-tooltip"
+                        role="tooltip"
+                      >
+                        Prompt本文を編集
+                      </span>
+                    </span>
+                  ) : null}
                   <span className="pt-prompt-body-popover__edit-wrap">
                     <Link
                       aria-label={`「${prompt.title}」を編集`}
+                      aria-disabled={saving}
                       className="pt-prompt-body-popover__edit"
+                      onClick={(event) => {
+                        if (savingRef.current) {
+                          event.preventDefault();
+                          return;
+                        }
+                        if (!isDirty) return;
+                        event.preventDefault();
+                        requestDiscard(() =>
+                          navigate(buildPromptEditPath(prompt.id)),
+                        );
+                      }}
                       to={buildPromptEditPath(prompt.id)}
                     >
                       <svg
@@ -581,8 +1127,7 @@ function PromptBodyPopover({
                         focusable="false"
                         viewBox="0 0 24 24"
                       >
-                        <path d="m4 20 4.25-1 10.5-10.5a2.12 2.12 0 0 0-3-3L5.25 16Z" />
-                        <path d="m14.5 6.75 3 3M4 20h6" />
+                        <path d="M5 5h14M5 12h14M5 19h14" />
                       </svg>
                     </Link>
                     <span
@@ -592,35 +1137,38 @@ function PromptBodyPopover({
                       Promptを編集する
                     </span>
                   </span>
-                  <span className="pt-prompt-body-popover__copy-wrap">
-                    <button
-                      aria-label={`「${prompt.title}」のPrompt本文をコピー`}
-                      className="pt-prompt-body-popover__copy"
-                      type="button"
-                      onClick={handleCopy}
-                    >
-                      <svg
-                        aria-hidden="true"
-                        className="pt-prompt-body-popover__copy-icon"
-                        focusable="false"
-                        viewBox="0 0 24 24"
+                  {mode === 'view' ? (
+                    <span className="pt-prompt-body-popover__copy-wrap">
+                      <button
+                        aria-label={`「${prompt.title}」のPrompt本文をコピー`}
+                        className="pt-prompt-body-popover__copy"
+                        type="button"
+                        onClick={handleCopy}
                       >
-                        <rect x="8" y="8" width="11" height="11" rx="2" />
-                        <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
-                      </svg>
-                    </button>
-                    <span
-                      className="pt-prompt-body-popover__copy-tooltip"
-                      role="tooltip"
-                    >
-                      Prompt本文をコピー
+                        <svg
+                          aria-hidden="true"
+                          className="pt-prompt-body-popover__copy-icon"
+                          focusable="false"
+                          viewBox="0 0 24 24"
+                        >
+                          <rect x="8" y="8" width="11" height="11" rx="2" />
+                          <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+                        </svg>
+                      </button>
+                      <span
+                        className="pt-prompt-body-popover__copy-tooltip"
+                        role="tooltip"
+                      >
+                        Prompt本文をコピー
+                      </span>
                     </span>
-                  </span>
+                  ) : null}
                   <span className="pt-prompt-body-popover__close-wrap">
                     <button
                       aria-label="Prompt本文を閉じる"
                       className="pt-prompt-body-popover__close"
                       type="button"
+                      disabled={saving}
                       onClick={handleCloseButton}
                     >
                       <svg
@@ -650,9 +1198,72 @@ function PromptBodyPopover({
                     ? 'コピーできませんでした'
                     : null}
               </p>
-              <div className="pt-prompt-body-popover__content">
-                <p>{prompt.body}</p>
-              </div>
+              {error !== null ? (
+                <div
+                  className="pt-prompt-body-popover__error"
+                  id={`${panelId}-error`}
+                  role="alert"
+                >
+                  <p>{error}</p>
+                  {recoveryStatus === 'stale' ? (
+                    <div className="pt-prompt-body-popover__actions">
+                      <button type="button" onClick={handleLoadLatestBody}>
+                        最新の本文を読み込む
+                      </button>
+                    </div>
+                  ) : null}
+                  {discardConfirmVisible ? (
+                    <div className="pt-prompt-body-popover__actions">
+                      <button
+                        ref={continueEditingRef}
+                        type="button"
+                        onClick={continueEditing}
+                      >
+                        編集を続ける
+                      </button>
+                      <button type="button" onClick={confirmDiscard}>
+                        破棄する
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+              {mode === 'edit' ? (
+                <div className="pt-prompt-body-popover__editor">
+                  <label htmlFor={`${panelId}-textarea`}>Prompt本文</label>
+                  <textarea
+                    ref={textareaRef}
+                    id={`${panelId}-textarea`}
+                    value={draft}
+                    disabled={saving}
+                    aria-invalid={messageKind === 'validation'}
+                    aria-describedby={
+                      error !== null ? `${panelId}-error` : undefined
+                    }
+                    onChange={(event) => setDraft(event.target.value)}
+                  />
+                  <div className="pt-prompt-body-popover__actions">
+                    <button
+                      type="button"
+                      disabled={saving || recoveryStatus !== null}
+                      onClick={handleSave}
+                    >
+                      {saving ? '保存中...' : '保存'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={handleCloseButton}
+                    >
+                      キャンセル
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="pt-prompt-body-popover__content">
+                  <p>{prompt.body}</p>
+                </div>
+              )}
             </div>,
             document.body,
           )

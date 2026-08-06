@@ -81,7 +81,7 @@ Context Library は、何でも保存するメモ帳ではなく、**AI へ渡�
 
 ![PromptTrail prompt library screen design at phase 0](assets/screen-desgin-prompt-library-phase0.png)
 
-現行画面は、保存済みPromptを検索・改善しTrailへ再利用する目的をPage Headerで示します。既存Scopeから導出する「すべてのプロジェクト／Global／Default Project」とキーワード検索をAND合成し、全件数と表示件数を区別します。一覧はPrompt名、プロジェクト、種別、更新日時、Prompt、操作の6列を持つcompactなSemantic tableです。Project Filterと検索後の結果へ、更新日時降順（既定）→Prompt名昇順→Prompt名降順の3状態sortを適用し、状態は永続化しません。Prompt名を編集画面へのLink、Trail作成をTooltipとPrompt名入りAccessible Nameを備えたPrimary icon Linkとします。本文全文はTooltip付きDocument iconから開く非modal Popoverだけで表示し、右、左、下の順でViewport内へ配置します。本文領域だけをscroll可能にし、Headerへ編集Link、copy icon、close iconの順で操作を集約します。Footerのtext closeは設けず、close後のfocus returnではTrigger Tooltipを抑止します。狭幅では同じtable DOMを一覧領域内だけ横scrollさせ、PopoverはPortalでclipを回避します。Domain、Repository、DB契約は変更せず、PaginationとPrompt名以外の列sortは実装しません。
+現行画面は、保存済みPromptを検索・改善しTrailへ再利用する目的をPage Headerで示します。既存Scopeから導出する「すべてのプロジェクト／Global／Default Project」とキーワード検索をAND合成し、全件数と表示件数を区別します。一覧はPrompt名、プロジェクト、種別、更新日時、Prompt、操作の6列を持つcompactなSemantic tableです。Project Filterと検索後の結果へ、更新日時降順（既定）→Prompt名昇順→Prompt名降順の3状態sortを適用し、状態は永続化しません。Prompt名を編集画面へのLink、Trail作成をTooltipとPrompt名入りAccessible Nameを備えたPrimary icon Linkとします。本文全文はTooltip付きDocument iconから開く非modal Popoverで表示し、右、左、下の順でViewport内へ配置します。Popoverでは閲覧modeから本文のみの編集modeへ切り替えられ、保存は本文限定atomic更新です。dirty時は検索・絞り込み・sortを無効化し、別Promptや各Link遷移は破棄確認後にだけ実行します。stale時はdraftを保持して最新本文を読み込むActionを出し、not-found/unavailable時は保存を止めてclose後に一覧を再読込します。本文領域だけをscroll可能にし、Headerへ本文編集、Prompt全体編集Link、copy icon、close iconの順で操作を集約します。Footerのtext closeは設けず、close後のfocus returnではTrigger Tooltipを抑止します。狭幅では同じtable DOMを一覧領域内だけ横scrollさせ、PopoverはPortalでclipを回避します。Domain、Repository、DB契約は変更せず、PaginationとPrompt名以外の列sortは実装しません。
 
 ### Context Library
 

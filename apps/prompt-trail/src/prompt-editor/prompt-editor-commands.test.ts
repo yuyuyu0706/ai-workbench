@@ -166,3 +166,97 @@ describe('Prompt editor commands', () => {
     },
   );
 });
+
+import { PromptTrailRepositoryError } from '../repository';
+import {
+  nextPromptBodyUpdatedAt,
+  updatePromptBody,
+} from './update-prompt-body';
+
+describe('updatePromptBody', () => {
+  it('validates body, preserves whitespace, and delegates atomic body-only update', async () => {
+    const updated = {
+      id: 'prompt-body' as Prompt['id'],
+      body: '  new body\n',
+    } as Prompt;
+    const repository = {
+      updatePromptBody: vi.fn(async () => updated),
+    } as unknown as PromptTrailRepository;
+
+    await expect(
+      updatePromptBody(
+        repository,
+        {
+          promptId: updated.id,
+          expectedUpdatedAt: before,
+          body: '  new body\n',
+        },
+        () => before,
+      ),
+    ).resolves.toEqual({ status: 'success', prompt: updated });
+
+    expect(repository.updatePromptBody).toHaveBeenCalledWith({
+      promptId: updated.id,
+      expectedUpdatedAt: before,
+      body: '  new body\n',
+      updatedAt: '2026-01-01T00:00:00.001Z',
+    });
+  });
+
+  it('maps expected repository errors and rethrows unexpected errors', async () => {
+    for (const [code, status] of [
+      ['reference-not-found', 'not-found'],
+      ['reference-unavailable', 'unavailable'],
+      ['stale-write', 'stale'],
+    ] as const) {
+      const repository = {
+        updatePromptBody: vi.fn(async () => {
+          throw new PromptTrailRepositoryError(code);
+        }),
+      } as unknown as PromptTrailRepository;
+      await expect(
+        updatePromptBody(repository, {
+          promptId: 'prompt-body' as Prompt['id'],
+          expectedUpdatedAt: before,
+          body: 'body',
+        }),
+      ).resolves.toEqual({ status });
+    }
+
+    await expect(
+      updatePromptBody(
+        {
+          updatePromptBody: vi.fn(async () => {
+            throw new Error('boom');
+          }),
+        } as unknown as PromptTrailRepository,
+        {
+          promptId: 'prompt-body' as Prompt['id'],
+          expectedUpdatedAt: before,
+          body: 'body',
+        },
+      ),
+    ).rejects.toThrow('boom');
+  });
+
+  it('rejects blank bodies before repository access', async () => {
+    const repository = {
+      updatePromptBody: vi.fn(),
+    } as unknown as PromptTrailRepository;
+    await expect(
+      updatePromptBody(repository, {
+        promptId: 'prompt-body' as Prompt['id'],
+        expectedUpdatedAt: before,
+        body: ' \n ',
+      }),
+    ).resolves.toEqual({ status: 'invalid' });
+    expect(repository.updatePromptBody).not.toHaveBeenCalled();
+  });
+
+  it('keeps updatedAt monotonic', () => {
+    expect(nextPromptBodyUpdatedAt(before, after)).toBe(after);
+    expect(nextPromptBodyUpdatedAt(after, before)).toBe(
+      '2026-08-01T00:00:00.001Z',
+    );
+  });
+});

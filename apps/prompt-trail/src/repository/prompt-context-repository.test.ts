@@ -430,3 +430,71 @@ describe('PromptTrailRepository prompt and context persistence', () => {
     ).rejects.toMatchObject({ code: 'reference-not-found' });
   });
 });
+
+describe('PromptTrailRepository prompt body atomic updates', () => {
+  it('updates only body and updatedAt from the latest Prompt row', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    const prompt = buildPrompt({
+      id: promptId('prompt-body-update'),
+      title: 'Keep title',
+      body: 'old body',
+      tags: ['keep'],
+    });
+    await repository.savePrompt(prompt);
+
+    await expect(
+      repository.updatePromptBody({
+        promptId: prompt.id,
+        expectedUpdatedAt: prompt.updatedAt,
+        body: '  new body\n',
+        updatedAt: utc('2026-07-05T00:00:00.001Z'),
+      }),
+    ).resolves.toEqual({
+      ...prompt,
+      body: '  new body\n',
+      updatedAt: utc('2026-07-05T00:00:00.001Z'),
+    });
+  });
+
+  it.each([
+    ['missing', undefined, 'reference-not-found'],
+    [
+      'deleted',
+      buildPrompt({
+        id: promptId('prompt-deleted'),
+        deletedAt: utc('2026-07-05T00:00:00.001Z'),
+      }),
+      'reference-unavailable',
+    ],
+    [
+      'draft',
+      buildPrompt({ id: promptId('prompt-draft'), status: 'draft' }),
+      'reference-unavailable',
+    ],
+    [
+      'stale',
+      buildPrompt({
+        id: promptId('prompt-stale'),
+        updatedAt: utc('2026-07-05T00:00:00.099Z'),
+      }),
+      'stale-write',
+    ],
+  ] as const)(
+    'rejects %s body updates atomically',
+    async (_case, prompt, code) => {
+      const database = databaseScope.createDatabase();
+      const repository = new PromptTrailRepository(database);
+      if (prompt !== undefined) await repository.savePrompt(prompt);
+
+      await expect(
+        repository.updatePromptBody({
+          promptId: prompt?.id ?? promptId('missing-prompt'),
+          expectedUpdatedAt: utc('2026-07-05T00:00:00.000Z'),
+          body: 'new body',
+          updatedAt: utc('2026-07-05T00:00:00.001Z'),
+        }),
+      ).rejects.toMatchObject({ code });
+    },
+  );
+});

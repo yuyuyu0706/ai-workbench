@@ -67,6 +67,46 @@ async function seedGlobalPromptInBrowser(page: Page) {
   }, GLOBAL_PROMPT_BODY);
 }
 
+async function expectArrowTracksTrigger(
+  trigger: ReturnType<Page['getByRole']>,
+  popover: ReturnType<Page['getByRole']>,
+) {
+  const [triggerBox, popoverBox, placement, arrowX, arrowY] = await Promise.all(
+    [
+      trigger.boundingBox(),
+      popover.boundingBox(),
+      popover.getAttribute('data-placement'),
+      popover.evaluate((element) =>
+        Number.parseFloat(
+          getComputedStyle(element).getPropertyValue(
+            '--pt-prompt-body-arrow-x',
+          ),
+        ),
+      ),
+      popover.evaluate((element) =>
+        Number.parseFloat(
+          getComputedStyle(element).getPropertyValue(
+            '--pt-prompt-body-arrow-y',
+          ),
+        ),
+      ),
+    ],
+  );
+  expect(triggerBox).not.toBeNull();
+  expect(popoverBox).not.toBeNull();
+  if (placement === 'bottom-start') {
+    expect(popoverBox!.x + arrowX).toBeCloseTo(
+      triggerBox!.x + triggerBox!.width / 2,
+      0,
+    );
+  } else {
+    expect(popoverBox!.y + arrowY).toBeCloseTo(
+      triggerBox!.y + triggerBox!.height / 2,
+      0,
+    );
+  }
+}
+
 test.describe('Prompt Library data flow', () => {
   test('supports direct access, repository data, search, and reload', async ({
     context,
@@ -472,6 +512,237 @@ test.describe('Prompt Library data flow', () => {
       /\/runs\/new\?sourcePromptId=prompt-library-e2e$/,
     );
     await expectNoHorizontalOverflow(page);
+  });
+
+  test('hides icon tooltips after mouse click blur contract and shows them for keyboard focus', async ({
+    context,
+    page,
+  }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.setViewportSize({ width: 1000, height: 700 });
+    await page.goto('/prompts');
+    await seedPromptLibraryInBrowser(page);
+    await page.reload();
+
+    const heading = page.getByRole('heading', {
+      level: 1,
+      name: 'Prompt Library',
+    });
+    const trailAction = page.getByRole('link', {
+      name: '「Codex開発依頼」からTrailを作成',
+    });
+    const trailTooltip = page.getByRole('tooltip', { name: 'Trailを作成' });
+    await trailAction.hover();
+    await expect(trailTooltip).toHaveCSS('opacity', '1');
+    await heading.hover();
+    await expect(trailTooltip).toHaveCSS('opacity', '0');
+
+    await page
+      .getByRole('button', { name: '「Codex開発依頼」のPrompt本文を表示' })
+      .click();
+    const popover = page.getByRole('dialog', { name: 'Prompt本文' });
+    await expect(popover).toBeVisible();
+
+    const inlineEdit = popover.getByRole('button', {
+      name: '「Codex開発依頼」のPrompt本文を編集',
+    });
+    const wholeEdit = popover.getByRole('link', {
+      name: '「Codex開発依頼」を編集',
+    });
+    const copy = popover.getByRole('button', {
+      name: '「Codex開発依頼」のPrompt本文をコピー',
+    });
+    const close = popover.getByRole('button', { name: 'Prompt本文を閉じる' });
+    const inlineEditTooltip = popover.getByRole('tooltip', {
+      name: 'Prompt本文を編集',
+    });
+    const wholeEditTooltip = popover.getByRole('tooltip', {
+      name: 'Promptを編集する',
+    });
+    const copyTooltip = popover.getByRole('tooltip', {
+      name: 'Prompt本文をコピー',
+    });
+    const closeTooltip = popover.getByRole('tooltip', { name: '閉じる' });
+
+    await inlineEdit.hover();
+    await expect(inlineEditTooltip).toHaveCSS('opacity', '1');
+    await wholeEdit.hover();
+    await expect(inlineEditTooltip).toHaveCSS('opacity', '0');
+    await expect(wholeEditTooltip).toHaveCSS('opacity', '1');
+    await close.hover();
+    await expect(wholeEditTooltip).toHaveCSS('opacity', '0');
+    await expect(closeTooltip).toHaveCSS('opacity', '1');
+    await copy.hover();
+    await expect(closeTooltip).toHaveCSS('opacity', '0');
+    await expect(copyTooltip).toHaveCSS('opacity', '1');
+
+    await copy.click();
+    await expect(copy).toBeFocused();
+    await expect(popover.getByText('コピーしました')).toBeVisible();
+    await heading.hover();
+    await expect(copyTooltip).toHaveCSS('opacity', '0');
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+      '変更内容を確認して実装してください。',
+    );
+
+    await page.keyboard.press('Tab');
+    await expect(close).toBeFocused();
+    await expect(closeTooltip).toHaveCSS('opacity', '1');
+    await page.keyboard.press('Shift+Tab');
+    await expect(copy).toBeFocused();
+    await expect(copyTooltip).toHaveCSS('opacity', '1');
+  });
+
+  test('saves Prompt body edits across desktop, 320px, and 200% zoom viewports', async ({
+    page,
+  }) => {
+    for (const [label, viewport] of [
+      ['desktop', { width: 1000, height: 700 }],
+      ['320px', { width: 320, height: 640 }],
+      ['200% zoom equivalent', { width: 720, height: 500 }],
+    ] as const) {
+      await page.setViewportSize(viewport);
+      await page.goto('/prompts');
+      await seedPromptLibraryInBrowser(page);
+      await page.reload();
+      await expectNoHorizontalOverflow(page);
+
+      const trigger = page.getByRole('button', {
+        name: '「Codex開発依頼」のPrompt本文を表示',
+      });
+      await trigger.click();
+      const popover = page.getByRole('dialog', { name: 'Prompt本文' });
+      await expect(popover).toBeVisible();
+      await popover
+        .getByRole('button', { name: '「Codex開発依頼」のPrompt本文を編集' })
+        .click();
+      await popover
+        .getByRole('textbox', { name: 'Prompt本文' })
+        .fill(`E2E更新本文 ${label}`);
+      await popover.getByRole('button', { name: '保存' }).click();
+      await expect(page.getByText('Prompt本文を更新しました。')).toBeVisible();
+      await expect(trigger).toBeFocused();
+
+      await trigger.click();
+      await expect(popover).toContainText(`E2E更新本文 ${label}`);
+      await page.getByRole('button', { name: 'Prompt本文を閉じる' }).click();
+      await expectNoHorizontalOverflow(page);
+    }
+  });
+
+  test('guards the Prompt body popover full-edit link until discard is confirmed', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1000, height: 700 });
+    await page.goto('/prompts');
+    await seedPromptLibraryInBrowser(page);
+    await page.reload();
+
+    await page
+      .getByRole('button', { name: '「Codex開発依頼」のPrompt本文を表示' })
+      .click();
+    const popover = page.getByRole('dialog', { name: 'Prompt本文' });
+    await expect(popover).toBeVisible();
+    await popover
+      .getByRole('button', { name: '「Codex開発依頼」のPrompt本文を編集' })
+      .click();
+    const textbox = popover.getByRole('textbox', { name: 'Prompt本文' });
+    await textbox.fill('破棄確認のためのdraft');
+    const fullEditLink = popover.getByRole('link', {
+      name: '「Codex開発依頼」を編集',
+    });
+
+    await fullEditLink.click();
+    await expect(page).toHaveURL(/\/prompts$/);
+    await expect(popover.getByRole('alert')).toContainText(
+      '編集中のPrompt本文を破棄しますか？',
+    );
+    await expect(
+      popover.getByRole('button', { name: '編集を続ける' }),
+    ).toBeFocused();
+
+    await page.keyboard.press('Escape');
+    await expect(popover.getByRole('alert')).toBeHidden();
+    await expect(textbox).toBeFocused();
+    await expect(page).toHaveURL(/\/prompts$/);
+
+    await fullEditLink.click();
+    await popover.getByRole('button', { name: '編集を続ける' }).click();
+    await expect(textbox).toBeFocused();
+    await expect(page).toHaveURL(/\/prompts$/);
+
+    await fullEditLink.click();
+    await popover.getByRole('button', { name: '破棄する' }).click();
+    await expect(page).toHaveURL(/\/prompts\/prompt-library-e2e\/edit$/);
+  });
+
+  test('guards global navigation while a Prompt body draft is dirty', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1000, height: 700 });
+    await page.goto('/prompts');
+    await seedPromptLibraryInBrowser(page);
+    await page.reload();
+
+    await page
+      .getByRole('button', { name: '「Codex開発依頼」のPrompt本文を表示' })
+      .click();
+    const popover = page.getByRole('dialog', { name: 'Prompt本文' });
+    await popover
+      .getByRole('button', { name: '「Codex開発依頼」のPrompt本文を編集' })
+      .click();
+    const textbox = popover.getByRole('textbox', { name: 'Prompt本文' });
+    await textbox.fill('Global Navigation guard draft');
+
+    await page.getByRole('link', { name: 'Dashboard' }).click();
+    await expect(page).toHaveURL(/\/prompts$/);
+    await expect(popover.getByRole('alert')).toContainText(
+      '編集中のPrompt本文を破棄しますか？',
+    );
+    await popover.getByRole('button', { name: '編集を続ける' }).click();
+    await expect(textbox).toBeFocused();
+
+    await page.getByRole('link', { name: 'はじめに' }).click();
+    await expect(page).toHaveURL(/\/prompts$/);
+    await popover.getByRole('button', { name: '破棄する' }).click();
+    await expect(page).toHaveURL(/\/$/);
+  });
+
+  test('keeps the Prompt body popover arrow connected after clamp and edit resize', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 720, height: 360 });
+    await page.goto('/prompts');
+    await seedGlobalPromptInBrowser(page);
+    await page.reload();
+
+    const tableRegion = page.getByRole('region', {
+      name: 'Prompt一覧テーブル',
+    });
+    await tableRegion.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    const trigger = page.getByRole('button', {
+      name: '「Global障害分析」のPrompt本文を表示',
+    });
+    await trigger.click();
+    const popover = page.getByRole('dialog', { name: 'Prompt本文' });
+    await expect(popover).toBeVisible();
+
+    await expectArrowTracksTrigger(trigger, popover);
+    await popover
+      .getByRole('button', { name: '「Global障害分析」のPrompt本文を編集' })
+      .click();
+    await expect(
+      popover.getByRole('textbox', { name: 'Prompt本文' }),
+    ).toBeVisible();
+    await expectArrowTracksTrigger(trigger, popover);
+    await popover.getByRole('textbox', { name: 'Prompt本文' }).fill(' ');
+    await popover.getByRole('button', { name: '保存' }).click();
+    await expect(popover.getByRole('alert')).toContainText(
+      'Prompt本文を入力してください。',
+    );
+    await expectArrowTracksTrigger(trigger, popover);
   });
 
   test('creates repeatable Trails from one Prompt without duplicating the asset', async ({
