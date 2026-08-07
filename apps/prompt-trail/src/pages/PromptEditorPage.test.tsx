@@ -188,9 +188,17 @@ describe('PromptEditorPage', () => {
     expect(
       title.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    const save = screen.getByRole('button', { name: '保存' });
-    expect(save).toHaveAttribute('type', 'submit');
-    expect(save).toHaveAttribute('form', 'prompt-editor-form');
+    expect(screen.getAllByRole('button', { name: '保存' })).toHaveLength(2);
+    const [headerSave, footerSave] = screen.getAllByRole('button', {
+      name: '保存',
+    });
+    expect(headerSave).toHaveAttribute('type', 'submit');
+    expect(headerSave).toHaveAttribute('form', 'prompt-editor-form');
+    expect(footerSave).toHaveAttribute('type', 'submit');
+    expect(footerSave.closest('form')).toHaveAttribute(
+      'id',
+      'prompt-editor-form',
+    );
   });
   it('shows deletion only in edit mode and supports confirmation, cancellation, and deletion', async () => {
     const user = userEvent.setup();

@@ -821,6 +821,7 @@ test.describe('Prompt Library data flow', () => {
     await editorPage
       .getByLabel('Promptの内容')
       .getByRole('button', { name: '保存' })
+      .first()
       .click();
     await expect(editorPage.getByText('Promptを更新しました。')).toBeVisible();
 

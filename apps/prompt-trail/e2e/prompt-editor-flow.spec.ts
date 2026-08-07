@@ -55,6 +55,7 @@ test.describe('Prompt Editor flow', () => {
     await page
       .getByLabel('Promptの内容')
       .getByRole('button', { name: '保存' })
+      .first()
       .click();
 
     await expect(page).toHaveURL(/\/prompts$/);
@@ -85,6 +86,7 @@ test.describe('Prompt Editor flow', () => {
     await page
       .getByLabel('Promptの内容')
       .getByRole('button', { name: '保存' })
+      .first()
       .click();
 
     await expect(page.getByText('Promptを更新しました。')).toBeVisible();
@@ -152,6 +154,21 @@ test.describe('Prompt Editor flow', () => {
     await page.getByRole('button', { name: '適用' }).click();
     await expect(page.getByText(/削除に失敗しました/)).toBeVisible();
     await expectNoHorizontalOverflow(page);
+  });
+
+  test('copies Prompt本文 to clipboard via the copy button', async ({
+    page,
+    context,
+  }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.goto('/prompts');
+    await seedEditablePrompts(page);
+    await page.goto('/prompts/prompt-edit-e2e/edit');
+    await page.getByRole('button', { name: 'Prompt本文をコピー' }).click();
+    const clipboardText = await page.evaluate(() =>
+      navigator.clipboard.readText(),
+    );
+    expect(clipboardText).toBe('編集対象Promptの本文');
   });
 
   test('works without horizontal overflow at 320px and keeps a New Trail Prompt active', async ({

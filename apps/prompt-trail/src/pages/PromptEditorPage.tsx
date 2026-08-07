@@ -187,12 +187,20 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
     }
   }
 
-  function handleCopyMouseLeave() {
+  function startCopyResetTimer() {
     if (copyState !== 'success') return;
     copyResetTimerRef.current = setTimeout(() => {
       setCopyState(null);
       copyResetTimerRef.current = null;
     }, 2000);
+  }
+
+  function handleCopyMouseLeave() {
+    startCopyResetTimer();
+  }
+
+  function handleCopyBlur() {
+    startCopyResetTimer();
   }
 
   function handleCopyMouseEnter() {
@@ -454,6 +462,7 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
                   onClick={() => void copyBody()}
                   onMouseLeave={handleCopyMouseLeave}
                   onMouseEnter={handleCopyMouseEnter}
+                  onBlur={handleCopyBlur}
                 >
                   {copyState === 'success' ? CHECK_SVG : COPY_SVG}
                 </button>
@@ -488,6 +497,13 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
               </p>
             ) : null}
             <div className="prompt-trail-page__actions">
+              <button
+                className="pt-button pt-button--primary"
+                type="submit"
+                disabled={saveDisabled}
+              >
+                {saveLabel}
+              </button>
               {displayedStatus === 'submitting' ||
               displayedDeletion === 'deleting' ? (
                 <button className="pt-button pt-button--secondary" disabled>
