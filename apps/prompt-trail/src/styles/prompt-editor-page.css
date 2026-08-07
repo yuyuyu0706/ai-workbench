@@ -12,6 +12,94 @@
   opacity: 0.62;
 }
 
+.pt-prompt-editor__meta-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: var(--pt-space-3);
+}
+
+@media (max-width: 480px) {
+  .pt-prompt-editor__meta-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pt-prompt-editor__meta-field {
+  display: grid;
+  gap: var(--pt-space-1);
+}
+
+.pt-prompt-editor__body-label-row {
+  display: flex;
+  align-items: center;
+  gap: var(--pt-space-2);
+}
+
+.pt-prompt-editor__copy-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.pt-prompt-editor__copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  background: none;
+  border: none;
+  border-radius: var(--pt-radius-sm, 4px);
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.6;
+}
+
+.pt-prompt-editor__copy:hover,
+.pt-prompt-editor__copy:focus-visible {
+  opacity: 1;
+  background-color: var(--pt-color-surface-hover, rgba(0, 0, 0, 0.06));
+  outline: 2px solid var(--pt-color-focus, #005fcc);
+  outline-offset: 2px;
+}
+
+.pt-prompt-editor__copy-icon {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pt-prompt-editor__copy-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 4px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.75rem;
+  background: var(--pt-color-tooltip-bg, #1a1a1a);
+  color: var(--pt-color-tooltip-fg, #fff);
+  border-radius: var(--pt-radius-sm, 4px);
+  padding: 0.2em 0.5em;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.pt-prompt-editor__copy-wrap:hover .pt-prompt-editor__copy-tooltip,
+.pt-prompt-editor__copy:focus-visible ~ .pt-prompt-editor__copy-tooltip {
+  opacity: 1;
+}
+
+.pt-prompt-editor__copy-status {
+  font-size: 0.8rem;
+  min-height: 1.2em;
+  margin: 0;
+  color: var(--pt-color-success, #1a7f37);
+}
+
 .pt-prompt-danger-zone {
   display: grid;
   gap: var(--pt-space-4);

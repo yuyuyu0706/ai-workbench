@@ -47,9 +47,9 @@ test.describe('Prompt Editor flow', () => {
       page.getByRole('heading', { name: 'Promptを新規登録' }),
     ).toBeVisible();
     await page.reload();
-    await page.getByLabel('Promptタイトル').fill('E2E新規Prompt');
+    await page.getByLabel('タイトル').fill('E2E新規Prompt');
     await page.getByLabel('Prompt本文').fill('  Markdown\n  本文');
-    await page.getByLabel('Prompt種別').selectOption('codex-request');
+    await page.getByLabel('種別').selectOption('codex-request');
     await page
       .locator('header')
       .filter({
@@ -76,13 +76,13 @@ test.describe('Prompt Editor flow', () => {
     await page.goto('/prompts');
     await seedEditablePrompts(page);
     await page.goto('/prompts/prompt-edit-e2e/edit');
-    await expect(page.getByLabel('Promptタイトル')).toHaveValue(
+    await expect(page.getByLabel('タイトル')).toHaveValue(
       '編集対象Prompt',
     );
     await page.reload();
-    await page.getByLabel('Promptタイトル').fill('編集済みPrompt');
+    await page.getByLabel('タイトル').fill('編集済みPrompt');
     await page.getByLabel('Prompt本文').fill('編集後の本文');
-    await page.getByLabel('Prompt種別').selectOption('design-review');
+    await page.getByLabel('種別').selectOption('design-review');
     await page
       .getByLabel('Promptの内容')
       .getByRole('button', { name: '保存' })
@@ -161,9 +161,9 @@ test.describe('Prompt Editor flow', () => {
     await page.setViewportSize({ width: 320, height: 844 });
     await page.goto('/prompts/new');
     await expectNoHorizontalOverflow(page);
-    await page.getByLabel('Promptタイトル').fill('320px Prompt');
+    await page.getByLabel('タイトル').fill('320px Prompt');
     await page.getByLabel('Prompt本文').fill('320pxでも操作できる本文');
-    await page.getByLabel('Prompt種別').selectOption('other');
+    await page.getByLabel('種別').selectOption('other');
     await expectNoHorizontalOverflow(page);
 
     await page.goto('/runs/new');

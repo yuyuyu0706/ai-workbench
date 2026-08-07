@@ -37,6 +37,18 @@ type LoadState =
 const EMPTY_VALUES: PromptEditorValues = { title: '', body: '', kind: '' };
 const PROMPT_EDITOR_FORM_ID = 'prompt-editor-form';
 
+const COPY_SVG = (
+  <svg
+    aria-hidden="true"
+    className="pt-prompt-editor__copy-icon"
+    focusable="false"
+    viewBox="0 0 24 24"
+  >
+    <rect x="8" y="8" width="11" height="11" rx="2" />
+    <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+  </svg>
+);
+
 export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
   const repository = usePromptTrailRepository();
   const { notifyDataChanged } = usePromptTrailDataRevision();
@@ -141,6 +153,16 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
   const deletionOpen = displayedDeletion !== 'idle';
   const saveDisabled = displayedStatus === 'submitting' || deletionOpen;
   const saveLabel = displayedStatus === 'submitting' ? '保存中...' : '保存';
+  const [copyState, setCopyState] = useState<'success' | 'error' | null>(null);
+
+  async function copyBody() {
+    try {
+      await navigator.clipboard.writeText(currentForm.values.body);
+      setCopyState('success');
+    } catch {
+      setCopyState('error');
+    }
+  }
 
   useEffect(() => {
     if (mode === 'create') return;
@@ -344,41 +366,72 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
             onSubmit={submit}
             noValidate
           >
-            <label htmlFor="prompt-kind">Prompt種別</label>
-            <select
-              id="prompt-kind"
-              value={currentForm.values.kind}
-              disabled={
-                displayedStatus === 'submitting' ||
-                displayedDeletion === 'deleting'
-              }
-              onChange={(event) => change('kind', event.target.value)}
-            >
-              <option value="">選択してください</option>
-              {PROMPT_KINDS.map((kind) => (
-                <option key={kind} value={kind}>
-                  {KIND_LABELS[kind]}
-                </option>
-              ))}
-            </select>
-            {currentForm.errors.kind ? (
-              <p className="pt-form__error">{currentForm.errors.kind}</p>
-            ) : null}
-            <label htmlFor="prompt-title">Promptタイトル</label>
-            <input
-              id="prompt-title"
-              value={currentForm.values.title}
-              maxLength={81}
-              disabled={
-                displayedStatus === 'submitting' ||
-                displayedDeletion === 'deleting'
-              }
-              onChange={(event) => change('title', event.target.value)}
-            />
-            {currentForm.errors.title ? (
-              <p className="pt-form__error">{currentForm.errors.title}</p>
-            ) : null}
-            <label htmlFor="prompt-body">Prompt本文</label>
+            <div className="pt-prompt-editor__meta-row">
+              <div className="pt-prompt-editor__meta-field">
+                <label htmlFor="prompt-kind">種別</label>
+                <select
+                  id="prompt-kind"
+                  value={currentForm.values.kind}
+                  disabled={
+                    displayedStatus === 'submitting' ||
+                    displayedDeletion === 'deleting'
+                  }
+                  onChange={(event) => change('kind', event.target.value)}
+                >
+                  <option value="">選択してください</option>
+                  {PROMPT_KINDS.map((kind) => (
+                    <option key={kind} value={kind}>
+                      {KIND_LABELS[kind]}
+                    </option>
+                  ))}
+                </select>
+                {currentForm.errors.kind ? (
+                  <p className="pt-form__error">{currentForm.errors.kind}</p>
+                ) : null}
+              </div>
+              <div className="pt-prompt-editor__meta-field">
+                <label htmlFor="prompt-title">タイトル</label>
+                <input
+                  id="prompt-title"
+                  value={currentForm.values.title}
+                  maxLength={81}
+                  disabled={
+                    displayedStatus === 'submitting' ||
+                    displayedDeletion === 'deleting'
+                  }
+                  onChange={(event) => change('title', event.target.value)}
+                />
+                {currentForm.errors.title ? (
+                  <p className="pt-form__error">{currentForm.errors.title}</p>
+                ) : null}
+              </div>
+            </div>
+            <div className="pt-prompt-editor__body-label-row">
+              <label htmlFor="prompt-body">Prompt本文</label>
+              <span className="pt-prompt-editor__copy-wrap">
+                <button
+                  aria-label="Prompt本文をコピー"
+                  className="pt-prompt-editor__copy"
+                  type="button"
+                  onClick={() => void copyBody()}
+                >
+                  {COPY_SVG}
+                </button>
+                <span
+                  className="pt-prompt-editor__copy-tooltip"
+                  role="tooltip"
+                >
+                  Prompt本文をコピー
+                </span>
+              </span>
+            </div>
+            <p aria-live="polite" className="pt-prompt-editor__copy-status">
+              {copyState === 'success'
+                ? 'コピーしました'
+                : copyState === 'error'
+                  ? 'コピーできませんでした'
+                  : null}
+            </p>
             <textarea
               id="prompt-body"
               rows={14}
