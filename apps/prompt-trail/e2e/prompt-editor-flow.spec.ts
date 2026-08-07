@@ -50,7 +50,13 @@ test.describe('Prompt Editor flow', () => {
     await page.getByLabel('Promptタイトル').fill('E2E新規Prompt');
     await page.getByLabel('Prompt本文').fill('  Markdown\n  本文');
     await page.getByLabel('Prompt種別').selectOption('codex-request');
-    await page.getByRole('button', { name: '保存' }).click();
+    await page
+      .locator('header')
+      .filter({
+        has: page.getByRole('heading', { name: 'Promptを新規登録' }),
+      })
+      .getByRole('button', { name: '保存' })
+      .click();
 
     await expect(page).toHaveURL(/\/prompts$/);
     await expect(page.getByText('Promptを登録しました。')).toBeVisible();
@@ -77,7 +83,10 @@ test.describe('Prompt Editor flow', () => {
     await page.getByLabel('Promptタイトル').fill('編集済みPrompt');
     await page.getByLabel('Prompt本文').fill('編集後の本文');
     await page.getByLabel('Prompt種別').selectOption('design-review');
-    await page.getByRole('button', { name: '保存' }).click();
+    await page
+      .getByLabel('Promptの内容')
+      .getByRole('button', { name: '保存' })
+      .click();
 
     await expect(page.getByText('Promptを更新しました。')).toBeVisible();
     const rows = page

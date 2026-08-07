@@ -816,7 +816,10 @@ test.describe('Prompt Library data flow', () => {
     const editorPage = await context.newPage();
     await editorPage.goto('/prompts/prompt-library-e2e/edit');
     await editorPage.getByLabel('Prompt本文').fill('編集後のPrompt本文');
-    await editorPage.getByRole('button', { name: '保存' }).click();
+    await editorPage
+      .getByLabel('Promptの内容')
+      .getByRole('button', { name: '保存' })
+      .click();
     await expect(editorPage.getByText('Promptを更新しました。')).toBeVisible();
 
     await stalePage.getByRole('button', { name: 'Trailを作成' }).click();

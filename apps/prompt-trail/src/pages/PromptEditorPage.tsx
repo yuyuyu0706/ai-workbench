@@ -35,6 +35,7 @@ type LoadState =
   | { readonly status: 'not-found' | 'unavailable' | 'failure' };
 
 const EMPTY_VALUES: PromptEditorValues = { title: '', body: '', kind: '' };
+const PROMPT_EDITOR_FORM_ID = 'prompt-editor-form';
 
 export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
   const repository = usePromptTrailRepository();
@@ -138,6 +139,8 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
           ? 'failure'
           : currentDeletion;
   const deletionOpen = displayedDeletion !== 'idle';
+  const saveDisabled = displayedStatus === 'submitting' || deletionOpen;
+  const saveLabel = displayedStatus === 'submitting' ? '保存中...' : '保存';
 
   useEffect(() => {
     if (mode === 'create') return;
@@ -296,7 +299,18 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
       <PageHeader
         eyebrow="Prompt Editor"
         title={mode === 'create' ? 'Promptを新規登録' : 'Promptを編集'}
-        description="再利用するPromptのタイトル、本文、種別を設定します。"
+        actions={
+          displayedLoad.status === 'data' ? (
+            <button
+              className="pt-button pt-button--primary"
+              type="submit"
+              form={PROMPT_EDITOR_FORM_ID}
+              disabled={saveDisabled}
+            >
+              {saveLabel}
+            </button>
+          ) : undefined
+        }
       />
       {displayedLoad.status === 'loading' ? (
         <StateMessage variant="loading" title="Promptを読み込んでいます..." />
@@ -325,10 +339,31 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
       {displayedLoad.status === 'data' ? (
         <PageSection title="Promptの内容">
           <form
+            id={PROMPT_EDITOR_FORM_ID}
             className="pt-form pt-prompt-editor"
             onSubmit={submit}
             noValidate
           >
+            <label htmlFor="prompt-kind">Prompt種別</label>
+            <select
+              id="prompt-kind"
+              value={currentForm.values.kind}
+              disabled={
+                displayedStatus === 'submitting' ||
+                displayedDeletion === 'deleting'
+              }
+              onChange={(event) => change('kind', event.target.value)}
+            >
+              <option value="">選択してください</option>
+              {PROMPT_KINDS.map((kind) => (
+                <option key={kind} value={kind}>
+                  {KIND_LABELS[kind]}
+                </option>
+              ))}
+            </select>
+            {currentForm.errors.kind ? (
+              <p className="pt-form__error">{currentForm.errors.kind}</p>
+            ) : null}
             <label htmlFor="prompt-title">Promptタイトル</label>
             <input
               id="prompt-title"
@@ -357,26 +392,6 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
             {currentForm.errors.body ? (
               <p className="pt-form__error">{currentForm.errors.body}</p>
             ) : null}
-            <label htmlFor="prompt-kind">Prompt種別</label>
-            <select
-              id="prompt-kind"
-              value={currentForm.values.kind}
-              disabled={
-                displayedStatus === 'submitting' ||
-                displayedDeletion === 'deleting'
-              }
-              onChange={(event) => change('kind', event.target.value)}
-            >
-              <option value="">選択してください</option>
-              {PROMPT_KINDS.map((kind) => (
-                <option key={kind} value={kind}>
-                  {KIND_LABELS[kind]}
-                </option>
-              ))}
-            </select>
-            {currentForm.errors.kind ? (
-              <p className="pt-form__error">{currentForm.errors.kind}</p>
-            ) : null}
             {displayedStatus === 'failure' ? (
               <p className="pt-form__error" role="alert">
                 保存に失敗しました。入力内容を保持しています。再試行してください。
@@ -385,9 +400,10 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
             <div className="prompt-trail-page__actions">
               <button
                 className="pt-button pt-button--primary"
-                disabled={displayedStatus === 'submitting' || deletionOpen}
+                type="submit"
+                disabled={saveDisabled}
               >
-                {displayedStatus === 'submitting' ? '保存中...' : '保存'}
+                {saveLabel}
               </button>
               {displayedStatus === 'submitting' ||
               displayedDeletion === 'deleting' ? (
