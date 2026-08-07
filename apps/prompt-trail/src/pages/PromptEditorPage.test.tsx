@@ -174,6 +174,35 @@ async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('PromptEditorPage', () => {
+  it('uses one form for header and footer saves and orders kind, title, then body', () => {
+    renderEditor({} as PromptTrailRepository);
+
+    expect(
+      screen.queryByText(
+        '再利用するPromptのタイトル、本文、種別を設定します。',
+      ),
+    ).not.toBeInTheDocument();
+    const kind = screen.getByLabelText('Prompt種別');
+    const title = screen.getByLabelText('Promptタイトル');
+    const body = screen.getByLabelText('Prompt本文');
+    expect(
+      kind.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      title.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: '保存' })).toHaveLength(2);
+    const [headerSave, footerSave] = screen.getAllByRole('button', {
+      name: '保存',
+    });
+    expect(headerSave).toHaveAttribute('type', 'submit');
+    expect(headerSave).toHaveAttribute('form', 'prompt-editor-form');
+    expect(footerSave).toHaveAttribute('type', 'submit');
+    expect(footerSave.closest('form')).toHaveAttribute(
+      'id',
+      'prompt-editor-form',
+    );
+  });
   it('shows deletion only in edit mode and supports confirmation, cancellation, and deletion', async () => {
     const user = userEvent.setup();
     const createView = renderEditor({} as PromptTrailRepository);
@@ -244,7 +273,9 @@ describe('PromptEditorPage', () => {
     expect(softDeletePrompt).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button', { name: '削除中...' })).toBeDisabled();
     expect(screen.getByLabelText('Prompt本文')).toBeDisabled();
-    expect(screen.getByRole('button', { name: '保存' })).toBeDisabled();
+    expect(screen.getAllByRole('button', { name: '保存' })).toEqual(
+      expect.arrayContaining([expect.toBeDisabled(), expect.toBeDisabled()]),
+    );
     expect(screen.getByRole('button', { name: 'キャンセル' })).toBeDisabled();
     expect(
       screen.getByRole('button', { name: 'Prompt Libraryへ戻る' }),
@@ -372,7 +403,7 @@ describe('PromptEditorPage', () => {
       screen.getByRole('heading', { name: 'Promptを新規登録' }),
     ).toBeVisible();
     await user.type(screen.getByLabelText('Promptタイトル'), '入力値');
-    await user.click(screen.getByRole('button', { name: '保存' }));
+    await user.click(screen.getAllByRole('button', { name: '保存' })[0]);
     expect(screen.getByText('Prompt本文を入力してください。')).toBeVisible();
     expect(screen.getByText('Prompt種別を選択してください。')).toBeVisible();
     expect(screen.getByLabelText('Promptタイトル')).toHaveValue('入力値');
@@ -441,9 +472,11 @@ describe('PromptEditorPage', () => {
       savePrompt,
     } as unknown as PromptTrailRepository);
     await fillValidForm(user);
-    await user.dblClick(screen.getByRole('button', { name: '保存' }));
+    await user.dblClick(screen.getAllByRole('button', { name: '保存' })[0]);
     expect(savePrompt).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole('button', { name: '保存中...' })).toBeDisabled();
+    expect(screen.getAllByRole('button', { name: '保存中...' })).toEqual(
+      expect.arrayContaining([expect.toBeDisabled(), expect.toBeDisabled()]),
+    );
     expect(
       screen.getByRole('button', { name: 'Prompt Libraryへ戻る' }),
     ).toBeDisabled();
@@ -461,14 +494,14 @@ describe('PromptEditorPage', () => {
     const user = userEvent.setup();
     renderEditor(repository);
     await fillValidForm(user);
-    await user.click(screen.getByRole('button', { name: '保存' }));
+    await user.click(screen.getAllByRole('button', { name: '保存' })[0]);
     expect(await screen.findByRole('alert')).toHaveTextContent(
       '保存に失敗しました。',
     );
     expect(screen.getByLabelText('Prompt本文')).toHaveValue(
       '  Markdown\n  本文',
     );
-    await user.click(screen.getByRole('button', { name: '保存' }));
+    await user.click(screen.getAllByRole('button', { name: '保存' })[1]);
     expect(
       await screen.findByRole('heading', { name: 'Prompt Library' }),
     ).toBeVisible();
@@ -489,7 +522,7 @@ describe('PromptEditorPage', () => {
     await screen.findByDisplayValue('既存タイトル');
     await user.clear(screen.getByLabelText('Promptタイトル'));
     await user.type(screen.getByLabelText('Promptタイトル'), '更新');
-    await user.click(screen.getByRole('button', { name: '保存' }));
+    await user.click(screen.getAllByRole('button', { name: '保存' })[0]);
     await user.click(screen.getByRole('button', { name: '別Promptへ' }));
     await act(() => saving.resolve(prompt));
     await waitFor(() =>
@@ -511,7 +544,7 @@ describe('PromptEditorPage', () => {
       { initialEntry: '/prompts/prompt-edit/edit' },
     );
     await screen.findByDisplayValue('既存タイトル');
-    await user.click(screen.getByRole('button', { name: '保存' }));
+    await user.click(screen.getAllByRole('button', { name: '保存' })[0]);
     await user.click(screen.getByRole('button', { name: 'Dashboardへ' }));
     expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
     expect(screen.getByLabelText('revision')).toHaveTextContent('0');
@@ -551,7 +584,9 @@ describe('PromptEditorPage', () => {
         state: 'submitting',
       }),
     );
-    expect(screen.getByRole('button', { name: '保存中...' })).toBeDisabled();
+    expect(screen.getAllByRole('button', { name: '保存中...' })).toEqual(
+      expect.arrayContaining([expect.toBeDisabled(), expect.toBeDisabled()]),
+    );
     act(() =>
       store.setActiveOverride({
         target: 'prompt-editor-page',

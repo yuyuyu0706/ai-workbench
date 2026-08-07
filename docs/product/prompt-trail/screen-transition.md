@@ -158,6 +158,8 @@ P0-4-3 の状態表示は、Repository 連携前の利用開始状態と、将�
 | `runDetail`      | `/runs/:runId`            | Run Detail         | なし     | contextual route。常設グローバルナビではなく、Run などの文脈から到達する詳細画面 |
 | `notFound`       | `*`                       | Not Found          | なし     | recovery route。未知 URL から復帰導線を提示するための画面                        |
 
+Prompt EditorはPage Headerの説明を省き、Prompt種別、Promptタイトル、Prompt本文のDOM順で入力する。Page Header右上とform下部の保存Actionは単一formへ接続し、保存中および削除確認・削除処理・削除失敗中は同時に無効化する。loading、not-found、unavailable、failureではHeader保存を表示しない。
+
 Prompt EditorのDanger Zoneは編集Routeだけに表示し、保存済みタイトルと「今後の利用対象から除外する一方、過去Run・関連Link・実行時のPrompt Snapshotは残る」ことを確認してから`deletedAt`を設定します。削除はPromptだけに限定した非Cascade操作で、成功後はPrompt Libraryへ遷移して一回限りの通知を表示します。削除済みPromptの編集Routeはunavailableを表示します。
 
 Prompt Libraryの各Active Promptから`/runs/new?sourcePromptId=<PromptId>`へ遷移できます。Prompt起点では元Prompt本文をread-onlyで確認し、独立したTrail名・Trail種別を設定します。Blankと過去Run起点は従来どおり本文を編集でき、両source keyの同時・空・重複指定はinvalidとしてRepositoryを呼ばず復旧導線を表示します。
