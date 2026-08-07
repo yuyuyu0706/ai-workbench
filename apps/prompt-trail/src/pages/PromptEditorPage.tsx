@@ -359,18 +359,6 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
       <PageHeader
         eyebrow="Prompt Editor"
         title={mode === 'create' ? 'Promptを新規登録' : 'Promptを編集'}
-        actions={
-          displayedLoad.status === 'data' ? (
-            <button
-              className="pt-button pt-button--primary"
-              type="submit"
-              form={PROMPT_EDITOR_FORM_ID}
-              disabled={saveDisabled}
-            >
-              {saveLabel}
-            </button>
-          ) : undefined
-        }
       />
       {displayedLoad.status === 'loading' ? (
         <StateMessage variant="loading" title="Promptを読み込んでいます..." />
@@ -397,7 +385,19 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
         />
       ) : null}
       {displayedLoad.status === 'data' ? (
-        <PageSection title="Promptの内容">
+        <PageSection
+          title="Promptの内容"
+          actions={
+            <button
+              className="pt-button pt-button--primary"
+              type="submit"
+              form={PROMPT_EDITOR_FORM_ID}
+              disabled={saveDisabled}
+            >
+              {saveLabel}
+            </button>
+          }
+        >
           <form
             id={PROMPT_EDITOR_FORM_ID}
             className="pt-form pt-prompt-editor"

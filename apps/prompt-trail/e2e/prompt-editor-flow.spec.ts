@@ -51,10 +51,7 @@ test.describe('Prompt Editor flow', () => {
     await page.getByLabel('Prompt本文').fill('  Markdown\n  本文');
     await page.getByLabel('種別').selectOption('codex-request');
     await page
-      .locator('header')
-      .filter({
-        has: page.getByRole('heading', { name: 'Promptを新規登録' }),
-      })
+      .getByLabel('Promptの内容')
       .getByRole('button', { name: '保存' })
       .click();
 
