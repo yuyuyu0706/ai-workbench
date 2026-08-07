@@ -47,15 +47,15 @@ test.describe('Prompt Editor flow', () => {
       page.getByRole('heading', { name: 'Promptを新規登録' }),
     ).toBeVisible();
     await page.reload();
-    await page.getByLabel('Promptタイトル').fill('E2E新規Prompt');
-    await page.getByLabel('Prompt本文').fill('  Markdown\n  本文');
-    await page.getByLabel('Prompt種別').selectOption('codex-request');
+    await page.getByLabel('タイトル').fill('E2E新規Prompt');
     await page
-      .locator('header')
-      .filter({
-        has: page.getByRole('heading', { name: 'Promptを新規登録' }),
-      })
+      .getByRole('textbox', { name: 'Prompt本文' })
+      .fill('  Markdown\n  本文');
+    await page.getByLabel('種別').selectOption('codex-request');
+    await page
+      .getByLabel('Promptの内容')
       .getByRole('button', { name: '保存' })
+      .first()
       .click();
 
     await expect(page).toHaveURL(/\/prompts$/);
@@ -76,16 +76,17 @@ test.describe('Prompt Editor flow', () => {
     await page.goto('/prompts');
     await seedEditablePrompts(page);
     await page.goto('/prompts/prompt-edit-e2e/edit');
-    await expect(page.getByLabel('Promptタイトル')).toHaveValue(
-      '編集対象Prompt',
-    );
+    await expect(page.getByLabel('タイトル')).toHaveValue('編集対象Prompt');
     await page.reload();
-    await page.getByLabel('Promptタイトル').fill('編集済みPrompt');
-    await page.getByLabel('Prompt本文').fill('編集後の本文');
-    await page.getByLabel('Prompt種別').selectOption('design-review');
+    await page.getByLabel('タイトル').fill('編集済みPrompt');
+    await page
+      .getByRole('textbox', { name: 'Prompt本文' })
+      .fill('編集後の本文');
+    await page.getByLabel('種別').selectOption('design-review');
     await page
       .getByLabel('Promptの内容')
       .getByRole('button', { name: '保存' })
+      .first()
       .click();
 
     await expect(page.getByText('Promptを更新しました。')).toBeVisible();
@@ -155,15 +156,32 @@ test.describe('Prompt Editor flow', () => {
     await expectNoHorizontalOverflow(page);
   });
 
+  test('copies Prompt本文 to clipboard via the copy button', async ({
+    page,
+    context,
+  }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.goto('/prompts');
+    await seedEditablePrompts(page);
+    await page.goto('/prompts/prompt-edit-e2e/edit');
+    await page.getByRole('button', { name: 'Prompt本文をコピー' }).click();
+    const clipboardText = await page.evaluate(() =>
+      navigator.clipboard.readText(),
+    );
+    expect(clipboardText).toBe('編集対象Promptの本文');
+  });
+
   test('works without horizontal overflow at 320px and keeps a New Trail Prompt active', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 320, height: 844 });
     await page.goto('/prompts/new');
     await expectNoHorizontalOverflow(page);
-    await page.getByLabel('Promptタイトル').fill('320px Prompt');
-    await page.getByLabel('Prompt本文').fill('320pxでも操作できる本文');
-    await page.getByLabel('Prompt種別').selectOption('other');
+    await page.getByLabel('タイトル').fill('320px Prompt');
+    await page
+      .getByRole('textbox', { name: 'Prompt本文' })
+      .fill('320pxでも操作できる本文');
+    await page.getByLabel('種別').selectOption('other');
     await expectNoHorizontalOverflow(page);
 
     await page.goto('/runs/new');

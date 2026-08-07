@@ -37,6 +37,29 @@ type LoadState =
 const EMPTY_VALUES: PromptEditorValues = { title: '', body: '', kind: '' };
 const PROMPT_EDITOR_FORM_ID = 'prompt-editor-form';
 
+const COPY_SVG = (
+  <svg
+    aria-hidden="true"
+    className="pt-prompt-editor__copy-icon"
+    focusable="false"
+    viewBox="0 0 24 24"
+  >
+    <rect x="8" y="8" width="11" height="11" rx="2" />
+    <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+  </svg>
+);
+
+const CHECK_SVG = (
+  <svg
+    aria-hidden="true"
+    className="pt-prompt-editor__copy-icon pt-prompt-editor__copy-icon--check"
+    focusable="false"
+    viewBox="0 0 24 24"
+  >
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
 export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
   const repository = usePromptTrailRepository();
   const { notifyDataChanged } = usePromptTrailDataRevision();
@@ -141,6 +164,51 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
   const deletionOpen = displayedDeletion !== 'idle';
   const saveDisabled = displayedStatus === 'submitting' || deletionOpen;
   const saveLabel = displayedStatus === 'submitting' ? '保存中...' : '保存';
+  const [copyState, setCopyState] = useState<'success' | 'error' | null>(null);
+  const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current !== null)
+        clearTimeout(copyResetTimerRef.current);
+    };
+  }, []);
+
+  async function copyBody() {
+    if (copyResetTimerRef.current !== null) {
+      clearTimeout(copyResetTimerRef.current);
+      copyResetTimerRef.current = null;
+    }
+    try {
+      await navigator.clipboard.writeText(currentForm.values.body);
+      setCopyState('success');
+    } catch {
+      setCopyState('error');
+    }
+  }
+
+  function startCopyResetTimer() {
+    if (copyState !== 'success') return;
+    copyResetTimerRef.current = setTimeout(() => {
+      setCopyState(null);
+      copyResetTimerRef.current = null;
+    }, 2000);
+  }
+
+  function handleCopyMouseLeave() {
+    startCopyResetTimer();
+  }
+
+  function handleCopyBlur() {
+    startCopyResetTimer();
+  }
+
+  function handleCopyMouseEnter() {
+    if (copyResetTimerRef.current !== null) {
+      clearTimeout(copyResetTimerRef.current);
+      copyResetTimerRef.current = null;
+    }
+  }
 
   useEffect(() => {
     if (mode === 'create') return;
@@ -299,18 +367,6 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
       <PageHeader
         eyebrow="Prompt Editor"
         title={mode === 'create' ? 'Promptを新規登録' : 'Promptを編集'}
-        actions={
-          displayedLoad.status === 'data' ? (
-            <button
-              className="pt-button pt-button--primary"
-              type="submit"
-              form={PROMPT_EDITOR_FORM_ID}
-              disabled={saveDisabled}
-            >
-              {saveLabel}
-            </button>
-          ) : undefined
-        }
       />
       {displayedLoad.status === 'loading' ? (
         <StateMessage variant="loading" title="Promptを読み込んでいます..." />
@@ -337,48 +393,91 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
         />
       ) : null}
       {displayedLoad.status === 'data' ? (
-        <PageSection title="Promptの内容">
+        <PageSection
+          title="Promptの内容"
+          actions={
+            <button
+              className="pt-button pt-button--primary"
+              type="submit"
+              form={PROMPT_EDITOR_FORM_ID}
+              disabled={saveDisabled}
+            >
+              {saveLabel}
+            </button>
+          }
+        >
           <form
             id={PROMPT_EDITOR_FORM_ID}
             className="pt-form pt-prompt-editor"
             onSubmit={submit}
             noValidate
           >
-            <label htmlFor="prompt-kind">Prompt種別</label>
-            <select
-              id="prompt-kind"
-              value={currentForm.values.kind}
-              disabled={
-                displayedStatus === 'submitting' ||
-                displayedDeletion === 'deleting'
-              }
-              onChange={(event) => change('kind', event.target.value)}
-            >
-              <option value="">選択してください</option>
-              {PROMPT_KINDS.map((kind) => (
-                <option key={kind} value={kind}>
-                  {KIND_LABELS[kind]}
-                </option>
-              ))}
-            </select>
-            {currentForm.errors.kind ? (
-              <p className="pt-form__error">{currentForm.errors.kind}</p>
-            ) : null}
-            <label htmlFor="prompt-title">Promptタイトル</label>
-            <input
-              id="prompt-title"
-              value={currentForm.values.title}
-              maxLength={81}
-              disabled={
-                displayedStatus === 'submitting' ||
-                displayedDeletion === 'deleting'
-              }
-              onChange={(event) => change('title', event.target.value)}
-            />
-            {currentForm.errors.title ? (
-              <p className="pt-form__error">{currentForm.errors.title}</p>
-            ) : null}
-            <label htmlFor="prompt-body">Prompt本文</label>
+            <div className="pt-prompt-editor__meta-row">
+              <div className="pt-prompt-editor__meta-field">
+                <label htmlFor="prompt-kind">種別</label>
+                <select
+                  id="prompt-kind"
+                  value={currentForm.values.kind}
+                  disabled={
+                    displayedStatus === 'submitting' ||
+                    displayedDeletion === 'deleting'
+                  }
+                  onChange={(event) => change('kind', event.target.value)}
+                >
+                  <option value="">選択してください</option>
+                  {PROMPT_KINDS.map((kind) => (
+                    <option key={kind} value={kind}>
+                      {KIND_LABELS[kind]}
+                    </option>
+                  ))}
+                </select>
+                {currentForm.errors.kind ? (
+                  <p className="pt-form__error">{currentForm.errors.kind}</p>
+                ) : null}
+              </div>
+              <div className="pt-prompt-editor__meta-field">
+                <label htmlFor="prompt-title">タイトル</label>
+                <input
+                  id="prompt-title"
+                  value={currentForm.values.title}
+                  maxLength={81}
+                  disabled={
+                    displayedStatus === 'submitting' ||
+                    displayedDeletion === 'deleting'
+                  }
+                  onChange={(event) => change('title', event.target.value)}
+                />
+                {currentForm.errors.title ? (
+                  <p className="pt-form__error">{currentForm.errors.title}</p>
+                ) : null}
+              </div>
+            </div>
+            <div className="pt-prompt-editor__body-label-row">
+              <label htmlFor="prompt-body">Prompt本文</label>
+              <span className="pt-prompt-editor__copy-wrap">
+                <button
+                  aria-label="Prompt本文をコピー"
+                  className={`pt-prompt-editor__copy${copyState === 'success' ? ' pt-prompt-editor__copy--copied' : ''}`}
+                  type="button"
+                  onClick={() => void copyBody()}
+                  onMouseLeave={handleCopyMouseLeave}
+                  onMouseEnter={handleCopyMouseEnter}
+                  onBlur={handleCopyBlur}
+                >
+                  {copyState === 'success' ? CHECK_SVG : COPY_SVG}
+                </button>
+                <span className="pt-prompt-editor__copy-tooltip" role="tooltip">
+                  Prompt本文をコピー
+                </span>
+              </span>
+            </div>
+            <p aria-live="polite" className="pt-prompt-editor__copy-status">
+              {copyState === 'success'
+                ? 'コピーしました'
+                : copyState === 'error'
+                  ? 'コピーできませんでした'
+                  : null}
+            </p>
             <textarea
               id="prompt-body"
               rows={14}

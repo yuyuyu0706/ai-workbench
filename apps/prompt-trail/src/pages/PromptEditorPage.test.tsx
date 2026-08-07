@@ -165,12 +165,9 @@ function RepositorySwitchingEditor({
 }
 
 async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText('Promptタイトル'), '新規タイトル');
+  await user.type(screen.getByLabelText('タイトル'), '新規タイトル');
   await user.type(screen.getByLabelText('Prompt本文'), '  Markdown\n  本文');
-  await user.selectOptions(
-    screen.getByLabelText('Prompt種別'),
-    'codex-request',
-  );
+  await user.selectOptions(screen.getByLabelText('種別'), 'codex-request');
 }
 
 describe('PromptEditorPage', () => {
@@ -182,8 +179,8 @@ describe('PromptEditorPage', () => {
         '再利用するPromptのタイトル、本文、種別を設定します。',
       ),
     ).not.toBeInTheDocument();
-    const kind = screen.getByLabelText('Prompt種別');
-    const title = screen.getByLabelText('Promptタイトル');
+    const kind = screen.getByLabelText('種別');
+    const title = screen.getByLabelText('タイトル');
     const body = screen.getByLabelText('Prompt本文');
     expect(
       kind.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -402,11 +399,11 @@ describe('PromptEditorPage', () => {
     expect(
       screen.getByRole('heading', { name: 'Promptを新規登録' }),
     ).toBeVisible();
-    await user.type(screen.getByLabelText('Promptタイトル'), '入力値');
+    await user.type(screen.getByLabelText('タイトル'), '入力値');
     await user.click(screen.getAllByRole('button', { name: '保存' })[0]);
     expect(screen.getByText('Prompt本文を入力してください。')).toBeVisible();
     expect(screen.getByText('Prompt種別を選択してください。')).toBeVisible();
-    expect(screen.getByLabelText('Promptタイトル')).toHaveValue('入力値');
+    expect(screen.getByLabelText('タイトル')).toHaveValue('入力値');
   });
 
   it('loads edit values and maps missing, unavailable, and read failure states', async () => {
@@ -520,8 +517,8 @@ describe('PromptEditorPage', () => {
       { initialEntry: '/prompts/prompt-edit/edit' },
     );
     await screen.findByDisplayValue('既存タイトル');
-    await user.clear(screen.getByLabelText('Promptタイトル'));
-    await user.type(screen.getByLabelText('Promptタイトル'), '更新');
+    await user.clear(screen.getByLabelText('タイトル'));
+    await user.type(screen.getByLabelText('タイトル'), '更新');
     await user.click(screen.getAllByRole('button', { name: '保存' })[0]);
     await user.click(screen.getByRole('button', { name: '別Promptへ' }));
     await act(() => saving.resolve(prompt));
@@ -558,6 +555,61 @@ describe('PromptEditorPage', () => {
       screen.queryByRole('heading', { name: 'Prompt Library' }),
     ).toBeNull();
     expect(screen.getByLabelText('revision')).toHaveTextContent('0');
+  });
+
+  it('shows copy button with correct aria-label, copies draft body text, and shows check icon on success', async () => {
+    const user = userEvent.setup();
+    let written = '';
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        writeText: vi.fn(async (text: string) => {
+          written = text;
+        }),
+      },
+      configurable: true,
+    });
+    renderEditor({} as PromptTrailRepository);
+    const copyBtn = screen.getByRole('button', { name: 'Prompt本文をコピー' });
+    expect(copyBtn).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Prompt本文'), 'コピー対象テキスト');
+    await user.click(copyBtn);
+    expect(written).toBe('コピー対象テキスト');
+    expect(copyBtn).toHaveClass('pt-prompt-editor__copy--copied');
+    expect(
+      copyBtn.querySelector('.pt-prompt-editor__copy-icon--check'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('コピーしました')).toBeInTheDocument();
+  });
+
+  it('notifies copy failure via aria-live for screen readers', async () => {
+    const user = userEvent.setup();
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        writeText: vi.fn(async () => {
+          throw new Error('denied');
+        }),
+      },
+      configurable: true,
+    });
+    renderEditor({} as PromptTrailRepository);
+    await user.click(
+      screen.getByRole('button', { name: 'Prompt本文をコピー' }),
+    );
+    expect(screen.getByText('コピーできませんでした')).toBeInTheDocument();
+  });
+
+  it('copy button is usable while submitting', async () => {
+    const store = createStore();
+    renderEditor({} as PromptTrailRepository, { store });
+    act(() =>
+      store.setActiveOverride({
+        target: 'prompt-editor-page',
+        state: 'submitting',
+      }),
+    );
+    const copyBtn = screen.getByRole('button', { name: 'Prompt本文をコピー' });
+    expect(copyBtn).toBeInTheDocument();
+    expect(copyBtn).not.toBeDisabled();
   });
 
   it('applies every Developer Tools override without performing a real save', async () => {
