@@ -32,6 +32,7 @@
 .pt-prompt-editor__meta-field select {
   width: auto;
   max-width: 100%;
+  justify-self: start;
 }
 
 .pt-prompt-editor__meta-field .pt-form__error {
