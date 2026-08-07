@@ -49,6 +49,17 @@ const COPY_SVG = (
   </svg>
 );
 
+const CHECK_SVG = (
+  <svg
+    aria-hidden="true"
+    className="pt-prompt-editor__copy-icon pt-prompt-editor__copy-icon--check"
+    focusable="false"
+    viewBox="0 0 24 24"
+  >
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
 export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
   const repository = usePromptTrailRepository();
   const { notifyDataChanged } = usePromptTrailDataRevision();
@@ -154,13 +165,40 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
   const saveDisabled = displayedStatus === 'submitting' || deletionOpen;
   const saveLabel = displayedStatus === 'submitting' ? '保存中...' : '保存';
   const [copyState, setCopyState] = useState<'success' | 'error' | null>(null);
+  const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current !== null)
+        clearTimeout(copyResetTimerRef.current);
+    };
+  }, []);
 
   async function copyBody() {
+    if (copyResetTimerRef.current !== null) {
+      clearTimeout(copyResetTimerRef.current);
+      copyResetTimerRef.current = null;
+    }
     try {
       await navigator.clipboard.writeText(currentForm.values.body);
       setCopyState('success');
     } catch {
       setCopyState('error');
+    }
+  }
+
+  function handleCopyMouseLeave() {
+    if (copyState !== 'success') return;
+    copyResetTimerRef.current = setTimeout(() => {
+      setCopyState(null);
+      copyResetTimerRef.current = null;
+    }, 2000);
+  }
+
+  function handleCopyMouseEnter() {
+    if (copyResetTimerRef.current !== null) {
+      clearTimeout(copyResetTimerRef.current);
+      copyResetTimerRef.current = null;
     }
   }
 
@@ -411,11 +449,13 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
               <span className="pt-prompt-editor__copy-wrap">
                 <button
                   aria-label="Prompt本文をコピー"
-                  className="pt-prompt-editor__copy"
+                  className={`pt-prompt-editor__copy${copyState === 'success' ? ' pt-prompt-editor__copy--copied' : ''}`}
                   type="button"
                   onClick={() => void copyBody()}
+                  onMouseLeave={handleCopyMouseLeave}
+                  onMouseEnter={handleCopyMouseEnter}
                 >
-                  {COPY_SVG}
+                  {copyState === 'success' ? CHECK_SVG : COPY_SVG}
                 </button>
                 <span
                   className="pt-prompt-editor__copy-tooltip"

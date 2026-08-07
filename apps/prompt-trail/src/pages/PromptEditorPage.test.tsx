@@ -560,7 +560,7 @@ describe('PromptEditorPage', () => {
     expect(screen.getByLabelText('revision')).toHaveTextContent('0');
   });
 
-  it('shows copy button with correct aria-label and copies draft body text', async () => {
+  it('shows copy button with correct aria-label, copies draft body text, and shows check icon on success', async () => {
     const user = userEvent.setup();
     let written = '';
     Object.defineProperty(navigator, 'clipboard', {
@@ -577,10 +577,12 @@ describe('PromptEditorPage', () => {
     await user.type(screen.getByLabelText('Prompt本文'), 'コピー対象テキスト');
     await user.click(copyBtn);
     expect(written).toBe('コピー対象テキスト');
-    expect(screen.getByText('コピーしました')).toBeVisible();
+    expect(copyBtn).toHaveClass('pt-prompt-editor__copy--copied');
+    expect(copyBtn.querySelector('.pt-prompt-editor__copy-icon--check')).toBeInTheDocument();
+    expect(screen.getByText('コピーしました')).toBeInTheDocument();
   });
 
-  it('shows copy failure status when clipboard write fails', async () => {
+  it('notifies copy failure via aria-live for screen readers', async () => {
     const user = userEvent.setup();
     Object.defineProperty(navigator, 'clipboard', {
       value: {
@@ -592,7 +594,7 @@ describe('PromptEditorPage', () => {
     });
     renderEditor({} as PromptTrailRepository);
     await user.click(screen.getByRole('button', { name: 'Prompt本文をコピー' }));
-    expect(screen.getByText('コピーできませんでした')).toBeVisible();
+    expect(screen.getByText('コピーできませんでした')).toBeInTheDocument();
   });
 
   it('copy button is usable while submitting', async () => {
