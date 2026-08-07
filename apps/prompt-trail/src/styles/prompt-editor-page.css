@@ -109,9 +109,10 @@
 
 .pt-prompt-editor__copy-tooltip {
   position: absolute;
-  left: 50%;
+  right: 0;
+  left: auto;
   bottom: calc(100% + 4px);
-  transform: translateX(-50%);
+  transform: none;
   white-space: nowrap;
   font-size: 0.75rem;
   background: var(--pt-color-tooltip-bg, #1a1a1a);
