@@ -167,10 +167,7 @@ function RepositorySwitchingEditor({
 async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('タイトル'), '新規タイトル');
   await user.type(screen.getByLabelText('Prompt本文'), '  Markdown\n  本文');
-  await user.selectOptions(
-    screen.getByLabelText('種別'),
-    'codex-request',
-  );
+  await user.selectOptions(screen.getByLabelText('種別'), 'codex-request');
 }
 
 describe('PromptEditorPage', () => {
@@ -578,7 +575,9 @@ describe('PromptEditorPage', () => {
     await user.click(copyBtn);
     expect(written).toBe('コピー対象テキスト');
     expect(copyBtn).toHaveClass('pt-prompt-editor__copy--copied');
-    expect(copyBtn.querySelector('.pt-prompt-editor__copy-icon--check')).toBeInTheDocument();
+    expect(
+      copyBtn.querySelector('.pt-prompt-editor__copy-icon--check'),
+    ).toBeInTheDocument();
     expect(screen.getByText('コピーしました')).toBeInTheDocument();
   });
 
@@ -593,7 +592,9 @@ describe('PromptEditorPage', () => {
       configurable: true,
     });
     renderEditor({} as PromptTrailRepository);
-    await user.click(screen.getByRole('button', { name: 'Prompt本文をコピー' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Prompt本文をコピー' }),
+    );
     expect(screen.getByText('コピーできませんでした')).toBeInTheDocument();
   });
 
@@ -601,7 +602,10 @@ describe('PromptEditorPage', () => {
     const store = createStore();
     renderEditor({} as PromptTrailRepository, { store });
     act(() =>
-      store.setActiveOverride({ target: 'prompt-editor-page', state: 'submitting' }),
+      store.setActiveOverride({
+        target: 'prompt-editor-page',
+        state: 'submitting',
+      }),
     );
     const copyBtn = screen.getByRole('button', { name: 'Prompt本文をコピー' });
     expect(copyBtn).toBeInTheDocument();

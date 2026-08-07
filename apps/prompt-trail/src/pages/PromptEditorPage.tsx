@@ -457,10 +457,7 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
                 >
                   {copyState === 'success' ? CHECK_SVG : COPY_SVG}
                 </button>
-                <span
-                  className="pt-prompt-editor__copy-tooltip"
-                  role="tooltip"
-                >
+                <span className="pt-prompt-editor__copy-tooltip" role="tooltip">
                   Prompt本文をコピー
                 </span>
               </span>

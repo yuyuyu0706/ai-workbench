@@ -73,9 +73,7 @@ test.describe('Prompt Editor flow', () => {
     await page.goto('/prompts');
     await seedEditablePrompts(page);
     await page.goto('/prompts/prompt-edit-e2e/edit');
-    await expect(page.getByLabel('タイトル')).toHaveValue(
-      '編集対象Prompt',
-    );
+    await expect(page.getByLabel('タイトル')).toHaveValue('編集対象Prompt');
     await page.reload();
     await page.getByLabel('タイトル').fill('編集済みPrompt');
     await page.getByLabel('Prompt本文').fill('編集後の本文');
