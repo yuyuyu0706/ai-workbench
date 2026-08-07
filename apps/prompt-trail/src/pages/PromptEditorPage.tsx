@@ -488,13 +488,6 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
               </p>
             ) : null}
             <div className="prompt-trail-page__actions">
-              <button
-                className="pt-button pt-button--primary"
-                type="submit"
-                disabled={saveDisabled}
-              >
-                {saveLabel}
-              </button>
               {displayedStatus === 'submitting' ||
               displayedDeletion === 'deleting' ? (
                 <button className="pt-button pt-button--secondary" disabled>
