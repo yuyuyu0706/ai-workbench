@@ -2,6 +2,10 @@
   min-width: 0;
 }
 
+.pt-page-section:has(.pt-prompt-editor) .pt-page-section__header {
+  max-width: 44rem;
+}
+
 .pt-prompt-editor textarea {
   resize: vertical;
   white-space: pre-wrap;
