@@ -1,4 +1,10 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
@@ -640,12 +646,10 @@ describe('PromptEditorPage', () => {
   });
 
   it('shows variable badges when body contains ${var} patterns', async () => {
-    const user = userEvent.setup();
     renderEditor({} as PromptTrailRepository);
-    await user.type(
-      screen.getByLabelText('Prompt本文'),
-      'Hello ${name} and ${age}',
-    );
+    fireEvent.change(screen.getByLabelText('Prompt本文'), {
+      target: { value: 'Hello ${name} and ${age}' },
+    });
     expect(screen.getByLabelText('検出された変数')).toBeInTheDocument();
     expect(screen.getByText('${name}')).toBeInTheDocument();
     expect(screen.getByText('${age}')).toBeInTheDocument();
@@ -654,7 +658,9 @@ describe('PromptEditorPage', () => {
   it('opens variable panel when copy button clicked with vars, closes on second click', async () => {
     const user = userEvent.setup();
     renderEditor({} as PromptTrailRepository);
-    await user.type(screen.getByLabelText('Prompt本文'), 'Hi ${name}');
+    fireEvent.change(screen.getByLabelText('Prompt本文'), {
+      target: { value: 'Hi ${name}' },
+    });
     const copyBtn = screen.getByRole('button', { name: 'Prompt本文をコピー' });
     await user.click(copyBtn);
     expect(
@@ -678,11 +684,15 @@ describe('PromptEditorPage', () => {
       configurable: true,
     });
     renderEditor({} as PromptTrailRepository);
-    await user.type(screen.getByLabelText('Prompt本文'), 'Hi ${name}');
+    fireEvent.change(screen.getByLabelText('Prompt本文'), {
+      target: { value: 'Hi ${name}' },
+    });
     await user.click(
       screen.getByRole('button', { name: 'Prompt本文をコピー' }),
     );
-    await user.type(screen.getByLabelText('${name}'), 'World');
+    fireEvent.change(screen.getByLabelText('${name}'), {
+      target: { value: 'World' },
+    });
     await user.click(screen.getByRole('button', { name: 'コピー' }));
     expect(written).toBe('Hi World');
     expect(
@@ -702,11 +712,15 @@ describe('PromptEditorPage', () => {
       configurable: true,
     });
     renderEditor({} as PromptTrailRepository);
-    await user.type(screen.getByLabelText('Prompt本文'), '${a} and ${b}');
+    fireEvent.change(screen.getByLabelText('Prompt本文'), {
+      target: { value: '${a} and ${b}' },
+    });
     await user.click(
       screen.getByRole('button', { name: 'Prompt本文をコピー' }),
     );
-    await user.type(screen.getByLabelText('${a}'), 'filled');
+    fireEvent.change(screen.getByLabelText('${a}'), {
+      target: { value: 'filled' },
+    });
     await user.click(screen.getByRole('button', { name: 'コピー' }));
     expect(written).toBe('filled and ${b}');
   });
@@ -714,7 +728,9 @@ describe('PromptEditorPage', () => {
   it('closes variable panel on Escape key', async () => {
     const user = userEvent.setup();
     renderEditor({} as PromptTrailRepository);
-    await user.type(screen.getByLabelText('Prompt本文'), '${x}');
+    fireEvent.change(screen.getByLabelText('Prompt本文'), {
+      target: { value: '${x}' },
+    });
     await user.click(
       screen.getByRole('button', { name: 'Prompt本文をコピー' }),
     );
@@ -739,10 +755,14 @@ describe('PromptEditorPage', () => {
       configurable: true,
     });
     renderEditor({} as PromptTrailRepository);
-    await user.type(screen.getByLabelText('Prompt本文'), '${x}');
+    fireEvent.change(screen.getByLabelText('Prompt本文'), {
+      target: { value: '${x}' },
+    });
     const copyBtn = screen.getByRole('button', { name: 'Prompt本文をコピー' });
     await user.click(copyBtn);
-    await user.type(screen.getByLabelText('${x}'), 'first');
+    fireEvent.change(screen.getByLabelText('${x}'), {
+      target: { value: 'first' },
+    });
     await user.click(copyBtn);
     await user.click(copyBtn);
     await user.click(screen.getByRole('button', { name: 'コピー' }));
