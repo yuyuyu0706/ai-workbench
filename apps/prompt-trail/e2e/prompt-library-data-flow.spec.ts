@@ -67,6 +67,31 @@ async function seedGlobalPromptInBrowser(page: Page) {
   }, GLOBAL_PROMPT_BODY);
 }
 
+async function seedVariablePromptInBrowser(page: Page) {
+  await page.evaluate(async () => {
+    const { createPromptTrailRuntime } =
+      await import('/src/app/prompt-trail-runtime.ts');
+    const runtime = createPromptTrailRuntime();
+    try {
+      await runtime.initialize();
+      await runtime.repository.savePrompt({
+        id: 'prompt-library-variable-e2e' as PromptId,
+        createdAt: '2026-08-01T02:00:00.000Z' as UtcDateTimeString,
+        updatedAt: '2026-08-01T02:00:00.000Z' as UtcDateTimeString,
+        deletedAt: null,
+        scope: 'global',
+        title: '変数テンプレート',
+        body: 'こんにちは ${name}さん、${topic}について教えてください。',
+        kind: 'other',
+        status: 'active',
+        tags: [],
+      });
+    } finally {
+      runtime.dispose();
+    }
+  });
+}
+
 async function expectArrowTracksTrigger(
   trigger: ReturnType<Page['getByRole']>,
   popover: ReturnType<Page['getByRole']>,
@@ -372,6 +397,54 @@ test.describe('Prompt Library data flow', () => {
       );
     await page.reload();
     await expect(promptTable.getByText('Codex開発依頼')).toBeVisible();
+  });
+
+  test('resolves Prompt body variables when copying from the Popover, at desktop and 320px widths', async ({
+    context,
+    page,
+  }, testInfo) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    if (testInfo.project.name !== 'chromium-desktop')
+      await page.setViewportSize({ width: 320, height: 844 });
+    await page.goto('/prompts');
+    await seedVariablePromptInBrowser(page);
+    await page.reload();
+
+    const trigger = page.getByRole('button', {
+      name: '「変数テンプレート」のPrompt本文を表示',
+    });
+    await trigger.click();
+    const popover = page.getByRole('dialog', { name: 'Prompt本文' });
+    await expect(popover.getByText('${name}')).toBeVisible();
+    await expect(popover.getByText('${topic}')).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+
+    const copyButton = popover.getByRole('button', {
+      name: '「変数テンプレート」のPrompt本文をコピー',
+    });
+    await copyButton.click();
+    const varPanel = popover.getByRole('dialog', {
+      name: '変数に値を入力してコピー',
+    });
+    await expect(varPanel).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    const nameInput = varPanel.getByLabelText('${name}');
+    await expect(nameInput).toBeFocused();
+    await nameInput.fill('田中');
+    await varPanel.getByRole('button', { name: 'コピー' }).click();
+
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+      'こんにちは 田中さん、${topic}について教えてください。',
+    );
+    await expect(varPanel).toHaveCount(0);
+    await expect(copyButton).toBeFocused();
+    await expect(copyButton).toHaveAttribute('data-copied', 'true');
+
+    await page.keyboard.press('Escape');
+    await expect(popover).toHaveCount(0);
+    await trigger.click();
+    await copyButton.click();
+    await expect(varPanel.getByLabelText('${name}')).toHaveValue('');
   });
 
   test('keeps search and prompt data within a 320px viewport', async ({
