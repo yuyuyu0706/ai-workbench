@@ -397,10 +397,10 @@ test.describe('Prompt Library data flow', () => {
     const promptTrigger = page.getByRole('button', {
       name: '「Codex開発依頼」のPrompt本文を表示',
     });
-    await page.getByRole('combobox', { name: 'プロジェクト' }).focus();
+    await page.getByRole('searchbox', { name: 'Promptを検索' }).focus();
     await page.keyboard.press('Tab');
     await expect(
-      page.getByRole('searchbox', { name: 'Promptを検索' }),
+      page.getByRole('combobox', { name: 'プロジェクト' }),
     ).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(tableRegion).toBeFocused();
