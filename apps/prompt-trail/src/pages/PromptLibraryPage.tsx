@@ -644,8 +644,7 @@ function PromptBodyPopover({
       mountedRef.current = false;
       if (animationFrameRef.current !== null)
         cancelAnimationFrame(animationFrameRef.current);
-      if (copyTimeoutRef.current !== null)
-        clearTimeout(copyTimeoutRef.current);
+      if (copyTimeoutRef.current !== null) clearTimeout(copyTimeoutRef.current);
     };
   }, []);
 
