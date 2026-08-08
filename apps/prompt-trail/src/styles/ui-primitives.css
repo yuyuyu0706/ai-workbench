@@ -126,7 +126,6 @@
   gap: var(--pt-space-3) var(--pt-space-5);
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: var(--pt-space-4);
 }
 
 .pt-page-section__content {
@@ -153,7 +152,7 @@
 .pt-page-section__title-row {
   position: relative;
   display: inline-flex;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--pt-space-1);
   max-width: 100%;
 }
