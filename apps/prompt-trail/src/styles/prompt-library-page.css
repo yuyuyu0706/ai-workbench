@@ -4,7 +4,8 @@
   gap: var(--pt-space-4) var(--pt-space-5);
   align-items: flex-start;
   justify-content: space-between;
-  width: min(100%, var(--pt-content-max));
+  width: 100%;
+  max-width: var(--pt-content-max);
   margin: 0 auto var(--pt-space-4);
 }
 
@@ -622,6 +623,11 @@
   }
 
   .pt-prompt-library__header-controls {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .pt-prompt-library__header-controls > * {
     width: 100%;
   }
 

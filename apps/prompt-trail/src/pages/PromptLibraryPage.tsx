@@ -215,18 +215,6 @@ export function PromptLibraryPage() {
           </Link>
           {state.status === 'data' ? (
             <>
-              <label className="pt-prompt-search">
-                <span>Promptを検索</span>
-                <input
-                  type="search"
-                  value={query}
-                  disabled={controlsLocked}
-                  onChange={(event) => {
-                    setQuery(event.target.value);
-                  }}
-                  placeholder="Prompt名または本文を検索"
-                />
-              </label>
               <label className="pt-prompt-project-filter">
                 <span>プロジェクト</span>
                 <select
@@ -240,6 +228,18 @@ export function PromptLibraryPage() {
                   <option value="global">Global</option>
                   <option value="project">Default Project</option>
                 </select>
+              </label>
+              <label className="pt-prompt-search">
+                <span>Promptを検索</span>
+                <input
+                  type="search"
+                  value={query}
+                  disabled={controlsLocked}
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                  }}
+                  placeholder="Prompt名または本文を検索"
+                />
               </label>
             </>
           ) : null}
