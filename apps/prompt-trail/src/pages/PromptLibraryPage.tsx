@@ -384,8 +384,12 @@ export function PromptLibraryPage() {
                       onBodyGuardChange={setPromptBodyGuard}
                       onBodySaved={() => {
                         setQuickEditNotice('Prompt本文を更新しました。');
-                        if (openPrompt !== null)
+                        if (openPrompt !== null) {
                           keepOpenPromptIdRef.current = openPrompt.id;
+                          // Pre-advance revision so openPromptId stays truthy during
+                          // the async reload, preventing a one-frame popover close.
+                          setOpenPrompt({ ...openPrompt, revision: revision + 1 });
+                        }
                         notifyDataChanged();
                       }}
                       onBodyReloadRequested={() => notifyDataChanged()}

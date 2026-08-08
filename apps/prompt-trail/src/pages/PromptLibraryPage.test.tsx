@@ -814,6 +814,65 @@ describe('PromptLibraryPage', () => {
     expect(textarea).toHaveValue(`${prompts[0].body} dirty`);
   });
 
+  it('returns to view mode on cancel without closing the popover when not dirty', async () => {
+    const user = userEvent.setup();
+    renderPromptLibraryPage(createRepository(prompts));
+    const trigger = await screen.findByRole('button', {
+      name: `「${prompts[0].title}」のPrompt本文を表示`,
+    });
+    await user.click(trigger);
+    await user.click(
+      screen.getByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文を編集`,
+      }),
+    );
+    const popover = screen.getByRole('dialog', { name: 'Prompt本文' });
+    expect(within(popover).getByRole('textbox', { name: 'Prompt本文' })).toBeInTheDocument();
+
+    await user.click(within(popover).getByRole('button', { name: 'キャンセル' }));
+
+    expect(screen.getByRole('dialog', { name: 'Prompt本文' })).toBeInTheDocument();
+    expect(within(popover).queryByRole('textbox', { name: 'Prompt本文' })).toBeNull();
+    expect(
+      within(popover).getByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文を編集`,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows discard confirm on cancel when dirty and returns to view mode after confirm without closing the popover', async () => {
+    const user = userEvent.setup();
+    renderPromptLibraryPage(createRepository(prompts));
+    const trigger = await screen.findByRole('button', {
+      name: `「${prompts[0].title}」のPrompt本文を表示`,
+    });
+    await user.click(trigger);
+    await user.click(
+      screen.getByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文を編集`,
+      }),
+    );
+    const popover = screen.getByRole('dialog', { name: 'Prompt本文' });
+    const textarea = within(popover).getByRole('textbox', { name: 'Prompt本文' });
+    await user.type(textarea, ' dirty');
+
+    await user.click(within(popover).getByRole('button', { name: 'キャンセル' }));
+    expect(within(popover).getByRole('alert')).toHaveTextContent(
+      '編集中のPrompt本文を破棄しますか？',
+    );
+    expect(within(popover).getByRole('textbox', { name: 'Prompt本文' })).toBeInTheDocument();
+
+    await user.click(within(popover).getByRole('button', { name: '破棄する' }));
+
+    expect(screen.getByRole('dialog', { name: 'Prompt本文' })).toBeInTheDocument();
+    expect(within(popover).queryByRole('textbox', { name: 'Prompt本文' })).toBeNull();
+    expect(
+      within(popover).getByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文を編集`,
+      }),
+    ).toBeInTheDocument();
+  });
+
   it('guards global navigation while dirty or saving', async () => {
     const user = userEvent.setup();
     let resolveSave!: (value: Prompt) => void;

@@ -675,6 +675,47 @@ test.describe('Prompt Library data flow', () => {
     await expect(page).toHaveURL(/\/prompts\/prompt-library-e2e\/edit$/);
   });
 
+  test('keeps the Prompt body popover open and returns to view mode on cancel', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1000, height: 700 });
+    await page.goto('/prompts');
+    await seedPromptLibraryInBrowser(page);
+    await page.reload();
+
+    await page
+      .getByRole('button', { name: '「Codex開発依頼」のPrompt本文を表示' })
+      .click();
+    const popover = page.getByRole('dialog', { name: 'Prompt本文' });
+    await expect(popover).toBeVisible();
+    await popover
+      .getByRole('button', { name: '「Codex開発依頼」のPrompt本文を編集' })
+      .click();
+    const textbox = popover.getByRole('textbox', { name: 'Prompt本文' });
+    await expect(textbox).toBeVisible();
+
+    // Cancel without editing: popover stays open and returns to view mode immediately
+    await popover.getByRole('button', { name: 'キャンセル' }).click();
+    await expect(popover).toBeVisible();
+    await expect(textbox).toBeHidden();
+
+    // Re-enter edit, dirty the draft, then cancel: discard confirm appears
+    await popover
+      .getByRole('button', { name: '「Codex開発依頼」のPrompt本文を編集' })
+      .click();
+    await popover.getByRole('textbox', { name: 'Prompt本文' }).fill('破棄確認のためのdraft');
+    await popover.getByRole('button', { name: 'キャンセル' }).click();
+    await expect(popover.getByRole('alert')).toContainText(
+      '編集中のPrompt本文を破棄しますか？',
+    );
+    await expect(popover).toBeVisible();
+
+    // Confirm discard: popover stays open, returns to view mode
+    await popover.getByRole('button', { name: '破棄する' }).click();
+    await expect(popover).toBeVisible();
+    await expect(popover.getByRole('textbox', { name: 'Prompt本文' })).toBeHidden();
+  });
+
   test('guards global navigation while a Prompt body draft is dirty', async ({
     page,
   }) => {
