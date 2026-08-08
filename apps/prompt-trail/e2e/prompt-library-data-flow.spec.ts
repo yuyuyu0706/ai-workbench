@@ -415,37 +415,26 @@ test.describe('Prompt Library data flow', () => {
     });
     await trigger.click();
     const popover = page.getByRole('dialog', { name: 'Prompt本文' });
-    const varBadges = popover.locator('.pt-prompt-body-popover__var-badge');
-    await expect(varBadges.filter({ hasText: '${name}' })).toBeVisible();
-    await expect(varBadges.filter({ hasText: '${topic}' })).toBeVisible();
+    const varPanel = popover.getByRole('dialog', {
+      name: '変数に値を入力してコピー',
+    });
+    await expect(varPanel).toBeVisible();
+    await expect(varPanel.getByLabel('${name}')).toBeVisible();
+    await expect(varPanel.getByLabel('${topic}')).toBeVisible();
+    await expect(varPanel.getByLabel('${name}')).not.toBeFocused();
     await expectNoHorizontalOverflow(page);
 
     const copyButton = popover.getByRole('button', {
       name: '「変数テンプレート」のPrompt本文をコピー',
     });
-    await copyButton.click();
-    const varPanel = popover.getByRole('dialog', {
-      name: '変数に値を入力してコピー',
-    });
-    await expect(varPanel).toBeVisible();
-    await expectNoHorizontalOverflow(page);
     const nameInput = varPanel.getByLabel('${name}');
-    await expect(nameInput).toBeFocused();
     await nameInput.fill('田中');
     await varPanel.getByRole('button', { name: 'コピー' }).click();
 
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
       'こんにちは 田中さん、${topic}について教えてください。',
     );
-    await expect(varPanel).toHaveCount(0);
-    await expect(copyButton).toBeFocused();
     await expect(copyButton).toHaveAttribute('data-copied', 'true');
-
-    await page.keyboard.press('Escape');
-    await expect(popover).toHaveCount(0);
-    await trigger.click();
-    await copyButton.click();
-    await expect(varPanel.getByLabel('${name}')).toHaveValue('');
   });
 
   test('keeps search and prompt data within a 320px viewport', async ({

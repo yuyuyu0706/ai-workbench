@@ -172,47 +172,34 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
   const saveLabel = displayedStatus === 'submitting' ? '保存中...' : '保存';
   const [copyState, setCopyState] = useState<'success' | 'error' | null>(null);
   const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [varPanelOpen, setVarPanelOpen] = useState(false);
   const [varValues, setVarValues] = useState<Record<string, string>>({});
+  const focusInPanelRef = useRef(false);
 
   const detectedVars = useMemo(
     () => extractPromptVariables(currentForm.values.body),
     [currentForm.values.body],
   );
 
-  const effectiveVarPanelOpen = varPanelOpen && detectedVars.length > 0;
+  const effectiveVarPanelOpen = detectedVars.length > 0;
 
   useEffect(() => {
     if (!effectiveVarPanelOpen) return;
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setVarPanelOpen(false);
+    function onFocusIn(e: FocusEvent) {
+      focusInPanelRef.current = !!(
+        varPanelRef.current && varPanelRef.current.contains(e.target as Node)
+      );
     }
-    function onMouseDown(e: MouseEvent) {
-      if (
-        varPanelRef.current &&
-        !varPanelRef.current.contains(e.target as Node) &&
-        (!copyButtonRef.current ||
-          !copyButtonRef.current.contains(e.target as Node))
-      ) {
-        setVarPanelOpen(false);
-      }
-    }
-    document.addEventListener('keydown', onKeyDown);
-    document.addEventListener('mousedown', onMouseDown);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      document.removeEventListener('mousedown', onMouseDown);
-    };
-  }, [effectiveVarPanelOpen]);
-
-  useEffect(() => {
-    if (!effectiveVarPanelOpen) return;
-    const firstInput =
-      varPanelRef.current?.querySelector<HTMLInputElement>('input');
-    firstInput?.focus();
+    focusInPanelRef.current = !!(
+      varPanelRef.current &&
+      document.activeElement &&
+      varPanelRef.current.contains(document.activeElement)
+    );
+    document.addEventListener('focusin', onFocusIn);
     const copyButton = copyButtonRef.current;
     return () => {
-      copyButton?.focus();
+      document.removeEventListener('focusin', onFocusIn);
+      if (focusInPanelRef.current) copyButton?.focus();
+      focusInPanelRef.current = false;
     };
   }, [effectiveVarPanelOpen]);
 
@@ -264,17 +251,7 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
       void copyBody();
       return;
     }
-    if (effectiveVarPanelOpen) {
-      setVarPanelOpen(false);
-      return;
-    }
-    if (copyResetTimerRef.current !== null) {
-      clearTimeout(copyResetTimerRef.current);
-      copyResetTimerRef.current = null;
-    }
-    setCopyState(null);
-    setVarValues({});
-    setVarPanelOpen(true);
+    void copyResolved();
   }
 
   async function copyResolved() {
@@ -285,10 +262,8 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
     const resolved = resolvePromptVariables(currentForm.values.body, varValues);
     try {
       await navigator.clipboard.writeText(resolved);
-      setVarPanelOpen(false);
       setCopyState('success');
     } catch {
-      setVarPanelOpen(false);
       setCopyState('error');
     }
   }
@@ -537,19 +512,6 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
             </div>
             <div className="pt-prompt-editor__body-label-row">
               <label htmlFor="prompt-body">Prompt本文</label>
-              {detectedVars.length > 0 && (
-                <span
-                  className="pt-prompt-editor__var-badges"
-                  aria-label="検出された変数"
-                >
-                  {detectedVars.map((v) => (
-                    <span
-                      key={v}
-                      className="pt-prompt-editor__var-badge"
-                    >{`\${${v}}`}</span>
-                  ))}
-                </span>
-              )}
               <span className="pt-prompt-editor__copy-wrap">
                 <button
                   ref={copyButtonRef}

@@ -171,7 +171,7 @@ test.describe('Prompt Editor flow', () => {
     expect(clipboardText).toBe('編集対象Promptの本文');
   });
 
-  test('variable panel opens, accepts values, and copies resolved text', async ({
+  test('variable panel appears as soon as variables are detected, accepts values, and copies resolved text', async ({
     page,
     context,
   }) => {
@@ -180,7 +180,6 @@ test.describe('Prompt Editor flow', () => {
     await page
       .getByRole('textbox', { name: 'Prompt本文' })
       .fill('Hello ${name}, you are ${age} years old.');
-    await page.getByRole('button', { name: 'Prompt本文をコピー' }).click();
     await expect(
       page.getByRole('dialog', { name: '変数に値を入力してコピー' }),
     ).toBeVisible();
@@ -194,19 +193,18 @@ test.describe('Prompt Editor flow', () => {
       navigator.clipboard.readText(),
     );
     expect(clipboardText).toBe('Hello Alice, you are 30 years old.');
-    await expect(
-      page.getByRole('dialog', { name: '変数に値を入力してコピー' }),
-    ).toHaveCount(0);
   });
 
-  test('Esc closes the variable panel', async ({ page }) => {
+  test('variable panel disappears when all variables are removed from the body', async ({
+    page,
+  }) => {
     await page.goto('/prompts/new');
-    await page.getByRole('textbox', { name: 'Prompt本文' }).fill('${var}');
-    await page.getByRole('button', { name: 'Prompt本文をコピー' }).click();
+    const textarea = page.getByRole('textbox', { name: 'Prompt本文' });
+    await textarea.fill('${var}');
     await expect(
       page.getByRole('dialog', { name: '変数に値を入力してコピー' }),
     ).toBeVisible();
-    await page.keyboard.press('Escape');
+    await textarea.fill('no vars anymore');
     await expect(
       page.getByRole('dialog', { name: '変数に値を入力してコピー' }),
     ).toHaveCount(0);
