@@ -245,21 +245,23 @@ export function PromptLibraryPage() {
           ) : null}
         </div>
       </header>
-      {quickEditNotice !== null ? (
-        <p className="pt-success-notice" role="status">
-          {quickEditNotice}
-        </p>
-      ) : notice !== null ? (
-        <p className="pt-success-notice" role="status">
-          {notice === 'deleted'
-            ? 'Promptを削除しました。'
-            : `Promptを${notice === 'created' ? '登録' : '更新'}しました。`}
-        </p>
-      ) : null}
       <PromptLibraryStateMessage state={state} />
       {state.status === 'data' ? (
         <PageSection
           title="Prompt一覧"
+          actions={
+            quickEditNotice !== null ? (
+              <p className="pt-prompt-library__notice" role="status">
+                {quickEditNotice}
+              </p>
+            ) : notice !== null ? (
+              <p className="pt-prompt-library__notice" role="status">
+                {notice === 'deleted'
+                  ? 'Promptを削除しました。'
+                  : `Promptを${notice === 'created' ? '登録' : '更新'}しました。`}
+              </p>
+            ) : undefined
+          }
           titleAccessory={
             <p className="pt-prompt-library__result-count" aria-live="polite">
               {!hasConditions

@@ -4,7 +4,7 @@
   gap: var(--pt-space-3);
   width: 100%;
   max-width: var(--pt-content-max);
-  margin: 0 auto var(--pt-space-4);
+  margin: 0 auto;
 }
 
 .pt-prompt-library__header-meta {
@@ -84,7 +84,8 @@
   align-items: baseline;
 }
 
-.pt-prompt-library__result-count {
+.pt-prompt-library__result-count,
+.pt-prompt-library__notice {
   margin: 0;
   color: var(--pt-color-text-muted);
   font-size: 0.9375rem;
