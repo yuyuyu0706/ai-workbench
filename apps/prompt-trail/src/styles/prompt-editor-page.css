@@ -1,5 +1,6 @@
 .pt-prompt-editor {
   min-width: 0;
+  max-width: 100%;
 }
 
 .pt-prompt-editor__meta-row {
