@@ -180,12 +180,10 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
     [currentForm.values.body],
   );
 
-  useEffect(() => {
-    if (varPanelOpen && detectedVars.length === 0) setVarPanelOpen(false);
-  }, [detectedVars.length, varPanelOpen]);
+  const effectiveVarPanelOpen = varPanelOpen && detectedVars.length > 0;
 
   useEffect(() => {
-    if (!varPanelOpen) return;
+    if (!effectiveVarPanelOpen) return;
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') setVarPanelOpen(false);
     }
@@ -205,7 +203,7 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('mousedown', onMouseDown);
     };
-  }, [varPanelOpen]);
+  }, [effectiveVarPanelOpen]);
 
   useEffect(() => {
     return () => {
@@ -255,7 +253,7 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
       void copyBody();
       return;
     }
-    if (varPanelOpen) {
+    if (effectiveVarPanelOpen) {
       setVarPanelOpen(false);
       return;
     }
@@ -546,7 +544,7 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
                   ref={copyButtonRef}
                   aria-label="Prompt本文をコピー"
                   aria-expanded={
-                    detectedVars.length > 0 ? varPanelOpen : undefined
+                    detectedVars.length > 0 ? effectiveVarPanelOpen : undefined
                   }
                   className={`pt-prompt-editor__copy${copyState === 'success' ? ' pt-prompt-editor__copy--copied' : ''}`}
                   type="button"
@@ -562,7 +560,7 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
                 </span>
               </span>
             </div>
-            {varPanelOpen && detectedVars.length > 0 && (
+            {effectiveVarPanelOpen && (
               <div
                 ref={varPanelRef}
                 className="pt-prompt-editor__var-panel"
