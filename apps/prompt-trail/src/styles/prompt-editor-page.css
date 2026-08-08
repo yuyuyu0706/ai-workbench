@@ -3,17 +3,9 @@
   max-width: min(64rem, 100%);
 }
 
-.pt-page-section:has(.pt-prompt-editor) .pt-page-section__header {
-  max-width: 44rem;
-}
-
 .pt-prompt-editor__meta-row {
   display: grid;
   gap: var(--pt-space-3);
-  max-width: 44rem;
-}
-
-.pt-prompt-editor .prompt-trail-page__actions {
   max-width: 44rem;
 }
 
