@@ -186,7 +186,7 @@ test.describe('Prompt Library data flow', () => {
       'font-weight',
       '700',
     );
-    await expect(page.getByText('全2件を表示')).toBeVisible();
+    await expect(page.getByText('全2件')).toBeVisible();
     const nameHeader = promptTable.getByRole('columnheader').first();
     const updatedHeader = promptTable.getByRole('columnheader', {
       name: '更新日時',
@@ -206,13 +206,13 @@ test.describe('Prompt Library data flow', () => {
       .click();
     await expect(updatedHeader).toHaveAttribute('aria-sort', 'descending');
     await projectFilter.selectOption('project');
-    await expect(page.getByText('全2件中 1件を表示')).toBeVisible();
+    await expect(page.getByText('全2件中 1件')).toBeVisible();
     await expect(promptTable.getByText('Global障害分析')).toHaveCount(0);
     await search.fill('  codex  ');
     await expect(promptTable.getByRole('row')).toHaveCount(2);
 
     await search.fill('一致しない検索条件');
-    await expect(page.getByText('全2件中 0件を表示')).toBeVisible();
+    await expect(page.getByText('全2件中 0件')).toBeVisible();
     await expect(
       page.getByText('条件に一致するPromptがありません。'),
     ).toBeVisible();
@@ -467,7 +467,7 @@ test.describe('Prompt Library data flow', () => {
     const search = page.getByRole('searchbox', { name: 'Promptを検索' });
     await projectFilter.selectOption('project');
     await search.fill('Codex');
-    await expect(page.getByText('全2件中 1件を表示')).toBeVisible();
+    await expect(page.getByText('全2件中 1件')).toBeVisible();
     await page.getByRole('button', { name: '条件をクリア' }).click();
 
     const tableRegion = page.getByRole('region', {

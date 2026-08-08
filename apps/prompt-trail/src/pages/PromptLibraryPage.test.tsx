@@ -117,7 +117,7 @@ describe('PromptLibraryPage', () => {
     expect(screen.getByText(prompts[1].title)).toBeVisible();
     expect(within(table).getByText('Global')).toBeVisible();
     expect(within(table).getByText('Default Project')).toBeVisible();
-    expect(screen.getByText('全2件を表示')).toBeVisible();
+    expect(screen.getByText('全2件')).toBeVisible();
     expect(screen.getByRole('combobox', { name: 'プロジェクト' })).toHaveValue(
       'all',
     );
@@ -173,16 +173,16 @@ describe('PromptLibraryPage', () => {
     });
 
     await user.selectOptions(projectFilter, 'global');
-    expect(screen.getByText('全2件中 1件を表示')).toBeVisible();
+    expect(screen.getByText('全2件中 1件')).toBeVisible();
     expect(screen.getByText(prompts[0].title)).toBeVisible();
     expect(screen.queryByText(prompts[1].title)).toBeNull();
     expect(repository.listActivePrompts).toHaveBeenCalledOnce();
 
     await user.type(search, '  日本語  ');
-    expect(screen.getByText('全2件中 1件を表示')).toBeVisible();
+    expect(screen.getByText('全2件中 1件')).toBeVisible();
     await user.clear(search);
     await user.type(search, '別の検索対象');
-    expect(screen.getByText('全2件中 0件を表示')).toBeVisible();
+    expect(screen.getByText('全2件中 0件')).toBeVisible();
     expect(
       screen.getByText('条件に一致するPromptがありません。'),
     ).toBeVisible();
@@ -194,7 +194,7 @@ describe('PromptLibraryPage', () => {
     await user.click(screen.getByRole('button', { name: '条件をクリア' }));
     expect(search).toHaveValue('');
     expect(projectFilter).toHaveValue('all');
-    expect(screen.getByText('全2件を表示')).toBeVisible();
+    expect(screen.getByText('全2件')).toBeVisible();
     expect(screen.getAllByRole('row')).toHaveLength(3);
     expect(repository.listActivePrompts).toHaveBeenCalledOnce();
   });
@@ -455,7 +455,7 @@ describe('PromptLibraryPage', () => {
     );
     expect(nameHeader).toHaveAttribute('aria-sort', 'none');
     expect(updatedHeader).toHaveAttribute('aria-sort', 'descending');
-    expect(screen.getByText('全3件中 2件を表示')).toBeVisible();
+    expect(screen.getByText('全3件中 2件')).toBeVisible();
   });
 
   it('uses dedicated alignment classes only for Prompt and action columns', async () => {

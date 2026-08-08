@@ -258,13 +258,17 @@ export function PromptLibraryPage() {
       ) : null}
       <PromptLibraryStateMessage state={state} />
       {state.status === 'data' ? (
-        <PageSection title="Prompt一覧">
-          <div className="pt-prompt-library__result-row">
+        <PageSection
+          title="Prompt一覧"
+          titleAccessory={
             <p className="pt-prompt-library__result-count" aria-live="polite">
               {!hasConditions
-                ? `全${state.data.prompts.length}件を表示`
-                : `全${state.data.prompts.length}件中 ${results.length}件を表示`}
+                ? `全${state.data.prompts.length}件`
+                : `全${state.data.prompts.length}件中 ${results.length}件`}
             </p>
+          }
+        >
+          <div className="pt-prompt-library__result-row">
             {!hasConditions ? null : (
               <button
                 className="pt-prompt-library__clear"
