@@ -670,12 +670,18 @@ describe('PromptEditorPage', () => {
     const user = userEvent.setup();
     let written = '';
     Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText: vi.fn(async (t: string) => { written = t; }) },
+      value: {
+        writeText: vi.fn(async (t: string) => {
+          written = t;
+        }),
+      },
       configurable: true,
     });
     renderEditor({} as PromptTrailRepository);
     await user.type(screen.getByLabelText('Prompt本文'), 'Hi ${name}');
-    await user.click(screen.getByRole('button', { name: 'Prompt本文をコピー' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Prompt本文をコピー' }),
+    );
     await user.type(screen.getByLabelText('${name}'), 'World');
     await user.click(screen.getByRole('button', { name: 'コピー' }));
     expect(written).toBe('Hi World');
@@ -688,15 +694,18 @@ describe('PromptEditorPage', () => {
     const user = userEvent.setup();
     let written = '';
     Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText: vi.fn(async (t: string) => { written = t; }) },
+      value: {
+        writeText: vi.fn(async (t: string) => {
+          written = t;
+        }),
+      },
       configurable: true,
     });
     renderEditor({} as PromptTrailRepository);
-    await user.type(
-      screen.getByLabelText('Prompt本文'),
-      '${a} and ${b}',
+    await user.type(screen.getByLabelText('Prompt本文'), '${a} and ${b}');
+    await user.click(
+      screen.getByRole('button', { name: 'Prompt本文をコピー' }),
     );
-    await user.click(screen.getByRole('button', { name: 'Prompt本文をコピー' }));
     await user.type(screen.getByLabelText('${a}'), 'filled');
     await user.click(screen.getByRole('button', { name: 'コピー' }));
     expect(written).toBe('filled and ${b}');
@@ -706,7 +715,9 @@ describe('PromptEditorPage', () => {
     const user = userEvent.setup();
     renderEditor({} as PromptTrailRepository);
     await user.type(screen.getByLabelText('Prompt本文'), '${x}');
-    await user.click(screen.getByRole('button', { name: 'Prompt本文をコピー' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Prompt本文をコピー' }),
+    );
     expect(
       screen.getByRole('dialog', { name: '変数に値を入力してコピー' }),
     ).toBeInTheDocument();
@@ -720,7 +731,11 @@ describe('PromptEditorPage', () => {
     const user = userEvent.setup();
     let written = '';
     Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText: vi.fn(async (t: string) => { written = t; }) },
+      value: {
+        writeText: vi.fn(async (t: string) => {
+          written = t;
+        }),
+      },
       configurable: true,
     });
     renderEditor({} as PromptTrailRepository);
@@ -738,12 +753,18 @@ describe('PromptEditorPage', () => {
     const user = userEvent.setup();
     let written = '';
     Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText: vi.fn(async (t: string) => { written = t; }) },
+      value: {
+        writeText: vi.fn(async (t: string) => {
+          written = t;
+        }),
+      },
       configurable: true,
     });
     renderEditor({} as PromptTrailRepository);
     await user.type(screen.getByLabelText('Prompt本文'), 'no vars here');
-    await user.click(screen.getByRole('button', { name: 'Prompt本文をコピー' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Prompt本文をコピー' }),
+    );
     expect(written).toBe('no vars here');
     expect(
       screen.queryByRole('dialog', { name: '変数に値を入力してコピー' }),

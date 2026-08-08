@@ -186,7 +186,10 @@ test.describe('Prompt Editor flow', () => {
     ).toBeVisible();
     await page.getByLabel('${name}').fill('Alice');
     await page.getByLabel('${age}').fill('30');
-    await page.getByRole('dialog').getByRole('button', { name: 'コピー' }).click();
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'コピー' })
+      .click();
     const clipboardText = await page.evaluate(() =>
       navigator.clipboard.readText(),
     );
