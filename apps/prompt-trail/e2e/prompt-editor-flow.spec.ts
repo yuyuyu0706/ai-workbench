@@ -171,6 +171,59 @@ test.describe('Prompt Editor flow', () => {
     expect(clipboardText).toBe('編集対象Promptの本文');
   });
 
+  test('variable panel opens, accepts values, and copies resolved text', async ({
+    page,
+    context,
+  }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.goto('/prompts/new');
+    await page
+      .getByRole('textbox', { name: 'Prompt本文' })
+      .fill('Hello ${name}, you are ${age} years old.');
+    await page.getByRole('button', { name: 'Prompt本文をコピー' }).click();
+    await expect(
+      page.getByRole('dialog', { name: '変数に値を入力してコピー' }),
+    ).toBeVisible();
+    await page.getByLabel('${name}').fill('Alice');
+    await page.getByLabel('${age}').fill('30');
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'コピー' })
+      .click();
+    const clipboardText = await page.evaluate(() =>
+      navigator.clipboard.readText(),
+    );
+    expect(clipboardText).toBe('Hello Alice, you are 30 years old.');
+    await expect(
+      page.getByRole('dialog', { name: '変数に値を入力してコピー' }),
+    ).toHaveCount(0);
+  });
+
+  test('Esc closes the variable panel', async ({ page }) => {
+    await page.goto('/prompts/new');
+    await page.getByRole('textbox', { name: 'Prompt本文' }).fill('${var}');
+    await page.getByRole('button', { name: 'Prompt本文をコピー' }).click();
+    await expect(
+      page.getByRole('dialog', { name: '変数に値を入力してコピー' }),
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(
+      page.getByRole('dialog', { name: '変数に値を入力してコピー' }),
+    ).toHaveCount(0);
+  });
+
+  test('textarea is wider than title field at desktop viewport', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/prompts/new');
+    const titleBox = await page.getByLabel('タイトル').boundingBox();
+    const bodyBox = await page
+      .getByRole('textbox', { name: 'Prompt本文' })
+      .boundingBox();
+    expect(bodyBox!.width).toBeGreaterThan(titleBox!.width);
+  });
+
   test('works without horizontal overflow at 320px and keeps a New Trail Prompt active', async ({
     page,
   }) => {
