@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { usePromptTrailDataRevision } from '../app/PromptTrailDataRevisionContext';
@@ -19,6 +19,10 @@ import {
   type PromptEditorErrors,
   type PromptEditorValues,
 } from '../prompt-editor';
+import {
+  extractPromptVariables,
+  resolvePromptVariables,
+} from '../prompt-shared/promptVariables';
 
 const KIND_LABELS = {
   'chat-consultation': 'チャット相談',
@@ -86,6 +90,8 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
   } | null>(null);
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
   const confirmDeleteButtonRef = useRef<HTMLButtonElement>(null);
+  const copyButtonRef = useRef<HTMLButtonElement>(null);
+  const varPanelRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     activeIdentityRef.current = { repository, routeKey };
     return () => {
@@ -166,6 +172,40 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
   const saveLabel = displayedStatus === 'submitting' ? '保存中...' : '保存';
   const [copyState, setCopyState] = useState<'success' | 'error' | null>(null);
   const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [varPanelOpen, setVarPanelOpen] = useState(false);
+  const [varValues, setVarValues] = useState<Record<string, string>>({});
+
+  const detectedVars = useMemo(
+    () => extractPromptVariables(currentForm.values.body),
+    [currentForm.values.body],
+  );
+
+  useEffect(() => {
+    if (varPanelOpen && detectedVars.length === 0) setVarPanelOpen(false);
+  }, [detectedVars.length, varPanelOpen]);
+
+  useEffect(() => {
+    if (!varPanelOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setVarPanelOpen(false);
+    }
+    function onMouseDown(e: MouseEvent) {
+      if (
+        varPanelRef.current &&
+        !varPanelRef.current.contains(e.target as Node) &&
+        (!copyButtonRef.current ||
+          !copyButtonRef.current.contains(e.target as Node))
+      ) {
+        setVarPanelOpen(false);
+      }
+    }
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('mousedown', onMouseDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('mousedown', onMouseDown);
+    };
+  }, [varPanelOpen]);
 
   useEffect(() => {
     return () => {
@@ -207,6 +247,40 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
     if (copyResetTimerRef.current !== null) {
       clearTimeout(copyResetTimerRef.current);
       copyResetTimerRef.current = null;
+    }
+  }
+
+  function handleCopyButtonClick() {
+    if (detectedVars.length === 0) {
+      void copyBody();
+      return;
+    }
+    if (varPanelOpen) {
+      setVarPanelOpen(false);
+      return;
+    }
+    if (copyResetTimerRef.current !== null) {
+      clearTimeout(copyResetTimerRef.current);
+      copyResetTimerRef.current = null;
+    }
+    setCopyState(null);
+    setVarValues({});
+    setVarPanelOpen(true);
+  }
+
+  async function copyResolved() {
+    if (copyResetTimerRef.current !== null) {
+      clearTimeout(copyResetTimerRef.current);
+      copyResetTimerRef.current = null;
+    }
+    const resolved = resolvePromptVariables(currentForm.values.body, varValues);
+    try {
+      await navigator.clipboard.writeText(resolved);
+      setVarPanelOpen(false);
+      setCopyState('success');
+    } catch {
+      setVarPanelOpen(false);
+      setCopyState('error');
     }
   }
 
@@ -454,12 +528,29 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
             </div>
             <div className="pt-prompt-editor__body-label-row">
               <label htmlFor="prompt-body">Prompt本文</label>
+              {detectedVars.length > 0 && (
+                <span
+                  className="pt-prompt-editor__var-badges"
+                  aria-label="検出された変数"
+                >
+                  {detectedVars.map((v) => (
+                    <span
+                      key={v}
+                      className="pt-prompt-editor__var-badge"
+                    >{`\${${v}}`}</span>
+                  ))}
+                </span>
+              )}
               <span className="pt-prompt-editor__copy-wrap">
                 <button
+                  ref={copyButtonRef}
                   aria-label="Prompt本文をコピー"
+                  aria-expanded={
+                    detectedVars.length > 0 ? varPanelOpen : undefined
+                  }
                   className={`pt-prompt-editor__copy${copyState === 'success' ? ' pt-prompt-editor__copy--copied' : ''}`}
                   type="button"
-                  onClick={() => void copyBody()}
+                  onClick={handleCopyButtonClick}
                   onMouseLeave={handleCopyMouseLeave}
                   onMouseEnter={handleCopyMouseEnter}
                   onBlur={handleCopyBlur}
@@ -471,6 +562,43 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
                 </span>
               </span>
             </div>
+            {varPanelOpen && detectedVars.length > 0 && (
+              <div
+                ref={varPanelRef}
+                className="pt-prompt-editor__var-panel"
+                role="dialog"
+                aria-label="変数に値を入力してコピー"
+              >
+                <div className="pt-prompt-editor__var-panel-fields">
+                  {detectedVars.map((v) => (
+                    <div key={v} className="pt-prompt-editor__var-panel-field">
+                      <label htmlFor={`var-input-${v}`}>{`\${${v}}`}</label>
+                      <input
+                        id={`var-input-${v}`}
+                        type="text"
+                        value={varValues[v] ?? ''}
+                        onChange={(e) =>
+                          setVarValues((prev) => ({
+                            ...prev,
+                            [v]: e.target.value,
+                          }))
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') e.preventDefault();
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <button
+                  className="pt-button pt-button--primary"
+                  type="button"
+                  onClick={() => void copyResolved()}
+                >
+                  コピー
+                </button>
+              </div>
+            )}
             <p aria-live="polite" className="pt-prompt-editor__copy-status">
               {copyState === 'success'
                 ? 'コピーしました'

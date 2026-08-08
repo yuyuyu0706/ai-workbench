@@ -5,6 +5,11 @@ import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  extractPromptVariables,
+  resolvePromptVariables,
+} from '../prompt-shared/promptVariables';
+
+import {
   PromptTrailDataRevisionProvider,
   usePromptTrailDataRevision,
 } from '../app/PromptTrailDataRevisionContext';
@@ -169,6 +174,28 @@ async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('Prompt本文'), '  Markdown\n  本文');
   await user.selectOptions(screen.getByLabelText('種別'), 'codex-request');
 }
+
+describe('promptVariables utilities', () => {
+  it('extractPromptVariables returns unique vars in order of first occurrence', () => {
+    expect(extractPromptVariables('Hello ${name}, ${age} and ${name}')).toEqual(
+      ['name', 'age'],
+    );
+  });
+
+  it('extractPromptVariables returns empty array when no vars', () => {
+    expect(extractPromptVariables('no variables here')).toEqual([]);
+  });
+
+  it('resolvePromptVariables substitutes filled values and preserves unfilled', () => {
+    const result = resolvePromptVariables('${a} and ${b}', { a: 'hello' });
+    expect(result).toBe('hello and ${b}');
+  });
+
+  it('resolvePromptVariables treats empty string as unfilled', () => {
+    const result = resolvePromptVariables('${x}', { x: '' });
+    expect(result).toBe('${x}');
+  });
+});
 
 describe('PromptEditorPage', () => {
   it('uses one form for header and footer saves and orders kind, title, then body', () => {
@@ -610,6 +637,117 @@ describe('PromptEditorPage', () => {
     const copyBtn = screen.getByRole('button', { name: 'Prompt本文をコピー' });
     expect(copyBtn).toBeInTheDocument();
     expect(copyBtn).not.toBeDisabled();
+  });
+
+  it('shows variable badges when body contains ${var} patterns', async () => {
+    const user = userEvent.setup();
+    renderEditor({} as PromptTrailRepository);
+    await user.type(
+      screen.getByLabelText('Prompt本文'),
+      'Hello ${name} and ${age}',
+    );
+    expect(screen.getByLabelText('検出された変数')).toBeInTheDocument();
+    expect(screen.getByText('${name}')).toBeInTheDocument();
+    expect(screen.getByText('${age}')).toBeInTheDocument();
+  });
+
+  it('opens variable panel when copy button clicked with vars, closes on second click', async () => {
+    const user = userEvent.setup();
+    renderEditor({} as PromptTrailRepository);
+    await user.type(screen.getByLabelText('Prompt本文'), 'Hi ${name}');
+    const copyBtn = screen.getByRole('button', { name: 'Prompt本文をコピー' });
+    await user.click(copyBtn);
+    expect(
+      screen.getByRole('dialog', { name: '変数に値を入力してコピー' }),
+    ).toBeInTheDocument();
+    await user.click(copyBtn);
+    expect(
+      screen.queryByRole('dialog', { name: '変数に値を入力してコピー' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('copies resolved text from variable panel and closes panel', async () => {
+    const user = userEvent.setup();
+    let written = '';
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn(async (t: string) => { written = t; }) },
+      configurable: true,
+    });
+    renderEditor({} as PromptTrailRepository);
+    await user.type(screen.getByLabelText('Prompt本文'), 'Hi ${name}');
+    await user.click(screen.getByRole('button', { name: 'Prompt本文をコピー' }));
+    await user.type(screen.getByLabelText('${name}'), 'World');
+    await user.click(screen.getByRole('button', { name: 'コピー' }));
+    expect(written).toBe('Hi World');
+    expect(
+      screen.queryByRole('dialog', { name: '変数に値を入力してコピー' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps unfilled variables as ${var} in copied text', async () => {
+    const user = userEvent.setup();
+    let written = '';
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn(async (t: string) => { written = t; }) },
+      configurable: true,
+    });
+    renderEditor({} as PromptTrailRepository);
+    await user.type(
+      screen.getByLabelText('Prompt本文'),
+      '${a} and ${b}',
+    );
+    await user.click(screen.getByRole('button', { name: 'Prompt本文をコピー' }));
+    await user.type(screen.getByLabelText('${a}'), 'filled');
+    await user.click(screen.getByRole('button', { name: 'コピー' }));
+    expect(written).toBe('filled and ${b}');
+  });
+
+  it('closes variable panel on Escape key', async () => {
+    const user = userEvent.setup();
+    renderEditor({} as PromptTrailRepository);
+    await user.type(screen.getByLabelText('Prompt本文'), '${x}');
+    await user.click(screen.getByRole('button', { name: 'Prompt本文をコピー' }));
+    expect(
+      screen.getByRole('dialog', { name: '変数に値を入力してコピー' }),
+    ).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(
+      screen.queryByRole('dialog', { name: '変数に値を入力してコピー' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('resets varValues when panel is reopened', async () => {
+    const user = userEvent.setup();
+    let written = '';
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn(async (t: string) => { written = t; }) },
+      configurable: true,
+    });
+    renderEditor({} as PromptTrailRepository);
+    await user.type(screen.getByLabelText('Prompt本文'), '${x}');
+    const copyBtn = screen.getByRole('button', { name: 'Prompt本文をコピー' });
+    await user.click(copyBtn);
+    await user.type(screen.getByLabelText('${x}'), 'first');
+    await user.click(copyBtn);
+    await user.click(copyBtn);
+    await user.click(screen.getByRole('button', { name: 'コピー' }));
+    expect(written).toBe('${x}');
+  });
+
+  it('copies body directly without panel when no vars present', async () => {
+    const user = userEvent.setup();
+    let written = '';
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn(async (t: string) => { written = t; }) },
+      configurable: true,
+    });
+    renderEditor({} as PromptTrailRepository);
+    await user.type(screen.getByLabelText('Prompt本文'), 'no vars here');
+    await user.click(screen.getByRole('button', { name: 'Prompt本文をコピー' }));
+    expect(written).toBe('no vars here');
+    expect(
+      screen.queryByRole('dialog', { name: '変数に値を入力してコピー' }),
+    ).not.toBeInTheDocument();
   });
 
   it('applies every Developer Tools override without performing a real save', async () => {
