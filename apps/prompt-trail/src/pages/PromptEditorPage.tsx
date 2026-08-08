@@ -206,6 +206,17 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
   }, [effectiveVarPanelOpen]);
 
   useEffect(() => {
+    if (!effectiveVarPanelOpen) return;
+    const firstInput =
+      varPanelRef.current?.querySelector<HTMLInputElement>('input');
+    firstInput?.focus();
+    const copyButton = copyButtonRef.current;
+    return () => {
+      copyButton?.focus();
+    };
+  }, [effectiveVarPanelOpen]);
+
+  useEffect(() => {
     return () => {
       if (copyResetTimerRef.current !== null)
         clearTimeout(copyResetTimerRef.current);

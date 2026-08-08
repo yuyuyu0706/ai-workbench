@@ -672,6 +672,19 @@ describe('PromptEditorPage', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('focuses the first variable input on open and returns focus to the copy button on close', async () => {
+    const user = userEvent.setup();
+    renderEditor({} as PromptTrailRepository);
+    fireEvent.change(screen.getByLabelText('Prompt本文'), {
+      target: { value: 'Hi ${name} and ${age}' },
+    });
+    const copyBtn = screen.getByRole('button', { name: 'Prompt本文をコピー' });
+    await user.click(copyBtn);
+    expect(screen.getByLabelText('${name}')).toHaveFocus();
+    await user.click(copyBtn);
+    expect(copyBtn).toHaveFocus();
+  });
+
   it('copies resolved text from variable panel and closes panel', async () => {
     const user = userEvent.setup();
     let written = '';
@@ -741,6 +754,9 @@ describe('PromptEditorPage', () => {
     expect(
       screen.queryByRole('dialog', { name: '変数に値を入力してコピー' }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Prompt本文をコピー' }),
+    ).toHaveFocus();
   });
 
   it('resets varValues when panel is reopened', async () => {

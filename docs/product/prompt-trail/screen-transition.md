@@ -158,7 +158,7 @@ P0-4-3 の状態表示は、Repository 連携前の利用開始状態と、将�
 | `runDetail`      | `/runs/:runId`            | Run Detail         | なし     | contextual route。常設グローバルナビではなく、Run などの文脈から到達する詳細画面 |
 | `notFound`       | `*`                       | Not Found          | なし     | recovery route。未知 URL から復帰導線を提示するための画面                        |
 
-Prompt EditorはPage Headerの説明を省き、種別、タイトル、Prompt本文のDOM順で入力する。種別とタイトルは横並び（481px以上）／縦並び（480px以下）のgridで表示する。Prompt本文textareaは最大64remまで横幅を広げ、種別・タイトル欄は最大44remに制限する。Prompt本文ラベルの右にコピーアイコンボタンを配置し、textareaの現在入力値をクリップボードへコピーできる（保存中・削除中でも有効）。本文に`${varName}`形式（先頭が英字またはアンダースコア、以降は英数字またはアンダースコア）の変数プレースホルダーが含まれる場合は、ラベル行に変数バッジを表示し、コピーボタンクリックで変数入力パネルを開いて値を入力後にコピーできる。未入力の変数は`${varName}`のままコピーされる。パネルはEscキーまたは外部クリックで閉じる。Page Header右上とform下部の保存Actionは単一formへ接続し、保存中および削除確認・削除処理・削除失敗中は同時に無効化する。loading、not-found、unavailable、failureではHeader保存を表示しない。
+Prompt EditorはPage Headerの説明を省き、種別、タイトル、Prompt本文のDOM順で入力する。種別とタイトルは横並び（481px以上）／縦並び（480px以下）のgridで表示する。Prompt本文textareaはカード幅いっぱいまで横幅を広げ、種別・タイトル欄は最大44remに制限する。Prompt本文ラベルの右にコピーアイコンボタンを配置し、textareaの現在入力値をクリップボードへコピーできる（保存中・削除中でも有効）。本文に`${varName}`形式（先頭が英字またはアンダースコア、以降は英数字またはアンダースコア）の変数プレースホルダーが含まれる場合は、ラベル行に変数バッジを表示し、コピーボタンクリックで変数入力パネルを開いて値を入力後にコピーできる。未入力の変数は`${varName}`のままコピーされる。パネルはEscキーまたは外部クリックで閉じる。Page Header右上とform下部の保存Actionは単一formへ接続し、保存中および削除確認・削除処理・削除失敗中は同時に無効化する。loading、not-found、unavailable、failureではHeader保存を表示しない。
 
 Prompt EditorのDanger Zoneは編集Routeだけに表示し、保存済みタイトルと「今後の利用対象から除外する一方、過去Run・関連Link・実行時のPrompt Snapshotは残る」ことを確認してから`deletedAt`を設定します。削除はPromptだけに限定した非Cascade操作で、成功後はPrompt Libraryへ遷移して一回限りの通知を表示します。削除済みPromptの編集Routeはunavailableを表示します。
 
