@@ -415,8 +415,9 @@ test.describe('Prompt Library data flow', () => {
     });
     await trigger.click();
     const popover = page.getByRole('dialog', { name: 'Prompt本文' });
-    await expect(popover.getByText('${name}')).toBeVisible();
-    await expect(popover.getByText('${topic}')).toBeVisible();
+    const varBadges = popover.locator('.pt-prompt-body-popover__var-badge');
+    await expect(varBadges.filter({ hasText: '${name}' })).toBeVisible();
+    await expect(varBadges.filter({ hasText: '${topic}' })).toBeVisible();
     await expectNoHorizontalOverflow(page);
 
     const copyButton = popover.getByRole('button', {
