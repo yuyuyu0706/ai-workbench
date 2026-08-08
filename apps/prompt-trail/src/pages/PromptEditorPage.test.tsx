@@ -645,47 +645,35 @@ describe('PromptEditorPage', () => {
     expect(copyBtn).not.toBeDisabled();
   });
 
-  it('shows variable badges when body contains ${var} patterns', async () => {
+  it('shows the variable panel as soon as ${var} patterns are detected', async () => {
     renderEditor({} as PromptTrailRepository);
     fireEvent.change(screen.getByLabelText('Prompt本文'), {
       target: { value: 'Hello ${name} and ${age}' },
     });
-    expect(screen.getByLabelText('検出された変数')).toBeInTheDocument();
-    expect(screen.getByText('${name}')).toBeInTheDocument();
-    expect(screen.getByText('${age}')).toBeInTheDocument();
-  });
-
-  it('opens variable panel when copy button clicked with vars, closes on second click', async () => {
-    const user = userEvent.setup();
-    renderEditor({} as PromptTrailRepository);
-    fireEvent.change(screen.getByLabelText('Prompt本文'), {
-      target: { value: 'Hi ${name}' },
-    });
-    const copyBtn = screen.getByRole('button', { name: 'Prompt本文をコピー' });
-    await user.click(copyBtn);
     expect(
       screen.getByRole('dialog', { name: '変数に値を入力してコピー' }),
     ).toBeInTheDocument();
-    await user.click(copyBtn);
+    expect(screen.getByLabelText('${name}')).toBeInTheDocument();
+    expect(screen.getByLabelText('${age}')).toBeInTheDocument();
+  });
+
+  it('hides the variable panel when no vars are detected', async () => {
+    renderEditor({} as PromptTrailRepository);
     expect(
       screen.queryByRole('dialog', { name: '変数に値を入力してコピー' }),
     ).not.toBeInTheDocument();
   });
 
-  it('focuses the first variable input on open and returns focus to the copy button on close', async () => {
+  it('does not steal focus from the textarea when the panel appears', async () => {
     const user = userEvent.setup();
     renderEditor({} as PromptTrailRepository);
-    fireEvent.change(screen.getByLabelText('Prompt本文'), {
-      target: { value: 'Hi ${name} and ${age}' },
-    });
-    const copyBtn = screen.getByRole('button', { name: 'Prompt本文をコピー' });
-    await user.click(copyBtn);
-    expect(screen.getByLabelText('${name}')).toHaveFocus();
-    await user.click(copyBtn);
-    expect(copyBtn).toHaveFocus();
+    const textarea = screen.getByLabelText('Prompt本文');
+    await user.click(textarea);
+    await user.type(textarea, 'Hi ${name}');
+    expect(textarea).toHaveFocus();
   });
 
-  it('copies resolved text from variable panel and closes panel', async () => {
+  it('copies resolved text from the always-visible variable panel', async () => {
     const user = userEvent.setup();
     let written = '';
     Object.defineProperty(navigator, 'clipboard', {
@@ -700,17 +688,11 @@ describe('PromptEditorPage', () => {
     fireEvent.change(screen.getByLabelText('Prompt本文'), {
       target: { value: 'Hi ${name}' },
     });
-    await user.click(
-      screen.getByRole('button', { name: 'Prompt本文をコピー' }),
-    );
     fireEvent.change(screen.getByLabelText('${name}'), {
       target: { value: 'World' },
     });
     await user.click(screen.getByRole('button', { name: 'コピー' }));
     expect(written).toBe('Hi World');
-    expect(
-      screen.queryByRole('dialog', { name: '変数に値を入力してコピー' }),
-    ).not.toBeInTheDocument();
   });
 
   it('keeps unfilled variables as ${var} in copied text', async () => {
@@ -728,9 +710,6 @@ describe('PromptEditorPage', () => {
     fireEvent.change(screen.getByLabelText('Prompt本文'), {
       target: { value: '${a} and ${b}' },
     });
-    await user.click(
-      screen.getByRole('button', { name: 'Prompt本文をコピー' }),
-    );
     fireEvent.change(screen.getByLabelText('${a}'), {
       target: { value: 'filled' },
     });
@@ -738,28 +717,7 @@ describe('PromptEditorPage', () => {
     expect(written).toBe('filled and ${b}');
   });
 
-  it('closes variable panel on Escape key', async () => {
-    const user = userEvent.setup();
-    renderEditor({} as PromptTrailRepository);
-    fireEvent.change(screen.getByLabelText('Prompt本文'), {
-      target: { value: '${x}' },
-    });
-    await user.click(
-      screen.getByRole('button', { name: 'Prompt本文をコピー' }),
-    );
-    expect(
-      screen.getByRole('dialog', { name: '変数に値を入力してコピー' }),
-    ).toBeInTheDocument();
-    await user.keyboard('{Escape}');
-    expect(
-      screen.queryByRole('dialog', { name: '変数に値を入力してコピー' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Prompt本文をコピー' }),
-    ).toHaveFocus();
-  });
-
-  it('resets varValues when panel is reopened', async () => {
+  it('clicking the copy icon replaces and copies using the panel current values', async () => {
     const user = userEvent.setup();
     let written = '';
     Object.defineProperty(navigator, 'clipboard', {
@@ -772,17 +730,27 @@ describe('PromptEditorPage', () => {
     });
     renderEditor({} as PromptTrailRepository);
     fireEvent.change(screen.getByLabelText('Prompt本文'), {
-      target: { value: '${x}' },
+      target: { value: 'Hi ${name}' },
     });
-    const copyBtn = screen.getByRole('button', { name: 'Prompt本文をコピー' });
-    await user.click(copyBtn);
-    fireEvent.change(screen.getByLabelText('${x}'), {
-      target: { value: 'first' },
+    fireEvent.change(screen.getByLabelText('${name}'), {
+      target: { value: 'World' },
     });
-    await user.click(copyBtn);
-    await user.click(copyBtn);
-    await user.click(screen.getByRole('button', { name: 'コピー' }));
-    expect(written).toBe('${x}');
+    await user.click(
+      screen.getByRole('button', { name: 'Prompt本文をコピー' }),
+    );
+    expect(written).toBe('Hi World');
+  });
+
+  it('returns focus to the copy icon when the panel disappears while focus was inside it', async () => {
+    const user = userEvent.setup();
+    renderEditor({} as PromptTrailRepository);
+    const textarea = screen.getByLabelText('Prompt本文');
+    fireEvent.change(textarea, { target: { value: '${x}' } });
+    await user.click(screen.getByLabelText('${x}'));
+    fireEvent.change(textarea, { target: { value: 'no vars anymore' } });
+    expect(
+      screen.getByRole('button', { name: 'Prompt本文をコピー' }),
+    ).toHaveFocus();
   });
 
   it('copies body directly without panel when no vars present', async () => {

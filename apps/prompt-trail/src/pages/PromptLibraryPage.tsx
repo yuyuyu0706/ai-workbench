@@ -544,15 +544,16 @@ function PromptBodyPopover({
   const [isTriggerFocused, setIsTriggerFocused] = useState(false);
   const [suppressFocusTooltip, setSuppressFocusTooltip] = useState(false);
   const [copyState, setCopyState] = useState<'success' | 'error' | null>(null);
-  const [varPanelOpen, setVarPanelOpen] = useState(false);
   const [varValues, setVarValues] = useState<Record<string, string>>({});
   const copyButtonRef = useRef<HTMLButtonElement>(null);
+  const editButtonRef = useRef<HTMLButtonElement>(null);
   const varPanelRef = useRef<HTMLDivElement>(null);
+  const focusInPanelRef = useRef(false);
   const detectedVars = useMemo(
     () => extractPromptVariables(prompt.body),
     [prompt.body],
   );
-  const effectiveVarPanelOpen = varPanelOpen && detectedVars.length > 0;
+  const effectiveVarPanelOpen = detectedVars.length > 0;
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [draft, setDraft] = useState(prompt.body);
   const [baseline, setBaseline] = useState({
@@ -811,18 +812,27 @@ function PromptBodyPopover({
     !open && (isTriggerHovered || (isTriggerFocused && !suppressFocusTooltip));
 
   function resetVarPanel() {
-    setVarPanelOpen(false);
     setVarValues({});
   }
 
   useEffect(() => {
     if (!effectiveVarPanelOpen) return;
-    const firstInput =
-      varPanelRef.current?.querySelector<HTMLInputElement>('input');
-    firstInput?.focus();
-    const copyButton = copyButtonRef.current;
+    function onFocusIn(e: FocusEvent) {
+      focusInPanelRef.current = !!(
+        varPanelRef.current && varPanelRef.current.contains(e.target as Node)
+      );
+    }
+    focusInPanelRef.current = !!(
+      varPanelRef.current &&
+      document.activeElement &&
+      varPanelRef.current.contains(document.activeElement)
+    );
+    document.addEventListener('focusin', onFocusIn);
+    const editButton = editButtonRef.current;
     return () => {
-      copyButton?.focus();
+      document.removeEventListener('focusin', onFocusIn);
+      if (focusInPanelRef.current) editButton?.focus();
+      focusInPanelRef.current = false;
     };
   }, [effectiveVarPanelOpen]);
 
@@ -844,18 +854,11 @@ function PromptBodyPopover({
       void writeToClipboard(prompt.body);
       return;
     }
-    if (effectiveVarPanelOpen) {
-      setVarPanelOpen(false);
-      return;
-    }
-    setCopyState(null);
-    setVarValues({});
-    setVarPanelOpen(true);
+    void copyResolved();
   };
 
   const copyResolved = async () => {
     const resolved = resolvePromptVariables(prompt.body, varValues);
-    setVarPanelOpen(false);
     setVarValues({});
     await writeToClipboard(resolved);
   };
@@ -1171,6 +1174,7 @@ function PromptBodyPopover({
                   {mode === 'view' ? (
                     <span className="pt-prompt-body-popover__edit-wrap">
                       <button
+                        ref={editButtonRef}
                         aria-label={`「${prompt.title}」のPrompt本文を編集`}
                         className="pt-prompt-body-popover__edit"
                         type="button"
@@ -1379,19 +1383,6 @@ function PromptBodyPopover({
                 </div>
               ) : (
                 <div className="pt-prompt-body-popover__content">
-                  {detectedVars.length > 0 ? (
-                    <span
-                      className="pt-prompt-body-popover__var-badges"
-                      aria-label="検出された変数"
-                    >
-                      {detectedVars.map((v) => (
-                        <span
-                          key={v}
-                          className="pt-prompt-body-popover__var-badge"
-                        >{`\${${v}}`}</span>
-                      ))}
-                    </span>
-                  ) : null}
                   <p>{prompt.body}</p>
                   {effectiveVarPanelOpen ? (
                     <div

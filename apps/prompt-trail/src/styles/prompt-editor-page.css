@@ -62,24 +62,6 @@
   gap: var(--pt-space-2);
 }
 
-.pt-prompt-editor__var-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--pt-space-1);
-  flex: 1;
-  overflow: hidden;
-}
-
-.pt-prompt-editor__var-badge {
-  font-family: var(--pt-font-mono, monospace);
-  font-size: 0.75rem;
-  background: var(--pt-color-code-bg, #f6f8fa);
-  border: 1px solid var(--pt-color-border, #d1d5db);
-  border-radius: var(--pt-radius-sm, 4px);
-  padding: 0.1em 0.4em;
-  white-space: nowrap;
-}
-
 .pt-prompt-editor__copy-wrap {
   position: relative;
   display: inline-flex;
