@@ -22,7 +22,7 @@ import {
   buildPromptEditPath,
   routePaths,
 } from '../app/routes';
-import { PageHeader, PageSection, StateMessage } from '../components/ui';
+import { PageSection, StateMessage } from '../components/ui';
 import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
 import { selectActiveDeveloperUiState } from '../developer-ui-state';
 import {
@@ -90,6 +90,7 @@ export function PromptLibraryPage() {
   const [query, setQuery] = useState('');
   const [projectFilter, setProjectFilter] = useState<ProjectFilter>('all');
   const [sortMode, setSortMode] = useState<PromptSortMode>('updated-desc');
+  const keepOpenPromptIdRef = useRef<string | null>(null);
   const [openPrompt, setOpenPrompt] = useState<{
     id: PromptLibraryItem['id'];
     revision: number;
@@ -133,10 +134,18 @@ export function PromptLibraryPage() {
 
   useEffect(() => {
     let active = true;
+    const keepId = keepOpenPromptIdRef.current;
+    keepOpenPromptIdRef.current = null;
     loadPromptLibraryDataState(repository).then((next) => {
       if (active) {
-        setOpenPrompt(null);
         setLoaded({ repository, state: next });
+        if (keepId !== null) {
+          setOpenPrompt((prev) =>
+            prev?.id === keepId ? { ...prev, revision } : null,
+          );
+        } else {
+          setOpenPrompt(null);
+        }
       }
     });
     return () => {
@@ -188,10 +197,14 @@ export function PromptLibraryPage() {
 
   return (
     <section className="prompt-trail-page">
-      <PageHeader
-        title="Prompt Library"
-        description="保存済みPromptを検索・改善し、新しいTrailへ再利用できます。"
-        actions={
+      <header className="pt-prompt-library__header">
+        <div className="pt-prompt-library__header-meta">
+          <h1 className="pt-page-header__title">Prompt Library</h1>
+          <p className="pt-page-header__description">
+            保存済みPromptを検索・改善し、新しいTrailへ再利用できます。
+          </p>
+        </div>
+        <div className="pt-prompt-library__header-controls">
           <Link
             className="pt-button pt-button--primary"
             aria-disabled={controlsLocked}
@@ -200,69 +213,77 @@ export function PromptLibraryPage() {
           >
             Promptを新規登録
           </Link>
-        }
-      />
-      {quickEditNotice !== null ? (
-        <p className="pt-success-notice" role="status">
-          {quickEditNotice}
-        </p>
-      ) : notice !== null ? (
-        <p className="pt-success-notice" role="status">
-          {notice === 'deleted'
-            ? 'Promptを削除しました。'
-            : `Promptを${notice === 'created' ? '登録' : '更新'}しました。`}
-        </p>
-      ) : null}
-      <PromptLibraryStateMessage state={state} />
-      {state.status === 'data' ? (
-        <PageSection title="Prompt一覧">
-          <div className="pt-prompt-library__tools">
-            <label className="pt-prompt-project-filter">
-              <span>プロジェクト</span>
-              <select
-                value={projectFilter}
-                disabled={controlsLocked}
-                onChange={(event) => {
-                  setProjectFilter(event.target.value as ProjectFilter);
-                }}
-              >
-                <option value="all">すべてのプロジェクト</option>
-                <option value="global">Global</option>
-                <option value="project">Default Project</option>
-              </select>
-            </label>
-            <label className="pt-prompt-search">
-              <span>Promptを検索</span>
-              <input
-                type="search"
-                value={query}
-                disabled={controlsLocked}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                }}
-                placeholder="Prompt名または本文を検索"
-              />
-            </label>
-            <div className="pt-prompt-library__result-row">
-              <p className="pt-prompt-library__result-count" aria-live="polite">
-                {!hasConditions
-                  ? `全${state.data.prompts.length}件を表示`
-                  : `全${state.data.prompts.length}件中 ${results.length}件を表示`}
-              </p>
-              {!hasConditions ? null : (
-                <button
-                  className="pt-prompt-library__clear"
-                  type="button"
+          {state.status === 'data' ? (
+            <>
+              <label className="pt-prompt-search">
+                <span className="pt-sr-only">Promptを検索</span>
+                <input
+                  type="search"
+                  value={query}
                   disabled={controlsLocked}
-                  onClick={() => {
-                    setProjectFilter('all');
-                    setQuery('');
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                  }}
+                  placeholder="Prompt名または本文を検索"
+                />
+              </label>
+              <label className="pt-prompt-project-filter">
+                <span className="pt-sr-only">プロジェクト</span>
+                <select
+                  value={projectFilter}
+                  disabled={controlsLocked}
+                  onChange={(event) => {
+                    setProjectFilter(event.target.value as ProjectFilter);
                   }}
                 >
-                  条件をクリア
-                </button>
-              )}
-            </div>
+                  <option value="all">すべてのプロジェクト</option>
+                  <option value="global">Global</option>
+                  <option value="project">Default Project</option>
+                </select>
+              </label>
+            </>
+          ) : null}
+        </div>
+      </header>
+      <PromptLibraryStateMessage state={state} />
+      {state.status === 'data' ? (
+        <PageSection
+          title="Prompt一覧"
+          actions={
+            quickEditNotice !== null ? (
+              <p className="pt-prompt-library__notice" role="status">
+                {quickEditNotice}
+              </p>
+            ) : notice !== null ? (
+              <p className="pt-prompt-library__notice" role="status">
+                {notice === 'deleted'
+                  ? 'Promptを削除しました。'
+                  : `Promptを${notice === 'created' ? '登録' : '更新'}しました。`}
+              </p>
+            ) : undefined
+          }
+          titleAccessory={
+            <p className="pt-prompt-library__result-count" aria-live="polite">
+              {!hasConditions
+                ? `全${state.data.prompts.length}件`
+                : `全${state.data.prompts.length}件中 ${results.length}件`}
+            </p>
+          }
+        >
+          <div className="pt-prompt-library__result-row">
+            {!hasConditions ? null : (
+              <button
+                className="pt-prompt-library__clear"
+                type="button"
+                disabled={controlsLocked}
+                onClick={() => {
+                  setProjectFilter('all');
+                  setQuery('');
+                }}
+              >
+                条件をクリア
+              </button>
+            )}
           </div>
           {results.length === 0 ? (
             <StateMessage
@@ -369,6 +390,15 @@ export function PromptLibraryPage() {
                       onBodyGuardChange={setPromptBodyGuard}
                       onBodySaved={() => {
                         setQuickEditNotice('Prompt本文を更新しました。');
+                        if (openPrompt !== null) {
+                          keepOpenPromptIdRef.current = openPrompt.id;
+                          // Pre-advance revision so openPromptId stays truthy during
+                          // the async reload, preventing a one-frame popover close.
+                          setOpenPrompt({
+                            ...openPrompt,
+                            revision: revision + 1,
+                          });
+                        }
                         notifyDataChanged();
                       }}
                       onBodyReloadRequested={() => notifyDataChanged()}
@@ -522,6 +552,7 @@ function PromptBodyPopover({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const continueEditingRef = useRef<HTMLButtonElement>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastPositionRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
   const savingRef = useRef(false);
@@ -626,6 +657,7 @@ function PromptBodyPopover({
       mountedRef.current = false;
       if (animationFrameRef.current !== null)
         cancelAnimationFrame(animationFrameRef.current);
+      if (copyTimeoutRef.current !== null) clearTimeout(copyTimeoutRef.current);
     };
   }, []);
 
@@ -766,6 +798,10 @@ function PromptBodyPopover({
     try {
       await navigator.clipboard.writeText(prompt.body);
       setCopyState('success');
+      if (copyTimeoutRef.current !== null) clearTimeout(copyTimeoutRef.current);
+      copyTimeoutRef.current = setTimeout(() => {
+        setCopyState(null);
+      }, 2000);
     } catch {
       setCopyState('error');
     }
@@ -840,6 +876,18 @@ function PromptBodyPopover({
     setSuppressFocusTooltip(true);
     onClose();
     triggerRef.current?.focus({ preventScroll: true });
+  };
+
+  const handleCancelEdit = () => {
+    if (savingRef.current) return;
+    requestDiscard(
+      () => {
+        setMode('view');
+        setError(null);
+        setMessageKind(null);
+      },
+      { closeOnConfirm: false },
+    );
   };
 
   const loadLatestBody = async (replaceDraft: boolean) => {
@@ -946,11 +994,7 @@ function PromptBodyPopover({
         setMessageKind(null);
         setDiscardConfirmVisible(false);
         setMode('view');
-        onClose();
         onSaved();
-        requestAnimationFrame(() =>
-          triggerRef.current?.focus({ preventScroll: true }),
-        );
       } else if (result.status === 'invalid') {
         setMessageKind('validation');
         setError('Prompt本文を入力してください。');
@@ -1142,6 +1186,7 @@ function PromptBodyPopover({
                       <button
                         aria-label={`「${prompt.title}」のPrompt本文をコピー`}
                         className="pt-prompt-body-popover__copy"
+                        data-copied={copyState === 'success'}
                         type="button"
                         onClick={handleCopy}
                       >
@@ -1153,6 +1198,14 @@ function PromptBodyPopover({
                         >
                           <rect x="8" y="8" width="11" height="11" rx="2" />
                           <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+                        </svg>
+                        <svg
+                          aria-hidden="true"
+                          className="pt-prompt-body-popover__copy-check"
+                          focusable="false"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M5 12l5 5L20 7" />
                         </svg>
                       </button>
                       <span
@@ -1188,7 +1241,7 @@ function PromptBodyPopover({
                   </span>
                 </div>
               </header>
-              <p
+              <span
                 aria-live="polite"
                 className="pt-prompt-body-popover__copy-status"
               >
@@ -1197,7 +1250,7 @@ function PromptBodyPopover({
                   : copyState === 'error'
                     ? 'コピーできませんでした'
                     : null}
-              </p>
+              </span>
               {error !== null ? (
                 <div
                   className="pt-prompt-body-popover__error"
@@ -1253,7 +1306,7 @@ function PromptBodyPopover({
                     <button
                       type="button"
                       disabled={saving}
-                      onClick={handleCloseButton}
+                      onClick={handleCancelEdit}
                     >
                       キャンセル
                     </button>

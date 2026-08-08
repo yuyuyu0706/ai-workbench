@@ -117,7 +117,7 @@ describe('PromptLibraryPage', () => {
     expect(screen.getByText(prompts[1].title)).toBeVisible();
     expect(within(table).getByText('Global')).toBeVisible();
     expect(within(table).getByText('Default Project')).toBeVisible();
-    expect(screen.getByText('全2件を表示')).toBeVisible();
+    expect(screen.getByText('全2件')).toBeVisible();
     expect(screen.getByRole('combobox', { name: 'プロジェクト' })).toHaveValue(
       'all',
     );
@@ -173,16 +173,16 @@ describe('PromptLibraryPage', () => {
     });
 
     await user.selectOptions(projectFilter, 'global');
-    expect(screen.getByText('全2件中 1件を表示')).toBeVisible();
+    expect(screen.getByText('全2件中 1件')).toBeVisible();
     expect(screen.getByText(prompts[0].title)).toBeVisible();
     expect(screen.queryByText(prompts[1].title)).toBeNull();
     expect(repository.listActivePrompts).toHaveBeenCalledOnce();
 
     await user.type(search, '  日本語  ');
-    expect(screen.getByText('全2件中 1件を表示')).toBeVisible();
+    expect(screen.getByText('全2件中 1件')).toBeVisible();
     await user.clear(search);
     await user.type(search, '別の検索対象');
-    expect(screen.getByText('全2件中 0件を表示')).toBeVisible();
+    expect(screen.getByText('全2件中 0件')).toBeVisible();
     expect(
       screen.getByText('条件に一致するPromptがありません。'),
     ).toBeVisible();
@@ -194,7 +194,7 @@ describe('PromptLibraryPage', () => {
     await user.click(screen.getByRole('button', { name: '条件をクリア' }));
     expect(search).toHaveValue('');
     expect(projectFilter).toHaveValue('all');
-    expect(screen.getByText('全2件を表示')).toBeVisible();
+    expect(screen.getByText('全2件')).toBeVisible();
     expect(screen.getAllByRole('row')).toHaveLength(3);
     expect(repository.listActivePrompts).toHaveBeenCalledOnce();
   });
@@ -355,7 +355,8 @@ describe('PromptLibraryPage', () => {
       ).toBeInTheDocument();
       await user.click(copyButton);
       expect(writeText).toHaveBeenCalledWith(prompts[0].body);
-      expect(screen.getByText('コピーしました')).toBeVisible();
+      expect(copyButton).toHaveAttribute('data-copied', 'true');
+      expect(screen.getByText('コピーしました')).toBeInTheDocument();
       expect(screen.getByRole('dialog', { name: 'Prompt本文' })).toBeVisible();
 
       await user.click(
@@ -370,7 +371,7 @@ describe('PromptLibraryPage', () => {
           name: `「${prompts[1].title}」のPrompt本文をコピー`,
         }),
       );
-      expect(screen.getByText('コピーできませんでした')).toBeVisible();
+      expect(screen.getByText('コピーできませんでした')).toBeInTheDocument();
       expect(screen.queryByText('clipboard denied detail')).toBeNull();
       expect(screen.getByRole('dialog', { name: 'Prompt本文' })).toBeVisible();
 
@@ -454,7 +455,7 @@ describe('PromptLibraryPage', () => {
     );
     expect(nameHeader).toHaveAttribute('aria-sort', 'none');
     expect(updatedHeader).toHaveAttribute('aria-sort', 'descending');
-    expect(screen.getByText('全3件中 2件を表示')).toBeVisible();
+    expect(screen.getByText('全3件中 2件')).toBeVisible();
   });
 
   it('uses dedicated alignment classes only for Prompt and action columns', async () => {
@@ -651,11 +652,11 @@ describe('PromptLibraryPage', () => {
     resolveSave(values[0]);
     expect(await screen.findByText('Prompt本文を更新しました。')).toBeVisible();
     expect(repository.listActivePrompts).toHaveBeenCalledTimes(2);
-    await waitFor(() => expect(trigger).toHaveFocus());
-    await user.click(trigger);
-    expect(
-      screen.getByRole('dialog', { name: 'Prompt本文' }),
-    ).toHaveTextContent('更新本文');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('dialog', { name: 'Prompt本文' }),
+      ).toHaveTextContent('更新本文'),
+    );
     expect(
       screen.getByRole('button', { name: 'Prompt名を降順に並べ替え' }),
     ).toBeInTheDocument();
@@ -811,6 +812,83 @@ describe('PromptLibraryPage', () => {
       }),
     ).toBeNull();
     expect(textarea).toHaveValue(`${prompts[0].body} dirty`);
+  });
+
+  it('returns to view mode on cancel without closing the popover when not dirty', async () => {
+    const user = userEvent.setup();
+    renderPromptLibraryPage(createRepository(prompts));
+    const trigger = await screen.findByRole('button', {
+      name: `「${prompts[0].title}」のPrompt本文を表示`,
+    });
+    await user.click(trigger);
+    await user.click(
+      screen.getByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文を編集`,
+      }),
+    );
+    const popover = screen.getByRole('dialog', { name: 'Prompt本文' });
+    expect(
+      within(popover).getByRole('textbox', { name: 'Prompt本文' }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      within(popover).getByRole('button', { name: 'キャンセル' }),
+    );
+
+    expect(
+      screen.getByRole('dialog', { name: 'Prompt本文' }),
+    ).toBeInTheDocument();
+    expect(
+      within(popover).queryByRole('textbox', { name: 'Prompt本文' }),
+    ).toBeNull();
+    expect(
+      within(popover).getByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文を編集`,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows discard confirm on cancel when dirty and returns to view mode after confirm without closing the popover', async () => {
+    const user = userEvent.setup();
+    renderPromptLibraryPage(createRepository(prompts));
+    const trigger = await screen.findByRole('button', {
+      name: `「${prompts[0].title}」のPrompt本文を表示`,
+    });
+    await user.click(trigger);
+    await user.click(
+      screen.getByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文を編集`,
+      }),
+    );
+    const popover = screen.getByRole('dialog', { name: 'Prompt本文' });
+    const textarea = within(popover).getByRole('textbox', {
+      name: 'Prompt本文',
+    });
+    await user.type(textarea, ' dirty');
+
+    await user.click(
+      within(popover).getByRole('button', { name: 'キャンセル' }),
+    );
+    expect(within(popover).getByRole('alert')).toHaveTextContent(
+      '編集中のPrompt本文を破棄しますか？',
+    );
+    expect(
+      within(popover).getByRole('textbox', { name: 'Prompt本文' }),
+    ).toBeInTheDocument();
+
+    await user.click(within(popover).getByRole('button', { name: '破棄する' }));
+
+    expect(
+      screen.getByRole('dialog', { name: 'Prompt本文' }),
+    ).toBeInTheDocument();
+    expect(
+      within(popover).queryByRole('textbox', { name: 'Prompt本文' }),
+    ).toBeNull();
+    expect(
+      within(popover).getByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文を編集`,
+      }),
+    ).toBeInTheDocument();
   });
 
   it('guards global navigation while dirty or saving', async () => {

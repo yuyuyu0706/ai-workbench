@@ -186,7 +186,7 @@ test.describe('Prompt Library data flow', () => {
       'font-weight',
       '700',
     );
-    await expect(page.getByText('全2件を表示')).toBeVisible();
+    await expect(page.getByText('全2件')).toBeVisible();
     const nameHeader = promptTable.getByRole('columnheader').first();
     const updatedHeader = promptTable.getByRole('columnheader', {
       name: '更新日時',
@@ -206,13 +206,13 @@ test.describe('Prompt Library data flow', () => {
       .click();
     await expect(updatedHeader).toHaveAttribute('aria-sort', 'descending');
     await projectFilter.selectOption('project');
-    await expect(page.getByText('全2件中 1件を表示')).toBeVisible();
+    await expect(page.getByText('全2件中 1件')).toBeVisible();
     await expect(promptTable.getByText('Global障害分析')).toHaveCount(0);
     await search.fill('  codex  ');
     await expect(promptTable.getByRole('row')).toHaveCount(2);
 
     await search.fill('一致しない検索条件');
-    await expect(page.getByText('全2件中 0件を表示')).toBeVisible();
+    await expect(page.getByText('全2件中 0件')).toBeVisible();
     await expect(
       page.getByText('条件に一致するPromptがありません。'),
     ).toBeVisible();
@@ -312,10 +312,11 @@ test.describe('Prompt Library data flow', () => {
     const scrollTopBeforeCopy = await popoverContent.evaluate(
       (element) => element.scrollTop,
     );
-    await popover
-      .getByRole('button', { name: '「Global障害分析」のPrompt本文をコピー' })
-      .click();
-    await expect(popover.getByText('コピーしました')).toBeVisible();
+    const globalCopyButton = popover.getByRole('button', {
+      name: '「Global障害分析」のPrompt本文をコピー',
+    });
+    await globalCopyButton.click();
+    await expect(globalCopyButton).toHaveAttribute('data-copied', 'true');
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
       GLOBAL_PROMPT_BODY,
     );
@@ -396,10 +397,10 @@ test.describe('Prompt Library data flow', () => {
     const promptTrigger = page.getByRole('button', {
       name: '「Codex開発依頼」のPrompt本文を表示',
     });
-    await page.getByRole('combobox', { name: 'プロジェクト' }).focus();
+    await page.getByRole('searchbox', { name: 'Promptを検索' }).focus();
     await page.keyboard.press('Tab');
     await expect(
-      page.getByRole('searchbox', { name: 'Promptを検索' }),
+      page.getByRole('combobox', { name: 'プロジェクト' }),
     ).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(tableRegion).toBeFocused();
@@ -466,7 +467,7 @@ test.describe('Prompt Library data flow', () => {
     const search = page.getByRole('searchbox', { name: 'Promptを検索' });
     await projectFilter.selectOption('project');
     await search.fill('Codex');
-    await expect(page.getByText('全2件中 1件を表示')).toBeVisible();
+    await expect(page.getByText('全2件中 1件')).toBeVisible();
     await page.getByRole('button', { name: '条件をクリア' }).click();
 
     const tableRegion = page.getByRole('region', {
@@ -487,10 +488,11 @@ test.describe('Prompt Library data flow', () => {
     await promptTrigger.click();
     const popover = page.getByRole('dialog', { name: 'Prompt本文' });
     await expect(popover).toBeVisible();
-    await popover
-      .getByRole('button', { name: '「Codex開発依頼」のPrompt本文をコピー' })
-      .click();
-    await expect(popover.getByText('コピーしました')).toBeVisible();
+    const codexCopyButton = popover.getByRole('button', {
+      name: '「Codex開発依頼」のPrompt本文をコピー',
+    });
+    await codexCopyButton.click();
+    await expect(codexCopyButton).toHaveAttribute('data-copied', 'true');
     await page.getByRole('button', { name: 'Prompt本文を閉じる' }).click();
     await expect(promptTrigger).toBeFocused();
 
@@ -578,7 +580,7 @@ test.describe('Prompt Library data flow', () => {
 
     await copy.click();
     await expect(copy).toBeFocused();
-    await expect(popover.getByText('コピーしました')).toBeVisible();
+    await expect(copy).toHaveAttribute('data-copied', 'true');
     await heading.hover();
     await expect(copyTooltip).toHaveCSS('opacity', '0');
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
@@ -621,9 +623,6 @@ test.describe('Prompt Library data flow', () => {
         .fill(`E2E更新本文 ${label}`);
       await popover.getByRole('button', { name: '保存' }).click();
       await expect(page.getByText('Prompt本文を更新しました。')).toBeVisible();
-      await expect(trigger).toBeFocused();
-
-      await trigger.click();
       await expect(popover).toContainText(`E2E更新本文 ${label}`);
       await page.getByRole('button', { name: 'Prompt本文を閉じる' }).click();
       await expectNoHorizontalOverflow(page);
@@ -674,6 +673,51 @@ test.describe('Prompt Library data flow', () => {
     await fullEditLink.click();
     await popover.getByRole('button', { name: '破棄する' }).click();
     await expect(page).toHaveURL(/\/prompts\/prompt-library-e2e\/edit$/);
+  });
+
+  test('keeps the Prompt body popover open and returns to view mode on cancel', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1000, height: 700 });
+    await page.goto('/prompts');
+    await seedPromptLibraryInBrowser(page);
+    await page.reload();
+
+    await page
+      .getByRole('button', { name: '「Codex開発依頼」のPrompt本文を表示' })
+      .click();
+    const popover = page.getByRole('dialog', { name: 'Prompt本文' });
+    await expect(popover).toBeVisible();
+    await popover
+      .getByRole('button', { name: '「Codex開発依頼」のPrompt本文を編集' })
+      .click();
+    const textbox = popover.getByRole('textbox', { name: 'Prompt本文' });
+    await expect(textbox).toBeVisible();
+
+    // Cancel without editing: popover stays open and returns to view mode immediately
+    await popover.getByRole('button', { name: 'キャンセル' }).click();
+    await expect(popover).toBeVisible();
+    await expect(textbox).toBeHidden();
+
+    // Re-enter edit, dirty the draft, then cancel: discard confirm appears
+    await popover
+      .getByRole('button', { name: '「Codex開発依頼」のPrompt本文を編集' })
+      .click();
+    await popover
+      .getByRole('textbox', { name: 'Prompt本文' })
+      .fill('破棄確認のためのdraft');
+    await popover.getByRole('button', { name: 'キャンセル' }).click();
+    await expect(popover.getByRole('alert')).toContainText(
+      '編集中のPrompt本文を破棄しますか？',
+    );
+    await expect(popover).toBeVisible();
+
+    // Confirm discard: popover stays open, returns to view mode
+    await popover.getByRole('button', { name: '破棄する' }).click();
+    await expect(popover).toBeVisible();
+    await expect(
+      popover.getByRole('textbox', { name: 'Prompt本文' }),
+    ).toBeHidden();
   });
 
   test('guards global navigation while a Prompt body draft is dirty', async ({
