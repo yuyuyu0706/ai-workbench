@@ -1,13 +1,33 @@
-.pt-prompt-library__tools {
-  display: grid;
-  gap: var(--pt-space-4);
-  min-width: 0;
+.pt-prompt-library__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pt-space-4) var(--pt-space-5);
+  align-items: flex-start;
+  justify-content: space-between;
+  width: min(100%, var(--pt-content-max));
+  margin: 0 auto var(--pt-space-4);
 }
 
-.pt-page-section:has(.pt-prompt-library__tools),
-.pt-page-section:has(.pt-prompt-library__tools) .pt-page-section__body {
+.pt-prompt-library__header-meta {
   min-width: 0;
+  max-width: 52rem;
+}
+
+.pt-prompt-library__header-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--pt-space-3);
   max-width: 100%;
+}
+
+.pt-prompt-library__header-controls .pt-prompt-search input {
+  width: 14rem;
+  max-width: 100%;
+}
+
+.pt-prompt-library__header-controls .pt-prompt-project-filter select {
+  max-width: 14rem;
 }
 
 .pt-prompt-project-filter,
@@ -357,10 +377,15 @@
 }
 
 .pt-prompt-body-popover__copy-status {
-  min-height: 1.5em;
-  margin: var(--pt-space-2) 0 0;
-  color: var(--pt-color-text-muted);
-  font-size: 0.875rem;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .pt-prompt-body-trigger-wrap {
@@ -514,6 +539,7 @@
 }
 
 .pt-prompt-body-popover__copy {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -532,7 +558,8 @@
   background: var(--pt-color-surface-subtle);
 }
 
-.pt-prompt-body-popover__copy-icon {
+.pt-prompt-body-popover__copy-icon,
+.pt-prompt-body-popover__copy-check {
   width: 1.2rem;
   height: 1.2rem;
   fill: none;
@@ -540,6 +567,22 @@
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.8;
+  transition: opacity 300ms ease;
+}
+
+.pt-prompt-body-popover__copy-check {
+  position: absolute;
+  opacity: 0;
+}
+
+.pt-prompt-body-popover__copy[data-copied='true']
+  .pt-prompt-body-popover__copy-icon {
+  opacity: 0;
+}
+
+.pt-prompt-body-popover__copy[data-copied='true']
+  .pt-prompt-body-popover__copy-check {
+  opacity: 1;
 }
 
 .pt-prompt-body-popover__copy-tooltip {
@@ -574,6 +617,20 @@
 }
 
 @media (max-width: 480px) {
+  .pt-prompt-library__header {
+    flex-direction: column;
+  }
+
+  .pt-prompt-library__header-controls {
+    width: 100%;
+  }
+
+  .pt-prompt-library__header-controls .pt-prompt-search input,
+  .pt-prompt-library__header-controls .pt-prompt-project-filter select {
+    width: 100%;
+    max-width: none;
+  }
+
   .pt-prompt-project-filter select {
     max-width: none;
   }

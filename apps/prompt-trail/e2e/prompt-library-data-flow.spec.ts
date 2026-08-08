@@ -312,10 +312,11 @@ test.describe('Prompt Library data flow', () => {
     const scrollTopBeforeCopy = await popoverContent.evaluate(
       (element) => element.scrollTop,
     );
-    await popover
-      .getByRole('button', { name: '「Global障害分析」のPrompt本文をコピー' })
-      .click();
-    await expect(popover.getByText('コピーしました')).toBeVisible();
+    const globalCopyButton = popover.getByRole('button', {
+      name: '「Global障害分析」のPrompt本文をコピー',
+    });
+    await globalCopyButton.click();
+    await expect(globalCopyButton).toHaveAttribute('data-copied', 'true');
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
       GLOBAL_PROMPT_BODY,
     );
@@ -487,10 +488,11 @@ test.describe('Prompt Library data flow', () => {
     await promptTrigger.click();
     const popover = page.getByRole('dialog', { name: 'Prompt本文' });
     await expect(popover).toBeVisible();
-    await popover
-      .getByRole('button', { name: '「Codex開発依頼」のPrompt本文をコピー' })
-      .click();
-    await expect(popover.getByText('コピーしました')).toBeVisible();
+    const codexCopyButton = popover.getByRole('button', {
+      name: '「Codex開発依頼」のPrompt本文をコピー',
+    });
+    await codexCopyButton.click();
+    await expect(codexCopyButton).toHaveAttribute('data-copied', 'true');
     await page.getByRole('button', { name: 'Prompt本文を閉じる' }).click();
     await expect(promptTrigger).toBeFocused();
 
@@ -578,7 +580,7 @@ test.describe('Prompt Library data flow', () => {
 
     await copy.click();
     await expect(copy).toBeFocused();
-    await expect(popover.getByText('コピーしました')).toBeVisible();
+    await expect(copy).toHaveAttribute('data-copied', 'true');
     await heading.hover();
     await expect(copyTooltip).toHaveCSS('opacity', '0');
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
@@ -621,9 +623,6 @@ test.describe('Prompt Library data flow', () => {
         .fill(`E2E更新本文 ${label}`);
       await popover.getByRole('button', { name: '保存' }).click();
       await expect(page.getByText('Prompt本文を更新しました。')).toBeVisible();
-      await expect(trigger).toBeFocused();
-
-      await trigger.click();
       await expect(popover).toContainText(`E2E更新本文 ${label}`);
       await page.getByRole('button', { name: 'Prompt本文を閉じる' }).click();
       await expectNoHorizontalOverflow(page);

@@ -355,7 +355,8 @@ describe('PromptLibraryPage', () => {
       ).toBeInTheDocument();
       await user.click(copyButton);
       expect(writeText).toHaveBeenCalledWith(prompts[0].body);
-      expect(screen.getByText('コピーしました')).toBeVisible();
+      expect(copyButton).toHaveAttribute('data-copied', 'true');
+      expect(screen.getByText('コピーしました')).toBeInTheDocument();
       expect(screen.getByRole('dialog', { name: 'Prompt本文' })).toBeVisible();
 
       await user.click(
@@ -370,7 +371,7 @@ describe('PromptLibraryPage', () => {
           name: `「${prompts[1].title}」のPrompt本文をコピー`,
         }),
       );
-      expect(screen.getByText('コピーできませんでした')).toBeVisible();
+      expect(screen.getByText('コピーできませんでした')).toBeInTheDocument();
       expect(screen.queryByText('clipboard denied detail')).toBeNull();
       expect(screen.getByRole('dialog', { name: 'Prompt本文' })).toBeVisible();
 
@@ -651,11 +652,11 @@ describe('PromptLibraryPage', () => {
     resolveSave(values[0]);
     expect(await screen.findByText('Prompt本文を更新しました。')).toBeVisible();
     expect(repository.listActivePrompts).toHaveBeenCalledTimes(2);
-    await waitFor(() => expect(trigger).toHaveFocus());
-    await user.click(trigger);
-    expect(
-      screen.getByRole('dialog', { name: 'Prompt本文' }),
-    ).toHaveTextContent('更新本文');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('dialog', { name: 'Prompt本文' }),
+      ).toHaveTextContent('更新本文'),
+    );
     expect(
       screen.getByRole('button', { name: 'Prompt名を降順に並べ替え' }),
     ).toBeInTheDocument();
