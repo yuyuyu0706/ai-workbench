@@ -394,7 +394,10 @@ export function PromptLibraryPage() {
                           keepOpenPromptIdRef.current = openPrompt.id;
                           // Pre-advance revision so openPromptId stays truthy during
                           // the async reload, preventing a one-frame popover close.
-                          setOpenPrompt({ ...openPrompt, revision: revision + 1 });
+                          setOpenPrompt({
+                            ...openPrompt,
+                            revision: revision + 1,
+                          });
                         }
                         notifyDataChanged();
                       }}

@@ -703,7 +703,9 @@ test.describe('Prompt Library data flow', () => {
     await popover
       .getByRole('button', { name: '「Codex開発依頼」のPrompt本文を編集' })
       .click();
-    await popover.getByRole('textbox', { name: 'Prompt本文' }).fill('破棄確認のためのdraft');
+    await popover
+      .getByRole('textbox', { name: 'Prompt本文' })
+      .fill('破棄確認のためのdraft');
     await popover.getByRole('button', { name: 'キャンセル' }).click();
     await expect(popover.getByRole('alert')).toContainText(
       '編集中のPrompt本文を破棄しますか？',
@@ -713,7 +715,9 @@ test.describe('Prompt Library data flow', () => {
     // Confirm discard: popover stays open, returns to view mode
     await popover.getByRole('button', { name: '破棄する' }).click();
     await expect(popover).toBeVisible();
-    await expect(popover.getByRole('textbox', { name: 'Prompt本文' })).toBeHidden();
+    await expect(
+      popover.getByRole('textbox', { name: 'Prompt本文' }),
+    ).toBeHidden();
   });
 
   test('guards global navigation while a Prompt body draft is dirty', async ({

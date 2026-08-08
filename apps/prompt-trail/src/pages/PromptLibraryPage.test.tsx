@@ -827,12 +827,20 @@ describe('PromptLibraryPage', () => {
       }),
     );
     const popover = screen.getByRole('dialog', { name: 'Prompt本文' });
-    expect(within(popover).getByRole('textbox', { name: 'Prompt本文' })).toBeInTheDocument();
+    expect(
+      within(popover).getByRole('textbox', { name: 'Prompt本文' }),
+    ).toBeInTheDocument();
 
-    await user.click(within(popover).getByRole('button', { name: 'キャンセル' }));
+    await user.click(
+      within(popover).getByRole('button', { name: 'キャンセル' }),
+    );
 
-    expect(screen.getByRole('dialog', { name: 'Prompt本文' })).toBeInTheDocument();
-    expect(within(popover).queryByRole('textbox', { name: 'Prompt本文' })).toBeNull();
+    expect(
+      screen.getByRole('dialog', { name: 'Prompt本文' }),
+    ).toBeInTheDocument();
+    expect(
+      within(popover).queryByRole('textbox', { name: 'Prompt本文' }),
+    ).toBeNull();
     expect(
       within(popover).getByRole('button', {
         name: `「${prompts[0].title}」のPrompt本文を編集`,
@@ -853,19 +861,29 @@ describe('PromptLibraryPage', () => {
       }),
     );
     const popover = screen.getByRole('dialog', { name: 'Prompt本文' });
-    const textarea = within(popover).getByRole('textbox', { name: 'Prompt本文' });
+    const textarea = within(popover).getByRole('textbox', {
+      name: 'Prompt本文',
+    });
     await user.type(textarea, ' dirty');
 
-    await user.click(within(popover).getByRole('button', { name: 'キャンセル' }));
+    await user.click(
+      within(popover).getByRole('button', { name: 'キャンセル' }),
+    );
     expect(within(popover).getByRole('alert')).toHaveTextContent(
       '編集中のPrompt本文を破棄しますか？',
     );
-    expect(within(popover).getByRole('textbox', { name: 'Prompt本文' })).toBeInTheDocument();
+    expect(
+      within(popover).getByRole('textbox', { name: 'Prompt本文' }),
+    ).toBeInTheDocument();
 
     await user.click(within(popover).getByRole('button', { name: '破棄する' }));
 
-    expect(screen.getByRole('dialog', { name: 'Prompt本文' })).toBeInTheDocument();
-    expect(within(popover).queryByRole('textbox', { name: 'Prompt本文' })).toBeNull();
+    expect(
+      screen.getByRole('dialog', { name: 'Prompt本文' }),
+    ).toBeInTheDocument();
+    expect(
+      within(popover).queryByRole('textbox', { name: 'Prompt本文' }),
+    ).toBeNull();
     expect(
       within(popover).getByRole('button', {
         name: `「${prompts[0].title}」のPrompt本文を編集`,
