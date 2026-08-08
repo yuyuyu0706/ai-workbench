@@ -3,6 +3,7 @@ import {
   useEffect,
   useId,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -34,6 +35,10 @@ import {
   type PromptSortMode,
 } from '../prompt-library';
 import { updatePromptBody, validatePromptBody } from '../prompt-editor';
+import {
+  extractPromptVariables,
+  resolvePromptVariables,
+} from '../prompt-shared/promptVariables';
 import { formatDateTime } from './date-time';
 
 type PageState = { readonly status: 'loading' } | PromptLibraryDataState;
@@ -539,6 +544,15 @@ function PromptBodyPopover({
   const [isTriggerFocused, setIsTriggerFocused] = useState(false);
   const [suppressFocusTooltip, setSuppressFocusTooltip] = useState(false);
   const [copyState, setCopyState] = useState<'success' | 'error' | null>(null);
+  const [varPanelOpen, setVarPanelOpen] = useState(false);
+  const [varValues, setVarValues] = useState<Record<string, string>>({});
+  const copyButtonRef = useRef<HTMLButtonElement>(null);
+  const varPanelRef = useRef<HTMLDivElement>(null);
+  const detectedVars = useMemo(
+    () => extractPromptVariables(prompt.body),
+    [prompt.body],
+  );
+  const effectiveVarPanelOpen = varPanelOpen && detectedVars.length > 0;
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [draft, setDraft] = useState(prompt.body);
   const [baseline, setBaseline] = useState({
@@ -742,6 +756,7 @@ function PromptBodyPopover({
           setMode('view');
           setCopyState(null);
           setSuppressFocusTooltip(true);
+          resetVarPanel();
           onClose();
           triggerRef.current?.focus({ preventScroll: true });
         });
@@ -750,6 +765,7 @@ function PromptBodyPopover({
       setMode('view');
       setCopyState(null);
       setSuppressFocusTooltip(true);
+      resetVarPanel();
       onClose();
       triggerRef.current?.focus({ preventScroll: true });
     };
@@ -794,9 +810,25 @@ function PromptBodyPopover({
   const tooltipVisible =
     !open && (isTriggerHovered || (isTriggerFocused && !suppressFocusTooltip));
 
-  const handleCopy = async () => {
+  function resetVarPanel() {
+    setVarPanelOpen(false);
+    setVarValues({});
+  }
+
+  useEffect(() => {
+    if (!effectiveVarPanelOpen) return;
+    const firstInput =
+      varPanelRef.current?.querySelector<HTMLInputElement>('input');
+    firstInput?.focus();
+    const copyButton = copyButtonRef.current;
+    return () => {
+      copyButton?.focus();
+    };
+  }, [effectiveVarPanelOpen]);
+
+  const writeToClipboard = async (text: string) => {
     try {
-      await navigator.clipboard.writeText(prompt.body);
+      await navigator.clipboard.writeText(text);
       setCopyState('success');
       if (copyTimeoutRef.current !== null) clearTimeout(copyTimeoutRef.current);
       copyTimeoutRef.current = setTimeout(() => {
@@ -805,6 +837,27 @@ function PromptBodyPopover({
     } catch {
       setCopyState('error');
     }
+  };
+
+  const handleCopy = () => {
+    if (detectedVars.length === 0) {
+      void writeToClipboard(prompt.body);
+      return;
+    }
+    if (effectiveVarPanelOpen) {
+      setVarPanelOpen(false);
+      return;
+    }
+    setCopyState(null);
+    setVarValues({});
+    setVarPanelOpen(true);
+  };
+
+  const copyResolved = async () => {
+    const resolved = resolvePromptVariables(prompt.body, varValues);
+    setVarPanelOpen(false);
+    setVarValues({});
+    await writeToClipboard(resolved);
   };
 
   const resetSession = () => {
@@ -817,6 +870,7 @@ function PromptBodyPopover({
     setDiscardConfirmVisible(false);
     setRecoveryStatus(null);
     pendingDiscardActionRef.current = null;
+    resetVarPanel();
   };
 
   const discardDraft = () => {
@@ -866,6 +920,7 @@ function PromptBodyPopover({
         setMode('view');
         setCopyState(null);
         setSuppressFocusTooltip(true);
+        resetVarPanel();
         onClose();
         triggerRef.current?.focus({ preventScroll: true });
       });
@@ -874,6 +929,7 @@ function PromptBodyPopover({
     discardDraft();
     setCopyState(null);
     setSuppressFocusTooltip(true);
+    resetVarPanel();
     onClose();
     triggerRef.current?.focus({ preventScroll: true });
   };
@@ -885,6 +941,7 @@ function PromptBodyPopover({
         setMode('view');
         setError(null);
         setMessageKind(null);
+        resetVarPanel();
       },
       { closeOnConfirm: false },
     );
@@ -917,6 +974,7 @@ function PromptBodyPopover({
     if (replaceDraft) {
       setDraft(latest.body);
       setMode('edit');
+      resetVarPanel();
     }
     setRecoveryStatus(null);
     setMessageKind('notice');
@@ -1128,6 +1186,7 @@ function PromptBodyPopover({
                             updatedAt: prompt.updatedAt,
                           });
                           setMode('edit');
+                          resetVarPanel();
                           schedulePositionUpdate();
                         }}
                       >
@@ -1184,7 +1243,13 @@ function PromptBodyPopover({
                   {mode === 'view' ? (
                     <span className="pt-prompt-body-popover__copy-wrap">
                       <button
+                        ref={copyButtonRef}
                         aria-label={`「${prompt.title}」のPrompt本文をコピー`}
+                        aria-expanded={
+                          detectedVars.length > 0
+                            ? effectiveVarPanelOpen
+                            : undefined
+                        }
                         className="pt-prompt-body-popover__copy"
                         data-copied={copyState === 'success'}
                         type="button"
@@ -1314,7 +1379,62 @@ function PromptBodyPopover({
                 </div>
               ) : (
                 <div className="pt-prompt-body-popover__content">
+                  {detectedVars.length > 0 ? (
+                    <span
+                      className="pt-prompt-body-popover__var-badges"
+                      aria-label="検出された変数"
+                    >
+                      {detectedVars.map((v) => (
+                        <span
+                          key={v}
+                          className="pt-prompt-body-popover__var-badge"
+                        >{`\${${v}}`}</span>
+                      ))}
+                    </span>
+                  ) : null}
                   <p>{prompt.body}</p>
+                  {effectiveVarPanelOpen ? (
+                    <div
+                      ref={varPanelRef}
+                      className="pt-prompt-body-popover__var-panel"
+                      role="dialog"
+                      aria-label="変数に値を入力してコピー"
+                    >
+                      <div className="pt-prompt-body-popover__var-panel-fields">
+                        {detectedVars.map((v) => (
+                          <div
+                            key={v}
+                            className="pt-prompt-body-popover__var-panel-field"
+                          >
+                            <label
+                              htmlFor={`${panelId}-var-${v}`}
+                            >{`\${${v}}`}</label>
+                            <input
+                              id={`${panelId}-var-${v}`}
+                              type="text"
+                              value={varValues[v] ?? ''}
+                              onChange={(e) =>
+                                setVarValues((prev) => ({
+                                  ...prev,
+                                  [v]: e.target.value,
+                                }))
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') e.preventDefault();
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        className="pt-button pt-button--primary"
+                        type="button"
+                        onClick={() => void copyResolved()}
+                      >
+                        コピー
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>,
