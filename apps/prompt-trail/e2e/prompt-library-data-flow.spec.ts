@@ -429,7 +429,7 @@ test.describe('Prompt Library data flow', () => {
     });
     await expect(varPanel).toBeVisible();
     await expectNoHorizontalOverflow(page);
-    const nameInput = varPanel.getByLabelText('${name}');
+    const nameInput = varPanel.getByLabel('${name}');
     await expect(nameInput).toBeFocused();
     await nameInput.fill('田中');
     await varPanel.getByRole('button', { name: 'コピー' }).click();
@@ -445,7 +445,7 @@ test.describe('Prompt Library data flow', () => {
     await expect(popover).toHaveCount(0);
     await trigger.click();
     await copyButton.click();
-    await expect(varPanel.getByLabelText('${name}')).toHaveValue('');
+    await expect(varPanel.getByLabel('${name}')).toHaveValue('');
   });
 
   test('keeps search and prompt data within a 320px viewport', async ({
