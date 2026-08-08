@@ -80,6 +80,10 @@
   gap: var(--pt-space-3);
 }
 
+.pt-page-section:has(.pt-prompt-library__result-count) .pt-page-section__title-row {
+  align-items: baseline;
+}
+
 .pt-prompt-library__result-count {
   margin: 0;
   color: var(--pt-color-text-muted);

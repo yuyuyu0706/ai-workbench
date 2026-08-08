@@ -152,7 +152,7 @@
 .pt-page-section__title-row {
   position: relative;
   display: inline-flex;
-  align-items: flex-end;
+  align-items: center;
   gap: var(--pt-space-1);
   max-width: 100%;
 }
