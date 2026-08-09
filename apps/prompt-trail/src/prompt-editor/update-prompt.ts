@@ -20,6 +20,7 @@ export async function updatePrompt(
   promptId: PromptId,
   values: PromptEditorValues,
   dependencies: Pick<PromptEditorDependencies, 'now'> = {},
+  variableValues: Record<string, string> = {},
 ) {
   const prompt = await repository.getPrompt(promptId);
   if (prompt === null) throw new PromptUpdateTargetError('not-found');
@@ -31,6 +32,7 @@ export async function updatePrompt(
     title: values.title.trim(),
     body: values.body,
     kind: values.kind as PromptKind,
+    variableValues,
     updatedAt:
       dependencies.now?.() ?? (new Date().toISOString() as UtcDateTimeString),
   };

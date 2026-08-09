@@ -27,6 +27,7 @@ async function prepare() {
     kind: 'codex-request',
     status: 'active',
     tags: [],
+    variableValues: {},
   };
   const run: Run & { readonly recipeId: null } = {
     id: runId,

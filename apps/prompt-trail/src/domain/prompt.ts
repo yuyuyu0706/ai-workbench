@@ -23,4 +23,5 @@ export type Prompt = BaseEntity<'prompt'> &
     readonly kind: PromptKind;
     readonly status: PromptStatus;
     readonly tags: readonly string[];
+    readonly variableValues: Record<string, string>;
   };

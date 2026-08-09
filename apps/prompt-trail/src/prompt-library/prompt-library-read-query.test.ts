@@ -25,6 +25,7 @@ const prompt = (
   kind: 'other',
   status: 'active',
   tags: [],
+  variableValues: {},
 });
 
 describe('Prompt Library read query', () => {

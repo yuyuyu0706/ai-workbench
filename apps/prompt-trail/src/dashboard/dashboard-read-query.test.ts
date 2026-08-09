@@ -75,6 +75,7 @@ describe('loadDashboardReadModel', () => {
       kind: 'codex-request',
       status: 'active',
       tags: [],
+      variableValues: {},
     };
     const directRun: Run & { recipeId: null } = {
       id: 'dashboard-direct-run' as RunId,

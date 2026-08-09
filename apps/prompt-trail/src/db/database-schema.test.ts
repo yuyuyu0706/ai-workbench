@@ -61,7 +61,7 @@ function expectTypedTables(database: PromptTrailDatabase): PromptTrailTables {
   };
 }
 
-describe('PromptTrailDatabase schema v2', () => {
+describe('PromptTrailDatabase schema v3', () => {
   it('creates PromptTrailDatabase instances with the default and custom DB names', () => {
     const defaultDatabase = createPromptTrailDatabase();
     const customDatabase = createPromptTrailDatabase(
@@ -80,7 +80,7 @@ describe('PromptTrailDatabase schema v2', () => {
     );
 
     expect(database.verno).toBe(PROMPT_TRAIL_SCHEMA_VERSION);
-    expect(PROMPT_TRAIL_SCHEMA_VERSION).toBe(2);
+    expect(PROMPT_TRAIL_SCHEMA_VERSION).toBe(3);
   });
 
   it('registers the six metadata store names only', () => {

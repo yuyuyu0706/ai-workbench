@@ -23,6 +23,7 @@ const prompt: Prompt = {
   kind: 'incident-analysis',
   status: 'active',
   tags: ['reusable'],
+  variableValues: {},
   createdAt: time,
   updatedAt: time,
   deletedAt: null,

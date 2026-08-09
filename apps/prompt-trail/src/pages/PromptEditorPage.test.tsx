@@ -42,6 +42,7 @@ const prompt: Prompt = {
   kind: 'other',
   status: 'active',
   tags: ['keep'],
+  variableValues: {},
 };
 
 function deferred<T>() {
@@ -691,7 +692,7 @@ describe('PromptEditorPage', () => {
     fireEvent.change(screen.getByLabelText('${name}'), {
       target: { value: 'World' },
     });
-    await user.click(screen.getByRole('button', { name: 'コピー' }));
+    await user.click(screen.getByRole('button', { name: 'Prompt本文をコピー' }));
     expect(written).toBe('Hi World');
   });
 
@@ -713,7 +714,7 @@ describe('PromptEditorPage', () => {
     fireEvent.change(screen.getByLabelText('${a}'), {
       target: { value: 'filled' },
     });
-    await user.click(screen.getByRole('button', { name: 'コピー' }));
+    await user.click(screen.getByRole('button', { name: 'Prompt本文をコピー' }));
     expect(written).toBe('filled and ${b}');
   });
 
@@ -773,6 +774,50 @@ describe('PromptEditorPage', () => {
     expect(
       screen.queryByRole('dialog', { name: '変数に値を入力してコピー' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('restores panel input values from prompt.variableValues when editing', async () => {
+    renderEditor(
+      {
+        getPrompt: vi.fn(async () => ({
+          ...prompt,
+          body: 'Hi ${name}',
+          variableValues: { name: 'Alice' },
+        })),
+      } as unknown as PromptTrailRepository,
+      { initialEntry: '/prompts/prompt-edit/edit' },
+    );
+    expect(await screen.findByLabelText('${name}')).toHaveValue('Alice');
+  });
+
+  it('starts with empty panel input values when creating a new Prompt', () => {
+    renderEditor({} as PromptTrailRepository);
+    fireEvent.change(screen.getByLabelText('Prompt本文'), {
+      target: { value: 'Hi ${name}' },
+    });
+    expect(screen.getByLabelText('${name}')).toHaveValue('');
+  });
+
+  it('saves only variable values whose keys still appear in the body', async () => {
+    const savePrompt = vi.fn(async (p: Prompt) => p);
+    const user = userEvent.setup();
+    renderEditor({
+      getProject: vi.fn(async () => ({ id: 'exists' })),
+      savePrompt,
+    } as unknown as PromptTrailRepository);
+    await fillValidForm(user);
+    fireEvent.change(screen.getByLabelText('Prompt本文'), {
+      target: { value: 'Hi ${name}' },
+    });
+    fireEvent.change(screen.getByLabelText('${name}'), {
+      target: { value: 'Alice' },
+    });
+    fireEvent.change(screen.getByLabelText('Prompt本文'), {
+      target: { value: 'no vars anymore' },
+    });
+    await user.click(screen.getAllByRole('button', { name: '保存' })[0]);
+    await waitFor(() => expect(savePrompt).toHaveBeenCalled());
+    expect(savePrompt.mock.calls[0][0]).toMatchObject({ variableValues: {} });
   });
 
   it('applies every Developer Tools override without performing a real save', async () => {

@@ -16,6 +16,7 @@ const prompt: Prompt = {
   kind: 'other',
   status: 'active',
   tags: [],
+  variableValues: {},
 };
 
 describe('loadPromptLibraryDataState', () => {

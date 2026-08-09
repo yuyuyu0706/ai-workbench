@@ -13,6 +13,7 @@ const prompt: Prompt = {
   kind: 'design-review',
   status: 'active',
   tags: ['standard'],
+  variableValues: {},
   createdAt,
   updatedAt: createdAt,
   deletedAt: null,

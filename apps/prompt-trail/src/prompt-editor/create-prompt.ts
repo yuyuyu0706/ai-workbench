@@ -17,6 +17,7 @@ export async function createPrompt(
   repository: PromptTrailRepository,
   values: PromptEditorValues,
   dependencies: PromptEditorDependencies = {},
+  variableValues: Record<string, string> = {},
 ) {
   const now =
     dependencies.now?.() ?? (new Date().toISOString() as UtcDateTimeString);
@@ -31,6 +32,7 @@ export async function createPrompt(
     kind: values.kind as PromptKind,
     status: 'active',
     tags: [],
+    variableValues,
     createdAt: now,
     updatedAt: now,
     deletedAt: null,

@@ -60,6 +60,7 @@ export const samplePrompt: Prompt = {
   kind: 'issue-creation',
   status: 'active',
   tags: ['github', 'issue', 'planning'],
+  variableValues: {},
   createdAt: SAMPLE_DATASET_TIMELINE.assetsCreatedAt,
   updatedAt: SAMPLE_DATASET_TIMELINE.assetsCreatedAt,
   deletedAt: null,

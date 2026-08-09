@@ -55,6 +55,7 @@ export async function createDirectTrail(
     kind: 'other',
     status: 'active',
     tags: [],
+    variableValues: {},
   };
   const run: Run & { readonly recipeId: null } = {
     id: runId,

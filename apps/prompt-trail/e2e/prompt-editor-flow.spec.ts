@@ -31,6 +31,7 @@ async function seedEditablePrompts(page: Page) {
           kind: 'other',
           status: 'active',
           tags: [],
+          variableValues: {},
         });
     } finally {
       runtime.dispose();
@@ -185,14 +186,48 @@ test.describe('Prompt Editor flow', () => {
     ).toBeVisible();
     await page.getByLabel('${name}').fill('Alice');
     await page.getByLabel('${age}').fill('30');
-    await page
-      .getByRole('dialog')
-      .getByRole('button', { name: 'コピー' })
-      .click();
+    await page.getByRole('button', { name: 'Prompt本文をコピー' }).click();
     const clipboardText = await page.evaluate(() =>
       navigator.clipboard.readText(),
     );
     expect(clipboardText).toBe('Hello Alice, you are 30 years old.');
+  });
+
+  test('persists variable values on save and restores them after reopening the editor', async ({
+    page,
+  }) => {
+    await page.goto('/prompts');
+    await seedEditablePrompts(page);
+    await page.goto('/prompts/prompt-edit-e2e/edit');
+    await page
+      .getByRole('textbox', { name: 'Prompt本文' })
+      .fill('Hello ${name}, welcome to ${place}.');
+    await page.getByLabel('${name}').fill('Bob');
+    await page.getByLabel('${place}').fill('Tokyo');
+    await page
+      .getByLabel('Promptの内容')
+      .getByRole('button', { name: '保存' })
+      .first()
+      .click();
+    await expect(page).toHaveURL(/\/prompts$/);
+
+    await page.goto('/prompts/prompt-edit-e2e/edit');
+    await expect(page.getByLabel('${name}')).toHaveValue('Bob');
+    await expect(page.getByLabel('${place}')).toHaveValue('Tokyo');
+
+    await page
+      .getByRole('textbox', { name: 'Prompt本文' })
+      .fill('Hello ${name} only.');
+    await page
+      .getByLabel('Promptの内容')
+      .getByRole('button', { name: '保存' })
+      .first()
+      .click();
+    await expect(page).toHaveURL(/\/prompts$/);
+
+    await page.goto('/prompts/prompt-edit-e2e/edit');
+    await expect(page.getByLabel('${name}')).toHaveValue('Bob');
+    await expect(page.getByLabel('${place}')).toHaveCount(0);
   });
 
   test('variable panel disappears when all variables are removed from the body', async ({
