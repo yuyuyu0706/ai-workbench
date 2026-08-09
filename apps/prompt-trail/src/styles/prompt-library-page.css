@@ -718,6 +718,8 @@
 .pt-prompt-body-popover__editor {
   display: grid;
   gap: 0.65rem;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .pt-prompt-body-popover__editor label {
