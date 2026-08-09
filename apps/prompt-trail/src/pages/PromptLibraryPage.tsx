@@ -52,11 +52,7 @@ type PromptBodyGuardState = {
 
 type PromptBodyRecoveryStatus = 'stale' | 'not-found' | 'unavailable' | null;
 type PromptBodyMessageKind =
-  | 'validation'
-  | 'discard'
-  | 'status'
-  | 'notice'
-  | null;
+  'validation' | 'discard' | 'status' | 'notice' | null;
 type PromptBodyDiscardRestore = {
   readonly error: string | null;
   readonly messageKind: PromptBodyMessageKind;
