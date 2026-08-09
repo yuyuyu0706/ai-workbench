@@ -140,9 +140,6 @@
 }
 
 .pt-prompt-editor__var-panel {
-  border: 1px solid var(--pt-color-border, #d1d5db);
-  border-radius: var(--pt-radius-md, 8px);
-  padding: var(--pt-space-3);
   display: grid;
   gap: var(--pt-space-3);
   background: var(--pt-color-surface, #fff);
@@ -157,18 +154,23 @@
 
 .pt-prompt-editor__var-panel-field {
   display: grid;
-  grid-template-columns: 12rem 1fr;
+  grid-template-columns: max-content 1fr;
   align-items: center;
   gap: var(--pt-space-2);
 }
 
+.pt-prompt-editor__var-panel-field input {
+  min-width: 0;
+  width: 100%;
+}
+
 .pt-prompt-editor__var-badge {
   font-family: var(--pt-font-mono, monospace);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   background: var(--pt-color-code-bg, #f6f8fa);
   border: 1px solid var(--pt-color-border, #d1d5db);
   border-radius: var(--pt-radius-sm, 4px);
-  padding: 0.1em 0.4em;
+  padding: 0.2em 0.5em;
   white-space: nowrap;
   justify-self: start;
 }

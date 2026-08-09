@@ -1401,7 +1401,6 @@ function PromptBodyPopover({
                 </div>
               ) : (
                 <div className="pt-prompt-body-popover__content">
-                  <p>{prompt.body}</p>
                   {effectiveVarPanelOpen ? (
                     <div
                       ref={varPanelRef}
@@ -1438,6 +1437,7 @@ function PromptBodyPopover({
                       </div>
                     </div>
                   ) : null}
+                  <p>{prompt.body}</p>
                 </div>
               )}
             </div>,

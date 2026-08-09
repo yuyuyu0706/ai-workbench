@@ -410,9 +410,14 @@
 
 .pt-prompt-body-popover__var-panel-field {
   display: grid;
-  grid-template-columns: 12rem 1fr;
+  grid-template-columns: max-content 1fr;
   align-items: center;
   gap: var(--pt-space-2);
+}
+
+.pt-prompt-body-popover__var-panel-field input {
+  min-width: 0;
+  width: 100%;
 }
 
 .pt-prompt-body-popover__var-badge {
@@ -713,6 +718,8 @@
 .pt-prompt-body-popover__editor {
   display: grid;
   gap: 0.65rem;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .pt-prompt-body-popover__editor label {
@@ -722,7 +729,7 @@
 }
 
 .pt-prompt-body-popover__editor textarea {
-  min-height: 12rem;
+  min-height: 16rem;
   resize: vertical;
   width: 100%;
 }
