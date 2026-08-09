@@ -502,11 +502,7 @@ describe('PromptLibraryPage', () => {
       value: { writeText },
     });
     const varPrompt = {
-      ...createPrompt(
-        'eta',
-        'Etaテンプレート',
-        'こんにちは ${name}',
-      ),
+      ...createPrompt('eta', 'Etaテンプレート', 'こんにちは ${name}'),
       variableValues: { name: 'Bob' },
     };
     const updatePromptBody = vi.fn();

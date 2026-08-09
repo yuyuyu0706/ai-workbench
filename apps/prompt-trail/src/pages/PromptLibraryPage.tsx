@@ -875,9 +875,7 @@ function PromptBodyPopover({
 
   const copyResolved = async () => {
     const prunedValues = Object.fromEntries(
-      detectedVars
-        .filter((v) => v in varValues)
-        .map((v) => [v, varValues[v]]),
+      detectedVars.filter((v) => v in varValues).map((v) => [v, varValues[v]]),
     );
     const unchanged = areVariableValuesEqual(
       prunedValues,
