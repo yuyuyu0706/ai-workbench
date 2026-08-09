@@ -464,20 +464,16 @@ test.describe('Prompt Library data flow', () => {
     });
     await expect(varPanel.getByLabel('${name}')).toHaveValue('田中');
 
-    await popover
-      .getByRole('button', { name: 'Prompt本文を閉じる' })
-      .click();
+    await popover.getByRole('button', { name: 'Prompt本文を閉じる' }).click();
     await trigger.click();
-    await expect(
-      popover.getByLabel('${name}'),
-    ).toHaveValue('田中');
+    await expect(popover.getByLabel('${name}')).toHaveValue('田中');
 
     await popover
       .getByRole('button', { name: '「変数テンプレート」のPrompt本文を編集' })
       .click();
-    await popover.getByRole('textbox', { name: 'Prompt本文' }).fill(
-      'こんにちは ${name}さん。',
-    );
+    await popover
+      .getByRole('textbox', { name: 'Prompt本文' })
+      .fill('こんにちは ${name}さん。');
     await popover.getByRole('button', { name: '保存' }).click();
     await expect(popover.getByText('Prompt本文を更新しました。')).toBeVisible();
     await expect(popover.getByLabel('${name}')).toHaveValue('田中');
