@@ -132,6 +132,49 @@ describe('NewTrailPage', () => {
     ).toHaveFocus();
   });
 
+  it('prefills the body with variables resolved, leaving unset variables as placeholders', async () => {
+    const repository = {
+      getPrompt: vi.fn().mockResolvedValue(
+        reusablePrompt('Hello ${name}, welcome to ${place}.', 'prompt-1', {
+          name: 'Rikki',
+        }),
+      ),
+    } as unknown as PromptTrailRepository;
+    renderPage(repository, undefined, '/runs/new?sourcePromptId=prompt-1');
+    await screen.findByDisplayValue('Hello Rikki, welcome to ${place}.');
+  });
+
+  it('resolves variables again when reloading the latest Prompt', async () => {
+    const user = userEvent.setup();
+    const initial = reusablePrompt('Hi ${name}', 'prompt-1', {
+      name: 'Old',
+    });
+    const latest = {
+      ...initial,
+      updatedAt: '2026-01-02T00:00:00.000Z',
+      variableValues: { name: 'New' },
+    };
+    const repository = {
+      getPrompt: vi
+        .fn()
+        .mockResolvedValueOnce(initial)
+        .mockResolvedValueOnce(latest),
+      createDirectRunFromPrompt: vi
+        .fn()
+        .mockRejectedValueOnce(new PromptTrailRepositoryError('stale-write')),
+    } as unknown as PromptTrailRepository;
+    renderPage(repository, undefined, '/runs/new?sourcePromptId=prompt-1');
+    await screen.findByDisplayValue('Hi Old');
+    await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
+    const latestButton = await screen.findByRole('button', {
+      name: '最新のPromptを読み込む',
+    });
+    await user.click(latestButton);
+    expect(await screen.findByDisplayValue('Hi New')).toHaveAttribute(
+      'readonly',
+    );
+  });
+
   it('disables source editing and repeated submission while creating from a Prompt', async () => {
     const user = userEvent.setup();
     let resolve!: (value: unknown) => void;
@@ -621,7 +664,11 @@ function reusableRun(id: string, body: string) {
   };
 }
 
-function reusablePrompt(body: string, id = 'prompt-1') {
+function reusablePrompt(
+  body: string,
+  id = 'prompt-1',
+  variableValues: Record<string, string> = {},
+) {
   return {
     id,
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -634,6 +681,7 @@ function reusablePrompt(body: string, id = 'prompt-1') {
     kind: 'codex-request' as const,
     status: 'active' as const,
     tags: [],
+    variableValues,
   };
 }
 

@@ -82,7 +82,7 @@ Project は Recipe と Run の所有境界です。Prompt と Context は global
 | `ContextSnapshot` | `{ contextId: ContextId; title: string; body: string }`                                                     |
 | `JsonValue`       | `string \| number \| boolean \| null \| readonly JsonValue[] \| { readonly [key: string]: JsonValue }`      |
 
-Prompt の `deprecated`、Context の `disabled`、Project / Run の `archivedAt`、全モデルの `deletedAt` は別の状態です。Snapshot は元 asset が更新、無効化、soft delete されても変更しません。
+Prompt の `deprecated`、Context の `disabled`、Project / Run の `archivedAt`、全モデルの `deletedAt` は別の状態です。Snapshot は元 asset が更新、無効化、soft delete されても変更しません。Prompt起点のTrail作成では、`body`をraw templateのまま`PromptSnapshot.body`へ固定するわけではなく、`resolvePromptVariables`で元Promptの`variableValues`を反映して`${varName}`を解決した後、利用者が本文欄で自由に確認・編集した内容をSnapshotします（未入力の変数は`${varName}`のまま残ります）。
 
 ## Domain / Store / Repository 対応
 

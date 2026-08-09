@@ -162,7 +162,7 @@ Prompt EditorはPage Headerの説明を省き、種別、タイトル、Prompt�
 
 Prompt EditorのDanger Zoneは編集Routeだけに表示し、保存済みタイトルと「今後の利用対象から除外する一方、過去Run・関連Link・実行時のPrompt Snapshotは残る」ことを確認してから`deletedAt`を設定します。削除はPromptだけに限定した非Cascade操作で、成功後はPrompt Libraryへ遷移して一回限りの通知を表示します。削除済みPromptの編集Routeはunavailableを表示します。
 
-Prompt Libraryの各Active Promptから`/runs/new?sourcePromptId=<PromptId>`へ遷移できます。Prompt起点では元Prompt本文をread-onlyで確認し、独立したTrail名・Trail種別を設定します。Blankと過去Run起点は従来どおり本文を編集でき、両source keyの同時・空・重複指定はinvalidとしてRepositoryを呼ばず復旧導線を表示します。
+Prompt Libraryの各Active Promptから`/runs/new?sourcePromptId=<PromptId>`へ遷移できます。Prompt起点では元Promptの`variableValues`で`${varName}`を解決した本文をread-onlyで確認し（未入力の変数は`${varName}`のまま残ります）、独立したTrail名・Trail種別を設定します。「最新のPromptを読み込む」による再読み込み時も同様に変数解決済みの本文を再表示します。Blankと過去Run起点は従来どおり本文を編集でき、両source keyの同時・空・重複指定はinvalidとしてRepositoryを呼ばず復旧導線を表示します。
 
 現行のグローバルナビゲーション対象は「はじめに」「Dashboard」「Prompt Library」です。root／DashboardからPrompt Libraryへ移動できます。Context Library / Recipe Builderは利用可能になるまで表示しません。Run Detailは実行文脈にひもづくcontextual route、Not Foundは未知URLからのrecovery routeとして扱います。
 

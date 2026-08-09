@@ -30,6 +30,7 @@ import {
   type ReusablePromptState,
 } from '../trail-creation/load-reusable-prompt';
 import { resolveNewTrailSource } from '../trail-creation/resolve-new-trail-source';
+import { resolvePromptVariables } from '../prompt-shared/promptVariables';
 
 type FormState = {
   repository: ReturnType<typeof usePromptTrailRepository>;
@@ -217,7 +218,10 @@ export function NewTrailPage() {
               : emptyForm(repository, identity);
           return {
             ...target,
-            body: state.prompt.body,
+            body: resolvePromptVariables(
+              state.prompt.body,
+              state.prompt.variableValues,
+            ),
             trailTitle: target.titleDirty
               ? target.trailTitle
               : state.prompt.title,
