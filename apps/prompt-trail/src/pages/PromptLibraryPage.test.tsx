@@ -1373,6 +1373,7 @@ function createPrompt(
     kind,
     status: 'active' as const,
     tags: [],
+    variableValues: {},
   };
   return scope === 'project'
     ? {

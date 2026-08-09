@@ -24,6 +24,7 @@ const prompt: Prompt = {
   kind: 'other',
   status: 'active',
   tags: [],
+  variableValues: {},
   createdAt: time,
   updatedAt: time,
   deletedAt: null,

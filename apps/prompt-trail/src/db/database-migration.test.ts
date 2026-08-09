@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { PROMPT_TRAIL_STORE_NAMES } from './metadata';
 import { createPromptTrailDatabase } from './database';
 import { migrateRunFromV1 } from './migrations/v1-to-v2';
+import { migratePromptFromV2 } from './migrations/v2-to-v3';
 
 const schemaV1 = {
   projects: 'id, updatedAt, archivedAt, deletedAt',
@@ -131,10 +132,15 @@ async function readAllStores(database: Dexie) {
   );
 }
 
-async function createLegacyDatabase(name: string, dataset: LegacyDataset) {
+async function createLegacyDatabase(
+  name: string,
+  dataset: LegacyDataset,
+  version = 1,
+) {
   databaseNames.add(name);
   const database = new Dexie(name);
   database.version(1).stores(schemaV1);
+  if (version >= 2) database.version(2).stores(schemaV1);
   await database.open();
   await database.transaction('rw', database.tables, async () =>
     Promise.all(
@@ -183,12 +189,15 @@ describe('schema v1 to v2 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(2);
+    expect(database.verno).toBe(3);
     for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
-      (storeName) => storeName !== 'runs',
+      (storeName) => storeName !== 'runs' && storeName !== 'prompts',
     )) {
       expect(migrated[storeName]).toEqual(before[storeName]);
     }
+    expect(migrated.prompts).toEqual(
+      before.prompts.map((prompt) => ({ ...prompt, variableValues: {} })),
+    );
     expect(migrated.runs).toEqual(
       [...runs]
         .sort((a, b) => a.id.localeCompare(b.id))
@@ -230,5 +239,51 @@ describe('schema v1 to v2 migration', () => {
     await legacy.open();
     expect(await readAllStores(legacy)).toEqual(before);
     legacy.close();
+  });
+});
+
+describe('schema v2 to v3 migration', () => {
+  it('adds an empty variableValues without changing other Prompt fields', () => {
+    const prompt = {
+      id: 'prompt-1',
+      scope: 'project',
+      projectId: 'project-1',
+      title: 'Prompt title',
+      body: 'Body ${var}',
+      kind: 'other',
+      status: 'active',
+      tags: [],
+      createdAt,
+      updatedAt,
+      deletedAt: null,
+    };
+    const before = structuredClone(prompt);
+    migratePromptFromV2(prompt as { variableValues?: Record<string, string> });
+    expect(prompt).toEqual({ ...before, variableValues: {} });
+  });
+
+  it('upgrades all Prompts to v3 while preserving every other store', async () => {
+    const name = `prompt-trail-migration-v3-${crypto.randomUUID()}`;
+    const before = legacyDataset();
+    await createLegacyDatabase(name, before, 2);
+
+    const database = createPromptTrailDatabase(name);
+    await database.open();
+    const migrated = await readAllStores(database);
+    expect(database.verno).toBe(3);
+    for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
+      (storeName) => storeName !== 'prompts',
+    )) {
+      expect(migrated[storeName]).toEqual(before[storeName]);
+    }
+    expect(migrated.prompts).toEqual(
+      before.prompts.map((prompt) => ({ ...prompt, variableValues: {} })),
+    );
+    database.close();
+
+    const reopened = createPromptTrailDatabase(name);
+    await reopened.open();
+    expect(await readAllStores(reopened)).toEqual(migrated);
+    reopened.close();
   });
 });

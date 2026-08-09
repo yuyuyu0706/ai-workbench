@@ -275,7 +275,7 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
       (state) => {
         if (!active) return;
         setLoaded({ repository, routeKey, state });
-        if (state.status === 'data')
+        if (state.status === 'data') {
           setForm({
             repository,
             routeKey,
@@ -287,6 +287,8 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
             errors: {},
             status: 'idle',
           });
+          setVarValues({ ...state.prompt.variableValues });
+        }
       },
     );
     return () => {
@@ -338,13 +340,24 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
       submissionRef.current?.token === token &&
       activeIdentityRef.current.repository === repository &&
       activeIdentityRef.current.routeKey === routeKey;
+    const persistedVariableValues = Object.fromEntries(
+      detectedVars.filter((v) => v in varValues).map((v) => [v, varValues[v]]),
+    );
     try {
-      if (mode === 'create') await createPrompt(repository, currentForm.values);
+      if (mode === 'create')
+        await createPrompt(
+          repository,
+          currentForm.values,
+          {},
+          persistedVariableValues,
+        );
       else
         await updatePrompt(
           repository,
           displayedLoad.prompt.id,
           currentForm.values,
+          {},
+          persistedVariableValues,
         );
       if (!submissionIsCurrent()) return;
       notifyDataChanged();
@@ -543,7 +556,10 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
                 <div className="pt-prompt-editor__var-panel-fields">
                   {detectedVars.map((v) => (
                     <div key={v} className="pt-prompt-editor__var-panel-field">
-                      <label htmlFor={`var-input-${v}`}>{`\${${v}}`}</label>
+                      <label
+                        className="pt-prompt-editor__var-badge"
+                        htmlFor={`var-input-${v}`}
+                      >{`\${${v}}`}</label>
                       <input
                         id={`var-input-${v}`}
                         type="text"
@@ -561,13 +577,6 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
                     </div>
                   ))}
                 </div>
-                <button
-                  className="pt-button pt-button--primary"
-                  type="button"
-                  onClick={() => void copyResolved()}
-                >
-                  コピー
-                </button>
               </div>
             )}
             <p aria-live="polite" className="pt-prompt-editor__copy-status">

@@ -84,12 +84,30 @@ describe('Prompt editor commands', () => {
       kind: 'other',
       status: 'active',
       tags: [],
+      variableValues: {},
       createdAt: after,
       updatedAt: after,
       deletedAt: null,
     });
     expect(repository.saveProject).toHaveBeenCalledWith(
       expect.objectContaining({ id: DEFAULT_PROJECT_ID }),
+    );
+  });
+
+  it('persists the given variableValues when creating a Prompt', async () => {
+    const savePrompt = vi.fn(async (prompt: Prompt) => prompt);
+    const repository = {
+      getProject: vi.fn(async () => ({ id: DEFAULT_PROJECT_ID })),
+      savePrompt,
+    } as unknown as PromptTrailRepository;
+    await createPrompt(
+      repository,
+      { title: 'title', body: 'Hello ${name}', kind: 'other' },
+      { createId: () => 'prompt-new' as Prompt['id'], now: () => after },
+      { name: 'Alice' },
+    );
+    expect(savePrompt).toHaveBeenCalledWith(
+      expect.objectContaining({ variableValues: { name: 'Alice' } }),
     );
   });
 
@@ -102,6 +120,7 @@ describe('Prompt editor commands', () => {
       kind: 'other',
       status: 'active',
       tags: ['keep'],
+      variableValues: {},
       createdAt: before,
       updatedAt: before,
       deletedAt: null,
@@ -123,8 +142,40 @@ describe('Prompt editor commands', () => {
       title: 'new',
       body: 'new body',
       kind: 'codex-request',
+      variableValues: {},
       updatedAt: after,
     });
+  });
+
+  it('persists the given variableValues when updating a Prompt', async () => {
+    const latest: Prompt = {
+      id: 'global-prompt' as Prompt['id'],
+      scope: 'global',
+      title: 'old',
+      body: 'Hello ${name}',
+      kind: 'other',
+      status: 'active',
+      tags: [],
+      variableValues: { name: 'old value' },
+      createdAt: before,
+      updatedAt: before,
+      deletedAt: null,
+    };
+    const savePrompt = vi.fn(async (prompt: Prompt) => prompt);
+    const repository = {
+      getPrompt: vi.fn(async () => latest),
+      savePrompt,
+    } as unknown as PromptTrailRepository;
+    await updatePrompt(
+      repository,
+      latest.id,
+      { title: 'new', body: 'Hello ${name}', kind: 'other' },
+      { now: () => after },
+      { name: 'Alice' },
+    );
+    expect(savePrompt).toHaveBeenCalledWith(
+      expect.objectContaining({ variableValues: { name: 'Alice' } }),
+    );
   });
 
   it.each([
