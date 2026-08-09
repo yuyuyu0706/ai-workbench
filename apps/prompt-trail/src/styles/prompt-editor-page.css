@@ -162,6 +162,11 @@
   gap: var(--pt-space-2);
 }
 
+.pt-prompt-editor__var-panel-field input {
+  min-width: 0;
+  width: 100%;
+}
+
 .pt-prompt-editor__var-badge {
   font-family: var(--pt-font-mono, monospace);
   font-size: 0.875rem;

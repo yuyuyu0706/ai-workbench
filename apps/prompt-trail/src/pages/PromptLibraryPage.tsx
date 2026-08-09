@@ -52,7 +52,11 @@ type PromptBodyGuardState = {
 
 type PromptBodyRecoveryStatus = 'stale' | 'not-found' | 'unavailable' | null;
 type PromptBodyMessageKind =
-  'validation' | 'discard' | 'status' | 'notice' | null;
+  | 'validation'
+  | 'discard'
+  | 'status'
+  | 'notice'
+  | null;
 type PromptBodyDiscardRestore = {
   readonly error: string | null;
   readonly messageKind: PromptBodyMessageKind;
@@ -1401,7 +1405,6 @@ function PromptBodyPopover({
                 </div>
               ) : (
                 <div className="pt-prompt-body-popover__content">
-                  <p>{prompt.body}</p>
                   {effectiveVarPanelOpen ? (
                     <div
                       ref={varPanelRef}
@@ -1438,6 +1441,7 @@ function PromptBodyPopover({
                       </div>
                     </div>
                   ) : null}
+                  <p>{prompt.body}</p>
                 </div>
               )}
             </div>,
