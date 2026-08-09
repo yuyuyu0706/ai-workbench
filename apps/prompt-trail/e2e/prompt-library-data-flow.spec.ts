@@ -67,29 +67,36 @@ async function seedGlobalPromptInBrowser(page: Page) {
   }, GLOBAL_PROMPT_BODY);
 }
 
-async function seedVariablePromptInBrowser(page: Page) {
-  await page.evaluate(async () => {
-    const { createPromptTrailRuntime } =
-      await import('/src/app/prompt-trail-runtime.ts');
-    const runtime = createPromptTrailRuntime();
-    try {
-      await runtime.initialize();
-      await runtime.repository.savePrompt({
-        id: 'prompt-library-variable-e2e' as PromptId,
-        createdAt: '2026-08-01T02:00:00.000Z' as UtcDateTimeString,
-        updatedAt: '2026-08-01T02:00:00.000Z' as UtcDateTimeString,
-        deletedAt: null,
-        scope: 'global',
-        title: '変数テンプレート',
-        body: 'こんにちは ${name}さん、${topic}について教えてください。',
-        kind: 'other',
-        status: 'active',
-        tags: [],
-      });
-    } finally {
-      runtime.dispose();
-    }
-  });
+async function seedVariablePromptInBrowser(
+  page: Page,
+  variableValues: Record<string, string> = {},
+) {
+  await page.evaluate(
+    async ({ variableValues }) => {
+      const { createPromptTrailRuntime } =
+        await import('/src/app/prompt-trail-runtime.ts');
+      const runtime = createPromptTrailRuntime();
+      try {
+        await runtime.initialize();
+        await runtime.repository.savePrompt({
+          id: 'prompt-library-variable-e2e' as PromptId,
+          createdAt: '2026-08-01T02:00:00.000Z' as UtcDateTimeString,
+          updatedAt: '2026-08-01T02:00:00.000Z' as UtcDateTimeString,
+          deletedAt: null,
+          scope: 'global',
+          title: '変数テンプレート',
+          body: 'こんにちは ${name}さん、${topic}について教えてください。',
+          kind: 'other',
+          status: 'active',
+          tags: [],
+          variableValues,
+        });
+      } finally {
+        runtime.dispose();
+      }
+    },
+    { variableValues },
+  );
 }
 
 async function expectArrowTracksTrigger(
@@ -429,12 +436,48 @@ test.describe('Prompt Library data flow', () => {
     });
     const nameInput = varPanel.getByLabel('${name}');
     await nameInput.fill('田中');
-    await varPanel.getByRole('button', { name: 'コピー' }).click();
+    await copyButton.click();
 
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
       'こんにちは 田中さん、${topic}について教えてください。',
     );
     await expect(copyButton).toHaveAttribute('data-copied', 'true');
+  });
+
+  test('restores saved variable values on reopen and drops stale ones after a body edit', async ({
+    page,
+  }) => {
+    await page.goto('/prompts');
+    await seedVariablePromptInBrowser(page, {
+      name: '田中',
+      topic: '天気',
+    });
+    await page.reload();
+
+    const trigger = page.getByRole('button', {
+      name: '「変数テンプレート」のPrompt本文を表示',
+    });
+    await trigger.click();
+    const popover = page.getByRole('dialog', { name: 'Prompt本文' });
+    const varPanel = popover.getByRole('dialog', {
+      name: '変数に値を入力してコピー',
+    });
+    await expect(varPanel.getByLabel('${name}')).toHaveValue('田中');
+
+    await popover.getByRole('button', { name: 'Prompt本文を閉じる' }).click();
+    await trigger.click();
+    await expect(popover.getByLabel('${name}')).toHaveValue('田中');
+
+    await popover
+      .getByRole('button', { name: '「変数テンプレート」のPrompt本文を編集' })
+      .click();
+    await popover
+      .getByRole('textbox', { name: 'Prompt本文' })
+      .fill('こんにちは ${name}さん。');
+    await popover.getByRole('button', { name: '保存' }).click();
+    await expect(page.getByText('Prompt本文を更新しました。')).toBeVisible();
+    await expect(popover.getByLabel('${name}')).toHaveValue('田中');
+    await expect(popover.getByLabel('${topic}')).toHaveCount(0);
   });
 
   test('keeps search and prompt data within a 320px viewport', async ({

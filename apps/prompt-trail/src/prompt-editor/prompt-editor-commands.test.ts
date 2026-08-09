@@ -250,8 +250,35 @@ describe('updatePromptBody', () => {
       promptId: updated.id,
       expectedUpdatedAt: before,
       body: '  new body\n',
+      variableValues: {},
       updatedAt: '2026-01-01T00:00:00.001Z',
     });
+  });
+
+  it('passes variableValues through to the repository', async () => {
+    const updated = {
+      id: 'prompt-body' as Prompt['id'],
+      body: 'body ${name}',
+      variableValues: { name: 'Alice' },
+    } as unknown as Prompt;
+    const repository = {
+      updatePromptBody: vi.fn(async () => updated),
+    } as unknown as PromptTrailRepository;
+
+    await updatePromptBody(
+      repository,
+      {
+        promptId: updated.id,
+        expectedUpdatedAt: before,
+        body: 'body ${name}',
+        variableValues: { name: 'Alice' },
+      },
+      () => before,
+    );
+
+    expect(repository.updatePromptBody).toHaveBeenCalledWith(
+      expect.objectContaining({ variableValues: { name: 'Alice' } }),
+    );
   });
 
   it('maps expected repository errors and rethrows unexpected errors', async () => {

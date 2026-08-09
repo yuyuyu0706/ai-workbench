@@ -34,6 +34,7 @@ describe('loadPromptLibraryDataState', () => {
             kind: prompt.kind,
             scope: prompt.scope,
             updatedAt: prompt.updatedAt,
+            variableValues: prompt.variableValues,
           },
         ],
       },
