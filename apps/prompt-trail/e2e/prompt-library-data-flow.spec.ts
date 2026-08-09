@@ -475,7 +475,7 @@ test.describe('Prompt Library data flow', () => {
       .getByRole('textbox', { name: 'Prompt本文' })
       .fill('こんにちは ${name}さん。');
     await popover.getByRole('button', { name: '保存' }).click();
-    await expect(popover.getByText('Prompt本文を更新しました。')).toBeVisible();
+    await expect(page.getByText('Prompt本文を更新しました。')).toBeVisible();
     await expect(popover.getByLabel('${name}')).toHaveValue('田中');
     await expect(popover.getByLabel('${topic}')).toHaveCount(0);
   });
