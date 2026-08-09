@@ -427,7 +427,7 @@ describe('PromptLibraryPage', () => {
     }
   });
 
-  it('shows variable badges, resolves values on copy, keeps unresolved variables, and manages panel focus', async () => {
+  it('shows the variable panel immediately, resolves values on copy, and keeps unresolved variables', async () => {
     const user = userEvent.setup();
     const writeText = vi.fn(async () => undefined);
     const originalClipboard = navigator.clipboard;
@@ -446,36 +446,27 @@ describe('PromptLibraryPage', () => {
         name: `「${varPrompt.title}」のPrompt本文を表示`,
       });
       await user.click(trigger);
-      expect(screen.getByText('${name}')).toBeInTheDocument();
-      expect(screen.getByText('${topic}')).toBeInTheDocument();
+      const panel = screen.getByRole('dialog', {
+        name: '変数に値を入力してコピー',
+      });
+      expect(within(panel).getByLabelText('${name}')).toBeInTheDocument();
+      expect(within(panel).getByLabelText('${topic}')).toBeInTheDocument();
 
       const copyButton = screen.getByRole('button', {
         name: `「${varPrompt.title}」のPrompt本文をコピー`,
       });
-      await user.click(copyButton);
-      expect(writeText).not.toHaveBeenCalled();
-      const panel = screen.getByRole('dialog', {
-        name: '変数に値を入力してコピー',
-      });
-      expect(within(panel).getByLabelText('${name}')).toHaveFocus();
 
       await user.type(within(panel).getByLabelText('${name}'), 'Alice');
       await user.click(within(panel).getByRole('button', { name: 'コピー' }));
       expect(writeText).toHaveBeenCalledWith(
         'こんにちは Alice、今日は${topic}について話しましょう。',
       );
-      expect(
-        screen.queryByRole('dialog', { name: '変数に値を入力してコピー' }),
-      ).toBeNull();
-      expect(copyButton).toHaveFocus();
       expect(screen.getByText('コピーしました')).toBeInTheDocument();
 
       await user.click(copyButton);
-      expect(
-        within(
-          screen.getByRole('dialog', { name: '変数に値を入力してコピー' }),
-        ).getByLabelText('${name}'),
-      ).toHaveValue('');
+      expect(writeText).toHaveBeenLastCalledWith(
+        'こんにちは ${name}、今日は${topic}について話しましょう。',
+      );
     } finally {
       Object.defineProperty(navigator, 'clipboard', {
         configurable: true,
@@ -484,7 +475,7 @@ describe('PromptLibraryPage', () => {
     }
   });
 
-  it('resets the variable panel when the popover is closed', async () => {
+  it('does not auto-focus the variable panel when it appears', async () => {
     const user = userEvent.setup();
     const varPrompt = createPrompt(
       'delta',
@@ -492,31 +483,12 @@ describe('PromptLibraryPage', () => {
       '${greeting}さん',
     );
     renderPromptLibraryPage(createRepository([varPrompt]));
-    await user.click(
-      await screen.findByRole('button', {
-        name: `「${varPrompt.title}」のPrompt本文を表示`,
-      }),
-    );
-    await user.click(
-      screen.getByRole('button', {
-        name: `「${varPrompt.title}」のPrompt本文をコピー`,
-      }),
-    );
-    await user.type(screen.getByLabelText('${greeting}'), 'こんにちは');
-    await user.keyboard('{Escape}');
-    expect(screen.queryByRole('dialog', { name: 'Prompt本文' })).toBeNull();
-
-    await user.click(
-      screen.getByRole('button', {
-        name: `「${varPrompt.title}」のPrompt本文を表示`,
-      }),
-    );
-    await user.click(
-      screen.getByRole('button', {
-        name: `「${varPrompt.title}」のPrompt本文をコピー`,
-      }),
-    );
-    expect(screen.getByLabelText('${greeting}')).toHaveValue('');
+    const trigger = await screen.findByRole('button', {
+      name: `「${varPrompt.title}」のPrompt本文を表示`,
+    });
+    await user.click(trigger);
+    expect(screen.getByLabelText('${greeting}')).toBeInTheDocument();
+    expect(screen.getByLabelText('${greeting}')).not.toHaveFocus();
   });
 
   it('closes an open Prompt body when filtering hides its row', async () => {
