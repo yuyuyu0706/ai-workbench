@@ -341,9 +341,7 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
       activeIdentityRef.current.repository === repository &&
       activeIdentityRef.current.routeKey === routeKey;
     const persistedVariableValues = Object.fromEntries(
-      detectedVars
-        .filter((v) => v in varValues)
-        .map((v) => [v, varValues[v]]),
+      detectedVars.filter((v) => v in varValues).map((v) => [v, varValues[v]]),
     );
     try {
       if (mode === 'create')

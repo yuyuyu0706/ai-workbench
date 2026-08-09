@@ -692,7 +692,9 @@ describe('PromptEditorPage', () => {
     fireEvent.change(screen.getByLabelText('${name}'), {
       target: { value: 'World' },
     });
-    await user.click(screen.getByRole('button', { name: 'Prompt本文をコピー' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Prompt本文をコピー' }),
+    );
     expect(written).toBe('Hi World');
   });
 
@@ -714,7 +716,9 @@ describe('PromptEditorPage', () => {
     fireEvent.change(screen.getByLabelText('${a}'), {
       target: { value: 'filled' },
     });
-    await user.click(screen.getByRole('button', { name: 'Prompt本文をコピー' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Prompt本文をコピー' }),
+    );
     expect(written).toBe('filled and ${b}');
   });
 
