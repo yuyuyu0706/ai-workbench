@@ -140,9 +140,6 @@
 }
 
 .pt-prompt-editor__var-panel {
-  border: 1px solid var(--pt-color-border, #d1d5db);
-  border-radius: var(--pt-radius-md, 8px);
-  padding: var(--pt-space-3);
   display: grid;
   gap: var(--pt-space-3);
   background: var(--pt-color-surface, #fff);
