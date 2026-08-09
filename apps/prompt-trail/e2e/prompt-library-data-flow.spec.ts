@@ -943,6 +943,17 @@ test.describe('Prompt Library data flow', () => {
     expect(counts).toEqual({ prompts: 1, runs: 2 });
   });
 
+  test('prefills the Trail body with resolved variable values, keeping unset variables as placeholders', async ({
+    page,
+  }) => {
+    await page.goto('/prompts');
+    await seedVariablePromptInBrowser(page, { name: '太郎' });
+    await page.goto('/runs/new?sourcePromptId=prompt-library-variable-e2e');
+    await expect(page.getByLabel('Prompt本文')).toHaveValue(
+      'こんにちは 太郎さん、${topic}について教えてください。',
+    );
+  });
+
   test('keeps snapshots immutable, rejects deleted sources, and recovers a two-page stale write', async ({
     page,
     context,
