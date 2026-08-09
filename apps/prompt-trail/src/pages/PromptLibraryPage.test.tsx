@@ -457,7 +457,7 @@ describe('PromptLibraryPage', () => {
       });
 
       await user.type(within(panel).getByLabelText('${name}'), 'Alice');
-      await user.click(within(panel).getByRole('button', { name: 'コピー' }));
+      await user.click(copyButton);
       expect(writeText).toHaveBeenCalledWith(
         'こんにちは Alice、今日は${topic}について話しましょう。',
       );
@@ -489,6 +489,86 @@ describe('PromptLibraryPage', () => {
     await user.click(trigger);
     expect(screen.getByLabelText('${greeting}')).toBeInTheDocument();
     expect(screen.getByLabelText('${greeting}')).not.toHaveFocus();
+  });
+
+  it('restores saved variable values on open, keeps them after re-opening, and uses a badge label', async () => {
+    const user = userEvent.setup();
+    const varPrompt = {
+      ...createPrompt(
+        'epsilon',
+        'Epsilonテンプレート',
+        'こんにちは ${name}、今日は${topic}について話しましょう。',
+      ),
+      variableValues: { name: 'Bob' },
+    };
+    const repository = {
+      listActivePrompts: vi.fn(async () => [varPrompt]),
+    } as unknown as PromptTrailRepository;
+    renderPromptLibraryPage(repository);
+
+    const trigger = await screen.findByRole('button', {
+      name: `「${varPrompt.title}」のPrompt本文を表示`,
+    });
+    await user.click(trigger);
+    const nameInput = screen.getByLabelText('${name}');
+    expect(nameInput).toHaveValue('Bob');
+    expect(nameInput.closest('div')?.querySelector('label')).toHaveClass(
+      'pt-prompt-body-popover__var-badge',
+    );
+    expect(screen.queryByRole('button', { name: 'コピー' })).toBeNull();
+
+    await user.clear(nameInput);
+    await user.type(nameInput, 'Carol');
+    expect(screen.getByLabelText('${name}')).toHaveValue('Carol');
+    await user.click(
+      screen.getByRole('button', { name: 'Prompt本文を閉じる' }),
+    );
+    await user.click(trigger);
+    expect(screen.getByLabelText('${name}')).toHaveValue('Bob');
+  });
+
+  it('persists only the values for variables that remain in the saved body', async () => {
+    const user = userEvent.setup();
+    const varPrompt = {
+      ...createPrompt(
+        'zeta',
+        'Zetaテンプレート',
+        'こんにちは ${name}、今日は${topic}について話しましょう。',
+      ),
+      variableValues: { name: 'Bob', topic: '天気' },
+    };
+    const updatePromptBody = vi.fn(async (update) => ({
+      ...varPrompt,
+      body: update.body,
+      variableValues: update.variableValues,
+      updatedAt: '2026-08-02T00:00:00.000Z' as UtcDateTimeString,
+    }));
+    const repository = {
+      listActivePrompts: vi.fn(async () => [varPrompt]),
+      updatePromptBody,
+    } as unknown as PromptTrailRepository;
+    renderPromptLibraryPage(repository);
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: `「${varPrompt.title}」のPrompt本文を表示`,
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', {
+        name: `「${varPrompt.title}」のPrompt本文を編集`,
+      }),
+    );
+    await user.clear(screen.getByRole('textbox', { name: 'Prompt本文' }));
+    await user.type(
+      screen.getByRole('textbox', { name: 'Prompt本文' }),
+      'こんにちは ${{name}}',
+    );
+    await user.click(screen.getByRole('button', { name: '保存' }));
+
+    expect(updatePromptBody).toHaveBeenCalledWith(
+      expect.objectContaining({ variableValues: { name: 'Bob' } }),
+    );
   });
 
   it('closes an open Prompt body when filtering hides its row', async () => {

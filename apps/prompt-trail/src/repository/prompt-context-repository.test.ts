@@ -432,7 +432,7 @@ describe('PromptTrailRepository prompt and context persistence', () => {
 });
 
 describe('PromptTrailRepository prompt body atomic updates', () => {
-  it('updates only body and updatedAt from the latest Prompt row', async () => {
+  it('updates only body, variableValues and updatedAt from the latest Prompt row', async () => {
     const database = databaseScope.createDatabase();
     const repository = new PromptTrailRepository(database);
     const prompt = buildPrompt({
@@ -440,6 +440,7 @@ describe('PromptTrailRepository prompt body atomic updates', () => {
       title: 'Keep title',
       body: 'old body',
       tags: ['keep'],
+      variableValues: { old: 'value' },
     });
     await repository.savePrompt(prompt);
 
@@ -448,11 +449,13 @@ describe('PromptTrailRepository prompt body atomic updates', () => {
         promptId: prompt.id,
         expectedUpdatedAt: prompt.updatedAt,
         body: '  new body\n',
+        variableValues: { name: 'Alice' },
         updatedAt: utc('2026-07-05T00:00:00.001Z'),
       }),
     ).resolves.toEqual({
       ...prompt,
       body: '  new body\n',
+      variableValues: { name: 'Alice' },
       updatedAt: utc('2026-07-05T00:00:00.001Z'),
     });
   });
@@ -492,6 +495,7 @@ describe('PromptTrailRepository prompt body atomic updates', () => {
           promptId: prompt?.id ?? promptId('missing-prompt'),
           expectedUpdatedAt: utc('2026-07-05T00:00:00.000Z'),
           body: 'new body',
+          variableValues: {},
           updatedAt: utc('2026-07-05T00:00:00.001Z'),
         }),
       ).rejects.toMatchObject({ code });

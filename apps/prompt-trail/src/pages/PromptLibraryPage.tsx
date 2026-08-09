@@ -544,7 +544,9 @@ function PromptBodyPopover({
   const [isTriggerFocused, setIsTriggerFocused] = useState(false);
   const [suppressFocusTooltip, setSuppressFocusTooltip] = useState(false);
   const [copyState, setCopyState] = useState<'success' | 'error' | null>(null);
-  const [varValues, setVarValues] = useState<Record<string, string>>({});
+  const [varValues, setVarValues] = useState<Record<string, string>>(() => ({
+    ...prompt.variableValues,
+  }));
   const copyButtonRef = useRef<HTMLButtonElement>(null);
   const editButtonRef = useRef<HTMLButtonElement>(null);
   const varPanelRef = useRef<HTMLDivElement>(null);
@@ -558,6 +560,7 @@ function PromptBodyPopover({
   const [draft, setDraft] = useState(prompt.body);
   const [baseline, setBaseline] = useState({
     body: prompt.body,
+    variableValues: prompt.variableValues,
     updatedAt: prompt.updatedAt,
   });
   const [error, setError] = useState<string | null>(null);
@@ -683,6 +686,9 @@ function PromptBodyPopover({
       return;
     }
     sessionRef.current += 1;
+    resetVarPanel();
+    // resetVarPanel restores varValues from the latest baseline on each open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, prompt.id]);
 
   useEffect(() => {
@@ -812,7 +818,7 @@ function PromptBodyPopover({
     !open && (isTriggerHovered || (isTriggerFocused && !suppressFocusTooltip));
 
   function resetVarPanel() {
-    setVarValues({});
+    setVarValues({ ...baseline.variableValues });
   }
 
   useEffect(() => {
@@ -973,7 +979,11 @@ function PromptBodyPopover({
       schedulePositionUpdate();
       return;
     }
-    setBaseline({ body: latest.body, updatedAt: latest.updatedAt });
+    setBaseline({
+      body: latest.body,
+      variableValues: latest.variableValues,
+      updatedAt: latest.updatedAt,
+    });
     if (replaceDraft) {
       setDraft(latest.body);
       setMode('edit');
@@ -1033,10 +1043,16 @@ function PromptBodyPopover({
     setDiscardConfirmVisible(false);
     setError(null);
     try {
+      const persistedVariableValues = Object.fromEntries(
+        extractPromptVariables(draft)
+          .filter((v) => v in varValues)
+          .map((v) => [v, varValues[v]]),
+      );
       const result = await updatePromptBody(targetRepository, {
         promptId: targetPromptId,
         expectedUpdatedAt: baseline.updatedAt,
         body: draft,
+        variableValues: persistedVariableValues,
       });
       if (
         !mountedRef.current ||
@@ -1049,6 +1065,7 @@ function PromptBodyPopover({
       if (result.status === 'success') {
         setBaseline({
           body: result.prompt.body,
+          variableValues: result.prompt.variableValues,
           updatedAt: result.prompt.updatedAt,
         });
         setRecoveryStatus(null);
@@ -1187,6 +1204,7 @@ function PromptBodyPopover({
                           setDraft(prompt.body);
                           setBaseline({
                             body: prompt.body,
+                            variableValues: prompt.variableValues,
                             updatedAt: prompt.updatedAt,
                           });
                           setMode('edit');
@@ -1398,6 +1416,7 @@ function PromptBodyPopover({
                             className="pt-prompt-body-popover__var-panel-field"
                           >
                             <label
+                              className="pt-prompt-body-popover__var-badge"
                               htmlFor={`${panelId}-var-${v}`}
                             >{`\${${v}}`}</label>
                             <input
@@ -1417,13 +1436,6 @@ function PromptBodyPopover({
                           </div>
                         ))}
                       </div>
-                      <button
-                        className="pt-button pt-button--primary"
-                        type="button"
-                        onClick={() => void copyResolved()}
-                      >
-                        コピー
-                      </button>
                     </div>
                   ) : null}
                 </div>

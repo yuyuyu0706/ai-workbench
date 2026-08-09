@@ -52,6 +52,7 @@ export type PromptBodyUpdate = {
   readonly promptId: PromptId;
   readonly expectedUpdatedAt: UtcDateTimeString;
   readonly body: string;
+  readonly variableValues: Record<string, string>;
   readonly updatedAt: UtcDateTimeString;
 };
 
@@ -283,6 +284,7 @@ export class PromptTrailRepository {
       const updated: Prompt = {
         ...current,
         body: update.body,
+        variableValues: update.variableValues,
         updatedAt: update.updatedAt,
       };
       await this.database.prompts.put(updated);

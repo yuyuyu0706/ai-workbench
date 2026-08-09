@@ -7,6 +7,7 @@ export interface UpdatePromptBodyInput {
   readonly promptId: PromptId;
   readonly expectedUpdatedAt: UtcDateTimeString;
   readonly body: string;
+  readonly variableValues?: Record<string, string>;
 }
 
 export type UpdatePromptBodyResult =
@@ -41,6 +42,7 @@ export async function updatePromptBody(
       promptId: input.promptId,
       expectedUpdatedAt: input.expectedUpdatedAt,
       body: input.body,
+      variableValues: input.variableValues ?? {},
       updatedAt: nextPromptBodyUpdatedAt(input.expectedUpdatedAt, now()),
     });
     return { status: 'success', prompt };

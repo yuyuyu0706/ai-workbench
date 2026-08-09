@@ -8,6 +8,7 @@ export type PromptLibraryItem = {
   readonly kind: PromptKind;
   readonly scope: Prompt['scope'];
   readonly updatedAt: Prompt['updatedAt'];
+  readonly variableValues: Prompt['variableValues'];
 };
 
 export type PromptLibraryReadModel = {
@@ -65,6 +66,7 @@ function toItem(prompt: Prompt): PromptLibraryItem {
     kind: prompt.kind,
     scope: prompt.scope,
     updatedAt: prompt.updatedAt,
+    variableValues: prompt.variableValues,
   };
 }
 

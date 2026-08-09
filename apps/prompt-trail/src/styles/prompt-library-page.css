@@ -415,6 +415,17 @@
   gap: var(--pt-space-2);
 }
 
+.pt-prompt-body-popover__var-badge {
+  font-family: var(--pt-font-mono, monospace);
+  font-size: 0.75rem;
+  background: var(--pt-color-code-bg, #f6f8fa);
+  border: 1px solid var(--pt-color-border, #d1d5db);
+  border-radius: var(--pt-radius-sm, 4px);
+  padding: 0.1em 0.4em;
+  white-space: nowrap;
+  justify-self: start;
+}
+
 @media (max-width: 480px) {
   .pt-prompt-body-popover__var-panel-field {
     grid-template-columns: 1fr;
