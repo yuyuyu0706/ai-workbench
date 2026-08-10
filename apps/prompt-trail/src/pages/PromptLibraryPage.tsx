@@ -883,7 +883,7 @@ function PromptBodyPopover({
     );
     if (unchanged) {
       const resolved = resolvePromptVariables(prompt.body, prunedValues);
-      setVarValues({});
+      setVarValues(prunedValues);
       await writeToClipboard(resolved);
       return;
     }
@@ -909,8 +909,11 @@ function PromptBodyPopover({
           updatedAt: result.prompt.updatedAt,
         });
         onSaved();
-        const resolved = resolvePromptVariables(prompt.body, prunedValues);
-        setVarValues({});
+        const resolved = resolvePromptVariables(
+          prompt.body,
+          result.prompt.variableValues,
+        );
+        setVarValues(result.prompt.variableValues);
         await writeToClipboard(resolved);
       } else {
         setCopyState('error');

@@ -427,7 +427,7 @@ describe('PromptLibraryPage', () => {
     }
   });
 
-  it('shows the variable panel immediately, saves and resolves values on copy, and keeps unresolved variables', async () => {
+  it('shows the variable panel immediately, saves and resolves values on copy, and reuses saved values on immediate re-copy', async () => {
     const user = userEvent.setup();
     const writeText = vi.fn(async () => undefined);
     const originalClipboard = navigator.clipboard;
@@ -481,9 +481,11 @@ describe('PromptLibraryPage', () => {
       );
       expect(screen.getByText('コピーしました')).toBeInTheDocument();
 
+      updatePromptBody.mockClear();
       await user.click(copyButton);
+      expect(updatePromptBody).not.toHaveBeenCalled();
       expect(writeText).toHaveBeenLastCalledWith(
-        'こんにちは ${name}、今日は${topic}について話しましょう。',
+        'こんにちは Alice、今日は${topic}について話しましょう。',
       );
     } finally {
       Object.defineProperty(navigator, 'clipboard', {
