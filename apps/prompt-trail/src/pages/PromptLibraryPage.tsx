@@ -428,6 +428,16 @@ function filterPromptLibraryItemsByProject(
     : prompts.filter((prompt) => prompt.scope === filter);
 }
 
+function areVariableValuesEqual(
+  a: Record<string, string>,
+  b: Record<string, string>,
+) {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  return aKeys.every((key) => a[key] === b[key]);
+}
+
 function PromptTableRow({
   prompt,
   bodyOpen,
@@ -864,9 +874,54 @@ function PromptBodyPopover({
   };
 
   const copyResolved = async () => {
-    const resolved = resolvePromptVariables(prompt.body, varValues);
-    setVarValues({});
-    await writeToClipboard(resolved);
+    const prunedValues = Object.fromEntries(
+      detectedVars.filter((v) => v in varValues).map((v) => [v, varValues[v]]),
+    );
+    const unchanged = areVariableValuesEqual(
+      prunedValues,
+      baseline.variableValues,
+    );
+    if (unchanged) {
+      const resolved = resolvePromptVariables(prompt.body, prunedValues);
+      setVarValues(prunedValues);
+      await writeToClipboard(resolved);
+      return;
+    }
+    const targetRepository = repository;
+    const targetPromptId = prompt.id;
+    try {
+      const result = await updatePromptBody(targetRepository, {
+        promptId: targetPromptId,
+        expectedUpdatedAt: baseline.updatedAt,
+        body: prompt.body,
+        variableValues: prunedValues,
+      });
+      if (
+        !mountedRef.current ||
+        repository !== targetRepository ||
+        prompt.id !== targetPromptId
+      )
+        return;
+      if (result.status === 'success') {
+        setBaseline({
+          body: result.prompt.body,
+          variableValues: result.prompt.variableValues,
+          updatedAt: result.prompt.updatedAt,
+        });
+        onSaved();
+        const resolved = resolvePromptVariables(
+          prompt.body,
+          result.prompt.variableValues,
+        );
+        setVarValues(result.prompt.variableValues);
+        await writeToClipboard(resolved);
+      } else {
+        setCopyState('error');
+      }
+    } catch {
+      if (!mountedRef.current) return;
+      setCopyState('error');
+    }
   };
 
   const resetSession = () => {

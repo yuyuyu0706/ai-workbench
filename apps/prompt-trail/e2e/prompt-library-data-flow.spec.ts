@@ -438,10 +438,14 @@ test.describe('Prompt Library data flow', () => {
     await nameInput.fill('田中');
     await copyButton.click();
 
+    await expect(copyButton).toHaveAttribute('data-copied', 'true');
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
       'こんにちは 田中さん、${topic}について教えてください。',
     );
-    await expect(copyButton).toHaveAttribute('data-copied', 'true');
+
+    await popover.getByRole('button', { name: 'Prompt本文を閉じる' }).click();
+    await trigger.click();
+    await expect(varPanel.getByLabel('${name}')).toHaveValue('田中');
   });
 
   test('restores saved variable values on reopen and drops stale ones after a body edit', async ({
