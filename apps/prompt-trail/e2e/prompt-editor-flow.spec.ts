@@ -286,7 +286,7 @@ test.describe('Prompt Editor flow', () => {
     await page
       .getByRole('textbox', { name: 'Prompt本文' })
       .fill('タグ機能の確認用本文');
-    const tagInput = page.getByLabel('タグ');
+    const tagInput = page.getByRole('textbox', { name: 'タグ' });
     await tagInput.fill('チャット相談');
     await tagInput.press('Enter');
     await tagInput.fill('レビュー');
@@ -324,7 +324,7 @@ test.describe('Prompt Editor flow', () => {
   }) => {
     await page.setViewportSize({ width: 320, height: 844 });
     await page.goto('/prompts/new');
-    const tagInput = page.getByLabel('タグ');
+    const tagInput = page.getByRole('textbox', { name: 'タグ' });
     for (const tag of ['短いタグ', '別のタグ', '三つ目のタグ'])
       await tagInput.fill(tag).then(() => tagInput.press('Enter'));
     await expectNoHorizontalOverflow(page);
