@@ -65,6 +65,52 @@ async function seedGlobalPromptInBrowser(page: Page) {
   }, GLOBAL_PROMPT_BODY);
 }
 
+async function seedTaggedPromptsInBrowser(page: Page) {
+  await page.evaluate(async () => {
+    const { createPromptTrailRuntime } =
+      await import('/src/app/prompt-trail-runtime.ts');
+    const runtime = createPromptTrailRuntime();
+    try {
+      await runtime.initialize();
+      await runtime.repository.savePrompt({
+        id: 'prompt-library-tagged-a-e2e' as PromptId,
+        createdAt: '2026-08-01T03:00:00.000Z' as UtcDateTimeString,
+        updatedAt: '2026-08-01T03:00:00.000Z' as UtcDateTimeString,
+        deletedAt: null,
+        scope: 'global',
+        title: 'タグ付きPrompt A',
+        body: 'タグ検索用の本文A',
+        status: 'active',
+        tags: ['チャット相談', 'note', 'draft', 'extra'],
+      });
+      await runtime.repository.savePrompt({
+        id: 'prompt-library-tagged-b-e2e' as PromptId,
+        createdAt: '2026-08-01T04:00:00.000Z' as UtcDateTimeString,
+        updatedAt: '2026-08-01T04:00:00.000Z' as UtcDateTimeString,
+        deletedAt: null,
+        scope: 'global',
+        title: 'タグ付きPrompt B',
+        body: 'タグ検索用の本文B',
+        status: 'active',
+        tags: ['note'],
+      });
+      await runtime.repository.savePrompt({
+        id: 'prompt-library-untagged-e2e' as PromptId,
+        createdAt: '2026-08-01T05:00:00.000Z' as UtcDateTimeString,
+        updatedAt: '2026-08-01T05:00:00.000Z' as UtcDateTimeString,
+        deletedAt: null,
+        scope: 'global',
+        title: 'タグなしPrompt',
+        body: 'タグなしの本文',
+        status: 'active',
+        tags: [],
+      });
+    } finally {
+      runtime.dispose();
+    }
+  });
+}
+
 async function seedVariablePromptInBrowser(
   page: Page,
   variableValues: Record<string, string> = {},
@@ -162,7 +208,7 @@ test.describe('Prompt Library data flow', () => {
       page.getByRole('heading', { level: 2, name: 'Prompt一覧' }),
     ).toBeVisible();
     const promptTable = page.getByRole('table', { name: 'Prompt一覧' });
-    await expect(promptTable.getByRole('columnheader')).toHaveCount(5);
+    await expect(promptTable.getByRole('columnheader')).toHaveCount(6);
     await expect(
       promptTable.getByRole('columnheader', { name: 'Prompt名' }),
     ).toBeVisible();
@@ -510,6 +556,8 @@ test.describe('Prompt Library data flow', () => {
       page.getByRole('combobox', { name: 'プロジェクト' }),
     ).toBeFocused();
     await page.keyboard.press('Tab');
+    await expect(page.getByRole('combobox', { name: 'タグ' })).toBeFocused();
+    await page.keyboard.press('Tab');
     await expect(tableRegion).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(
@@ -555,6 +603,53 @@ test.describe('Prompt Library data flow', () => {
     await page.goto('/runs/new?sourcePromptId=prompt-library-e2e');
     await expect(page.getByLabel('Prompt本文')).toBeVisible();
     await expectNoHorizontalOverflow(page);
+  });
+
+  test('shows tag chips, filters by tag, matches tag names in search, and works at 320px', async ({
+    page,
+  }) => {
+    await page.goto('/prompts');
+    await seedTaggedPromptsInBrowser(page);
+    await page.reload();
+
+    const promptTable = page.getByRole('table', { name: 'Prompt一覧' });
+    await expect(
+      promptTable.getByRole('columnheader', { name: 'タグ' }),
+    ).toBeVisible();
+    const taggedARow = promptTable.getByRole('row', {
+      name: /タグ付きPrompt A/,
+    });
+    await expect(taggedARow.getByText('チャット相談')).toBeVisible();
+    await expect(taggedARow.getByText('note')).toBeVisible();
+    await expect(taggedARow.getByText('+2')).toBeVisible();
+    const untaggedRow = promptTable.getByRole('row', {
+      name: /タグなしPrompt/,
+    });
+    await expect(untaggedRow).toBeVisible();
+
+    const tagFilter = page.getByRole('combobox', { name: 'タグ' });
+    await expect(tagFilter).toHaveValue('all');
+    await tagFilter.selectOption('note');
+    await expect(page.getByText('全3件中 2件')).toBeVisible();
+    await expect(promptTable.getByText('タグなしPrompt')).toHaveCount(0);
+
+    await tagFilter.selectOption('all');
+    const search = page.getByRole('searchbox', { name: 'Promptを検索' });
+    await search.fill('チャット相談');
+    await expect(page.getByText('全3件中 1件')).toBeVisible();
+    await expect(promptTable.getByText('タグ付きPrompt A')).toBeVisible();
+
+    await search.fill('存在しないタグ');
+    await expect(page.getByText('全3件中 0件')).toBeVisible();
+    await expect(
+      page.getByText('プロジェクト・タグまたは検索条件を変更してください。'),
+    ).toBeVisible();
+    await page.getByRole('button', { name: '条件をクリア' }).click();
+    await expect(tagFilter).toHaveValue('all');
+
+    await page.setViewportSize({ width: 320, height: 844 });
+    await expectNoHorizontalOverflow(page);
+    await expect(tagFilter).toBeVisible();
   });
 
   test('keeps all Prompt Library actions operable at a 200% zoom equivalent viewport', async ({
