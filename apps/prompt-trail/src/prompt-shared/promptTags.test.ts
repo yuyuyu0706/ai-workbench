@@ -20,9 +20,9 @@ describe('isValidPromptTagLength', () => {
     expect(isValidPromptTagLength('a'.repeat(PROMPT_TAG_MAX_LENGTH))).toBe(
       true,
     );
-    expect(
-      isValidPromptTagLength('a'.repeat(PROMPT_TAG_MAX_LENGTH + 1)),
-    ).toBe(false);
+    expect(isValidPromptTagLength('a'.repeat(PROMPT_TAG_MAX_LENGTH + 1))).toBe(
+      false,
+    );
   });
 });
 
@@ -36,9 +36,7 @@ describe('addPromptTag', () => {
   });
 
   it('does not add a tag longer than the max length', () => {
-    expect(addPromptTag([], 'a'.repeat(PROMPT_TAG_MAX_LENGTH + 1))).toEqual(
-      [],
-    );
+    expect(addPromptTag([], 'a'.repeat(PROMPT_TAG_MAX_LENGTH + 1))).toEqual([]);
   });
 
   it('rejects duplicates case-insensitively while keeping existing casing', () => {
