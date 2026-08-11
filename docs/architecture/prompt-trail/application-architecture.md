@@ -1,14 +1,7 @@
 # Prompt Trail Application Architecture
 
-Prompt Trail のアプリケーションアーキテクチャを整理するためのサンプルです。
+このファイルは正本ではありません。Prompt Trail のアプリケーションアーキテクチャの正本は、以下を参照してください。
 
-## レイヤー
+- [Application Architecture](../../product/prompt-trail/application-architecture.md)（`docs/product/prompt-trail/application-architecture.md`）
 
-- UI: プロンプトや履歴を操作する画面を提供します。
-- Application: ユースケースとワークフローを扱います。
-- Domain: プロンプト、実行結果、履歴などの概念を扱います。
-- Infrastructure: 保存先や外部 API 連携を扱います。
-
-## 補足
-
-具体的な技術選定が決まり次第、詳細を追記します。
+（[Roadmap Rebaseline Issue #259](https://github.com/yuyuyu0706/ai-workbench/issues/259) により、`docs/product/` と `docs/architecture/` に重複していたスタブを整理しました。）
