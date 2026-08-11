@@ -155,6 +155,7 @@ P0-4-3 の状態表示は、Repository 連携前の利用開始状態と、将�
 | `contextLibrary` | `/contexts`               | Context Library    | なし     | 未完成の間はdirect accessのみ                                                    |
 | `recipeBuilder`  | `/recipes/builder`        | Recipe Builder     | なし     | 未完成の間はdirect accessのみ                                                    |
 | `newTrail`       | `/runs/new`               | New Trail          | なし     | Blank、`sourceRunId`、`sourcePromptId`を区別するcontextual route                 |
+| `runList`        | `/runs`                   | Trail一覧          | なし     | DashboardからのTrail到達性を補うcontextual route。Active Runを更新日時降順で全件表示 |
 | `runDetail`      | `/runs/:runId`            | Run Detail         | なし     | contextual route。常設グローバルナビではなく、Run などの文脈から到達する詳細画面 |
 | `notFound`       | `*`                       | Not Found          | なし     | recovery route。未知 URL から復帰導線を提示するための画面                        |
 

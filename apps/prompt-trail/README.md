@@ -6,6 +6,7 @@ PromptTrail は、AI を活用した作業の Trail を追跡するローカル�
 
 - `/` は Public Alpha Guideを表示し、DashboardとFeedbackへの入口を提供します。
 - 現行のGlobal Navigationは「はじめに」「Dashboard」「Prompt Library」です。トップページとDashboardのどちらからもPrompt Libraryへ移動でき、一覧・新規登録・編集では「Prompt Library」を現在地として表示します。Context LibraryとRecipe Builderは未完成のためdirect accessのみ維持します。
+- `/runs` は Trail 一覧で、Active Run を更新日時降順で全件表示します。Dashboard の「最近のTrail」から「すべてのTrailを表示」で到達できます。
 - `/runs/:runId` は Run Detail、未知の URL は Not Found と Dashboard への回復導線を提供します。
 - ブラウザの IndexedDB を使うため、新しい browser / origin では Dashboard が empty state になる場合があります。これはローカル起動失敗を意味しません。
 - IndexedDBの現行schemaはversion 3です。既存のschema v1 DBはopen時にtransactional migrationされ、全Runへ従来のPrompt Snapshotタイトルと同じ`trailTitle`および`trailKind = other`が補完されます（v1→v2）。既存のschema v2 DBは全Promptへ`variableValues`が未定義の場合のみ`{}`が補完されます（v2→v3）。migrationは他fieldや他Storeを変更せず、失敗時にDBを削除しません。

@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
 
-import { routePaths } from '../app/routes';
 import { loadDashboardDataState, type DashboardDataState } from '../dashboard';
 import type { DashboardReadModel } from '../dashboard';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
@@ -12,21 +10,21 @@ import { selectActiveDeveloperUiState } from '../developer-ui-state';
 
 import { RunTable } from './RunTable';
 
-const DASHBOARD_RECENT_RUN_LIMIT = 5;
+const RUN_LIST_LIMIT = Number.MAX_SAFE_INTEGER;
 
-type DashboardPageState = { readonly status: 'loading' } | DashboardDataState;
+type RunListPageState = { readonly status: 'loading' } | DashboardDataState;
 
-type DashboardPageStateSnapshot = {
+type RunListPageStateSnapshot = {
   readonly repository: ReturnType<typeof usePromptTrailRepository>;
-  readonly state: DashboardPageState;
+  readonly state: RunListPageState;
 };
 
-export function DashboardPage() {
+export function RunListPage() {
   const repository = usePromptTrailRepository();
   const { revision } = usePromptTrailDataRevision();
   const uiStateSnapshot = useDeveloperUiStateSnapshot();
   const [pageStateSnapshot, setPageStateSnapshot] =
-    useState<DashboardPageStateSnapshot>({
+    useState<RunListPageStateSnapshot>({
       repository,
       state: { status: 'loading' },
     });
@@ -36,9 +34,9 @@ export function DashboardPage() {
       : ({ status: 'loading' } as const);
   const pageOverride = selectActiveDeveloperUiState(
     uiStateSnapshot,
-    'dashboard-page',
+    'run-list-page',
   );
-  const displayedPageState: DashboardPageState =
+  const displayedPageState: RunListPageState =
     pageOverride === 'failure'
       ? { status: 'failure', error: undefined }
       : pageOverride === 'loading' || pageOverride === 'empty'
@@ -49,10 +47,10 @@ export function DashboardPage() {
     let isActive = true;
 
     loadDashboardDataState(repository, {
-      recentRunLimit: DASHBOARD_RECENT_RUN_LIMIT,
-    }).then((dashboardDataState) => {
+      recentRunLimit: RUN_LIST_LIMIT,
+    }).then((dataState) => {
       if (isActive) {
-        setPageStateSnapshot({ repository, state: dashboardDataState });
+        setPageStateSnapshot({ repository, state: dataState });
       }
     });
 
@@ -64,65 +62,47 @@ export function DashboardPage() {
   return (
     <section className="prompt-trail-page">
       <PageHeader
-        eyebrow="Dashboard"
-        title="Dashboard"
-        description="AI作業の再開入口として、最近のTrailを確認する画面です。"
-        actions={
-          <RouterLink
-            className="pt-button pt-button--primary"
-            to={routePaths.newTrail}
-          >
-            新しいTrailを始める
-          </RouterLink>
-        }
+        eyebrow="Trail一覧"
+        title="Trail一覧"
+        description="すべてのActive TrailをUpdated日時の降順で表示します。"
       />
-      <DashboardStateMessage pageState={displayedPageState} />
+      <RunListStateMessage pageState={displayedPageState} />
       {displayedPageState.status === 'data' ? (
-        <DashboardDataSections data={displayedPageState.data} />
+        <RunListDataSection data={displayedPageState.data} />
       ) : null}
     </section>
   );
 }
 
-function DashboardDataSections({ data }: { data: DashboardReadModel }) {
+function RunListDataSection({ data }: { data: DashboardReadModel }) {
   return (
     <div className="prompt-trail-page__sections">
-      <PageSection
-        title="最近のTrail"
-        actions={
-          <RouterLink
-            className="pt-button pt-button--secondary"
-            to={routePaths.runList}
-          >
-            すべてのTrailを表示
-          </RouterLink>
-        }
-      >
+      <PageSection title="Trail一覧">
         <RunTable runs={data.recentRuns} />
       </PageSection>
     </div>
   );
 }
 
-function DashboardStateMessage({
+function RunListStateMessage({
   pageState,
 }: {
-  pageState: DashboardPageState;
+  pageState: RunListPageState;
 }) {
   switch (pageState.status) {
     case 'loading':
       return (
         <StateMessage
           variant="loading"
-          title="Dashboardデータを読み込んでいます..."
-          description="Repositoryから最近のRunと関連情報を取得しています。"
+          title="Trail一覧を読み込んでいます..."
+          description="Repositoryから全Trailを取得しています。"
         />
       );
     case 'empty':
       return (
         <StateMessage
           variant="empty"
-          title="Repositoryに表示できるRunがまだありません。"
+          title="Repositoryに表示できるTrailがまだありません。"
           description="Fresh DBでは自動Seedせず、Repository読み取り後の正常なEmpty Stateとして表示しています。"
         />
       );
@@ -130,7 +110,7 @@ function DashboardStateMessage({
       return (
         <StateMessage
           variant="error"
-          title="Dashboardデータの読み込みに失敗しました。"
+          title="Trail一覧の読み込みに失敗しました。"
           description="Repositoryの読み取りに失敗しました。時間をおいてページを再読み込みしてください。"
         />
       );

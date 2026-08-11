@@ -9,7 +9,7 @@ import {
   PromptTrailDataRevisionProvider,
   usePromptTrailDataRevision,
 } from '../app/PromptTrailDataRevisionContext';
-import { buildRunDetailPath } from '../app/routes';
+import { buildRunDetailPath, routePaths } from '../app/routes';
 import { createPromptTrailRuntime } from '../app/prompt-trail-runtime';
 import type { DeveloperToolsRuntime } from '../app/prompt-trail-runtime';
 import { DeveloperToolsProvider } from '../developer-tools/DeveloperToolsContext';
@@ -193,6 +193,11 @@ describe('DashboardPage', () => {
     );
     expect(updatedAt).toHaveAttribute('datetime', sampleDataset.run.updatedAt);
     expect(screen.getByText('3件')).toBeInTheDocument();
+
+    const runListLink = screen.getByRole('link', {
+      name: 'すべてのTrailを表示',
+    });
+    expect(runListLink).toHaveAttribute('href', routePaths.runList);
 
     const detailLink = screen.getByRole('link', {
       name: sampleDataset.run.promptSnapshot.title,
