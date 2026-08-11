@@ -176,7 +176,7 @@ Prompt / Context / Recipe など、Dashboard 以外で未接続の Page は、Ph
 
 Phase 2ではPrompt Libraryを実データへ接続し、主要Navigationへ復帰済みです。Global Navigationのactive classと`aria-current="page"`は、現在のpathnameを既知Routeへ照合して得た単一のactive item IDから導出します。単純な`/prompts` prefix判定は行わないため、`/prompts/unknown`を含むNot Foundではactive項目を表示しません。Context Library / Recipe Builderは未完成の間はdirect routeだけを維持し、主要Navigationには表示しません。Run DomainにはPrompt資産とは独立した必須の`trailTitle`と`trailKind`を実装済みです。New TrailはTrail名・Trail種別・Prompt本文を個別に受け取り、新しいPromptとRunを既存Bundleでatomic保存します。過去Run再利用では3項目を初期値として引き継ぎ、元Runは変更しません。Run DetailでのTrail metadata表示・編集は後続Issueの責務です。
 
-Dexieの現行schemaはversion 2です。Database constructorは歴史的なschema v1定義をupgrade起点として保持し、既存v1 DBをopenすると同一upgrade transaction内で全Runへ`trailTitle = promptSnapshot.title`（正規化なし）、`trailKind = other`を補完します。RepositoryやUIはlegacy fallbackを持たず、open完了後の必須fieldを持つRunだけを扱います。malformed Runでmigrationが失敗した場合はtransaction全体をrollbackし、DBの削除や部分更新を行いません。
+Dexieの現行schemaはversion 4です。Database constructorは歴史的なschema v1定義をupgrade起点として保持し、既存v1 DBをopenすると同一upgrade transaction内で全Runへ`trailTitle = promptSnapshot.title`（正規化なし）、`trailKind = other`を補完します（v1→v2）。v2→v3ではPromptへ`variableValues`が未定義の場合のみ`{}`を補完し、v3→v4では廃止したPromptの`kind` fieldを対応するラベルへ変換して`tags`へ移行し、`kind` fieldを削除します。RepositoryやUIはlegacy fallbackを持たず、open完了後の必須fieldを持つRunだけを扱います。malformed Runでmigrationが失敗した場合はtransaction全体をrollbackし、DBの削除や部分更新を行いません。
 
 Prompt Repositoryが扱うPromptは編集・論理削除可能な現在の再利用資産です。一方、Run Repositoryが扱う`promptSnapshot`は実行時点の不変な証跡であり、元Promptの編集・削除を伝播させません。Prompt削除後もRunとLinkを維持します。UIはこの境界を越えてDexie / IndexedDBを直接操作しません。
 
