@@ -33,6 +33,7 @@ describe('loadPromptLibraryDataState', () => {
             scope: prompt.scope,
             updatedAt: prompt.updatedAt,
             variableValues: prompt.variableValues,
+            tags: prompt.tags,
           },
         ],
       },

@@ -853,4 +853,45 @@ describe('PromptEditorPage', () => {
     expect(screen.getByRole('alert')).toBeVisible();
     expect(savePrompt).not.toHaveBeenCalled();
   });
+
+  it('adds and removes tags as chips, and persists them on save', async () => {
+    const user = userEvent.setup();
+    const savePrompt = vi.fn(async (p: Prompt) => p);
+    renderEditor({
+      getProject: vi.fn(async () => ({ id: 'default-project' })),
+      saveProject: vi.fn(async (p) => p),
+      savePrompt,
+    } as unknown as PromptTrailRepository);
+
+    const tagInput = screen.getByLabelText('タグ');
+    await user.type(tagInput, 'foo{Enter}');
+    await user.type(tagInput, 'bar{Enter}');
+    expect(screen.getByText('foo')).toBeInTheDocument();
+    expect(screen.getByText('bar')).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText('タグ「foo」を削除'));
+    expect(screen.queryByText('foo')).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('タイトル'), 'タイトル');
+    await user.type(screen.getByLabelText('Prompt本文'), '本文');
+    await user.click(screen.getAllByRole('button', { name: '保存' })[0]);
+
+    await waitFor(() =>
+      expect(savePrompt).toHaveBeenCalledWith(
+        expect.objectContaining({ tags: ['bar'] }),
+      ),
+    );
+  });
+
+  it('rejects duplicate tags and tags beyond the max count', async () => {
+    const user = userEvent.setup();
+    renderEditor({} as PromptTrailRepository);
+    const tagInput = screen.getByLabelText('タグ');
+    await user.type(tagInput, 'dup{Enter}');
+    await user.type(tagInput, 'dup{Enter}');
+    expect(screen.getAllByText('dup')).toHaveLength(1);
+    expect(
+      screen.getByText('同じタグが既に追加されています。'),
+    ).toBeInTheDocument();
+  });
 });

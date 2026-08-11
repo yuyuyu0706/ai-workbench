@@ -23,13 +23,19 @@ import {
   extractPromptVariables,
   resolvePromptVariables,
 } from '../prompt-shared/promptVariables';
+import {
+  addPromptTag,
+  isValidPromptTagLength,
+  PROMPT_TAG_MAX_COUNT,
+  removePromptTag,
+} from '../prompt-shared/promptTags';
 
 type LoadState =
   | { readonly status: 'loading' }
   | { readonly status: 'data'; readonly prompt: Prompt }
   | { readonly status: 'not-found' | 'unavailable' | 'failure' };
 
-const EMPTY_VALUES: PromptEditorValues = { title: '', body: '' };
+const EMPTY_VALUES: PromptEditorValues = { title: '', body: '', tags: [] };
 const PROMPT_EDITOR_FORM_ID = 'prompt-editor-form';
 
 const COPY_SVG = (
@@ -165,6 +171,55 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
   const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [varValues, setVarValues] = useState<Record<string, string>>({});
   const focusInPanelRef = useRef(false);
+  const [tagDraft, setTagDraft] = useState('');
+  const [tagError, setTagError] = useState<string | undefined>(undefined);
+
+  function addTagFromDraft() {
+    const draft = tagDraft;
+    if (draft.trim().length === 0) {
+      setTagDraft('');
+      setTagError(undefined);
+      return;
+    }
+    if (!isValidPromptTagLength(draft)) {
+      setTagError('タグは1〜24文字で入力してください。');
+      return;
+    }
+    if (currentForm.values.tags.length >= PROMPT_TAG_MAX_COUNT) {
+      setTagError(`タグは${PROMPT_TAG_MAX_COUNT}個まで追加できます。`);
+      return;
+    }
+    const nextTags = addPromptTag(currentForm.values.tags, draft);
+    if (nextTags === currentForm.values.tags) {
+      setTagError('同じタグが既に追加されています。');
+      return;
+    }
+    setForm({
+      ...currentForm,
+      values: { ...currentForm.values, tags: nextTags },
+      status: 'idle',
+    });
+    setTagDraft('');
+    setTagError(undefined);
+  }
+
+  function handleTagInputKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      addTagFromDraft();
+    }
+  }
+
+  function removeTag(tag: string) {
+    setForm({
+      ...currentForm,
+      values: {
+        ...currentForm.values,
+        tags: removePromptTag(currentForm.values.tags, tag),
+      },
+      status: 'idle',
+    });
+  }
 
   const detectedVars = useMemo(
     () => extractPromptVariables(currentForm.values.body),
@@ -273,6 +328,7 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
             values: {
               title: state.prompt.title,
               body: state.prompt.body,
+              tags: state.prompt.tags,
             },
             errors: {},
             status: 'idle',
@@ -488,6 +544,48 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
               {currentForm.errors.title ? (
                 <p className="pt-form__error">{currentForm.errors.title}</p>
               ) : null}
+            </div>
+            <div className="pt-prompt-editor__meta-row">
+              <div className="pt-prompt-editor__meta-field">
+                <label htmlFor="prompt-tag-input">タグ</label>
+                <div className="pt-prompt-editor__tag-list">
+                  {currentForm.values.tags.map((tag) => (
+                    <span key={tag} className="pt-prompt-editor__tag-chip">
+                      {tag}
+                      <button
+                        type="button"
+                        className="pt-prompt-editor__tag-chip-remove"
+                        aria-label={`タグ「${tag}」を削除`}
+                        disabled={
+                          displayedStatus === 'submitting' ||
+                          displayedDeletion === 'deleting'
+                        }
+                        onClick={() => removeTag(tag)}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  <input
+                    id="prompt-tag-input"
+                    type="text"
+                    value={tagDraft}
+                    maxLength={24}
+                    placeholder="タグを入力してEnter"
+                    disabled={
+                      displayedStatus === 'submitting' ||
+                      displayedDeletion === 'deleting' ||
+                      currentForm.values.tags.length >= PROMPT_TAG_MAX_COUNT
+                    }
+                    onChange={(event) => {
+                      setTagDraft(event.target.value);
+                      setTagError(undefined);
+                    }}
+                    onKeyDown={handleTagInputKeyDown}
+                  />
+                </div>
+                {tagError ? <p className="pt-form__error">{tagError}</p> : null}
+              </div>
             </div>
             <div className="pt-prompt-editor__body-label-row">
               <label htmlFor="prompt-body">Prompt本文</label>

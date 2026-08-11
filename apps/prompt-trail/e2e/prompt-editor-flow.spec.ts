@@ -277,4 +277,56 @@ test.describe('Prompt Editor flow', () => {
       'New Trailから保存されるActive Prompt',
     );
   });
+
+  test('adds tags in the editor, persists them on save, and shows them read-only in the Library Popover', async ({
+    page,
+  }) => {
+    await page.goto('/prompts/new');
+    await page.getByLabel('タイトル').fill('タグ付きPrompt');
+    await page
+      .getByRole('textbox', { name: 'Prompt本文' })
+      .fill('タグ機能の確認用本文');
+    const tagInput = page.getByRole('textbox', { name: 'タグ' });
+    await tagInput.fill('チャット相談');
+    await tagInput.press('Enter');
+    await tagInput.fill('レビュー');
+    await tagInput.press('Enter');
+    await expect(page.getByText('チャット相談')).toBeVisible();
+    await expect(page.getByText('レビュー')).toBeVisible();
+    await page
+      .getByLabel('Promptの内容')
+      .getByRole('button', { name: '保存' })
+      .first()
+      .click();
+    await expect(page).toHaveURL(/\/prompts$/);
+
+    await page
+      .getByRole('table', { name: 'Prompt一覧' })
+      .getByRole('button', { name: '「タグ付きPrompt」のPrompt本文を表示' })
+      .click();
+    const popover = page.getByRole('dialog', { name: 'Prompt本文' });
+    await expect(popover.getByText('チャット相談')).toBeVisible();
+    await expect(popover.getByText('レビュー')).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    const editLink = page
+      .getByRole('table', { name: 'Prompt一覧' })
+      .getByRole('link', { name: '「タグ付きPrompt」を編集' });
+    await editLink.click();
+    await expect(page).toHaveURL(/\/edit$/);
+    await page.reload();
+    await expect(page.getByText('チャット相談')).toBeVisible();
+    await expect(page.getByText('レビュー')).toBeVisible();
+  });
+
+  test('keeps the tag input and chips readable without horizontal overflow at 320px', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.goto('/prompts/new');
+    const tagInput = page.getByRole('textbox', { name: 'タグ' });
+    for (const tag of ['短いタグ', '別のタグ', '三つ目のタグ'])
+      await tagInput.fill(tag).then(() => tagInput.press('Enter'));
+    await expectNoHorizontalOverflow(page);
+  });
 });

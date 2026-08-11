@@ -1389,6 +1389,35 @@ describe('PromptLibraryPage', () => {
     renderPromptLibraryPage(repository);
     expect(screen.queryByText('Promptを削除しました。')).toBeNull();
   });
+
+  it('shows tags as read-only chips in the Popover view mode, and none when a Prompt has no tags', async () => {
+    const user = userEvent.setup();
+    const tagged = { ...prompts[0], tags: ['チャット相談', 'note'] };
+    const untagged = { ...prompts[1], tags: [] };
+    renderPromptLibraryPage(createRepository([tagged, untagged]));
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: `「${tagged.title}」のPrompt本文を表示`,
+      }),
+    );
+    const taggedDialog = screen.getByRole('dialog', { name: 'Prompt本文' });
+    expect(within(taggedDialog).getByText('チャット相談')).toBeInTheDocument();
+    expect(within(taggedDialog).getByText('note')).toBeInTheDocument();
+    expect(
+      within(taggedDialog).queryByRole('button', { name: /削除/ }),
+    ).toBeNull();
+
+    await user.click(
+      screen.getByRole('button', {
+        name: `「${untagged.title}」のPrompt本文を表示`,
+      }),
+    );
+    const untaggedDialog = screen.getByRole('dialog', { name: 'Prompt本文' });
+    expect(
+      within(untaggedDialog).queryByLabelText('タグ'),
+    ).not.toBeInTheDocument();
+  });
 });
 
 type LayoutRect = {

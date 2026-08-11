@@ -29,7 +29,7 @@ export async function createPrompt(
     title: values.title.trim(),
     body: values.body,
     status: 'active',
-    tags: [],
+    tags: values.tags,
     variableValues,
     createdAt: now,
     updatedAt: now,
