@@ -122,6 +122,14 @@ function legacyDataset(
 type LegacyDataset = ReturnType<typeof legacyDataset>;
 const databaseNames = new Set<string>();
 
+function withoutKind<T extends { kind?: unknown }>(
+  prompt: T,
+): Omit<T, 'kind'> {
+  const clone: T = { ...prompt };
+  delete clone.kind;
+  return clone;
+}
+
 async function readAllStores(database: Dexie) {
   return Object.fromEntries(
     await Promise.all(
@@ -198,8 +206,8 @@ describe('schema v1 to v2 migration', () => {
       expect(migrated[storeName]).toEqual(before[storeName]);
     }
     expect(migrated.prompts).toEqual(
-      before.prompts.map(({ kind: _kind, ...prompt }) => ({
-        ...prompt,
+      before.prompts.map((prompt) => ({
+        ...withoutKind(prompt),
         variableValues: {},
       })),
     );
@@ -282,8 +290,8 @@ describe('schema v2 to v3 migration', () => {
       expect(migrated[storeName]).toEqual(before[storeName]);
     }
     expect(migrated.prompts).toEqual(
-      before.prompts.map(({ kind: _kind, ...prompt }) => ({
-        ...prompt,
+      before.prompts.map((prompt) => ({
+        ...withoutKind(prompt),
         variableValues: {},
       })),
     );
@@ -367,8 +375,8 @@ describe('schema v3 to v4 migration', () => {
       expect(migrated[storeName]).toEqual(before[storeName]);
     }
     expect(migrated.prompts).toEqual(
-      before.prompts.map(({ kind: _kind, ...prompt }) => ({
-        ...prompt,
+      before.prompts.map((prompt) => ({
+        ...withoutKind(prompt),
         tags: [...prompt.tags, '設計レビュー'],
       })),
     );
