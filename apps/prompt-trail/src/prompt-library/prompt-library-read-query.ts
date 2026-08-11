@@ -52,10 +52,42 @@ export function searchPromptLibraryItems(
   if (normalizedQuery.length === 0) return prompts;
 
   return prompts.filter((prompt) =>
-    `${prompt.title}\n${prompt.body}`
+    `${prompt.title}\n${prompt.body}\n${prompt.tags.join('\n')}`
       .toLocaleLowerCase()
       .includes(normalizedQuery),
   );
+}
+
+export type PromptTagFilter = 'all' | string;
+
+export function filterPromptLibraryItemsByTag(
+  prompts: readonly PromptLibraryItem[],
+  tag: PromptTagFilter,
+): readonly PromptLibraryItem[] {
+  return tag === 'all'
+    ? prompts
+    : prompts.filter((prompt) => prompt.tags.includes(tag));
+}
+
+/**
+ * Returns the deduplicated tags used across the given prompts, sorted by
+ * usage frequency (most-used first) and then alphabetically (locale 'ja')
+ * for ties. Used to populate the Tag Filter dropdown options.
+ */
+export function collectUsedTags(
+  prompts: readonly PromptLibraryItem[],
+): readonly string[] {
+  const counts = new Map<string, number>();
+  for (const prompt of prompts) {
+    for (const tag of prompt.tags) {
+      counts.set(tag, (counts.get(tag) ?? 0) + 1);
+    }
+  }
+  return [...counts.keys()].sort((a, b) => {
+    const countDiff = (counts.get(b) ?? 0) - (counts.get(a) ?? 0);
+    if (countDiff !== 0) return countDiff;
+    return a.localeCompare(b, 'ja', { numeric: true, sensitivity: 'base' });
+  });
 }
 
 function toItem(prompt: Prompt): PromptLibraryItem {

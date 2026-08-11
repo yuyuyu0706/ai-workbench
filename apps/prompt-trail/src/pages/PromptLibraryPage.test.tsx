@@ -103,7 +103,14 @@ describe('PromptLibraryPage', () => {
     expect(table).toBeVisible();
     expect(
       screen.getAllByRole('columnheader').map((cell) => cell.textContent),
-    ).toEqual(['Prompt名', 'プロジェクト', '更新日時', 'Prompt', '操作']);
+    ).toEqual([
+      'Prompt名',
+      'プロジェクト',
+      'タグ',
+      '更新日時',
+      'Prompt',
+      '操作',
+    ]);
     expect(screen.getAllByRole('row')).toHaveLength(3);
     expect(screen.getByText(prompts[0].title)).toBeVisible();
     expect(screen.getByText(prompts[1].title)).toBeVisible();
@@ -114,6 +121,7 @@ describe('PromptLibraryPage', () => {
       'all',
     );
     expect(screen.queryByRole('button', { name: '条件をクリア' })).toBeNull();
+    expect(screen.getByRole('combobox', { name: 'タグ' })).toHaveValue('all');
     expect(
       screen.getByPlaceholderText('Prompt名または本文を検索'),
     ).toBeVisible();
@@ -179,7 +187,7 @@ describe('PromptLibraryPage', () => {
       screen.getByText('条件に一致するPromptがありません。'),
     ).toBeVisible();
     expect(
-      screen.getByText('プロジェクトまたは検索条件を変更してください。'),
+      screen.getByText('プロジェクト・タグまたは検索条件を変更してください。'),
     ).toBeVisible();
     expect(screen.queryByRole('table', { name: 'Prompt一覧' })).toBeNull();
 
@@ -189,6 +197,62 @@ describe('PromptLibraryPage', () => {
     expect(screen.getByText('全2件')).toBeVisible();
     expect(screen.getAllByRole('row')).toHaveLength(3);
     expect(repository.listActivePrompts).toHaveBeenCalledOnce();
+  });
+
+  it('shows tag chips per row, filters by tag, and combines it with Project and keyword conditions', async () => {
+    const user = userEvent.setup();
+    const tagged = [
+      { ...prompts[0], tags: ['チャット相談', 'note', 'extra', 'more'] },
+      { ...prompts[1], tags: ['note'] },
+      createPrompt('gamma', 'Gamma', 'no tags here', 'global'),
+    ];
+    const repository = createRepository(tagged);
+    renderPromptLibraryPage(repository);
+    await screen.findByRole('heading', { level: 2, name: 'Prompt一覧' });
+
+    const table = screen.getByRole('table', { name: 'Prompt一覧' });
+    const tagFilter = screen.getByRole('combobox', { name: 'タグ' });
+    expect(tagFilter).toHaveValue('all');
+    // "note" appears on 2 prompts, so it is ordered before the single-use tags.
+    expect(
+      within(tagFilter)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['すべてのタグ', 'note', 'extra', 'more', 'チャット相談']);
+
+    const alphaRow = within(table).getByText(tagged[0].title).closest('tr')!;
+    expect(within(alphaRow).getByText('チャット相談')).toBeVisible();
+    expect(within(alphaRow).getByText('note')).toBeVisible();
+    expect(within(alphaRow).getByText('+2')).toBeVisible();
+    const gammaRow = within(table).getByText('Gamma').closest('tr')!;
+    expect(within(gammaRow).queryByText('+')).toBeNull();
+
+    await user.selectOptions(tagFilter, 'note');
+    expect(screen.getByText('全3件中 2件')).toBeVisible();
+    expect(screen.getByText(tagged[0].title)).toBeVisible();
+    expect(screen.getByText(tagged[1].title)).toBeVisible();
+    expect(screen.queryByText('Gamma')).toBeNull();
+
+    const projectFilter = screen.getByRole('combobox', {
+      name: 'プロジェクト',
+    });
+    await user.selectOptions(projectFilter, 'project');
+    expect(screen.getByText('全3件中 1件')).toBeVisible();
+    expect(screen.getByText(tagged[1].title)).toBeVisible();
+    expect(screen.queryByText(tagged[0].title)).toBeNull();
+
+    const search = screen.getByRole('searchbox', { name: 'Promptを検索' });
+    await user.type(search, 'チャット相談');
+    expect(screen.getByText('全3件中 0件')).toBeVisible();
+    expect(
+      screen.getByText('プロジェクト・タグまたは検索条件を変更してください。'),
+    ).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: '条件をクリア' }));
+    expect(tagFilter).toHaveValue('all');
+    expect(projectFilter).toHaveValue('all');
+    expect(search).toHaveValue('');
+    expect(screen.getByText('全3件')).toBeVisible();
   });
 
   it('opens one Prompt body popover and supports toggle, switch, Escape, outside click, and close focus', async () => {
@@ -736,9 +800,9 @@ describe('PromptLibraryPage', () => {
     renderPromptLibraryPage(createRepository(prompts));
     const table = await screen.findByRole('table', { name: 'Prompt一覧' });
     const headers = within(table).getAllByRole('columnheader');
-    expect(headers[3]).toHaveClass('pt-prompt-table__prompt-heading');
-    expect(headers[4]).toHaveClass('pt-prompt-table__action-heading');
-    headers.slice(0, 3).forEach((header) => {
+    expect(headers[4]).toHaveClass('pt-prompt-table__prompt-heading');
+    expect(headers[5]).toHaveClass('pt-prompt-table__action-heading');
+    headers.slice(0, 4).forEach((header) => {
       expect(header).not.toHaveClass(
         'pt-prompt-table__prompt-heading',
         'pt-prompt-table__action-heading',
@@ -747,8 +811,8 @@ describe('PromptLibraryPage', () => {
     const cells = within(within(table).getAllByRole('row')[1]).getAllByRole(
       'cell',
     );
-    expect(cells[3]).toHaveClass('pt-prompt-table__prompt-cell');
-    expect(cells[4]).toHaveClass('pt-prompt-table__action-cell');
+    expect(cells[4]).toHaveClass('pt-prompt-table__prompt-cell');
+    expect(cells[5]).toHaveClass('pt-prompt-table__action-cell');
   });
 
   it('applies loading, empty, and failure Developer Tools overrides and restores data', async () => {

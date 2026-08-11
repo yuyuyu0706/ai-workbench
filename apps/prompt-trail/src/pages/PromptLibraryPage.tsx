@@ -27,12 +27,15 @@ import { PageSection, StateMessage } from '../components/ui';
 import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
 import { selectActiveDeveloperUiState } from '../developer-ui-state';
 import {
+  collectUsedTags,
+  filterPromptLibraryItemsByTag,
   loadPromptLibraryDataState,
   searchPromptLibraryItems,
   sortPromptLibraryItems,
   type PromptLibraryDataState,
   type PromptLibraryItem,
   type PromptSortMode,
+  type PromptTagFilter,
 } from '../prompt-library';
 import { updatePromptBody, validatePromptBody } from '../prompt-editor';
 import {
@@ -85,6 +88,7 @@ export function PromptLibraryPage() {
   );
   const [query, setQuery] = useState('');
   const [projectFilter, setProjectFilter] = useState<ProjectFilter>('all');
+  const [tagFilter, setTagFilter] = useState<PromptTagFilter>('all');
   const [sortMode, setSortMode] = useState<PromptSortMode>('updated-desc');
   const keepOpenPromptIdRef = useRef<string | null>(null);
   const [openPrompt, setOpenPrompt] = useState<{
@@ -158,12 +162,16 @@ export function PromptLibraryPage() {
     state.status === 'data'
       ? filterPromptLibraryItemsByProject(state.data.prompts, projectFilter)
       : [];
-  const searchedPrompts = searchPromptLibraryItems(
+  const tagFilteredPrompts = filterPromptLibraryItemsByTag(
     projectFilteredPrompts,
-    query,
+    tagFilter,
   );
+  const searchedPrompts = searchPromptLibraryItems(tagFilteredPrompts, query);
   const results = sortPromptLibraryItems(searchedPrompts, sortMode);
-  const hasConditions = projectFilter !== 'all' || query.trim() !== '';
+  const hasConditions =
+    projectFilter !== 'all' || tagFilter !== 'all' || query.trim() !== '';
+  const usedTags =
+    state.status === 'data' ? collectUsedTags(state.data.prompts) : [];
   const openPromptId =
     openPrompt !== null &&
     openPrompt.revision === revision &&
@@ -237,6 +245,23 @@ export function PromptLibraryPage() {
                   <option value="project">Default Project</option>
                 </select>
               </label>
+              <label className="pt-prompt-tag-filter">
+                <span className="pt-sr-only">タグ</span>
+                <select
+                  value={tagFilter}
+                  disabled={controlsLocked}
+                  onChange={(event) => {
+                    setTagFilter(event.target.value as PromptTagFilter);
+                  }}
+                >
+                  <option value="all">すべてのタグ</option>
+                  {usedTags.map((tag) => (
+                    <option key={tag} value={tag}>
+                      {tag}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </>
           ) : null}
         </div>
@@ -274,6 +299,7 @@ export function PromptLibraryPage() {
                 disabled={controlsLocked}
                 onClick={() => {
                   setProjectFilter('all');
+                  setTagFilter('all');
                   setQuery('');
                 }}
               >
@@ -285,7 +311,7 @@ export function PromptLibraryPage() {
             <StateMessage
               variant="empty"
               title="条件に一致するPromptがありません。"
-              description="プロジェクトまたは検索条件を変更してください。"
+              description="プロジェクト・タグまたは検索条件を変更してください。"
             />
           ) : (
             <div
@@ -301,6 +327,7 @@ export function PromptLibraryPage() {
                 <colgroup>
                   <col className="pt-prompt-table__column-title" />
                   <col className="pt-prompt-table__column-project" />
+                  <col className="pt-prompt-table__column-tags" />
                   <col className="pt-prompt-table__column-updated-at" />
                   <col className="pt-prompt-table__column-prompt" />
                   <col className="pt-prompt-table__column-actions" />
@@ -347,6 +374,7 @@ export function PromptLibraryPage() {
                       </button>
                     </th>
                     <th scope="col">プロジェクト</th>
+                    <th scope="col">タグ</th>
                     <th
                       scope="col"
                       aria-sort={
@@ -417,6 +445,28 @@ function filterPromptLibraryItemsByProject(
     : prompts.filter((prompt) => prompt.scope === filter);
 }
 
+const PROMPT_TABLE_TAG_VISIBLE_COUNT = 2;
+
+function PromptTagList({ tags }: { tags: readonly string[] }) {
+  if (tags.length === 0) return null;
+  const visibleTags = tags.slice(0, PROMPT_TABLE_TAG_VISIBLE_COUNT);
+  const hiddenCount = tags.length - visibleTags.length;
+  return (
+    <span className="pt-prompt-body-popover__tags" aria-label="タグ">
+      {visibleTags.map((tag) => (
+        <span key={tag} className="pt-prompt-body-popover__tag-chip">
+          {tag}
+        </span>
+      ))}
+      {hiddenCount > 0 ? (
+        <span className="pt-prompt-body-popover__tag-chip pt-prompt-table__tag-more">
+          {`+${hiddenCount}`}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 function areVariableValuesEqual(
   a: Record<string, string>,
   b: Record<string, string>,
@@ -468,6 +518,9 @@ function PromptTableRow({
       </td>
       <td className="pt-prompt-table__muted">
         {prompt.scope === 'global' ? 'Global' : 'Default Project'}
+      </td>
+      <td className="pt-prompt-table__tags">
+        <PromptTagList tags={prompt.tags} />
       </td>
       <td className="pt-prompt-table__muted">
         <time dateTime={prompt.updatedAt}>
