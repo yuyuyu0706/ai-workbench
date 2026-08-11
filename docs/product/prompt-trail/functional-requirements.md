@@ -8,6 +8,8 @@
 
 Phase 0 の現在の実装状態は [PromptTrail Phase 0 Technical Baseline](../../architecture/prompt-trail/README.md)、[Application Architecture](application-architecture.md)、[PromptTrail Data Model](../../architecture/prompt-trail/data-model.md) を正本とします。本書を全面的な進捗管理表にはせず、将来の目標要件を維持します。
 
+> **読み替え注記（[Roadmap Rebaseline Issue #259](https://github.com/yuyuyu0706/ai-workbench/issues/259)）**：本書中の「Phase 3候補」という表記は、[Roadmap](roadmap.md) の Evidence Backlog 導入に伴い「Evidence Backlog候補」と読み替えます。差分最小化のため本文中の該当箇所（複数）は書き換えず、この注記のみで扱いを更新します。Phase 3 以降の Phase 名称・中心テーマは Roadmap の Rebaseline 案（Phase 3: Guided Execution Foundation、Phase 4: Workflow & Integration Expansion）を正とし、本書の Phase 3〜5 の記述より Roadmap を優先します。
+
 ## 1. プロダクト全体像
 
 | 項目              | 内容                                                                                                                |

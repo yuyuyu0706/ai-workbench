@@ -2,6 +2,18 @@
 
 PromptTrail は、AI を活用した知的生産・開発作業における Project、Prompt、Context、Recipe、Run、Link の 6 モデルを管理し、依頼から成果物までの Trail を追跡するためのローカルファーストなワークベンチです。
 
+PromptTrail の価値は、次の順序で進化します（[Roadmap Rebaseline Issue #259](https://github.com/yuyuyu0706/ai-workbench/issues/259)）。Phase 2 までの実装はこの前段であり、Phase 3 以降で「実行できる」段階へ進みます。
+
+```text
+Prompt Management
+       ↓
+Trail Management
+       ↓
+Trail Execution
+       ↓
+Guided Development
+```
+
 ```text
 Prompt / Context
       ↓
@@ -93,7 +105,7 @@ Phase 2 後半では、Prompt の事前登録・改善・反復利用、同一 P
 
 ## Public Alpha 後の進め方
 
-Phase 3 は Prompt 復元・版管理・高度な検索・絞り込み、Context Library、Recipe Builder 等から、Phase 2 の利用証拠が示す対象だけを選択実装します。Phase 4 では GitHub Integration を深め、Phase 5 では Productization & Administration として複数の利用者像・契約・権限・習熟度に対応します。Guest / Plus / Pro の Plan / Entitlement、Admin / Member の Authorization Role、Simple / Standard / Advanced の Persona / Experience は別軸として扱います。
+Phase 3 以降の方向性は [Roadmap #259](https://github.com/yuyuyu0706/ai-workbench/issues/259) により Rebaseline 案として再定義されました（最終確定は P2-6 の Scope Decision）。Phase 3「Guided Execution Foundation」では Workspace / Trail / AI・GitHub 実行基盤を成立させ、Prompt 復元・版管理・高度な検索・絞り込み、Context Library、Recipe Builder 等は Evidence Backlog として利用証拠に基づき選択実装します。Phase 4「Workflow & Integration Expansion」では Phase 3 の実行基盤上で Trail の種類と Integration を拡張し、Phase 5 では Productization & Administration として複数の利用者像・契約・権限・習熟度に対応します。Guest / Plus / Pro の Plan / Entitlement、Admin / Member の Authorization Role、Simple / Standard / Advanced の Persona / Experience は別軸として扱います。
 
 ## 関連ドキュメント
 
