@@ -122,9 +122,7 @@ function legacyDataset(
 type LegacyDataset = ReturnType<typeof legacyDataset>;
 const databaseNames = new Set<string>();
 
-function withoutKind<T extends { kind?: unknown }>(
-  prompt: T,
-): Omit<T, 'kind'> {
+function withoutKind<T extends { kind?: unknown }>(prompt: T): Omit<T, 'kind'> {
   const clone: T = { ...prompt };
   delete clone.kind;
   return clone;

@@ -103,13 +103,7 @@ describe('PromptLibraryPage', () => {
     expect(table).toBeVisible();
     expect(
       screen.getAllByRole('columnheader').map((cell) => cell.textContent),
-    ).toEqual([
-      'Prompt名',
-      'プロジェクト',
-      '更新日時',
-      'Prompt',
-      '操作',
-    ]);
+    ).toEqual(['Prompt名', 'プロジェクト', '更新日時', 'Prompt', '操作']);
     expect(screen.getAllByRole('row')).toHaveLength(3);
     expect(screen.getByText(prompts[0].title)).toBeVisible();
     expect(screen.getByText(prompts[1].title)).toBeVisible();

@@ -13,7 +13,9 @@ const KIND_TAG_LABELS: Record<string, string> = {
 };
 
 export function migratePromptFromV3(prompt: LegacyPromptV3): void {
-  const label = prompt.kind === undefined ? undefined : KIND_TAG_LABELS[prompt.kind];
-  if (label !== undefined && !prompt.tags.includes(label)) prompt.tags.push(label);
+  const label =
+    prompt.kind === undefined ? undefined : KIND_TAG_LABELS[prompt.kind];
+  if (label !== undefined && !prompt.tags.includes(label))
+    prompt.tags.push(label);
   delete prompt.kind;
 }

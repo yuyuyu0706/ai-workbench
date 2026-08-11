@@ -12,9 +12,7 @@ describe('validatePromptEditorValues', () => {
   });
 
   it('rejects blank values and titles over 80 characters', () => {
-    expect(
-      validatePromptEditorValues({ title: ' ', body: '\n ' }),
-    ).toEqual({
+    expect(validatePromptEditorValues({ title: ' ', body: '\n ' })).toEqual({
       title: 'Promptタイトルを入力してください。',
       body: 'Prompt本文を入力してください。',
     });
