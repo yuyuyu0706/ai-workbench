@@ -72,7 +72,7 @@ describe('Prompt editor commands', () => {
     } as unknown as PromptTrailRepository;
     await createPrompt(
       repository,
-      { title: '  title  ', body: '\n  markdown\n' },
+      { title: '  title  ', body: '\n  markdown\n', tags: ['note'] },
       { createId: () => 'prompt-new' as Prompt['id'], now: () => after },
     );
     expect(savePrompt).toHaveBeenCalledWith({
@@ -82,7 +82,7 @@ describe('Prompt editor commands', () => {
       title: 'title',
       body: '\n  markdown\n',
       status: 'active',
-      tags: [],
+      tags: ['note'],
       variableValues: {},
       createdAt: after,
       updatedAt: after,
@@ -101,7 +101,7 @@ describe('Prompt editor commands', () => {
     } as unknown as PromptTrailRepository;
     await createPrompt(
       repository,
-      { title: 'title', body: 'Hello ${name}' },
+      { title: 'title', body: 'Hello ${name}', tags: [] },
       { createId: () => 'prompt-new' as Prompt['id'], now: () => after },
       { name: 'Alice' },
     );
@@ -132,13 +132,14 @@ describe('Prompt editor commands', () => {
     await updatePrompt(
       repository,
       original.id,
-      { title: 'new', body: 'new body' },
+      { title: 'new', body: 'new body', tags: ['updated'] },
       { now: () => after },
     );
     expect(savePrompt).toHaveBeenCalledWith({
       ...latest,
       title: 'new',
       body: 'new body',
+      tags: ['updated'],
       variableValues: {},
       updatedAt: after,
     });
@@ -165,7 +166,7 @@ describe('Prompt editor commands', () => {
     await updatePrompt(
       repository,
       latest.id,
-      { title: 'new', body: 'Hello ${name}' },
+      { title: 'new', body: 'Hello ${name}', tags: [] },
       { now: () => after },
       { name: 'Alice' },
     );
@@ -205,7 +206,7 @@ describe('Prompt editor commands', () => {
         updatePrompt(
           repository,
           'target' as Prompt['id'],
-          { title: 'new', body: 'new body' },
+          { title: 'new', body: 'new body', tags: [] },
           { now: () => after },
         ),
       ).rejects.toMatchObject({ status });

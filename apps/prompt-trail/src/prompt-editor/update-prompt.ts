@@ -26,6 +26,7 @@ export async function updatePrompt(
     ...prompt,
     title: values.title.trim(),
     body: values.body,
+    tags: values.tags,
     variableValues,
     updatedAt:
       dependencies.now?.() ?? (new Date().toISOString() as UtcDateTimeString),

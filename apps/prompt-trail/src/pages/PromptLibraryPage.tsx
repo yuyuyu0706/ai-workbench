@@ -1478,6 +1478,21 @@ function PromptBodyPopover({
                       </div>
                     </div>
                   ) : null}
+                  {prompt.tags.length > 0 ? (
+                    <div
+                      className="pt-prompt-body-popover__tags"
+                      aria-label="タグ"
+                    >
+                      {prompt.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="pt-prompt-body-popover__tag-chip"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                   <p>{prompt.body}</p>
                 </div>
               )}

@@ -427,6 +427,24 @@
   justify-self: start;
 }
 
+.pt-prompt-body-popover__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pt-space-2, 0.5rem);
+}
+
+.pt-prompt-body-popover__tag-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  background: var(--pt-color-accent-soft, #eef2ff);
+  border: 1px solid var(--pt-color-accent-border, #c7d2fe);
+  color: var(--pt-color-accent-text, #3730a3);
+  border-radius: 999px;
+  padding: 0.1em 0.6em;
+  white-space: nowrap;
+}
+
 @media (max-width: 480px) {
   .pt-prompt-body-popover__var-panel-field {
     grid-template-columns: 1fr;

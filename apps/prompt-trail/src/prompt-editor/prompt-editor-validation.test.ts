@@ -7,12 +7,15 @@ describe('validatePromptEditorValues', () => {
       validatePromptEditorValues({
         title: ' title ',
         body: '\n  body\n',
+        tags: [],
       }),
     ).toEqual({});
   });
 
   it('rejects blank values and titles over 80 characters', () => {
-    expect(validatePromptEditorValues({ title: ' ', body: '\n ' })).toEqual({
+    expect(
+      validatePromptEditorValues({ title: ' ', body: '\n ', tags: [] }),
+    ).toEqual({
       title: 'Promptタイトルを入力してください。',
       body: 'Prompt本文を入力してください。',
     });
@@ -20,12 +23,14 @@ describe('validatePromptEditorValues', () => {
       validatePromptEditorValues({
         title: 'a'.repeat(81),
         body: 'body',
+        tags: [],
       }),
     ).toMatchObject({ title: expect.any(String) });
     expect(
       validatePromptEditorValues({
         title: 'a'.repeat(80),
         body: 'body',
+        tags: [],
       }),
     ).toEqual({});
   });

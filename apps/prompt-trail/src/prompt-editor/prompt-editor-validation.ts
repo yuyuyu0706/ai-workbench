@@ -1,6 +1,7 @@
 export interface PromptEditorValues {
   readonly title: string;
   readonly body: string;
+  readonly tags: readonly string[];
 }
 
 export type PromptEditorErrors = Partial<
