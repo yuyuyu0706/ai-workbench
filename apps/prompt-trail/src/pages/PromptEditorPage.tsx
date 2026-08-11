@@ -7,7 +7,7 @@ import { routePaths } from '../app/routes';
 import { PageHeader, PageSection, StateMessage } from '../components/ui';
 import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
 import { selectActiveDeveloperUiState } from '../developer-ui-state';
-import { PROMPT_KINDS, type Prompt, type PromptId } from '../domain';
+import type { Prompt, PromptId } from '../domain';
 import {
   createPrompt,
   deletePrompt,
@@ -24,21 +24,12 @@ import {
   resolvePromptVariables,
 } from '../prompt-shared/promptVariables';
 
-const KIND_LABELS = {
-  'chat-consultation': 'チャット相談',
-  'codex-request': 'Codex依頼',
-  'issue-creation': 'Issue作成',
-  'design-review': '設計レビュー',
-  'incident-analysis': '障害分析',
-  other: 'その他',
-} as const;
-
 type LoadState =
   | { readonly status: 'loading' }
   | { readonly status: 'data'; readonly prompt: Prompt }
   | { readonly status: 'not-found' | 'unavailable' | 'failure' };
 
-const EMPTY_VALUES: PromptEditorValues = { title: '', body: '', kind: '' };
+const EMPTY_VALUES: PromptEditorValues = { title: '', body: '' };
 const PROMPT_EDITOR_FORM_ID = 'prompt-editor-form';
 
 const COPY_SVG = (
@@ -282,7 +273,6 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
             values: {
               title: state.prompt.title,
               body: state.prompt.body,
-              kind: state.prompt.kind,
             },
             errors: {},
             status: 'idle',
@@ -483,45 +473,21 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
             onSubmit={submit}
             noValidate
           >
-            <div className="pt-prompt-editor__meta-row">
-              <div className="pt-prompt-editor__meta-field">
-                <label htmlFor="prompt-kind">種別</label>
-                <select
-                  id="prompt-kind"
-                  value={currentForm.values.kind}
-                  disabled={
-                    displayedStatus === 'submitting' ||
-                    displayedDeletion === 'deleting'
-                  }
-                  onChange={(event) => change('kind', event.target.value)}
-                >
-                  <option value="">選択してください</option>
-                  {PROMPT_KINDS.map((kind) => (
-                    <option key={kind} value={kind}>
-                      {KIND_LABELS[kind]}
-                    </option>
-                  ))}
-                </select>
-                {currentForm.errors.kind ? (
-                  <p className="pt-form__error">{currentForm.errors.kind}</p>
-                ) : null}
-              </div>
-              <div className="pt-prompt-editor__meta-field">
-                <label htmlFor="prompt-title">タイトル</label>
-                <input
-                  id="prompt-title"
-                  value={currentForm.values.title}
-                  maxLength={81}
-                  disabled={
-                    displayedStatus === 'submitting' ||
-                    displayedDeletion === 'deleting'
-                  }
-                  onChange={(event) => change('title', event.target.value)}
-                />
-                {currentForm.errors.title ? (
-                  <p className="pt-form__error">{currentForm.errors.title}</p>
-                ) : null}
-              </div>
+            <div className="pt-prompt-editor__meta-field">
+              <label htmlFor="prompt-title">タイトル</label>
+              <input
+                id="prompt-title"
+                value={currentForm.values.title}
+                maxLength={81}
+                disabled={
+                  displayedStatus === 'submitting' ||
+                  displayedDeletion === 'deleting'
+                }
+                onChange={(event) => change('title', event.target.value)}
+              />
+              {currentForm.errors.title ? (
+                <p className="pt-form__error">{currentForm.errors.title}</p>
+              ) : null}
             </div>
             <div className="pt-prompt-editor__body-label-row">
               <label htmlFor="prompt-body">Prompt本文</label>

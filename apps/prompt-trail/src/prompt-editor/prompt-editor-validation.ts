@@ -1,9 +1,6 @@
-import { PROMPT_KINDS, type PromptKind } from '../domain';
-
 export interface PromptEditorValues {
   readonly title: string;
   readonly body: string;
-  readonly kind: string;
 }
 
 export type PromptEditorErrors = Partial<
@@ -26,7 +23,5 @@ export function validatePromptEditorValues(
     errors.title = 'Promptタイトルは80文字以内で入力してください。';
   const bodyError = validatePromptBody(values.body);
   if (bodyError !== undefined) errors.body = bodyError;
-  if (!PROMPT_KINDS.includes(values.kind as PromptKind))
-    errors.kind = 'Prompt種別を選択してください。';
   return errors;
 }

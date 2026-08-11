@@ -45,15 +45,6 @@ type FormState = {
   status: 'idle' | 'submitting' | 'failure';
 };
 
-const PROMPT_KIND_LABELS = {
-  'chat-consultation': 'チャット相談',
-  'codex-request': 'Codex依頼',
-  'issue-creation': 'Issue作成',
-  'design-review': '設計レビュー',
-  'incident-analysis': '障害分析',
-  other: 'その他',
-} as const;
-
 export function NewTrailPage() {
   const repository = usePromptTrailRepository();
   const navigate = useNavigate();
@@ -357,8 +348,6 @@ export function NewTrailPage() {
                 <dl>
                   <dt>Promptタイトル</dt>
                   <dd>{promptState.prompt.title}</dd>
-                  <dt>Prompt種別</dt>
-                  <dd>{PROMPT_KIND_LABELS[promptState.prompt.kind]}</dd>
                   <dt>Scope</dt>
                   <dd>
                     {promptState.prompt.scope === 'global'

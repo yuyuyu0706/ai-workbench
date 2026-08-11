@@ -10,7 +10,6 @@ const prompt: Prompt = {
   projectId: DEFAULT_PROJECT_ID,
   title: 'Review the implementation plan',
   body: 'Review the implementation plan and identify its smallest safe change.',
-  kind: 'design-review',
   status: 'active',
   tags: ['standard'],
   variableValues: {},

@@ -72,7 +72,7 @@ describe('Prompt editor commands', () => {
     } as unknown as PromptTrailRepository;
     await createPrompt(
       repository,
-      { title: '  title  ', body: '\n  markdown\n', kind: 'other' },
+      { title: '  title  ', body: '\n  markdown\n' },
       { createId: () => 'prompt-new' as Prompt['id'], now: () => after },
     );
     expect(savePrompt).toHaveBeenCalledWith({
@@ -81,7 +81,6 @@ describe('Prompt editor commands', () => {
       projectId: DEFAULT_PROJECT_ID,
       title: 'title',
       body: '\n  markdown\n',
-      kind: 'other',
       status: 'active',
       tags: [],
       variableValues: {},
@@ -102,7 +101,7 @@ describe('Prompt editor commands', () => {
     } as unknown as PromptTrailRepository;
     await createPrompt(
       repository,
-      { title: 'title', body: 'Hello ${name}', kind: 'other' },
+      { title: 'title', body: 'Hello ${name}' },
       { createId: () => 'prompt-new' as Prompt['id'], now: () => after },
       { name: 'Alice' },
     );
@@ -117,7 +116,6 @@ describe('Prompt editor commands', () => {
       scope: 'global',
       title: 'old',
       body: 'old body',
-      kind: 'other',
       status: 'active',
       tags: ['keep'],
       variableValues: {},
@@ -134,14 +132,13 @@ describe('Prompt editor commands', () => {
     await updatePrompt(
       repository,
       original.id,
-      { title: 'new', body: 'new body', kind: 'codex-request' },
+      { title: 'new', body: 'new body' },
       { now: () => after },
     );
     expect(savePrompt).toHaveBeenCalledWith({
       ...latest,
       title: 'new',
       body: 'new body',
-      kind: 'codex-request',
       variableValues: {},
       updatedAt: after,
     });
@@ -153,7 +150,6 @@ describe('Prompt editor commands', () => {
       scope: 'global',
       title: 'old',
       body: 'Hello ${name}',
-      kind: 'other',
       status: 'active',
       tags: [],
       variableValues: { name: 'old value' },
@@ -169,7 +165,7 @@ describe('Prompt editor commands', () => {
     await updatePrompt(
       repository,
       latest.id,
-      { title: 'new', body: 'Hello ${name}', kind: 'other' },
+      { title: 'new', body: 'Hello ${name}' },
       { now: () => after },
       { name: 'Alice' },
     );
@@ -209,7 +205,7 @@ describe('Prompt editor commands', () => {
         updatePrompt(
           repository,
           'target' as Prompt['id'],
-          { title: 'new', body: 'new body', kind: 'other' },
+          { title: 'new', body: 'new body' },
           { now: () => after },
         ),
       ).rejects.toMatchObject({ status });

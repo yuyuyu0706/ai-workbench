@@ -24,7 +24,6 @@ async function prepare() {
     projectId: DEFAULT_PROJECT_ID,
     title: 'Prompt',
     body: 'Body',
-    kind: 'codex-request',
     status: 'active',
     tags: [],
     variableValues: {},

@@ -52,7 +52,6 @@ export async function createDirectTrail(
     projectId: project.id,
     title: createPromptTitle(body),
     body,
-    kind: 'other',
     status: 'active',
     tags: [],
     variableValues: {},

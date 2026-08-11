@@ -57,7 +57,6 @@ export const samplePrompt: Prompt = {
   projectId: SAMPLE_IDS.project,
   title: 'GitHub Issue作成依頼',
   body: 'Roadmap差分を確認し、Phase 0の後続作業をGitHub Issueとして作成してください。対象範囲、非対象範囲、完了条件を明確にしてください。',
-  kind: 'issue-creation',
   status: 'active',
   tags: ['github', 'issue', 'planning'],
   variableValues: {},

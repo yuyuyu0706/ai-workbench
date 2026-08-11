@@ -1,9 +1,4 @@
-import type {
-  Prompt,
-  PromptId,
-  PromptKind,
-  UtcDateTimeString,
-} from '../domain';
+import type { Prompt, PromptId, UtcDateTimeString } from '../domain';
 import type { PromptTrailRepository } from '../repository';
 import type { PromptEditorValues } from './prompt-editor-validation';
 import type { PromptEditorDependencies } from './create-prompt';
@@ -31,7 +26,6 @@ export async function updatePrompt(
     ...prompt,
     title: values.title.trim(),
     body: values.body,
-    kind: values.kind as PromptKind,
     variableValues,
     updatedAt:
       dependencies.now?.() ?? (new Date().toISOString() as UtcDateTimeString),

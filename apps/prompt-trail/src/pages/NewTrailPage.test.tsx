@@ -473,7 +473,7 @@ describe('NewTrailPage', () => {
     await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
 
     expect(createDirectRunBundle.mock.calls[0]?.[0]).toMatchObject({
-      prompt: { title: 'Generated title', kind: 'other' },
+      prompt: { title: 'Generated title' },
       run: { trailTitle: 'Manual Trail', trailKind: 'review' },
     });
   });
@@ -678,7 +678,6 @@ function reusablePrompt(
     projectId: DEFAULT_PROJECT_ID,
     title: 'Prompt title',
     body,
-    kind: 'codex-request' as const,
     status: 'active' as const,
     tags: [],
     variableValues,

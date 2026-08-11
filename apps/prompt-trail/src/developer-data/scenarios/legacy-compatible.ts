@@ -21,7 +21,6 @@ const prompt: Prompt = {
   projectId: project.id,
   title: 'Legacy recipe prompt',
   body: 'Summarize the legacy input.',
-  kind: 'other',
   status: 'active',
   tags: [],
   variableValues: {},

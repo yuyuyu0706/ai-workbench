@@ -39,7 +39,6 @@ const prompt: Prompt = {
   scope: 'global',
   title: '既存タイトル',
   body: '既存本文',
-  kind: 'other',
   status: 'active',
   tags: ['keep'],
   variableValues: {},
@@ -179,7 +178,6 @@ function RepositorySwitchingEditor({
 async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('タイトル'), '新規タイトル');
   await user.type(screen.getByLabelText('Prompt本文'), '  Markdown\n  本文');
-  await user.selectOptions(screen.getByLabelText('種別'), 'codex-request');
 }
 
 describe('promptVariables utilities', () => {
@@ -205,7 +203,7 @@ describe('promptVariables utilities', () => {
 });
 
 describe('PromptEditorPage', () => {
-  it('uses one form for header and footer saves and orders kind, title, then body', () => {
+  it('uses one form for header and footer saves and orders title, then body', () => {
     renderEditor({} as PromptTrailRepository);
 
     expect(
@@ -213,12 +211,8 @@ describe('PromptEditorPage', () => {
         '再利用するPromptのタイトル、本文、種別を設定します。',
       ),
     ).not.toBeInTheDocument();
-    const kind = screen.getByLabelText('種別');
     const title = screen.getByLabelText('タイトル');
     const body = screen.getByLabelText('Prompt本文');
-    expect(
-      kind.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
     expect(
       title.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
@@ -436,7 +430,6 @@ describe('PromptEditorPage', () => {
     await user.type(screen.getByLabelText('タイトル'), '入力値');
     await user.click(screen.getAllByRole('button', { name: '保存' })[0]);
     expect(screen.getByText('Prompt本文を入力してください。')).toBeVisible();
-    expect(screen.getByText('Prompt種別を選択してください。')).toBeVisible();
     expect(screen.getByLabelText('タイトル')).toHaveValue('入力値');
   });
 

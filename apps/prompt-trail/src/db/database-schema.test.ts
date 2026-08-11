@@ -74,13 +74,13 @@ describe('PromptTrailDatabase schema v3', () => {
     expect(customDatabase.name).toBe('prompt-trail-schema-test');
   });
 
-  it('registers schema version 2 from the metadata contract', () => {
+  it('registers the schema version from the metadata contract', () => {
     const database = createPromptTrailDatabase(
       'prompt-trail-schema-version-test',
     );
 
     expect(database.verno).toBe(PROMPT_TRAIL_SCHEMA_VERSION);
-    expect(PROMPT_TRAIL_SCHEMA_VERSION).toBe(3);
+    expect(PROMPT_TRAIL_SCHEMA_VERSION).toBe(4);
   });
 
   it('registers the six metadata store names only', () => {

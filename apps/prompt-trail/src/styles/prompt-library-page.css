@@ -160,12 +160,8 @@
   width: 15%;
 }
 
-.pt-prompt-table__column-kind {
-  width: 12%;
-}
-
 .pt-prompt-table__column-updated-at {
-  width: 17%;
+  width: 20%;
 }
 
 .pt-prompt-table__column-prompt {

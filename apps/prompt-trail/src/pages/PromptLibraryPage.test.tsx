@@ -32,13 +32,12 @@ const longBody = [
   'PROMPT_BODY_END_MARKER',
 ].join('\n');
 const prompts: readonly Prompt[] = [
-  createPrompt('alpha', 'Alpha CODEX依頼', longBody, 'global', 'codex-request'),
+  createPrompt('alpha', 'Alpha CODEX依頼', longBody, 'global'),
   createPrompt(
     'beta',
     'Beta設計レビュー'.repeat(6),
     '別の検索対象\n2行目\n3行目\n4行目',
     'project',
-    'design-review',
   ),
 ];
 
@@ -107,7 +106,6 @@ describe('PromptLibraryPage', () => {
     ).toEqual([
       'Prompt名',
       'プロジェクト',
-      '種別',
       '更新日時',
       'Prompt',
       '操作',
@@ -744,9 +742,9 @@ describe('PromptLibraryPage', () => {
     renderPromptLibraryPage(createRepository(prompts));
     const table = await screen.findByRole('table', { name: 'Prompt一覧' });
     const headers = within(table).getAllByRole('columnheader');
-    expect(headers[4]).toHaveClass('pt-prompt-table__prompt-heading');
-    expect(headers[5]).toHaveClass('pt-prompt-table__action-heading');
-    headers.slice(0, 4).forEach((header) => {
+    expect(headers[3]).toHaveClass('pt-prompt-table__prompt-heading');
+    expect(headers[4]).toHaveClass('pt-prompt-table__action-heading');
+    headers.slice(0, 3).forEach((header) => {
       expect(header).not.toHaveClass(
         'pt-prompt-table__prompt-heading',
         'pt-prompt-table__action-heading',
@@ -755,8 +753,8 @@ describe('PromptLibraryPage', () => {
     const cells = within(within(table).getAllByRole('row')[1]).getAllByRole(
       'cell',
     );
-    expect(cells[4]).toHaveClass('pt-prompt-table__prompt-cell');
-    expect(cells[5]).toHaveClass('pt-prompt-table__action-cell');
+    expect(cells[3]).toHaveClass('pt-prompt-table__prompt-cell');
+    expect(cells[4]).toHaveClass('pt-prompt-table__action-cell');
   });
 
   it('applies loading, empty, and failure Developer Tools overrides and restores data', async () => {
@@ -1544,7 +1542,6 @@ function createPrompt(
   title: string,
   body: string,
   scope: Prompt['scope'] = 'global',
-  kind: Prompt['kind'] = 'other',
 ): Prompt {
   const common = {
     id: id as Prompt['id'],
@@ -1553,7 +1550,6 @@ function createPrompt(
     deletedAt: null,
     title,
     body,
-    kind,
     status: 'active' as const,
     tags: [],
     variableValues: {},

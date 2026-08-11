@@ -27,7 +27,7 @@ describe('createDirectTrail', () => {
     expect(bundle.prompt.title).toBe(`${'a'.repeat(79)}…`);
     expect(bundle.run.trailTitle).toBe('Custom Trail');
     expect(bundle.run.trailKind).toBe('development');
-    expect(bundle.prompt.kind).toBe('other');
+    expect(bundle.prompt).not.toHaveProperty('kind');
     expect(bundle.run.trailTitle).not.toBe(bundle.prompt.title);
     expect(bundle.run.promptSnapshot).toMatchObject({
       promptId: 'prompt-fixed',

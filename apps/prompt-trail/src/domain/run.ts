@@ -61,7 +61,7 @@ export interface Run extends BaseEntity<'run'>, ArchivableEntity {
   readonly projectId: ProjectId;
   /** User-facing name of this individual work record. */
   readonly trailTitle: string;
-  /** Purpose of this work record, independent from PromptKind. */
+  /** Purpose of this work record, independent from the Prompt used. */
   readonly trailKind: TrailKind;
   /** null identifies a Direct Run created from a project-scoped Prompt. */
   readonly recipeId: RecipeId | null;

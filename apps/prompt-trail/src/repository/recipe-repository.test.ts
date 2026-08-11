@@ -68,7 +68,6 @@ function buildPrompt(overrides: Partial<Prompt> = {}): Prompt {
     scope: 'global',
     title: 'Prompt 1',
     body: 'Prompt body',
-    kind: 'codex-request',
     status: 'active',
     tags: ['prompt'],
     ...overrides,

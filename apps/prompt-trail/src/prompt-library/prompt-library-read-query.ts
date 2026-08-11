@@ -1,11 +1,10 @@
-import { DEFAULT_PROJECT_ID, type Prompt, type PromptKind } from '../domain';
+import { DEFAULT_PROJECT_ID, type Prompt } from '../domain';
 import type { PromptTrailRepository } from '../repository';
 
 export type PromptLibraryItem = {
   readonly id: Prompt['id'];
   readonly title: string;
   readonly body: string;
-  readonly kind: PromptKind;
   readonly scope: Prompt['scope'];
   readonly updatedAt: Prompt['updatedAt'];
   readonly variableValues: Prompt['variableValues'];
@@ -63,7 +62,6 @@ function toItem(prompt: Prompt): PromptLibraryItem {
     id: prompt.id,
     title: prompt.title,
     body: prompt.body,
-    kind: prompt.kind,
     scope: prompt.scope,
     updatedAt: prompt.updatedAt,
     variableValues: prompt.variableValues,

@@ -32,7 +32,6 @@ async function seedPromptLibraryInBrowser(page: Page) {
         projectId: domain.DEFAULT_PROJECT_ID,
         title: 'Codex開発依頼',
         body: '変更内容を確認して実装してください。',
-        kind: 'codex-request',
         status: 'active',
         tags: [],
       });
@@ -57,7 +56,6 @@ async function seedGlobalPromptInBrowser(page: Page) {
         scope: 'global',
         title: 'Global障害分析',
         body,
-        kind: 'incident-analysis',
         status: 'active',
         tags: [],
       });
@@ -86,7 +84,6 @@ async function seedVariablePromptInBrowser(
           scope: 'global',
           title: '変数テンプレート',
           body: 'こんにちは ${name}さん、${topic}について教えてください。',
-          kind: 'other',
           status: 'active',
           tags: [],
           variableValues,
@@ -165,7 +162,7 @@ test.describe('Prompt Library data flow', () => {
       page.getByRole('heading', { level: 2, name: 'Prompt一覧' }),
     ).toBeVisible();
     const promptTable = page.getByRole('table', { name: 'Prompt一覧' });
-    await expect(promptTable.getByRole('columnheader')).toHaveCount(6);
+    await expect(promptTable.getByRole('columnheader')).toHaveCount(5);
     await expect(
       promptTable.getByRole('columnheader', { name: 'Prompt名' }),
     ).toBeVisible();
