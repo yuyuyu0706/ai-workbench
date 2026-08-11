@@ -108,7 +108,6 @@ function buildPrompt(overrides: Partial<Prompt> = {}): Prompt {
     projectId: projectId('project-lifecycle'),
     title: 'Initial prompt title',
     body: 'Initial prompt body',
-    kind: 'codex-request',
     status: 'active',
     tags: ['prompt'],
     ...overrides,

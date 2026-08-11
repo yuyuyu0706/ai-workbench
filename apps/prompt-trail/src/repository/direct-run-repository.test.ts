@@ -30,7 +30,6 @@ function buildPrompt(overrides: Partial<Prompt> = {}): Prompt {
     projectId: DEFAULT_PROJECT_ID,
     title: 'Direct prompt',
     body: 'Create a Trail.',
-    kind: 'codex-request',
     status: 'active',
     tags: [],
     ...overrides,

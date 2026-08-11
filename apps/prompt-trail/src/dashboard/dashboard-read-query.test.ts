@@ -72,7 +72,6 @@ describe('loadDashboardReadModel', () => {
       projectId: DEFAULT_PROJECT_ID,
       title: 'Direct dashboard prompt',
       body: 'Direct body',
-      kind: 'codex-request',
       status: 'active',
       tags: [],
       variableValues: {},

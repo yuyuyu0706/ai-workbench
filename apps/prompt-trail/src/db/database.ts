@@ -22,6 +22,7 @@ import {
 } from './metadata';
 import { migrateRunFromV1 } from './migrations/v1-to-v2';
 import { migratePromptFromV2 } from './migrations/v2-to-v3';
+import { migratePromptFromV3 } from './migrations/v3-to-v4';
 
 const schemaV1 = {
   projects: 'id, updatedAt, archivedAt, deletedAt',
@@ -50,10 +51,15 @@ export class PromptTrailDatabase extends Dexie {
       .upgrade((transaction) =>
         transaction.table('runs').toCollection().modify(migrateRunFromV1),
       );
-    this.version(PROMPT_TRAIL_SCHEMA_VERSION)
+    this.version(3)
       .stores(schemaV1)
       .upgrade((transaction) =>
         transaction.table('prompts').toCollection().modify(migratePromptFromV2),
+      );
+    this.version(PROMPT_TRAIL_SCHEMA_VERSION)
+      .stores(schemaV1)
+      .upgrade((transaction) =>
+        transaction.table('prompts').toCollection().modify(migratePromptFromV3),
       );
   }
 }

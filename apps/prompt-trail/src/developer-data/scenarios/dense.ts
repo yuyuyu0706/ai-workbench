@@ -20,7 +20,6 @@ const prompt: Prompt = {
   title:
     'A deliberately long Prompt title for checking dense dashboard layouts without depending on CSS implementation details',
   body: 'First, review all supplied evidence.\n\nSecond, compare the alternatives.\n\nFinally, provide a concise recommendation with risks.',
-  kind: 'design-review',
   status: 'active',
   tags: ['dense', 'long-content'],
   variableValues: {},

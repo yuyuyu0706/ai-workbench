@@ -20,8 +20,8 @@ export { PROMPT_TRAIL_ENTITY_KINDS } from './common';
 export type { Project } from './project';
 export { createDefaultProject, DEFAULT_PROJECT_ID } from './project';
 
-export type { Prompt, PromptKind, PromptStatus } from './prompt';
-export { PROMPT_KINDS, PROMPT_STATUSES } from './prompt';
+export type { Prompt, PromptStatus } from './prompt';
+export { PROMPT_STATUSES } from './prompt';
 
 export type { Context, ContextKind, ContextStatus } from './context';
 export { CONTEXT_KINDS, CONTEXT_STATUSES } from './context';

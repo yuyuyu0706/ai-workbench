@@ -2,7 +2,6 @@ import {
   createDefaultProject,
   DEFAULT_PROJECT_ID,
   type Prompt,
-  type PromptKind,
   type UtcDateTimeString,
 } from '../domain';
 import type { PromptTrailRepository } from '../repository';
@@ -29,7 +28,6 @@ export async function createPrompt(
     projectId: DEFAULT_PROJECT_ID,
     title: values.title.trim(),
     body: values.body,
-    kind: values.kind as PromptKind,
     status: 'active',
     tags: [],
     variableValues,

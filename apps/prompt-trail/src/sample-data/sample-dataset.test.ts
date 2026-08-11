@@ -58,7 +58,6 @@ describe('Sample Dataset Contract', () => {
     expect(sampleDataset.prompt).toMatchObject({
       scope: 'project',
       projectId: sampleDataset.project.id,
-      kind: 'issue-creation',
       status: 'active',
     });
     expect(sampleDataset.context).toMatchObject({

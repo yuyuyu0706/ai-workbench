@@ -5,6 +5,7 @@ import { PROMPT_TRAIL_STORE_NAMES } from './metadata';
 import { createPromptTrailDatabase } from './database';
 import { migrateRunFromV1 } from './migrations/v1-to-v2';
 import { migratePromptFromV2 } from './migrations/v2-to-v3';
+import { migratePromptFromV3 } from './migrations/v3-to-v4';
 
 const schemaV1 = {
   projects: 'id, updatedAt, archivedAt, deletedAt',
@@ -121,6 +122,12 @@ function legacyDataset(
 type LegacyDataset = ReturnType<typeof legacyDataset>;
 const databaseNames = new Set<string>();
 
+function withoutKind<T extends { kind?: unknown }>(prompt: T): Omit<T, 'kind'> {
+  const clone: T = { ...prompt };
+  delete clone.kind;
+  return clone;
+}
+
 async function readAllStores(database: Dexie) {
   return Object.fromEntries(
     await Promise.all(
@@ -141,6 +148,7 @@ async function createLegacyDatabase(
   const database = new Dexie(name);
   database.version(1).stores(schemaV1);
   if (version >= 2) database.version(2).stores(schemaV1);
+  if (version >= 3) database.version(3).stores(schemaV1);
   await database.open();
   await database.transaction('rw', database.tables, async () =>
     Promise.all(
@@ -189,14 +197,17 @@ describe('schema v1 to v2 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(3);
+    expect(database.verno).toBe(4);
     for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
       (storeName) => storeName !== 'runs' && storeName !== 'prompts',
     )) {
       expect(migrated[storeName]).toEqual(before[storeName]);
     }
     expect(migrated.prompts).toEqual(
-      before.prompts.map((prompt) => ({ ...prompt, variableValues: {} })),
+      before.prompts.map((prompt) => ({
+        ...withoutKind(prompt),
+        variableValues: {},
+      })),
     );
     expect(migrated.runs).toEqual(
       [...runs]
@@ -270,14 +281,102 @@ describe('schema v2 to v3 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(3);
+    expect(database.verno).toBe(4);
     for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
       (storeName) => storeName !== 'prompts',
     )) {
       expect(migrated[storeName]).toEqual(before[storeName]);
     }
     expect(migrated.prompts).toEqual(
-      before.prompts.map((prompt) => ({ ...prompt, variableValues: {} })),
+      before.prompts.map((prompt) => ({
+        ...withoutKind(prompt),
+        variableValues: {},
+      })),
+    );
+    database.close();
+
+    const reopened = createPromptTrailDatabase(name);
+    await reopened.open();
+    expect(await readAllStores(reopened)).toEqual(migrated);
+    reopened.close();
+  });
+});
+
+describe('schema v3 to v4 migration', () => {
+  it.each([
+    ['chat-consultation', 'チャット相談'],
+    ['codex-request', 'Codex依頼'],
+    ['issue-creation', 'Issue作成'],
+    ['design-review', '設計レビュー'],
+    ['incident-analysis', '障害分析'],
+  ])('migrates kind %s into the %s tag', (kind, label) => {
+    const prompt = {
+      id: 'prompt-1',
+      scope: 'project',
+      projectId: 'project-1',
+      title: 'Prompt title',
+      body: 'Body ${var}',
+      kind,
+      status: 'active',
+      tags: [] as string[],
+      variableValues: {},
+      createdAt,
+      updatedAt,
+      deletedAt: null,
+    };
+    const before = structuredClone(prompt);
+    delete (before as { kind?: string }).kind;
+    migratePromptFromV3(prompt);
+    expect(prompt).toEqual({ ...before, tags: [label] });
+  });
+
+  it('does not add a tag for kind other', () => {
+    const prompt = {
+      id: 'prompt-1',
+      kind: 'other',
+      tags: [] as string[],
+    };
+    const before = structuredClone(prompt);
+    delete (before as { kind?: string }).kind;
+    migratePromptFromV3(prompt);
+    expect(prompt).toEqual(before);
+  });
+
+  it('appends to existing tags and skips duplicates', () => {
+    const prompt = {
+      id: 'prompt-1',
+      kind: 'codex-request',
+      tags: ['既存タグ', 'Codex依頼'],
+    };
+    migratePromptFromV3(prompt);
+    expect(prompt.tags).toEqual(['既存タグ', 'Codex依頼']);
+  });
+
+  it('upgrades all Prompts to v4 while preserving every other store', async () => {
+    const name = `prompt-trail-migration-v4-${crypto.randomUUID()}`;
+    const seed = legacyDataset([legacyRun('active-direct', 'Active')]);
+    const seededPrompt = {
+      ...seed.prompts[0],
+      kind: 'design-review',
+      variableValues: {},
+    };
+    const before = { ...seed, prompts: [seededPrompt] };
+    await createLegacyDatabase(name, before, 3);
+
+    const database = createPromptTrailDatabase(name);
+    await database.open();
+    const migrated = await readAllStores(database);
+    expect(database.verno).toBe(4);
+    for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
+      (storeName) => storeName !== 'prompts',
+    )) {
+      expect(migrated[storeName]).toEqual(before[storeName]);
+    }
+    expect(migrated.prompts).toEqual(
+      before.prompts.map((prompt) => ({
+        ...withoutKind(prompt),
+        tags: [...prompt.tags, '設計レビュー'],
+      })),
     );
     database.close();
 

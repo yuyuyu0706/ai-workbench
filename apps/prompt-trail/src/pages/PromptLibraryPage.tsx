@@ -65,15 +65,6 @@ const CLEAN_PROMPT_BODY_GUARD: PromptBodyGuardState = {
   requestDiscard: null,
 };
 
-const KIND_LABELS: Record<PromptLibraryItem['kind'], string> = {
-  'chat-consultation': 'チャット相談',
-  'codex-request': 'Codex依頼',
-  'issue-creation': 'Issue作成',
-  'design-review': '設計レビュー',
-  'incident-analysis': '障害分析',
-  other: 'その他',
-};
-
 export function PromptLibraryPage() {
   const repository = usePromptTrailRepository();
   const { revision, notifyDataChanged } = usePromptTrailDataRevision();
@@ -310,7 +301,6 @@ export function PromptLibraryPage() {
                 <colgroup>
                   <col className="pt-prompt-table__column-title" />
                   <col className="pt-prompt-table__column-project" />
-                  <col className="pt-prompt-table__column-kind" />
                   <col className="pt-prompt-table__column-updated-at" />
                   <col className="pt-prompt-table__column-prompt" />
                   <col className="pt-prompt-table__column-actions" />
@@ -357,7 +347,6 @@ export function PromptLibraryPage() {
                       </button>
                     </th>
                     <th scope="col">プロジェクト</th>
-                    <th scope="col">種別</th>
                     <th
                       scope="col"
                       aria-sort={
@@ -479,9 +468,6 @@ function PromptTableRow({
       </td>
       <td className="pt-prompt-table__muted">
         {prompt.scope === 'global' ? 'Global' : 'Default Project'}
-      </td>
-      <td>
-        <span className="pt-status-pin">{KIND_LABELS[prompt.kind]}</span>
       </td>
       <td className="pt-prompt-table__muted">
         <time dateTime={prompt.updatedAt}>

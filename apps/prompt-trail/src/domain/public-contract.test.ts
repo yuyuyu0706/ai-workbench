@@ -5,7 +5,6 @@ import {
   CONTEXT_STATUSES,
   LINK_ROLES,
   LINK_TYPES,
-  PROMPT_KINDS,
   PROMPT_STATUSES,
   PROMPT_TRAIL_ENTITY_KINDS,
   RUN_EVALUATIONS,
@@ -33,7 +32,6 @@ import type {
   ProjectId,
   ProjectScope,
   Prompt,
-  PromptKind,
   PromptId,
   PromptSnapshot,
   PromptStatus,
@@ -65,14 +63,6 @@ describe('Prompt Trail domain public contract', () => {
   });
 
   it('exports prompt, context, run, and link candidate constants', () => {
-    expect(PROMPT_KINDS).toEqual([
-      'chat-consultation',
-      'codex-request',
-      'issue-creation',
-      'design-review',
-      'incident-analysis',
-      'other',
-    ]);
     expect(PROMPT_STATUSES).toEqual(['draft', 'active', 'deprecated']);
 
     expect(CONTEXT_KINDS).toEqual([
@@ -140,7 +130,6 @@ describe('Prompt Trail domain public contract', () => {
       readonly assetScope: AssetScope;
       readonly project: Project;
       readonly prompt: Prompt;
-      readonly promptKind: PromptKind;
       readonly promptStatus: PromptStatus;
       readonly context: Context;
       readonly contextKind: ContextKind;

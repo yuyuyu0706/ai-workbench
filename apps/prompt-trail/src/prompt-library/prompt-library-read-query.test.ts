@@ -22,7 +22,6 @@ const prompt = (
   scope: 'global',
   title,
   body,
-  kind: 'other',
   status: 'active',
   tags: [],
   variableValues: {},

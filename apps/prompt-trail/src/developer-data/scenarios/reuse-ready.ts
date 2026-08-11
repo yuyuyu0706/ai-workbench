@@ -20,7 +20,6 @@ const prompt: Prompt = {
   projectId: project.id,
   title: 'Reusable incident review',
   body: 'Review the incident evidence and propose follow-up actions.',
-  kind: 'incident-analysis',
   status: 'active',
   tags: ['reusable'],
   variableValues: {},
