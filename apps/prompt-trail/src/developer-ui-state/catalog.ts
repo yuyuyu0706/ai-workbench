@@ -9,6 +9,15 @@ export const DEVELOPER_UI_STATE_CATALOG = [
     ],
   },
   {
+    target: 'run-list-page',
+    label: 'Run List Page',
+    states: [
+      { state: 'loading', label: 'Loading' },
+      { state: 'empty', label: 'Empty' },
+      { state: 'failure', label: 'Failure' },
+    ],
+  },
+  {
     target: 'prompt-library-page',
     label: 'Prompt Library Page',
     states: [

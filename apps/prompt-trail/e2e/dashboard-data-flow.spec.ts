@@ -172,6 +172,10 @@ test.describe('Dashboard data flow', () => {
     });
     await page.getByRole('link', { name: '新しいTrailを始める' }).focus();
     await page.keyboard.press('Tab');
+    await expect(
+      page.getByRole('link', { name: 'すべてのTrailを表示' }),
+    ).toBeFocused();
+    await page.keyboard.press('Tab');
     await expect(trailLink).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(

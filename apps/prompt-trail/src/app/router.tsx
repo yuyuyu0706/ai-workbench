@@ -8,6 +8,7 @@ import { PromptLibraryPage } from '../pages/PromptLibraryPage';
 import { PromptEditorPage } from '../pages/PromptEditorPage';
 import { RecipeBuilderPage } from '../pages/RecipeBuilderPage';
 import { RunDetailPage } from '../pages/RunDetailPage';
+import { RunListPage } from '../pages/RunListPage';
 import { WelcomePage } from '../pages/WelcomePage';
 import { routeIds, routePaths } from './routes';
 
@@ -40,6 +41,7 @@ export function AppRouter() {
         element={<RecipeBuilderPage />}
       />
       <Route path={routePaths[routeIds.newTrail]} element={<NewTrailPage />} />
+      <Route path={routePaths[routeIds.runList]} element={<RunListPage />} />
       <Route
         path={routePaths[routeIds.runDetail]}
         element={<RunDetailPage />}

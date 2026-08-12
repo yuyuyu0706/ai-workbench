@@ -20,6 +20,7 @@ describe('route contract', () => {
       [routeIds.contextLibrary]: '/contexts',
       [routeIds.recipeBuilder]: '/recipes/builder',
       [routeIds.newTrail]: '/runs/new',
+      [routeIds.runList]: '/runs',
       [routeIds.runDetail]: '/runs/:runId',
       [routeIds.notFound]: '*',
     });
@@ -59,6 +60,11 @@ describe('route contract', () => {
         label: 'Recipe Builder',
       },
       { id: routeIds.newTrail, path: routePaths.newTrail, label: 'New Trail' },
+      {
+        id: routeIds.runList,
+        path: routePaths.runList,
+        label: 'Run List',
+      },
       {
         id: routeIds.runDetail,
         path: routePaths.runDetail,
