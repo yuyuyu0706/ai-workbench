@@ -178,13 +178,17 @@ describe('DashboardPage', () => {
     expect(
       screen.getByRole('heading', {
         level: 3,
-        name: sampleDataset.run.promptSnapshot.title,
+        name: sampleDataset.run.trailTitle,
       }),
     ).toBeInTheDocument();
     expect(screen.getByRole('table')).toBeInTheDocument();
     expect(
       screen.getByRole('columnheader', { name: 'Trail名' }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'Trail種別' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('その他')).toBeInTheDocument();
     expect(screen.getByText('完了')).toHaveClass('pt-status-pin--done');
     expect(screen.queryByText(sampleDataset.project.name)).toBeNull();
     expect(screen.queryByText(sampleDataset.run.evaluation!)).toBeNull();
@@ -200,7 +204,7 @@ describe('DashboardPage', () => {
     expect(runListLink).toHaveAttribute('href', routePaths.runList);
 
     const detailLink = screen.getByRole('link', {
-      name: sampleDataset.run.promptSnapshot.title,
+      name: sampleDataset.run.trailTitle,
     });
     expect(detailLink).toHaveAttribute(
       'href',
@@ -270,8 +274,8 @@ describe('DashboardPage', () => {
 
     const runHeadings = await screen.findAllByRole('heading', { level: 3 });
     expect(runHeadings.map((heading) => heading.textContent)).toEqual([
-      firstRun.promptSnapshot.title,
-      secondRun.promptSnapshot.title,
+      firstRun.trailTitle,
+      secondRun.trailTitle,
     ]);
     expect(screen.queryByText('未評価')).toBeNull();
     expect(screen.queryByText('なし')).toBeNull();
@@ -312,6 +316,7 @@ describe('DashboardPage', () => {
     const directRun = createRun({
       id: 'direct-dashboard-run' as Run['id'],
       recipeId: null,
+      trailTitle: 'Direct Run Prompt',
       promptSnapshot: {
         promptId:
           'direct-dashboard-prompt' as Run['promptSnapshot']['promptId'],

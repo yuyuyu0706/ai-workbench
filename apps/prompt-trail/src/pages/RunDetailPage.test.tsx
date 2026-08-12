@@ -114,6 +114,10 @@ describe('RunDetailPage', () => {
 
     expect(await screen.findByText('Trail A')).toBeVisible();
     expect(screen.getByText('開発')).toBeVisible();
+    expect(screen.getByText('準備済み')).toHaveClass(
+      'pt-status-pin',
+      'pt-status-pin--prepared',
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Trail情報を編集' }));
     const title = screen.getByRole('textbox', { name: 'Trail名' });
     expect(title).toHaveFocus();

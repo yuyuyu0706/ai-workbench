@@ -32,6 +32,10 @@
   border-start-end-radius: var(--pt-radius-md);
 }
 
+.pt-dashboard-runs thead .pt-dashboard-run-row__kind {
+  width: 7rem;
+}
+
 .pt-dashboard-runs thead .pt-dashboard-run-row__status {
   width: 7rem;
 }
@@ -162,6 +166,7 @@
     display: grid;
     grid-template-areas:
       'trail status'
+      'kind kind'
       'updated links';
     grid-template-columns: minmax(0, 1fr) auto;
     column-gap: var(--pt-space-2);
@@ -184,6 +189,9 @@
 
   .pt-dashboard-run-row__trail {
     grid-area: trail;
+  }
+  .pt-dashboard-run-row__kind {
+    grid-area: kind;
   }
   .pt-dashboard-run-row__status {
     grid-area: status;
@@ -229,6 +237,7 @@
   .pt-dashboard-runs .pt-dashboard-run-row {
     grid-template-areas:
       'trail trail'
+      'kind kind'
       'status status'
       'updated links';
     grid-template-columns: minmax(0, 1fr) auto;

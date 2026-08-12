@@ -59,8 +59,12 @@ describe('RunListPage', () => {
       expect(screen.queryByText('Trail一覧を読み込んでいます...')).toBeNull();
     });
     expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'Trail種別' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('その他')).toBeInTheDocument();
     const detailLink = screen.getByRole('link', {
-      name: sampleDataset.run.promptSnapshot.title,
+      name: sampleDataset.run.trailTitle,
     });
     expect(detailLink).toHaveAttribute(
       'href',
@@ -92,6 +96,7 @@ describe('RunListPage', () => {
       createRun({
         id: `run-${index}` as Run['id'],
         recipeId: null,
+        trailTitle: `Trail ${index}`,
         promptSnapshot: {
           promptId: `prompt-${index}` as Run['promptSnapshot']['promptId'],
           title: `Trail ${index}`,
@@ -109,7 +114,7 @@ describe('RunListPage', () => {
 
     for (const run of runs) {
       expect(
-        await screen.findByRole('link', { name: run.promptSnapshot.title }),
+        await screen.findByRole('link', { name: run.trailTitle }),
       ).toBeInTheDocument();
     }
   });

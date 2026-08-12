@@ -2,7 +2,8 @@ import { Link as RouterLink } from 'react-router-dom';
 
 import { buildRunDetailPath } from '../app/routes';
 import type { DashboardRecentRun } from '../dashboard';
-import type { RunStatus } from '../domain';
+import { RunStatusPin } from '../run-status';
+import { TRAIL_KIND_LABELS } from '../trail-metadata';
 
 import { formatDateTime } from './date-time';
 
@@ -13,6 +14,9 @@ export function RunTable({ runs }: { runs: readonly DashboardRecentRun[] }) {
         <tr>
           <th className="pt-dashboard-run-row__trail" scope="col">
             Trail名
+          </th>
+          <th className="pt-dashboard-run-row__kind" scope="col">
+            Trail種別
           </th>
           <th className="pt-dashboard-run-row__status" scope="col">
             ステータス
@@ -45,10 +49,14 @@ function RunTableRow({ recentRun }: { recentRun: DashboardRecentRun }) {
             className="pt-dashboard-run-row__title-link"
             to={buildRunDetailPath(run.id)}
           >
-            {run.promptSnapshot.title}
+            {run.trailTitle}
           </RouterLink>
         </h3>
       </th>
+      <td className="pt-dashboard-run-row__kind">
+        <span className="pt-dashboard-run-row__mobile-label">Trail種別</span>
+        <span>{TRAIL_KIND_LABELS[run.trailKind]}</span>
+      </td>
       <td className="pt-dashboard-run-row__status">
         <span className="pt-dashboard-run-row__mobile-label">ステータス</span>
         <RunStatusPin status={run.status} />
@@ -62,21 +70,5 @@ function RunTableRow({ recentRun }: { recentRun: DashboardRecentRun }) {
         <span>{links.length}件</span>
       </td>
     </tr>
-  );
-}
-
-const RUN_STATUS_LABELS: Record<RunStatus, string> = {
-  draft: '下書き',
-  prepared: '準備済み',
-  'in-progress': '実行中',
-  executed: '実行済み',
-  done: '完了',
-};
-
-function RunStatusPin({ status }: { status: RunStatus }) {
-  return (
-    <span className={`pt-status-pin pt-status-pin--${status}`}>
-      {RUN_STATUS_LABELS[status]}
-    </span>
   );
 }
