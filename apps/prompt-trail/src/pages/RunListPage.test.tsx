@@ -56,9 +56,7 @@ describe('RunListPage', () => {
     renderRunListPage(runtime.repository);
 
     await waitFor(() => {
-      expect(
-        screen.queryByText('Trail一覧を読み込んでいます...'),
-      ).toBeNull();
+      expect(screen.queryByText('Trail一覧を読み込んでいます...')).toBeNull();
     });
     expect(screen.getByRole('table')).toBeInTheDocument();
     const detailLink = screen.getByRole('link', {

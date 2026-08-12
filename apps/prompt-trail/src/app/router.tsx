@@ -41,10 +41,7 @@ export function AppRouter() {
         element={<RecipeBuilderPage />}
       />
       <Route path={routePaths[routeIds.newTrail]} element={<NewTrailPage />} />
-      <Route
-        path={routePaths[routeIds.runList]}
-        element={<RunListPage />}
-      />
+      <Route path={routePaths[routeIds.runList]} element={<RunListPage />} />
       <Route
         path={routePaths[routeIds.runDetail]}
         element={<RunDetailPage />}

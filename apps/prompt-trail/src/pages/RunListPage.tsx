@@ -84,11 +84,7 @@ function RunListDataSection({ data }: { data: DashboardReadModel }) {
   );
 }
 
-function RunListStateMessage({
-  pageState,
-}: {
-  pageState: RunListPageState;
-}) {
+function RunListStateMessage({ pageState }: { pageState: RunListPageState }) {
   switch (pageState.status) {
     case 'loading':
       return (
