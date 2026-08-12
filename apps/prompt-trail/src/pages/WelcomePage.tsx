@@ -6,7 +6,7 @@ import { routePaths } from '../app/routes';
 const steps = [
   {
     title: '1. Trailを作る',
-    description: 'AIへ渡したPromptと実行結果を、ひとつのRunとして記録します。',
+    description: 'AIへ渡したPromptを、ひとつのRunとして記録します。',
   },
   {
     title: '2. Linkを残す',
@@ -29,7 +29,7 @@ export function WelcomePage() {
           AIへの依頼から成果までを、次の仕事に活かせるTrailへ。
         </h1>
         <p id="welcome-lead" className="welcome-lead">
-          PromptTrailは、Prompt、実行結果、関連リンクをひとつの流れとして記録し、うまくいった依頼を再利用するためのLocal-firstワークベンチです。
+          PromptTrailは、Promptと、その実行結果を示すLinkを手動で登録してひとつの流れとして記録し、うまくいった依頼を再利用するためのLocal-firstワークベンチです。
         </p>
         <div className="welcome-actions">
           <Link

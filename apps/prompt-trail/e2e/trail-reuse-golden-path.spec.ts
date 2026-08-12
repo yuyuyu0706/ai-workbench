@@ -6,6 +6,7 @@ const sourceBody =
   'Review the incident evidence and propose follow-up actions.';
 const reusedTitle = 'Reusable incident review with prevention plan';
 const reusedBody = `${reusedTitle}\n\nAdd owners and due dates to every follow-up action.`;
+const reusedTrailTitle = 'Prevention follow-up Trail';
 
 test.describe('Trail reuse acceptance', () => {
   test('creates an independent Trail from the reuse-ready Prompt snapshot', async ({
@@ -46,7 +47,7 @@ test.describe('Trail reuse acceptance', () => {
     ).toHaveAttribute('href', new URL(sourceUrl).pathname);
     await expectNoHorizontalOverflow(page);
 
-    await page.getByLabel('Trail名').fill('Prevention follow-up Trail');
+    await page.getByLabel('Trail名').fill(reusedTrailTitle);
     await page.getByLabel('Trail種別').selectOption('incident-response');
     await page.getByLabel('Prompt本文').fill(reusedBody);
     await page.setViewportSize({ width: 320, height: 900 });
@@ -69,7 +70,7 @@ test.describe('Trail reuse acceptance', () => {
       page.getByRole('heading', { name: sourceTitle, exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: reusedTitle }),
+      page.getByRole('heading', { name: reusedTrailTitle }),
     ).toBeVisible();
 
     await page.goto('/prompts');

@@ -30,6 +30,7 @@ import {
   TRAIL_TITLE_MAX_LENGTH,
   validateTrailMetadata,
 } from '../trail-metadata';
+import { RunStatusPin } from '../run-status';
 export function RunDetailPage() {
   const repository = usePromptTrailRepository();
   const { runId = '' } = useParams();
@@ -628,6 +629,12 @@ export function RunDetailPage() {
                 <div>
                   <dt>Trail種別</dt>
                   <dd>{TRAIL_KIND_LABELS[run.trailKind]}</dd>
+                </div>
+                <div>
+                  <dt>ステータス</dt>
+                  <dd>
+                    <RunStatusPin status={run.status} />
+                  </dd>
                 </div>
               </dl>
               {metadataOverride === null && metadata.successNotice ? (
