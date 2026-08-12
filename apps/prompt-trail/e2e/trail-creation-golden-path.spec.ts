@@ -176,12 +176,12 @@ test.describe('first Trail creation acceptance', () => {
 
     await page.getByRole('link', { name: 'Dashboardへ戻る' }).click();
     const recentRun = page.getByRole('row').filter({
-      has: page.getByRole('heading', { level: 3, name: promptTitle }),
+      has: page.getByRole('heading', { level: 3, name: trailTitle }),
     });
     await expect(recentRun).toContainText('0件');
     await expectNoHorizontalOverflow(page);
 
-    await recentRun.getByRole('link', { name: promptTitle }).click();
+    await recentRun.getByRole('link', { name: trailTitle }).click();
     await expect(page).toHaveURL(runDetailUrl);
     await expect(getLinkSection(page).getByRole('listitem')).toHaveCount(0);
   });
