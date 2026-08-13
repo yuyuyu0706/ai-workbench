@@ -963,7 +963,7 @@ it('prevents duplicate Link submissions while saving and then lists the result',
   const repository = {
     getRun: vi.fn(async () => direct),
     getProject: vi.fn(async () => ({ name: 'Project' })),
-      getTrail: vi.fn(async () => trail),
+    getTrail: vi.fn(async () => trail),
     listActiveLinks: vi.fn(async () => []),
     saveLink: vi.fn(
       () =>

@@ -1,4 +1,12 @@
-import type { Context, Link, Project, Prompt, Recipe, Run, Trail } from '../domain';
+import type {
+  Context,
+  Link,
+  Project,
+  Prompt,
+  Recipe,
+  Run,
+  Trail,
+} from '../domain';
 import type { PromptTrailRepository, TrailBundle } from '../repository';
 
 import { sampleDataset } from './sample-dataset';
@@ -12,7 +20,8 @@ export type SeedSampleDataResult =
       readonly missingIds: readonly string[];
     };
 
-type SampleRecord = Project | Prompt | Context | Recipe | Trail | Run | Link | null;
+type SampleRecord =
+  Project | Prompt | Context | Recipe | Trail | Run | Link | null;
 
 type SamplePreflight = {
   readonly project: Project | null;

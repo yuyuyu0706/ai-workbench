@@ -484,7 +484,10 @@ describe('NewTrailPage', () => {
     let resolve!: (value: any) => void;
     const repository = {
       getRun: vi.fn(() => new Promise((done) => (resolve = done))),
-      getTrail: vi.fn(async () => ({ title: 'Source Trail', kind: 'research' })),
+      getTrail: vi.fn(async () => ({
+        title: 'Source Trail',
+        kind: 'research',
+      })),
     } as unknown as PromptTrailRepository;
     renderPage(repository, undefined, '/runs/new?sourceRunId=slow-run');
 

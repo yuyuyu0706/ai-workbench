@@ -1,7 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, expect, it, vi } from 'vitest';
 import { loadRunDetailReadModel } from './run-detail-read-query';
-const run = { id: 'run-1', projectId: 'project-1', trailId: 'trail-1', recipeId: null } as any;
+const run = {
+  id: 'run-1',
+  projectId: 'project-1',
+  trailId: 'trail-1',
+  recipeId: null,
+} as any;
 describe('loadRunDetailReadModel', () => {
   it('reads a Direct Run and active links without recipe lookup', async () => {
     const repository = {

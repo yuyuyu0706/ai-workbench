@@ -99,18 +99,35 @@ export class DeveloperDataService {
   }
 
   private async countAllStores(): Promise<DeveloperRecordCounts> {
-    const [workspaces, projects, prompts, contexts, recipes, trails, runs, links] =
-      await Promise.all([
-        this.database.workspaces.count(),
-        this.database.projects.count(),
-        this.database.prompts.count(),
-        this.database.contexts.count(),
-        this.database.recipes.count(),
-        this.database.trails.count(),
-        this.database.runs.count(),
-        this.database.links.count(),
-      ]);
-    return { workspaces, projects, prompts, contexts, recipes, trails, runs, links };
+    const [
+      workspaces,
+      projects,
+      prompts,
+      contexts,
+      recipes,
+      trails,
+      runs,
+      links,
+    ] = await Promise.all([
+      this.database.workspaces.count(),
+      this.database.projects.count(),
+      this.database.prompts.count(),
+      this.database.contexts.count(),
+      this.database.recipes.count(),
+      this.database.trails.count(),
+      this.database.runs.count(),
+      this.database.links.count(),
+    ]);
+    return {
+      workspaces,
+      projects,
+      prompts,
+      contexts,
+      recipes,
+      trails,
+      runs,
+      links,
+    };
   }
 
   private async clearAllStores(): Promise<void> {

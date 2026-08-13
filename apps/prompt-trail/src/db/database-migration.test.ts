@@ -138,9 +138,9 @@ function withoutKind<T extends { kind?: unknown }>(prompt: T): Omit<T, 'kind'> {
   return clone;
 }
 
-function withTrailMetadata<T extends { id: string; promptSnapshot: { title: string } }>(
-  run: T,
-) {
+function withTrailMetadata<
+  T extends { id: string; promptSnapshot: { title: string } },
+>(run: T) {
   return { ...run, trailTitle: run.promptSnapshot.title, trailKind: 'other' };
 }
 
@@ -282,7 +282,9 @@ describe('schema v1 to v2 migration', () => {
     });
     expect(migrated.trails).toHaveLength(sortedRuns.length);
     for (const run of sortedRuns) {
-      const trail = migrated.trails.find((candidate: { id: string }) => candidate.id === `trail-${run.id}`);
+      const trail = migrated.trails.find(
+        (candidate: { id: string }) => candidate.id === `trail-${run.id}`,
+      );
       expect(trail).toMatchObject({
         projectId: run.projectId,
         title: run.promptSnapshot.title,
@@ -436,7 +438,9 @@ describe('schema v3 to v4 migration', () => {
 
   it('upgrades all Prompts to v4 while preserving every unrelated store', async () => {
     const name = `prompt-trail-migration-v4-${crypto.randomUUID()}`;
-    const seed = legacyDataset([withTrailMetadata(legacyRun('active-direct', 'Active'))]);
+    const seed = legacyDataset([
+      withTrailMetadata(legacyRun('active-direct', 'Active')),
+    ]);
     const seededPrompt = {
       ...seed.prompts[0],
       kind: 'design-review',
@@ -531,10 +535,7 @@ describe('schema v4 to v5 migration', () => {
       expectedTrailFor(runA, now),
       expectedTrailFor(runB, now),
     ]);
-    expect(runs).toEqual([
-      asMigratedRun(runA),
-      asMigratedRun(runB),
-    ]);
+    expect(runs).toEqual([asMigratedRun(runA), asMigratedRun(runB)]);
   });
 
   it('upgrades a real database end to end and remains stable after reopening', async () => {
@@ -602,7 +603,9 @@ function fakeTable(
 function fakeModifiableTable(records: Record<string, unknown>[]): {
   toArray: () => Promise<Record<string, unknown>[]>;
   toCollection: () => {
-    modify: (mutator: (record: Record<string, unknown>) => void) => Promise<void>;
+    modify: (
+      mutator: (record: Record<string, unknown>) => void,
+    ) => Promise<void>;
   };
 } {
   return {

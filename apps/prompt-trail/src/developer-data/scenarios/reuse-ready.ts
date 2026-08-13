@@ -1,4 +1,11 @@
-import type { Link, Project, Prompt, Run, Trail, Workspace } from '../../domain';
+import type {
+  Link,
+  Project,
+  Prompt,
+  Run,
+  Trail,
+  Workspace,
+} from '../../domain';
 import { DEFAULT_WORKSPACE_ID, createDefaultWorkspace } from '../../domain';
 import type { DeveloperDataScenario } from '../developer-data-scenario';
 import { linkId, projectId, promptId, runId, trailId, utc } from './helpers';

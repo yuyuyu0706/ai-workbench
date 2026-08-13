@@ -1,8 +1,25 @@
-import type { Context, Link, Project, Prompt, Recipe, Run, Trail, Workspace } from '../../domain';
+import type {
+  Context,
+  Link,
+  Project,
+  Prompt,
+  Recipe,
+  Run,
+  Trail,
+  Workspace,
+} from '../../domain';
 import { DEFAULT_WORKSPACE_ID, createDefaultWorkspace } from '../../domain';
 import type { ContextId } from '../../domain';
 import type { DeveloperDataScenario } from '../developer-data-scenario';
-import { linkId, projectId, promptId, recipeId, runId, trailId, utc } from './helpers';
+import {
+  linkId,
+  projectId,
+  promptId,
+  recipeId,
+  runId,
+  trailId,
+  utc,
+} from './helpers';
 
 const time = utc('2026-07-23T11:00:00.000Z');
 const workspace: Workspace = createDefaultWorkspace(time);

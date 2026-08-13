@@ -406,7 +406,9 @@ describe('PromptTrailRepository run persistence', () => {
     await repository.saveProject(
       buildProject({ id: projectId('other-project') }),
     );
-    await database.trails.put(buildTrail({ projectId: projectId('other-project') }));
+    await database.trails.put(
+      buildTrail({ projectId: projectId('other-project') }),
+    );
     const projectMismatchRun = buildRun({
       id: runId('run-project-mismatch'),
       projectId: projectId('other-project'),
@@ -502,7 +504,9 @@ describe('PromptTrailRepository run persistence', () => {
         projectId: projectId('project-2'),
       }),
     ]);
-    await database.trails.put(buildTrail({ projectId: projectId('project-2') }));
+    await database.trails.put(
+      buildTrail({ projectId: projectId('project-2') }),
+    );
     const olderDraft = buildRun({
       id: runId('older-draft'),
       status: 'draft',

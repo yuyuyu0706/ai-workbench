@@ -183,9 +183,7 @@ export function NewTrailPage() {
             trailTitle: target.titleDirty
               ? target.trailTitle
               : state.trail.title,
-            trailKind: target.kindDirty
-              ? target.trailKind
-              : state.trail.kind,
+            trailKind: target.kindDirty ? target.trailKind : state.trail.kind,
             titleOrigin: target.titleDirty ? target.titleOrigin : 'source',
           };
         });
