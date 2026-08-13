@@ -182,10 +182,8 @@ export function NewTrailPage() {
               : state.run.promptSnapshot.body,
             trailTitle: target.titleDirty
               ? target.trailTitle
-              : state.run.trailTitle,
-            trailKind: target.kindDirty
-              ? target.trailKind
-              : state.run.trailKind,
+              : state.trail.title,
+            trailKind: target.kindDirty ? target.trailKind : state.trail.kind,
             titleOrigin: target.titleDirty ? target.titleOrigin : 'source',
           };
         });
@@ -385,7 +383,7 @@ export function NewTrailPage() {
             ) : reuseState.status === 'data' ? (
               <div className="pt-reuse-source">
                 <p>
-                  「{reuseState.run.trailTitle}
+                  「{reuseState.trail.title}
                   」のTrail名、Trail種別、Prompt本文を引き継ぎました。編集して新しいTrailを作成できます。
                 </p>
                 {disabled ? (

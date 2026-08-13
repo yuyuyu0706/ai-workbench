@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import type { Prompt, Run, UtcDateTimeString } from '../domain';
+import type { Prompt, Run, Trail, UtcDateTimeString } from '../domain';
 import { createDefaultProject, DEFAULT_PROJECT_ID } from '../domain';
 import { createDatabaseTestScope } from '../test/database-test-utils';
 import { PromptTrailRepository } from './index';
@@ -15,6 +15,7 @@ async function prepare() {
   const project = createDefaultProject(oldTime);
   const promptId = 'prompt-1' as Prompt['id'];
   const runId = 'run-1' as Run['id'];
+  const trailId = 'trail-1' as Trail['id'];
   const prompt: Prompt = {
     id: promptId,
     createdAt: oldTime,
@@ -28,6 +29,16 @@ async function prepare() {
     tags: [],
     variableValues: {},
   };
+  const trail: Trail = {
+    id: trailId,
+    createdAt: oldTime,
+    updatedAt: oldTime,
+    deletedAt: null,
+    archivedAt: null,
+    projectId: DEFAULT_PROJECT_ID,
+    title: 'Old',
+    kind: 'other',
+  };
   const run: Run & { readonly recipeId: null } = {
     id: runId,
     createdAt: oldTime,
@@ -35,8 +46,7 @@ async function prepare() {
     deletedAt: null,
     archivedAt: null,
     projectId: DEFAULT_PROJECT_ID,
-    trailTitle: 'Old',
-    trailKind: 'other',
+    trailId,
     recipeId: null,
     promptSnapshot: {
       promptId: prompt.id,
@@ -50,61 +60,62 @@ async function prepare() {
     evaluation: null,
     improvementNote: null,
   };
-  await repository.createDirectRunBundle({ project, prompt, run });
-  return { database, repository, run };
+  await repository.createDirectRunBundle({ project, prompt, trail, run });
+  return { database, repository, run, trail };
 }
 
-describe('updateRunTrailMetadata repository API', () => {
-  it('rejects a missing Run', async () => {
+describe('updateTrailMetadata repository API', () => {
+  it('rejects a missing Trail', async () => {
     const database = scope.createDatabase();
     const repository = new PromptTrailRepository(database);
     await expect(
-      repository.updateRunTrailMetadata({
-        runId: 'missing' as Run['id'],
+      repository.updateTrailMetadata({
+        trailId: 'missing' as Trail['id'],
         expectedUpdatedAt: oldTime,
-        trailTitle: 'New',
-        trailKind: 'other',
+        title: 'New',
+        kind: 'other',
         updatedAt: newTime,
       }),
     ).rejects.toMatchObject({ code: 'reference-not-found' });
   });
 
-  it('rejects a deleted Run without changing it', async () => {
-    const { database, repository, run } = await prepare();
-    const deleted = { ...run, deletedAt: oldTime };
-    await database.runs.put(deleted);
+  it('rejects a deleted Trail without changing it', async () => {
+    const { database, repository, trail } = await prepare();
+    const deleted = { ...trail, deletedAt: oldTime };
+    await database.trails.put(deleted);
     await expect(
-      repository.updateRunTrailMetadata({
-        runId: run.id,
+      repository.updateTrailMetadata({
+        trailId: trail.id,
         expectedUpdatedAt: oldTime,
-        trailTitle: 'New',
-        trailKind: 'other',
+        title: 'New',
+        kind: 'other',
         updatedAt: newTime,
       }),
     ).rejects.toMatchObject({ code: 'reference-unavailable' });
-    await expect(repository.getRun(run.id)).resolves.toEqual(deleted);
+    await expect(repository.getTrail(trail.id)).resolves.toEqual(deleted);
   });
 
   it('updates only metadata and updatedAt', async () => {
-    const { database, repository, run } = await prepare();
+    const { database, repository, trail } = await prepare();
     const storeCounts = await Promise.all([
       database.projects.count(),
       database.prompts.count(),
       database.contexts.count(),
       database.recipes.count(),
+      database.runs.count(),
       database.links.count(),
     ]);
-    const updated = await repository.updateRunTrailMetadata({
-      runId: run.id,
+    const updated = await repository.updateTrailMetadata({
+      trailId: trail.id,
       expectedUpdatedAt: oldTime,
-      trailTitle: 'New',
-      trailKind: 'research',
+      title: 'New',
+      kind: 'research',
       updatedAt: newTime,
     });
     expect(updated).toEqual({
-      ...run,
-      trailTitle: 'New',
-      trailKind: 'research',
+      ...trail,
+      title: 'New',
+      kind: 'research',
       updatedAt: newTime,
     });
     await expect(
@@ -113,34 +124,35 @@ describe('updateRunTrailMetadata repository API', () => {
         database.prompts.count(),
         database.contexts.count(),
         database.recipes.count(),
+        database.runs.count(),
         database.links.count(),
       ]),
     ).resolves.toEqual(storeCounts);
   });
 
-  it('rejects stale writes without changing the stored Run', async () => {
-    const { repository, run } = await prepare();
+  it('rejects stale writes without changing the stored Trail', async () => {
+    const { repository, trail } = await prepare();
     await expect(
-      repository.updateRunTrailMetadata({
-        runId: run.id,
+      repository.updateTrailMetadata({
+        trailId: trail.id,
         expectedUpdatedAt: newTime,
-        trailTitle: 'Lost',
-        trailKind: 'review',
+        title: 'Lost',
+        kind: 'review',
         updatedAt: newTime,
       }),
     ).rejects.toMatchObject({ code: 'stale-write' });
-    await expect(repository.getRun(run.id)).resolves.toEqual(run);
+    await expect(repository.getTrail(trail.id)).resolves.toEqual(trail);
   });
 
   it('allows only one of two updates with the same expected timestamp', async () => {
-    const { repository, run } = await prepare();
+    const { repository, trail } = await prepare();
     const values = await Promise.allSettled(
-      ['A', 'B'].map((trailTitle) =>
-        repository.updateRunTrailMetadata({
-          runId: run.id,
+      ['A', 'B'].map((title) =>
+        repository.updateTrailMetadata({
+          trailId: trail.id,
           expectedUpdatedAt: oldTime,
-          trailTitle,
-          trailKind: 'other',
+          title,
+          kind: 'other',
           updatedAt: newTime,
         }),
       ),

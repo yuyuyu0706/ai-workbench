@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { PromptTrailRepositoryProvider } from '../app/PromptTrailRepositoryContext';
 import { buildRunDetailPath } from '../app/routes';
 import { createPromptTrailRuntime } from '../app/prompt-trail-runtime';
-import type { Project, Run } from '../domain';
+import type { Project, Run, Trail } from '../domain';
 import type { PromptTrailRepository } from '../repository';
 import { sampleDataset, seedSampleData } from '../sample-data';
 import { createDatabaseTestScope } from '../test/database-test-utils';
@@ -64,7 +64,7 @@ describe('RunListPage', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('その他')).toBeInTheDocument();
     const detailLink = screen.getByRole('link', {
-      name: sampleDataset.run.trailTitle,
+      name: sampleDataset.trail.title,
     });
     expect(detailLink).toHaveAttribute(
       'href',
@@ -92,11 +92,17 @@ describe('RunListPage', () => {
   });
 
   it('lists more than five Runs, unlike the Dashboard recent list', async () => {
-    const runs = Array.from({ length: 6 }, (_, index) =>
+    const trails = Array.from({ length: 6 }, (_, index) =>
+      createTrail({
+        id: `trail-${index}` as Trail['id'],
+        title: `Trail ${index}`,
+      }),
+    );
+    const runs = trails.map((trail, index) =>
       createRun({
         id: `run-${index}` as Run['id'],
         recipeId: null,
-        trailTitle: `Trail ${index}`,
+        trailId: trail.id,
         promptSnapshot: {
           promptId: `prompt-${index}` as Run['promptSnapshot']['promptId'],
           title: `Trail ${index}`,
@@ -108,13 +114,13 @@ describe('RunListPage', () => {
         updatedAt: `2026-07-${10 + index}T00:00:00.000Z` as Run['updatedAt'],
       }),
     );
-    const repository = createResolvedDataRepository(runs);
+    const repository = createResolvedDataRepository(runs, trails);
 
     renderRunListPage(repository);
 
-    for (const run of runs) {
+    for (const trail of trails) {
       expect(
-        await screen.findByRole('link', { name: run.trailTitle }),
+        await screen.findByRole('link', { name: trail.title }),
       ).toBeInTheDocument();
     }
   });
@@ -132,15 +138,24 @@ function renderRunListPage(repository: PromptTrailRepository) {
 
 function createResolvedDataRepository(
   runs: readonly Run[],
+  trails: readonly Trail[] = [sampleDataset.trail],
 ): PromptTrailRepository {
   return {
     listActiveProjects: vi.fn(async () => [sampleDataset.project]),
     listActiveRuns: vi.fn(async () => runs),
     getRecipe: vi.fn(async () => sampleDataset.recipe),
+    getTrail: vi.fn(
+      async (id: Trail['id']) =>
+        trails.find((trail) => trail.id === id) ?? null,
+    ),
     listActiveLinks: vi.fn(async () => sampleDataset.links),
   } as unknown as PromptTrailRepository;
 }
 
 function createRun(overrides: Partial<Run>): Run {
   return { ...sampleDataset.run, ...overrides };
+}
+
+function createTrail(overrides: Partial<Trail>): Trail {
+  return { ...sampleDataset.trail, ...overrides };
 }

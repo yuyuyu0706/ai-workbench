@@ -2,6 +2,7 @@ import {
   createDefaultProject,
   type Prompt,
   type Run,
+  type Trail,
   type TrailKind,
   type UtcDateTimeString,
 } from '../domain';
@@ -13,7 +14,7 @@ export type CreateDirectTrailInput = {
   readonly trailKind: TrailKind;
 };
 export type CreateDirectTrailDependencies = {
-  readonly createId?: (kind: 'prompt' | 'run') => string;
+  readonly createId?: (kind: 'prompt' | 'run' | 'trail') => string;
   readonly now?: () => UtcDateTimeString;
 };
 const TITLE_MAX_LENGTH = 80;
@@ -43,6 +44,7 @@ export async function createDirectTrail(
   const project = createDefaultProject(createdAt);
   const promptId = createId('prompt') as Prompt['id'];
   const runId = createId('run') as Run['id'];
+  const trailId = createId('trail') as Trail['id'];
   const prompt: Prompt = {
     id: promptId,
     createdAt,
@@ -56,6 +58,16 @@ export async function createDirectTrail(
     tags: [],
     variableValues: {},
   };
+  const trail: Trail = {
+    id: trailId,
+    createdAt,
+    updatedAt: createdAt,
+    deletedAt: null,
+    archivedAt: null,
+    projectId: project.id,
+    title: trailTitle,
+    kind: input.trailKind,
+  };
   const run: Run & { readonly recipeId: null } = {
     id: runId,
     createdAt,
@@ -63,8 +75,7 @@ export async function createDirectTrail(
     deletedAt: null,
     archivedAt: null,
     projectId: project.id,
-    trailTitle,
-    trailKind: input.trailKind,
+    trailId,
     recipeId: null,
     promptSnapshot: { promptId, title: prompt.title, body: prompt.body },
     contextSnapshots: [],
@@ -74,5 +85,7 @@ export async function createDirectTrail(
     evaluation: null,
     improvementNote: null,
   };
-  return (await repository.createDirectRunBundle({ project, prompt, run })).run;
+  return (
+    await repository.createDirectRunBundle({ project, prompt, trail, run })
+  ).run;
 }

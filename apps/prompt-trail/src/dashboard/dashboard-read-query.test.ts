@@ -8,6 +8,7 @@ import type {
   Recipe,
   Run,
   RunId,
+  Trail,
   UtcDateTimeString,
 } from '../domain';
 import { createDefaultProject, DEFAULT_PROJECT_ID } from '../domain';
@@ -47,6 +48,10 @@ function cloneSampleRun(overrides: Partial<Run> = {}): Run {
   return { ...sampleDataset.run, ...overrides };
 }
 
+function cloneSampleTrail(overrides: Partial<Trail> = {}): Trail {
+  return { ...sampleDataset.trail, ...overrides };
+}
+
 function cloneSampleLink(overrides: Partial<Link> = {}): Link {
   return { ...sampleDataset.links[0], ...overrides };
 }
@@ -60,6 +65,7 @@ describe('loadDashboardReadModel', () => {
       prompt: { ...sampleDataset.prompt },
       context: { ...sampleDataset.context },
       recipe: cloneSampleRecipe(),
+      trail: cloneSampleTrail(),
       run: cloneSampleRun(),
       links: [],
     });
@@ -76,6 +82,16 @@ describe('loadDashboardReadModel', () => {
       tags: [],
       variableValues: {},
     };
+    const directTrail: Trail = {
+      id: 'dashboard-direct-trail' as Trail['id'],
+      createdAt: utc('2026-07-13T00:00:00.000Z'),
+      updatedAt: utc('2026-07-13T00:00:00.000Z'),
+      deletedAt: null,
+      archivedAt: null,
+      projectId: DEFAULT_PROJECT_ID,
+      title: directPrompt.title,
+      kind: 'other',
+    };
     const directRun: Run & { recipeId: null } = {
       id: 'dashboard-direct-run' as RunId,
       createdAt: utc('2026-07-13T00:00:00.000Z'),
@@ -83,8 +99,7 @@ describe('loadDashboardReadModel', () => {
       deletedAt: null,
       archivedAt: null,
       projectId: DEFAULT_PROJECT_ID,
-      trailTitle: directPrompt.title,
-      trailKind: 'other',
+      trailId: directTrail.id,
       recipeId: null,
       promptSnapshot: {
         promptId: directPrompt.id,
@@ -101,6 +116,7 @@ describe('loadDashboardReadModel', () => {
     await repository.createDirectRunBundle({
       project: createDefaultProject(utc('2026-07-13T00:00:00.000Z')),
       prompt: directPrompt,
+      trail: directTrail,
       run: directRun,
     });
 
@@ -128,6 +144,7 @@ describe('loadDashboardReadModel', () => {
       recentRuns: [
         {
           run: sampleDataset.run,
+          trail: sampleDataset.trail,
           project: sampleDataset.project,
           recipe: sampleDataset.recipe,
           links: sampleDataset.links,
@@ -153,6 +170,7 @@ describe('loadDashboardReadModel', () => {
       prompt: { ...sampleDataset.prompt },
       context: { ...sampleDataset.context },
       recipe: cloneSampleRecipe(),
+      trail: cloneSampleTrail(),
       run: cloneSampleRun(),
       links: sampleDataset.links.map((link) => ({ ...link })),
     });
@@ -167,9 +185,15 @@ describe('loadDashboardReadModel', () => {
       projectId: secondProject.id,
       updatedAt: utc('2026-07-12T02:05:00.000Z'),
     });
+    const secondTrail = cloneSampleTrail({
+      id: 'trail-dashboard-second' as Trail['id'],
+      projectId: secondProject.id,
+      updatedAt: utc('2026-07-12T02:05:00.000Z'),
+    });
     const secondRun = cloneSampleRun({
       id: runId('run-dashboard-second'),
       projectId: secondProject.id,
+      trailId: secondTrail.id,
       recipeId: secondRecipe.id,
       updatedAt: utc('2026-07-12T03:00:00.000Z'),
     });
@@ -186,6 +210,7 @@ describe('loadDashboardReadModel', () => {
 
     await repository.saveProject(secondProject);
     await database.recipes.put(secondRecipe);
+    await repository.saveTrail(secondTrail);
     await repository.saveRun(secondRun);
     await repository.saveLink(activeLink);
     await repository.saveLink(deletedLink);
@@ -196,12 +221,14 @@ describe('loadDashboardReadModel', () => {
       recentRuns: [
         {
           run: secondRun,
+          trail: secondTrail,
           project: secondProject,
           recipe: secondRecipe,
           links: [activeLink],
         },
         {
           run: sampleDataset.run,
+          trail: sampleDataset.trail,
           project: sampleDataset.project,
           recipe: sampleDataset.recipe,
           links: sampleDataset.links,
@@ -218,6 +245,7 @@ describe('loadDashboardReadModel', () => {
       prompt: { ...sampleDataset.prompt },
       context: { ...sampleDataset.context },
       recipe: cloneSampleRecipe(),
+      trail: cloneSampleTrail(),
       run: cloneSampleRun(),
       links: sampleDataset.links.map((link) => ({ ...link })),
     });
@@ -253,6 +281,7 @@ describe('loadDashboardReadModel', () => {
       prompt: { ...sampleDataset.prompt },
       context: { ...sampleDataset.context },
       recipe: cloneSampleRecipe(),
+      trail: cloneSampleTrail(),
       run: cloneSampleRun({
         id: runId('run-dashboard-0'),
         updatedAt: utc('2026-07-12T00:00:00.000Z'),
@@ -290,6 +319,7 @@ describe('loadDashboardReadModel', () => {
       prompt: { ...sampleDataset.prompt },
       context: { ...sampleDataset.context },
       recipe: cloneSampleRecipe(),
+      trail: cloneSampleTrail(),
       run: cloneSampleRun(),
       links: [],
     });

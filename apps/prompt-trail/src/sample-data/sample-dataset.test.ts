@@ -8,6 +8,7 @@ const allSampleIds = [
   sampleDataset.prompt.id,
   sampleDataset.context.id,
   sampleDataset.recipe.id,
+  sampleDataset.trail.id,
   sampleDataset.run.id,
   ...sampleDataset.links.map((link) => link.id),
 ];
@@ -16,7 +17,7 @@ const dateValue = (value: string): number => new Date(value).getTime();
 
 describe('Sample Dataset Contract', () => {
   it('fixes unique stable IDs for sample identification without domain sample flags', () => {
-    expect(allSampleIds).toHaveLength(8);
+    expect(allSampleIds).toHaveLength(9);
     expect(new Set(allSampleIds).size).toBe(allSampleIds.length);
     expect(SAMPLE_ID_SET).toEqual(new Set(allSampleIds));
     expect(SAMPLE_IDS).toEqual({
@@ -24,6 +25,7 @@ describe('Sample Dataset Contract', () => {
       prompt: 'sample-prompt-github-issue-request',
       context: 'sample-context-ai-driven-development',
       recipe: 'sample-recipe-codex-development-request',
+      trail: 'sample-trail-roadmap-resync',
       run: 'sample-run-roadmap-resync',
       links: {
         chat: 'sample-link-chat',
@@ -41,6 +43,7 @@ describe('Sample Dataset Contract', () => {
       prompts: 1,
       contexts: 1,
       recipes: 1,
+      trails: 1,
       runs: 1,
       links: 3,
     });
@@ -48,6 +51,7 @@ describe('Sample Dataset Contract', () => {
     expect(sampleDataset.prompt).toBeDefined();
     expect(sampleDataset.context).toBeDefined();
     expect(sampleDataset.recipe).toBeDefined();
+    expect(sampleDataset.trail).toBeDefined();
     expect(sampleDataset.run).toBeDefined();
     expect(sampleDataset.links).toHaveLength(
       sampleDataset.expectedCounts.links,

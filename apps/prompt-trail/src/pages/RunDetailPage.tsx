@@ -151,9 +151,9 @@ export function RunDetailPage() {
     metadataOverride !== null && state.status === 'data'
       ? {
           ...metadata,
-          trailTitle: state.data.run.trailTitle,
-          trailKind: state.data.run.trailKind,
-          expectedUpdatedAt: state.data.run.updatedAt,
+          trailTitle: state.data.trail.title,
+          trailKind: state.data.trail.kind,
+          expectedUpdatedAt: state.data.trail.updatedAt,
         }
       : metadata;
   const metadataInteractionDisabled =
@@ -163,8 +163,8 @@ export function RunDetailPage() {
   const metadataUnchanged =
     state.status === 'data' &&
     normalizeTrailTitle(displayedMetadata.trailTitle) ===
-      state.data.run.trailTitle &&
-    displayedMetadata.trailKind === state.data.run.trailKind;
+      state.data.trail.title &&
+    displayedMetadata.trailKind === state.data.trail.kind;
   const deleteOverride =
     state.status === 'data' && links.length > 0
       ? selectActiveDeveloperUiState(uiStateSnapshot, 'run-detail-link-delete')
@@ -425,9 +425,9 @@ export function RunDetailPage() {
     setMetadataSnapshot({
       repository,
       runId,
-      trailTitle: state.data.run.trailTitle,
-      trailKind: state.data.run.trailKind,
-      expectedUpdatedAt: state.data.run.updatedAt,
+      trailTitle: state.data.trail.title,
+      trailKind: state.data.trail.kind,
+      expectedUpdatedAt: state.data.trail.updatedAt,
       status: 'editing',
       validationErrors: [],
       successNotice: false,
@@ -464,8 +464,8 @@ export function RunDetailPage() {
     }
     const trailTitle = normalizeTrailTitle(metadata.trailTitle);
     if (
-      trailTitle === state.data.run.trailTitle &&
-      metadata.trailKind === state.data.run.trailKind
+      trailTitle === state.data.trail.title &&
+      metadata.trailKind === state.data.trail.kind
     ) {
       setMetadataSnapshot({ ...metadata, trailTitle, status: 'view' });
       return;
@@ -480,7 +480,7 @@ export function RunDetailPage() {
     });
     try {
       const result = await updateRunTrailMetadata(repository, {
-        runId: state.data.run.id,
+        trailId: state.data.trail.id,
         expectedUpdatedAt: metadata.expectedUpdatedAt,
         trailTitle,
         trailKind: metadata.trailKind,
@@ -503,7 +503,7 @@ export function RunDetailPage() {
                 ...current,
                 state: {
                   status: 'data',
-                  data: { ...current.state.data, run: result.run },
+                  data: { ...current.state.data, trail: result.trail },
                 },
               }
             : current,
@@ -511,9 +511,9 @@ export function RunDetailPage() {
         setMetadataSnapshot({
           repository,
           runId,
-          trailTitle: result.run.trailTitle,
-          trailKind: result.run.trailKind,
-          expectedUpdatedAt: result.run.updatedAt,
+          trailTitle: result.trail.title,
+          trailKind: result.trail.kind,
+          expectedUpdatedAt: result.trail.updatedAt,
           status: 'view',
           validationErrors: [],
           successNotice: true,
@@ -558,9 +558,9 @@ export function RunDetailPage() {
     setMetadataSnapshot({
       repository,
       runId,
-      trailTitle: latest.data.run.trailTitle,
-      trailKind: latest.data.run.trailKind,
-      expectedUpdatedAt: latest.data.run.updatedAt,
+      trailTitle: latest.data.trail.title,
+      trailKind: latest.data.trail.kind,
+      expectedUpdatedAt: latest.data.trail.updatedAt,
       status: 'view',
       validationErrors: [],
       successNotice: false,
@@ -590,13 +590,13 @@ export function RunDetailPage() {
         description="ページを再読み込みするか、Dashboardへ戻ってください。"
       />
     );
-  const { run, project, recipe } = displayedState.data;
+  const { run, trail, project, recipe } = displayedState.data;
   return (
     <section className="prompt-trail-page">
       <PageHeader
         eyebrow="Run Detail"
         title="Run Detail"
-        description={`${project.name} のTrail: ${run.trailTitle}`}
+        description={`${project.name} のTrail: ${trail.title}`}
       />
       <div className="prompt-trail-page__sections">
         {createdNoticeRunId === runId ? (
@@ -624,11 +624,11 @@ export function RunDetailPage() {
               <dl className="pt-detail-list">
                 <div>
                   <dt>Trail名</dt>
-                  <dd>{run.trailTitle}</dd>
+                  <dd>{trail.title}</dd>
                 </div>
                 <div>
                   <dt>Trail種別</dt>
-                  <dd>{TRAIL_KIND_LABELS[run.trailKind]}</dd>
+                  <dd>{TRAIL_KIND_LABELS[trail.kind]}</dd>
                 </div>
                 <div>
                   <dt>ステータス</dt>

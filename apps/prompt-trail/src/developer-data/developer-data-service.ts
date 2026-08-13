@@ -99,34 +99,57 @@ export class DeveloperDataService {
   }
 
   private async countAllStores(): Promise<DeveloperRecordCounts> {
-    const [projects, prompts, contexts, recipes, runs, links] =
-      await Promise.all([
-        this.database.projects.count(),
-        this.database.prompts.count(),
-        this.database.contexts.count(),
-        this.database.recipes.count(),
-        this.database.runs.count(),
-        this.database.links.count(),
-      ]);
-    return { projects, prompts, contexts, recipes, runs, links };
+    const [
+      workspaces,
+      projects,
+      prompts,
+      contexts,
+      recipes,
+      trails,
+      runs,
+      links,
+    ] = await Promise.all([
+      this.database.workspaces.count(),
+      this.database.projects.count(),
+      this.database.prompts.count(),
+      this.database.contexts.count(),
+      this.database.recipes.count(),
+      this.database.trails.count(),
+      this.database.runs.count(),
+      this.database.links.count(),
+    ]);
+    return {
+      workspaces,
+      projects,
+      prompts,
+      contexts,
+      recipes,
+      trails,
+      runs,
+      links,
+    };
   }
 
   private async clearAllStores(): Promise<void> {
     await this.database.links.clear();
     await this.database.runs.clear();
+    await this.database.trails.clear();
     await this.database.recipes.clear();
     await this.database.contexts.clear();
     await this.database.prompts.clear();
     await this.database.projects.clear();
+    await this.database.workspaces.clear();
   }
 
   private async insertScenarioDataset(
     dataset: DeveloperScenarioDataset,
   ): Promise<void> {
+    await bulkAddWhenPopulated(this.database.workspaces, dataset.workspaces);
     await bulkAddWhenPopulated(this.database.projects, dataset.projects);
     await bulkAddWhenPopulated(this.database.prompts, dataset.prompts);
     await bulkAddWhenPopulated(this.database.contexts, dataset.contexts);
     await bulkAddWhenPopulated(this.database.recipes, dataset.recipes);
+    await bulkAddWhenPopulated(this.database.trails, dataset.trails);
     await bulkAddWhenPopulated(this.database.runs, dataset.runs);
     await bulkAddWhenPopulated(this.database.links, dataset.links);
   }
@@ -143,10 +166,12 @@ export class DeveloperDataService {
 }
 
 const EMPTY_COUNTS: DeveloperScenarioExpectedCounts = {
+  workspaces: 0,
   projects: 0,
   prompts: 0,
   contexts: 0,
   recipes: 0,
+  trails: 0,
   runs: 0,
   links: 0,
 };

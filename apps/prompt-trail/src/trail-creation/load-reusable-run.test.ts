@@ -6,16 +6,20 @@ describe('loadReusableRun', () => {
   it('returns the Run whose immutable Prompt snapshot will be reused', async () => {
     const run = {
       id: 'run-source',
+      trailId: 'trail-source',
       deletedAt: null,
       promptSnapshot: { body: 'snapshot' },
     };
+    const trail = { id: 'trail-source', title: 'Source trail' };
     const repository = {
       getRun: vi.fn(async () => run),
+      getTrail: vi.fn(async () => trail),
     } as unknown as PromptTrailRepository;
 
     await expect(loadReusableRun(repository, 'run-source')).resolves.toEqual({
       status: 'data',
       run,
+      trail,
     });
   });
 

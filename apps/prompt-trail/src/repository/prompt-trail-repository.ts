@@ -1,6 +1,7 @@
 import type { Table } from 'dexie';
 
 import type { PromptTrailDatabase } from '../db';
+import { createDefaultWorkspace } from '../domain';
 import type {
   Context,
   ContextId,
@@ -14,8 +15,12 @@ import type {
   RecipeId,
   Run,
   RunId,
+  Trail,
+  TrailId,
   TrailKind,
   UtcDateTimeString,
+  Workspace,
+  WorkspaceId,
 } from '../domain';
 
 import { PromptTrailRepositoryError } from './errors';
@@ -25,6 +30,7 @@ export type TrailBundle = {
   readonly prompt: Prompt;
   readonly context: Context;
   readonly recipe: Recipe;
+  readonly trail: Trail;
   readonly run: Run;
   readonly links: readonly Link[];
 };
@@ -33,6 +39,7 @@ export type TrailBundle = {
 export type DirectRunBundle = {
   readonly project: Project;
   readonly prompt: Prompt;
+  readonly trail: Trail;
   readonly run: Run & { readonly recipeId: null };
 };
 
@@ -40,11 +47,13 @@ export type DirectRunFromPromptCreation = {
   readonly project: Project;
   readonly promptId: PromptId;
   readonly expectedPromptUpdatedAt: UtcDateTimeString;
+  readonly trail: Trail;
   readonly run: Run & { readonly recipeId: null };
 };
 
 export type DirectRunFromPromptResult = {
   readonly project: Project;
+  readonly trail: Trail;
   readonly run: Run & { readonly recipeId: null };
 };
 
@@ -56,11 +65,11 @@ export type PromptBodyUpdate = {
   readonly updatedAt: UtcDateTimeString;
 };
 
-export type RunTrailMetadataUpdate = {
-  readonly runId: RunId;
+export type TrailMetadataUpdate = {
+  readonly trailId: TrailId;
   readonly expectedUpdatedAt: UtcDateTimeString;
-  readonly trailTitle: string;
-  readonly trailKind: TrailKind;
+  readonly title: string;
+  readonly kind: TrailKind;
   readonly updatedAt: UtcDateTimeString;
 };
 
@@ -75,15 +84,21 @@ export class PromptTrailRepository {
     await this.database.transaction(
       'rw',
       [
+        this.database.workspaces,
         this.database.projects,
         this.database.prompts,
         this.database.contexts,
         this.database.recipes,
+        this.database.trails,
         this.database.runs,
         this.database.links,
       ],
       async () => {
         await this.ensureBundleIdsAbsent(trailBundle);
+        await this.ensureWorkspaceAvailable(
+          trailBundle.project.workspaceId,
+          true,
+        );
 
         await this.database.projects.add(trailBundle.project);
 
@@ -96,7 +111,13 @@ export class PromptTrailRepository {
         await this.ensureRecipeReferencesAvailable(trailBundle.recipe);
         await this.database.recipes.add(trailBundle.recipe);
 
-        await this.ensureRunReferencesAvailable(trailBundle.run);
+        this.ensureTrailMatchesProject(trailBundle.trail, trailBundle.project);
+        await this.database.trails.add(trailBundle.trail);
+
+        await this.ensureRunReferencesAvailable(
+          trailBundle.run,
+          trailBundle.trail,
+        );
         await this.database.runs.add(trailBundle.run);
 
         for (const link of trailBundle.links) {
@@ -116,9 +137,16 @@ export class PromptTrailRepository {
 
     await this.database.transaction(
       'rw',
-      [this.database.projects, this.database.prompts, this.database.runs],
+      [
+        this.database.workspaces,
+        this.database.projects,
+        this.database.prompts,
+        this.database.trails,
+        this.database.runs,
+      ],
       async () => {
         this.ensureDirectRunBundleRelationships(directRunBundle);
+        await this.ensureWorkspaceAvailable(project.workspaceId, true);
         const existingProject = await this.database.projects.get(project.id);
 
         if (existingProject === undefined) {
@@ -130,7 +158,11 @@ export class PromptTrailRepository {
 
         await this.ensureDirectRunIdsAbsent(directRunBundle);
         await this.database.prompts.add(directRunBundle.prompt);
-        await this.ensureDirectRunReferencesAvailable(directRunBundle.run);
+        await this.database.trails.add(directRunBundle.trail);
+        await this.ensureDirectRunReferencesAvailable(
+          directRunBundle.run,
+          directRunBundle.trail,
+        );
         await this.database.runs.add(directRunBundle.run);
       },
     );
@@ -144,8 +176,15 @@ export class PromptTrailRepository {
     let project = creation.project;
     await this.database.transaction(
       'rw',
-      [this.database.projects, this.database.prompts, this.database.runs],
+      [
+        this.database.workspaces,
+        this.database.projects,
+        this.database.prompts,
+        this.database.trails,
+        this.database.runs,
+      ],
       async () => {
+        await this.ensureWorkspaceAvailable(project.workspaceId, true);
         const existingProject = await this.database.projects.get(project.id);
         if (existingProject === undefined)
           await this.database.projects.add(project);
@@ -191,11 +230,137 @@ export class PromptTrailRepository {
             'project-mismatch',
             'Run relationship is invalid',
           );
-        await this.ensureDirectRunReferencesAvailable(creation.run);
+        this.ensureTrailMatchesProject(creation.trail, project);
+        if (await this.database.trails.get(creation.trail.id))
+          throw new PromptTrailRepositoryError(
+            'duplicate-id',
+            'Trail ID already exists',
+          );
+        await this.database.trails.add(creation.trail);
+        await this.ensureDirectRunReferencesAvailable(
+          creation.run,
+          creation.trail,
+        );
         await this.database.runs.add(creation.run);
       },
     );
-    return { project, run: creation.run };
+    return { project, trail: creation.trail, run: creation.run };
+  }
+
+  async saveWorkspace(workspace: Workspace): Promise<Workspace> {
+    await this.database.workspaces.put(workspace);
+
+    return workspace;
+  }
+
+  async getWorkspace(workspaceId: WorkspaceId): Promise<Workspace | null> {
+    return (await this.database.workspaces.get(workspaceId)) ?? null;
+  }
+
+  async listActiveWorkspaces(): Promise<readonly Workspace[]> {
+    const workspaces = await this.database.workspaces
+      .orderBy('updatedAt')
+      .reverse()
+      .toArray();
+
+    return workspaces.filter((workspace) => workspace.deletedAt === null);
+  }
+
+  async softDeleteWorkspace(
+    workspaceId: WorkspaceId,
+    deletedAt: UtcDateTimeString,
+  ): Promise<Workspace> {
+    return this.softDeleteEntity(
+      this.database.workspaces,
+      workspaceId,
+      deletedAt,
+      'Workspace',
+    );
+  }
+
+  async saveTrail(trail: Trail): Promise<Trail> {
+    await this.database.transaction(
+      'rw',
+      this.database.projects,
+      this.database.trails,
+      async () => {
+        const project = await this.database.projects.get(trail.projectId);
+
+        if (project === undefined) {
+          throw new PromptTrailRepositoryError(
+            'reference-not-found',
+            `Project not found: ${trail.projectId}`,
+          );
+        }
+
+        this.ensureProjectAvailable(project);
+        await this.database.trails.put(trail);
+      },
+    );
+
+    return trail;
+  }
+
+  async getTrail(trailId: TrailId): Promise<Trail | null> {
+    return (await this.database.trails.get(trailId)) ?? null;
+  }
+
+  async listActiveTrails(projectId: ProjectId): Promise<readonly Trail[]> {
+    const trails = await this.database.trails
+      .orderBy('updatedAt')
+      .reverse()
+      .toArray();
+
+    return trails.filter(
+      (trail) =>
+        trail.projectId === projectId &&
+        trail.deletedAt === null &&
+        trail.archivedAt === null,
+    );
+  }
+
+  async softDeleteTrail(
+    trailId: TrailId,
+    deletedAt: UtcDateTimeString,
+  ): Promise<Trail> {
+    return this.softDeleteEntity(
+      this.database.trails,
+      trailId,
+      deletedAt,
+      'Trail',
+    );
+  }
+
+  async updateTrailMetadata(update: TrailMetadataUpdate): Promise<Trail> {
+    return this.database.transaction('rw', this.database.trails, async () => {
+      const current = await this.database.trails.get(update.trailId);
+      if (current === undefined) {
+        throw new PromptTrailRepositoryError(
+          'reference-not-found',
+          `Trail not found: ${update.trailId}`,
+        );
+      }
+      if (current.deletedAt !== null) {
+        throw new PromptTrailRepositoryError(
+          'reference-unavailable',
+          `Trail is unavailable: ${update.trailId}`,
+        );
+      }
+      if (current.updatedAt !== update.expectedUpdatedAt) {
+        throw new PromptTrailRepositoryError(
+          'stale-write',
+          `Trail was updated: ${update.trailId}`,
+        );
+      }
+      const updated: Trail = {
+        ...current,
+        title: update.title,
+        kind: update.kind,
+        updatedAt: update.updatedAt,
+      };
+      await this.database.trails.put(updated);
+      return updated;
+    });
   }
 
   async saveProject(project: Project): Promise<Project> {
@@ -413,9 +578,17 @@ export class PromptTrailRepository {
       this.database.projects,
       this.database.prompts,
       this.database.recipes,
+      this.database.trails,
       this.database.runs,
       async () => {
-        await this.ensureRunReferencesAvailable(run);
+        const trail = await this.database.trails.get(run.trailId);
+        if (trail === undefined) {
+          throw new PromptTrailRepositoryError(
+            'reference-not-found',
+            `Trail not found: ${run.trailId}`,
+          );
+        }
+        await this.ensureRunReferencesAvailable(run, trail);
         await this.database.runs.put(run);
       },
     );
@@ -425,38 +598,6 @@ export class PromptTrailRepository {
 
   async getRun(runId: RunId): Promise<Run | null> {
     return (await this.database.runs.get(runId)) ?? null;
-  }
-
-  async updateRunTrailMetadata(update: RunTrailMetadataUpdate): Promise<Run> {
-    return this.database.transaction('rw', this.database.runs, async () => {
-      const current = await this.database.runs.get(update.runId);
-      if (current === undefined) {
-        throw new PromptTrailRepositoryError(
-          'reference-not-found',
-          `Run not found: ${update.runId}`,
-        );
-      }
-      if (current.deletedAt !== null) {
-        throw new PromptTrailRepositoryError(
-          'reference-unavailable',
-          `Run is unavailable: ${update.runId}`,
-        );
-      }
-      if (current.updatedAt !== update.expectedUpdatedAt) {
-        throw new PromptTrailRepositoryError(
-          'stale-write',
-          `Run was updated: ${update.runId}`,
-        );
-      }
-      const updated: Run = {
-        ...current,
-        trailTitle: update.trailTitle,
-        trailKind: update.trailKind,
-        updatedAt: update.updatedAt,
-      };
-      await this.database.runs.put(updated);
-      return updated;
-    });
   }
 
   async listActiveRuns(projectId: ProjectId): Promise<readonly Run[]> {
@@ -533,6 +674,7 @@ export class PromptTrailRepository {
       this.database.prompts.get(trailBundle.prompt.id),
       this.database.contexts.get(trailBundle.context.id),
       this.database.recipes.get(trailBundle.recipe.id),
+      this.database.trails.get(trailBundle.trail.id),
       this.database.runs.get(trailBundle.run.id),
       ...trailBundle.links.map((link) => this.database.links.get(link.id)),
     ]);
@@ -548,12 +690,13 @@ export class PromptTrailRepository {
   private async ensureDirectRunIdsAbsent(
     directRunBundle: DirectRunBundle,
   ): Promise<void> {
-    const [prompt, run] = await Promise.all([
+    const [prompt, trail, run] = await Promise.all([
       this.database.prompts.get(directRunBundle.prompt.id),
+      this.database.trails.get(directRunBundle.trail.id),
       this.database.runs.get(directRunBundle.run.id),
     ]);
 
-    if (prompt !== undefined || run !== undefined) {
+    if (prompt !== undefined || trail !== undefined || run !== undefined) {
       throw new PromptTrailRepositoryError(
         'duplicate-id',
         'Direct Run bundle contains an ID that already exists',
@@ -564,7 +707,7 @@ export class PromptTrailRepository {
   private ensureDirectRunBundleRelationships(
     directRunBundle: DirectRunBundle,
   ): void {
-    const { project, prompt, run } = directRunBundle;
+    const { project, prompt, trail, run } = directRunBundle;
 
     if (prompt.scope !== 'project' || prompt.projectId !== project.id) {
       throw new PromptTrailRepositoryError(
@@ -573,10 +716,19 @@ export class PromptTrailRepository {
       );
     }
 
+    this.ensureTrailMatchesProject(trail, project);
+
     if (run.projectId !== project.id) {
       throw new PromptTrailRepositoryError(
         'project-mismatch',
         'Direct Run must belong to the bundle Project',
+      );
+    }
+
+    if (run.trailId !== trail.id) {
+      throw new PromptTrailRepositoryError(
+        'project-mismatch',
+        'Direct Run must belong to the bundle Trail',
       );
     }
 
@@ -588,10 +740,51 @@ export class PromptTrailRepository {
     }
   }
 
-  private async ensureRunReferencesAvailable(run: Run): Promise<void> {
+  private ensureTrailMatchesProject(trail: Trail, project: Project): void {
+    if (trail.projectId !== project.id) {
+      throw new PromptTrailRepositoryError(
+        'project-mismatch',
+        `Trail belongs to another project: ${trail.id}`,
+      );
+    }
+  }
+
+  private async ensureWorkspaceAvailable(
+    workspaceId: WorkspaceId,
+    createIfMissing = false,
+  ): Promise<void> {
+    const workspace = await this.database.workspaces.get(workspaceId);
+
+    if (workspace === undefined) {
+      if (createIfMissing) {
+        await this.database.workspaces.add(
+          createDefaultWorkspace(new Date().toISOString() as UtcDateTimeString),
+        );
+        return;
+      }
+
+      throw new PromptTrailRepositoryError(
+        'reference-not-found',
+        `Workspace not found: ${workspaceId}`,
+      );
+    }
+
+    if (workspace.deletedAt !== null) {
+      throw new PromptTrailRepositoryError(
+        'reference-unavailable',
+        `Workspace is unavailable: ${workspaceId}`,
+      );
+    }
+  }
+
+  private async ensureRunReferencesAvailable(
+    run: Run,
+    trail: Trail,
+  ): Promise<void> {
     if (run.recipeId === null) {
       await this.ensureDirectRunReferencesAvailable(
         run as Run & { readonly recipeId: null },
+        trail,
       );
       return;
     }
@@ -611,6 +804,8 @@ export class PromptTrailRepository {
         `Project is unavailable: ${run.projectId}`,
       );
     }
+
+    this.ensureRunTrailConsistent(run, trail);
 
     const recipe = await this.database.recipes.get(run.recipeId);
 
@@ -661,6 +856,7 @@ export class PromptTrailRepository {
 
   private async ensureDirectRunReferencesAvailable(
     run: Run & { readonly recipeId: null },
+    trail: Trail,
   ): Promise<void> {
     const project = await this.database.projects.get(run.projectId);
 
@@ -672,6 +868,7 @@ export class PromptTrailRepository {
     }
 
     this.ensureProjectAvailable(project);
+    this.ensureRunTrailConsistent(run, trail);
 
     const prompt = await this.database.prompts.get(run.promptSnapshot.promptId);
 
@@ -709,6 +906,22 @@ export class PromptTrailRepository {
       throw new PromptTrailRepositoryError(
         'snapshot-mismatch',
         `Direct Run invariants do not match Prompt: ${run.id}`,
+      );
+    }
+  }
+
+  private ensureRunTrailConsistent(run: Run, trail: Trail): void {
+    if (run.trailId !== trail.id || trail.projectId !== run.projectId) {
+      throw new PromptTrailRepositoryError(
+        'project-mismatch',
+        `Run does not belong to the referenced Trail: ${run.id}`,
+      );
+    }
+
+    if (trail.deletedAt !== null) {
+      throw new PromptTrailRepositoryError(
+        'reference-unavailable',
+        `Trail is unavailable: ${trail.id}`,
       );
     }
   }

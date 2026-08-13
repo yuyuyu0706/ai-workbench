@@ -22,14 +22,16 @@ describe('createTrailFromPrompt', () => {
     const result = await createTrailFromPrompt(
       repository,
       { sourcePrompt, trailTitle: '  Trail  ', trailKind: 'review' },
-      { createId: () => 'run-1', now: () => sourcePrompt.updatedAt },
+      {
+        createId: (kind) => `${kind}-1`,
+        now: () => sourcePrompt.updatedAt,
+      },
     );
     expect(result).toMatchObject({
       status: 'created',
       run: {
         id: 'run-1',
-        trailTitle: 'Trail',
-        trailKind: 'review',
+        trailId: 'trail-1',
         promptSnapshot: {
           promptId: 'prompt-1',
           title: 'Prompt title',

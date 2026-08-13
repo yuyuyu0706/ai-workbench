@@ -17,7 +17,7 @@ import {
   createDeveloperUiStateStore,
   type DeveloperUiStateStore,
 } from '../developer-ui-state';
-import type { Link, Project, Recipe, Run, RunStatus } from '../domain';
+import type { Link, Project, Recipe, Run, RunStatus, Trail } from '../domain';
 import type { PromptTrailRepository } from '../repository';
 import { sampleDataset, seedSampleData } from '../sample-data';
 import { createDatabaseTestScope } from '../test/database-test-utils';
@@ -178,7 +178,7 @@ describe('DashboardPage', () => {
     expect(
       screen.getByRole('heading', {
         level: 3,
-        name: sampleDataset.run.trailTitle,
+        name: sampleDataset.trail.title,
       }),
     ).toBeInTheDocument();
     expect(screen.getByRole('table')).toBeInTheDocument();
@@ -204,7 +204,7 @@ describe('DashboardPage', () => {
     expect(runListLink).toHaveAttribute('href', routePaths.runList);
 
     const detailLink = screen.getByRole('link', {
-      name: sampleDataset.run.trailTitle,
+      name: sampleDataset.trail.title,
     });
     expect(detailLink).toHaveAttribute(
       'href',
@@ -274,8 +274,8 @@ describe('DashboardPage', () => {
 
     const runHeadings = await screen.findAllByRole('heading', { level: 3 });
     expect(runHeadings.map((heading) => heading.textContent)).toEqual([
-      firstRun.trailTitle,
-      secondRun.trailTitle,
+      sampleDataset.trail.title,
+      sampleDataset.trail.title,
     ]);
     expect(screen.queryByText('未評価')).toBeNull();
     expect(screen.queryByText('なし')).toBeNull();
@@ -313,10 +313,14 @@ describe('DashboardPage', () => {
   );
 
   it('renders a Direct Run Snapshot title without Recipe metadata', async () => {
+    const directTrail = createTrail({
+      id: 'direct-dashboard-trail' as Trail['id'],
+      title: 'Direct Run Prompt',
+    });
     const directRun = createRun({
       id: 'direct-dashboard-run' as Run['id'],
       recipeId: null,
-      trailTitle: 'Direct Run Prompt',
+      trailId: directTrail.id,
       promptSnapshot: {
         promptId:
           'direct-dashboard-prompt' as Run['promptSnapshot']['promptId'],
@@ -328,7 +332,12 @@ describe('DashboardPage', () => {
       finalPrompt: 'Direct body',
     });
 
-    renderDashboardPage(createResolvedDataRepository({ runs: [directRun] }));
+    renderDashboardPage(
+      createResolvedDataRepository({
+        runs: [directRun],
+        trails: new Map([[directTrail.id, directTrail]]),
+      }),
+    );
 
     expect(
       await screen.findByRole('heading', {
@@ -436,6 +445,7 @@ function DataRevisionTrigger() {
 type ResolvedDataRepositoryOptions = {
   readonly runs?: readonly Run[];
   readonly recipes?: ReadonlyMap<Run['recipeId'], Recipe>;
+  readonly trails?: ReadonlyMap<Run['trailId'], Trail>;
   readonly linksByRunId?: ReadonlyMap<Run['id'], readonly Link[]>;
 };
 
@@ -449,6 +459,10 @@ function createResolvedDataRepository(
       async (recipeId: Run['recipeId']) =>
         options.recipes?.get(recipeId) ?? sampleDataset.recipe,
     ),
+    getTrail: vi.fn(
+      async (trailId: Run['trailId']) =>
+        options.trails?.get(trailId) ?? sampleDataset.trail,
+    ),
     listActiveLinks: vi.fn(
       async (runId: Run['id']) =>
         options.linksByRunId?.get(runId) ?? sampleDataset.links,
@@ -458,6 +472,10 @@ function createResolvedDataRepository(
 
 function createRun(overrides: Partial<Run>): Run {
   return { ...sampleDataset.run, ...overrides };
+}
+
+function createTrail(overrides: Partial<Trail>): Trail {
+  return { ...sampleDataset.trail, ...overrides };
 }
 
 function createRecipe(overrides: Partial<Recipe>): Recipe {

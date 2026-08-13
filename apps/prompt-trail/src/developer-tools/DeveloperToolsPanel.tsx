@@ -22,10 +22,12 @@ const PANEL_ID = 'developer-tools-panel';
 const STORE_LABELS: ReadonlyArray<
   readonly [keyof DeveloperRecordCounts, string]
 > = [
+  ['workspaces', 'Workspaces'],
   ['projects', 'Projects'],
   ['prompts', 'Prompts'],
   ['contexts', 'Contexts'],
   ['recipes', 'Recipes'],
+  ['trails', 'Trails'],
   ['runs', 'Runs'],
   ['links', 'Links'],
 ];

@@ -13,10 +13,12 @@ import {
 } from './index';
 
 const emptyCounts = {
+  workspaces: 0,
   projects: 0,
   prompts: 0,
   contexts: 0,
   recipes: 0,
+  trails: 0,
   runs: 0,
   links: 0,
 };
@@ -159,10 +161,12 @@ describe('DeveloperDataService', () => {
 
 async function readAllStores(database: PromptTrailDatabase) {
   return database.transaction('r', database.tables, async () => ({
+    workspaces: await database.workspaces.toArray(),
     projects: await database.projects.toArray(),
     prompts: await database.prompts.toArray(),
     contexts: await database.contexts.toArray(),
     recipes: await database.recipes.toArray(),
+    trails: await database.trails.toArray(),
     runs: await database.runs.toArray(),
     links: await database.links.toArray(),
   }));

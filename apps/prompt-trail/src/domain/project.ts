@@ -1,8 +1,10 @@
+import { DEFAULT_WORKSPACE_ID } from './workspace';
 import type {
   ArchivableEntity,
   BaseEntity,
   ProjectId,
   UtcDateTimeString,
+  WorkspaceId,
 } from './common';
 
 /** Stable Project ownership boundary used by the Public Alpha Direct Run flow. */
@@ -16,6 +18,7 @@ export function createDefaultProject(createdAt: UtcDateTimeString): Project {
     updatedAt: createdAt,
     deletedAt: null,
     archivedAt: null,
+    workspaceId: DEFAULT_WORKSPACE_ID,
     name: 'Default Project',
     description: null,
     tags: [],
@@ -27,9 +30,11 @@ export function createDefaultProject(createdAt: UtcDateTimeString): Project {
  * Work unit that groups Prompt Trail assets and their outcomes.
  *
  * Project itself is not scoped as a global/project asset; it is the ownership
- * boundary referenced by project-scoped assets.
+ * boundary referenced by project-scoped assets, and it belongs to exactly one
+ * Workspace.
  */
 export interface Project extends BaseEntity<'project'>, ArchivableEntity {
+  readonly workspaceId: WorkspaceId;
   readonly name: string;
   readonly description: string | null;
   readonly tags: readonly string[];

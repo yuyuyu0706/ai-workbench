@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Run, UtcDateTimeString } from '../domain';
+import type { Trail, UtcDateTimeString } from '../domain';
 import { PromptTrailRepositoryError } from '../repository';
 import { updateRunTrailMetadata } from './update-run-trail-metadata';
 
 const input = {
-  runId: 'run-1' as Run['id'],
+  trailId: 'trail-1' as Trail['id'],
   expectedUpdatedAt: '2026-08-01T00:00:00.000Z' as UtcDateTimeString,
   trailTitle: '  New title  ',
   trailKind: 'development',
@@ -12,15 +12,15 @@ const input = {
 
 describe('updateRunTrailMetadata', () => {
   it('validates, normalizes, and gives the repository a distinct timestamp', async () => {
-    const update = vi.fn(async (value) => ({ ...value, id: value.runId }));
+    const update = vi.fn(async (value) => ({ ...value, id: value.trailId }));
     const result = await updateRunTrailMetadata(
-      { updateRunTrailMetadata: update } as never,
+      { updateTrailMetadata: update } as never,
       input,
       () => input.expectedUpdatedAt,
     );
     expect(result.status).toBe('success');
     expect(update).toHaveBeenCalledWith(
-      expect.objectContaining({ trailTitle: 'New title' }),
+      expect.objectContaining({ title: 'New title' }),
     );
     expect(update.mock.calls[0]?.[0].updatedAt).not.toBe(
       input.expectedUpdatedAt,
@@ -30,7 +30,7 @@ describe('updateRunTrailMetadata', () => {
   it('does not access the repository for invalid metadata', async () => {
     const update = vi.fn();
     await expect(
-      updateRunTrailMetadata({ updateRunTrailMetadata: update } as never, {
+      updateRunTrailMetadata({ updateTrailMetadata: update } as never, {
         ...input,
         trailTitle: '   ',
       }),
@@ -39,9 +39,9 @@ describe('updateRunTrailMetadata', () => {
   });
 
   it('advances one millisecond from expectedUpdatedAt when the clock is behind', async () => {
-    const update = vi.fn(async (value) => ({ ...value, id: value.runId }));
+    const update = vi.fn(async (value) => ({ ...value, id: value.trailId }));
     await updateRunTrailMetadata(
-      { updateRunTrailMetadata: update } as never,
+      { updateTrailMetadata: update } as never,
       input,
       () => '2026-07-31T23:59:59.000Z' as UtcDateTimeString,
     );
@@ -56,7 +56,7 @@ describe('updateRunTrailMetadata', () => {
     ['stale-write', 'stale'],
   ] as const)('maps %s to %s', async (code, status) => {
     const repository = {
-      updateRunTrailMetadata: vi.fn(async () => {
+      updateTrailMetadata: vi.fn(async () => {
         throw new PromptTrailRepositoryError(code);
       }),
     };

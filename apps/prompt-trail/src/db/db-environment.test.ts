@@ -20,10 +20,10 @@ describe('PromptTrail DB environment', () => {
 
   it('publishes DB metadata through the DB public entrypoint', () => {
     expect(PROMPT_TRAIL_DB_NAME).toBe('prompt-trail');
-    expect(PROMPT_TRAIL_SCHEMA_VERSION).toBe(4);
+    expect(PROMPT_TRAIL_SCHEMA_VERSION).toBe(5);
   });
 
-  it('publishes the six schema v1 store names without duplicates', () => {
+  it('publishes the eight schema store names without duplicates', () => {
     const expectedStoreNames: PromptTrailStoreName[] = [
       'projects',
       'prompts',
@@ -31,6 +31,8 @@ describe('PromptTrail DB environment', () => {
       'recipes',
       'runs',
       'links',
+      'workspaces',
+      'trails',
     ];
 
     expect(PROMPT_TRAIL_STORE_NAMES).toEqual(expectedStoreNames);

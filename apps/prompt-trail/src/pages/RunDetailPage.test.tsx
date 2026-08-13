@@ -48,8 +48,7 @@ function renderPage(
 }
 const direct = {
   id: 'run-1',
-  trailTitle: 'Trail A',
-  trailKind: 'development',
+  trailId: 'trail-1',
   deletedAt: null,
   archivedAt: null,
   projectId: 'project-1',
@@ -57,6 +56,16 @@ const direct = {
   promptSnapshot: { title: 'Prompt A', body: 'Body A' },
   contextSnapshots: [],
   status: 'prepared',
+  createdAt: '2026-01-01',
+  updatedAt: '2026-01-01',
+};
+const trail = {
+  id: 'trail-1',
+  projectId: 'project-1',
+  title: 'Trail A',
+  kind: 'development',
+  deletedAt: null,
+  archivedAt: null,
   createdAt: '2026-01-01',
   updatedAt: '2026-01-01',
 };
@@ -82,6 +91,7 @@ function createDetailRepository(
 ) {
   return {
     getRun: vi.fn(async () => direct),
+    getTrail: vi.fn(async () => trail),
     getProject: vi.fn(async () => ({ name: 'Project' })),
     listActiveLinks: vi.fn(async () => links),
     saveLink: vi.fn(async (link) => link),
@@ -104,10 +114,10 @@ function createTestUiStateStore() {
 describe('RunDetailPage', () => {
   it('shows Trail metadata and saves an edited title and kind', async () => {
     const repository = createDetailRepository([]);
-    repository.updateRunTrailMetadata = vi.fn(async (update: any) => ({
-      ...direct,
-      trailTitle: update.trailTitle,
-      trailKind: update.trailKind,
+    repository.updateTrailMetadata = vi.fn(async (update: any) => ({
+      ...trail,
+      title: update.title,
+      kind: update.kind,
       updatedAt: update.updatedAt,
     }));
     renderPage(repository);
@@ -134,18 +144,19 @@ describe('RunDetailPage', () => {
         screen.getByRole('button', { name: 'Trail情報を編集' }),
       ).toHaveFocus(),
     );
-    expect(repository.updateRunTrailMetadata).toHaveBeenCalledWith(
+    expect(repository.updateTrailMetadata).toHaveBeenCalledWith(
       expect.objectContaining({
-        expectedUpdatedAt: direct.updatedAt,
-        trailTitle: 'Updated Trail',
-        trailKind: 'research',
+        trailId: trail.id,
+        expectedUpdatedAt: trail.updatedAt,
+        title: 'Updated Trail',
+        kind: 'research',
       }),
     );
   });
 
   it('keeps the draft and offers an explicit reload after a stale write', async () => {
     const repository = createDetailRepository([]);
-    repository.updateRunTrailMetadata = vi.fn(async () => {
+    repository.updateTrailMetadata = vi.fn(async () => {
       const { PromptTrailRepositoryError } = await import('../repository');
       throw new PromptTrailRepositoryError('stale-write');
     });
@@ -179,12 +190,12 @@ describe('RunDetailPage', () => {
     fireEvent.keyDown(title, { key: 'Escape' });
     fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }));
     expect(title).toHaveValue('My local draft');
-    expect(repository.updateRunTrailMetadata).toHaveBeenCalledOnce();
+    expect(repository.updateTrailMetadata).toHaveBeenCalledOnce();
   });
 
   it('keeps Developer Tools metadata overrides isolated from real editor state', async () => {
     const repository = createDetailRepository([]);
-    repository.updateRunTrailMetadata = vi.fn();
+    repository.updateTrailMetadata = vi.fn();
     const store = createTestUiStateStore();
     renderPage(repository, 'run-1', undefined, store);
     await screen.findByText('Trail A');
@@ -208,7 +219,7 @@ describe('RunDetailPage', () => {
       fireEvent.change(screen.getByRole('textbox', { name: 'Trail名' }), {
         target: { value: 'Override mutation' },
       });
-      expect(repository.updateRunTrailMetadata).not.toHaveBeenCalled();
+      expect(repository.updateTrailMetadata).not.toHaveBeenCalled();
     }
     act(() => store.clearActiveOverride());
     expect(screen.getByText('Trail A')).toBeVisible();
@@ -219,7 +230,7 @@ describe('RunDetailPage', () => {
 
   it('associates validation errors, focuses invalid input, and disables no-op save', async () => {
     const repository = createDetailRepository([]);
-    repository.updateRunTrailMetadata = vi.fn();
+    repository.updateTrailMetadata = vi.fn();
     renderPage(repository);
     fireEvent.click(
       await screen.findByRole('button', { name: 'Trail情報を編集' }),
@@ -234,18 +245,18 @@ describe('RunDetailPage', () => {
     );
     expect(title).toHaveAttribute('aria-invalid', 'true');
     expect(title).toHaveFocus();
-    expect(repository.updateRunTrailMetadata).not.toHaveBeenCalled();
+    expect(repository.updateTrailMetadata).not.toHaveBeenCalled();
   });
 
   it('retains metadata after a failure and retries successfully', async () => {
     const repository = createDetailRepository([]);
-    repository.updateRunTrailMetadata = vi
+    repository.updateTrailMetadata = vi
       .fn()
       .mockRejectedValueOnce(new Error('storage'))
       .mockImplementation(async (update: any) => ({
-        ...direct,
-        trailTitle: update.trailTitle,
-        trailKind: update.trailKind,
+        ...trail,
+        title: update.title,
+        kind: update.kind,
         updatedAt: update.updatedAt,
       }));
     renderPage(repository);
@@ -261,14 +272,14 @@ describe('RunDetailPage', () => {
     expect(title).toHaveValue('Retry Trail');
     fireEvent.click(screen.getByRole('button', { name: '変更を保存' }));
     expect(await screen.findByText('Trail情報を保存しました。')).toBeVisible();
-    expect(repository.updateRunTrailMetadata).toHaveBeenCalledTimes(2);
+    expect(repository.updateTrailMetadata).toHaveBeenCalledTimes(2);
   });
 
   it('blocks duplicate metadata submissions and ignores completion after unmount', async () => {
-    let resolveSave!: (run: typeof direct) => void;
+    let resolveSave!: (value: typeof trail) => void;
     const repository = createDetailRepository([]);
-    repository.updateRunTrailMetadata = vi.fn(
-      () => new Promise<typeof direct>((resolve) => (resolveSave = resolve)),
+    repository.updateTrailMetadata = vi.fn(
+      () => new Promise<typeof trail>((resolve) => (resolveSave = resolve)),
     );
     const rendered = renderPage(repository);
     fireEvent.click(
@@ -282,26 +293,36 @@ describe('RunDetailPage', () => {
       .closest('form')!;
     fireEvent.submit(form);
     fireEvent.submit(form);
-    expect(repository.updateRunTrailMetadata).toHaveBeenCalledOnce();
+    expect(repository.updateTrailMetadata).toHaveBeenCalledOnce();
     rendered.unmount();
-    await act(async () =>
-      resolveSave({ ...direct, trailTitle: 'Pending Trail' }),
-    );
+    await act(async () => resolveSave({ ...trail, title: 'Pending Trail' }));
   });
 
   it('ignores an old stale reload after switching to another Run', async () => {
+    const trailA = {
+      ...trail,
+      id: 'trail-a',
+      projectId: 'project-a',
+      title: 'Run A Trail',
+    };
+    const trailB = {
+      ...trail,
+      id: 'trail-b',
+      projectId: 'project-b',
+      title: 'Run B Trail',
+    };
     const runA = {
       ...direct,
       id: 'run-a',
       projectId: 'project-a',
-      trailTitle: 'Run A Trail',
+      trailId: 'trail-a',
       promptSnapshot: { title: 'Prompt A', body: 'Body A' },
     };
     const runB = {
       ...direct,
       id: 'run-b',
       projectId: 'project-b',
-      trailTitle: 'Run B Trail',
+      trailId: 'trail-b',
       promptSnapshot: { title: 'Prompt B', body: 'Body B' },
     };
     let runAReads = 0;
@@ -314,11 +335,14 @@ describe('RunDetailPage', () => {
           ? Promise.resolve(runA)
           : new Promise<typeof runA>((resolve) => (resolveReload = resolve));
       }),
+      getTrail: vi.fn(async (id: string) =>
+        id === 'trail-b' ? trailB : trailA,
+      ),
       getProject: vi.fn(async (id: string) => ({
         name: id === 'project-a' ? 'Project A' : 'Project B',
       })),
       listActiveLinks: vi.fn(async () => []),
-      updateRunTrailMetadata: vi.fn(async () => {
+      updateTrailMetadata: vi.fn(async () => {
         throw new PromptTrailRepositoryError('stale-write');
       }),
     } as any;
@@ -533,6 +557,7 @@ describe('RunDetailPage', () => {
     const repository = {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
+      getTrail: vi.fn(async () => trail),
       listActiveLinks: vi.fn(async () => [trailLink]),
       softDeleteLink: vi.fn(async () => ({
         ...trailLink,
@@ -579,6 +604,7 @@ describe('RunDetailPage', () => {
     const repository = {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
+      getTrail: vi.fn(async () => trail),
       listActiveLinks: vi.fn(async () => [
         {
           id: 'link-1',
@@ -638,6 +664,7 @@ describe('RunDetailPage', () => {
     const repository = {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
+      getTrail: vi.fn(async () => trail),
       listActiveLinks: vi.fn(async () => [linkA, linkB]),
       softDeleteLink: vi.fn(async () => {
         await deletionPending;
@@ -692,6 +719,7 @@ describe('RunDetailPage', () => {
     const repo = {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
+      getTrail: vi.fn(async () => trail),
       listActiveLinks: vi.fn(async () => []),
       getRecipe: vi.fn(),
     } as any;
@@ -736,6 +764,7 @@ describe('RunDetailPage', () => {
         updatedAt: 'invalid-date',
       })),
       getProject: vi.fn(async () => ({ name: 'Project' })),
+      getTrail: vi.fn(async () => trail),
       listActiveLinks: vi.fn(async () => []),
     } as any;
     renderPage(repository);
@@ -760,6 +789,7 @@ describe('RunDetailPage', () => {
     const repository = {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
+      getTrail: vi.fn(async () => trail),
       listActiveLinks: vi.fn(async () => []),
     } as any;
     renderPage(repository);
@@ -789,6 +819,7 @@ describe('RunDetailPage', () => {
     const repository = {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
+      getTrail: vi.fn(async () => trail),
       listActiveLinks: vi.fn(async () => []),
     } as any;
 
@@ -812,6 +843,7 @@ describe('RunDetailPage Link form', () => {
     const repository = {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
+      getTrail: vi.fn(async () => trail),
       listActiveLinks: vi.fn(async () => []),
       saveLink: vi.fn(),
     } as any;
@@ -831,6 +863,7 @@ describe('RunDetailPage Link form', () => {
     const repository = {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
+      getTrail: vi.fn(async () => trail),
       listActiveLinks: vi.fn(async () => []),
       saveLink: vi.fn(),
     } as any;
@@ -850,6 +883,7 @@ describe('RunDetailPage Link form', () => {
     const repository = {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
+      getTrail: vi.fn(async () => trail),
       listActiveLinks: vi.fn(async () => []),
       saveLink: vi.fn(),
     } as any;
@@ -870,6 +904,7 @@ describe('RunDetailPage Link form', () => {
     const repository = {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
+      getTrail: vi.fn(async () => trail),
       listActiveLinks: vi.fn(async () => []),
       saveLink: vi.fn(async (link: any) => link),
     } as any;
@@ -899,6 +934,7 @@ describe('RunDetailPage Link form', () => {
     const repository = {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
+      getTrail: vi.fn(async () => trail),
       listActiveLinks: vi.fn(async () => []),
       saveLink: vi.fn(async () => {
         throw new Error('db');
@@ -927,6 +963,7 @@ it('prevents duplicate Link submissions while saving and then lists the result',
   const repository = {
     getRun: vi.fn(async () => direct),
     getProject: vi.fn(async () => ({ name: 'Project' })),
+    getTrail: vi.fn(async () => trail),
     listActiveLinks: vi.fn(async () => []),
     saveLink: vi.fn(
       () =>
@@ -975,6 +1012,7 @@ it('keeps Run B state when a pending Run A Link save resolves after a route chan
     getProject: vi.fn(async (id) => ({
       name: id === 'project-a' ? 'Project A' : 'Project B',
     })),
+    getTrail: vi.fn(async () => trail),
     listActiveLinks: vi.fn(async (id) => [
       {
         id: id === 'run-a' ? 'link-a' : 'link-b',

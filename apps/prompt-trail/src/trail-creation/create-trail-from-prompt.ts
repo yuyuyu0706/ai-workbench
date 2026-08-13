@@ -2,6 +2,8 @@ import {
   createDefaultProject,
   type Prompt,
   type Run,
+  type Trail,
+  type TrailKind,
   type UtcDateTimeString,
 } from '../domain';
 import {
@@ -27,7 +29,7 @@ export type CreateTrailFromPromptResult =
     }
   | { readonly status: 'not-found' | 'unavailable' | 'stale' };
 export type CreateTrailFromPromptDependencies = {
-  readonly createId?: (kind: 'run') => string;
+  readonly createId?: (kind: 'run' | 'trail') => string;
   readonly now?: () => UtcDateTimeString;
 };
 
@@ -41,9 +43,19 @@ export async function createTrailFromPrompt(
   const now =
     dependencies.now ?? (() => new Date().toISOString() as UtcDateTimeString);
   const createId =
-    dependencies.createId ?? (() => `run-${crypto.randomUUID()}`);
+    dependencies.createId ?? ((kind) => `${kind}-${crypto.randomUUID()}`);
   const createdAt = now();
   const project = createDefaultProject(createdAt);
+  const trail: Trail = {
+    id: createId('trail') as Trail['id'],
+    createdAt,
+    updatedAt: createdAt,
+    deletedAt: null,
+    archivedAt: null,
+    projectId: project.id,
+    title: normalizeTrailTitle(input.trailTitle),
+    kind: input.trailKind as TrailKind,
+  };
   const run: Run & { readonly recipeId: null } = {
     id: createId('run') as Run['id'],
     createdAt,
@@ -51,8 +63,7 @@ export async function createTrailFromPrompt(
     deletedAt: null,
     archivedAt: null,
     projectId: project.id,
-    trailTitle: normalizeTrailTitle(input.trailTitle),
-    trailKind: input.trailKind as Run['trailKind'],
+    trailId: trail.id,
     recipeId: null,
     promptSnapshot: {
       promptId: input.sourcePrompt.id,
@@ -71,6 +82,7 @@ export async function createTrailFromPrompt(
       project,
       promptId: input.sourcePrompt.id,
       expectedPromptUpdatedAt: input.sourcePrompt.updatedAt,
+      trail,
       run,
     });
     return { status: 'created', run };

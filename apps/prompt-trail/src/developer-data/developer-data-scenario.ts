@@ -7,24 +7,30 @@ import type {
   Recipe,
   Run,
   RunId,
+  Trail,
+  Workspace,
 } from '../domain';
 import type { DeveloperDataScenarioId } from './scenario-ids';
 
 export type DeveloperScenarioDataset = {
+  readonly workspaces: readonly Workspace[];
   readonly projects: readonly Project[];
   readonly prompts: readonly Prompt[];
   readonly contexts: readonly Context[];
   readonly recipes: readonly Recipe[];
+  readonly trails: readonly Trail[];
   readonly runs: readonly Run[];
   readonly links: readonly Link[];
 };
 
 /** Total record counts persisted when loading a scenario. */
 export type DeveloperScenarioExpectedCounts = {
+  readonly workspaces: number;
   readonly projects: number;
   readonly prompts: number;
   readonly contexts: number;
   readonly recipes: number;
+  readonly trails: number;
   readonly runs: number;
   readonly links: number;
 };

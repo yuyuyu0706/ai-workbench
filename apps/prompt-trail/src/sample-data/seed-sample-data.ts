@@ -1,4 +1,12 @@
-import type { Context, Link, Project, Prompt, Recipe, Run } from '../domain';
+import type {
+  Context,
+  Link,
+  Project,
+  Prompt,
+  Recipe,
+  Run,
+  Trail,
+} from '../domain';
 import type { PromptTrailRepository, TrailBundle } from '../repository';
 
 import { sampleDataset } from './sample-dataset';
@@ -12,13 +20,15 @@ export type SeedSampleDataResult =
       readonly missingIds: readonly string[];
     };
 
-type SampleRecord = Project | Prompt | Context | Recipe | Run | Link | null;
+type SampleRecord =
+  Project | Prompt | Context | Recipe | Trail | Run | Link | null;
 
 type SamplePreflight = {
   readonly project: Project | null;
   readonly prompt: Prompt | null;
   readonly context: Context | null;
   readonly recipe: Recipe | null;
+  readonly trail: Trail | null;
   readonly run: Run | null;
   readonly links: readonly (Link | null)[];
 };
@@ -28,6 +38,7 @@ const sampleIds = [
   sampleDataset.ids.prompt,
   sampleDataset.ids.context,
   sampleDataset.ids.recipe,
+  sampleDataset.ids.trail,
   sampleDataset.ids.run,
   sampleDataset.ids.links.chat,
   sampleDataset.ids.links.issue100,
@@ -65,23 +76,34 @@ export async function seedSampleData(
 async function getSamplePreflight(
   repository: PromptTrailRepository,
 ): Promise<SamplePreflight> {
-  const [project, prompt, context, recipe, run, chatLink, issueLink, prLink] =
-    await Promise.all([
-      repository.getProject(sampleDataset.ids.project),
-      repository.getPrompt(sampleDataset.ids.prompt),
-      repository.getContext(sampleDataset.ids.context),
-      repository.getRecipe(sampleDataset.ids.recipe),
-      repository.getRun(sampleDataset.ids.run),
-      repository.getLink(sampleDataset.ids.links.chat),
-      repository.getLink(sampleDataset.ids.links.issue100),
-      repository.getLink(sampleDataset.ids.links.pr101),
-    ]);
+  const [
+    project,
+    prompt,
+    context,
+    recipe,
+    trail,
+    run,
+    chatLink,
+    issueLink,
+    prLink,
+  ] = await Promise.all([
+    repository.getProject(sampleDataset.ids.project),
+    repository.getPrompt(sampleDataset.ids.prompt),
+    repository.getContext(sampleDataset.ids.context),
+    repository.getRecipe(sampleDataset.ids.recipe),
+    repository.getTrail(sampleDataset.ids.trail),
+    repository.getRun(sampleDataset.ids.run),
+    repository.getLink(sampleDataset.ids.links.chat),
+    repository.getLink(sampleDataset.ids.links.issue100),
+    repository.getLink(sampleDataset.ids.links.pr101),
+  ]);
 
   return {
     project,
     prompt,
     context,
     recipe,
+    trail,
     run,
     links: [chatLink, issueLink, prLink],
   };
@@ -95,19 +117,21 @@ function getPreflightRecords(
     preflight.prompt,
     preflight.context,
     preflight.recipe,
+    preflight.trail,
     preflight.run,
     ...preflight.links,
   ];
 }
 
 function isCompleteSample(preflight: SamplePreflight): boolean {
-  const { project, prompt, context, recipe, run, links } = preflight;
+  const { project, prompt, context, recipe, trail, run, links } = preflight;
 
   if (
     project === null ||
     prompt === null ||
     context === null ||
     recipe === null ||
+    trail === null ||
     run === null ||
     links.some((link) => link === null)
   ) {
@@ -130,9 +154,13 @@ function isCompleteSample(preflight: SamplePreflight): boolean {
     recipe.promptId === prompt.id &&
     recipe.contextIds.length === 1 &&
     recipe.contextIds[0] === context.id &&
+    trail.deletedAt === null &&
+    trail.archivedAt === null &&
+    trail.projectId === project.id &&
     run.deletedAt === null &&
     run.archivedAt === null &&
     run.projectId === project.id &&
+    run.trailId === trail.id &&
     run.recipeId === recipe.id &&
     run.promptSnapshot.promptId === prompt.id &&
     run.contextSnapshots.length === 1 &&
@@ -150,6 +178,7 @@ function getSampleTrailBundle(): TrailBundle {
     prompt: sampleDataset.prompt,
     context: sampleDataset.context,
     recipe: sampleDataset.recipe,
+    trail: sampleDataset.trail,
     run: sampleDataset.run,
     links: sampleDataset.links,
   };

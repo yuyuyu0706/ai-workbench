@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { Project, ProjectId, UtcDateTimeString } from '../domain';
+import { DEFAULT_WORKSPACE_ID } from '../domain';
 import { PromptTrailRepository } from '../repository';
 import { createDatabaseTestScope } from '../test/database-test-utils';
 
@@ -23,6 +24,7 @@ function utc(value: string): UtcDateTimeString {
 function buildUserProject(): Project {
   return {
     id: projectId('user-project'),
+    workspaceId: DEFAULT_WORKSPACE_ID,
     name: 'User Project',
     description: 'Existing user data',
     tags: ['user'],
@@ -109,6 +111,7 @@ describe('seedSampleData', () => {
         sampleDataset.ids.prompt,
         sampleDataset.ids.context,
         sampleDataset.ids.recipe,
+        sampleDataset.ids.trail,
         sampleDataset.ids.run,
         sampleDataset.ids.links.chat,
         sampleDataset.ids.links.issue100,
@@ -140,6 +143,7 @@ describe('seedSampleData', () => {
         sampleDataset.ids.prompt,
         sampleDataset.ids.context,
         sampleDataset.ids.recipe,
+        sampleDataset.ids.trail,
         sampleDataset.ids.run,
         sampleDataset.ids.links.chat,
         sampleDataset.ids.links.issue100,
@@ -166,6 +170,7 @@ describe('seedSampleData', () => {
         sampleDataset.ids.prompt,
         sampleDataset.ids.context,
         sampleDataset.ids.recipe,
+        sampleDataset.ids.trail,
         sampleDataset.ids.run,
         sampleDataset.ids.links.chat,
         sampleDataset.ids.links.issue100,
@@ -198,6 +203,7 @@ describe('seedSampleData', () => {
         sampleDataset.ids.prompt,
         sampleDataset.ids.context,
         sampleDataset.ids.recipe,
+        sampleDataset.ids.trail,
         sampleDataset.ids.run,
         sampleDataset.ids.links.chat,
         sampleDataset.ids.links.issue100,
@@ -221,6 +227,7 @@ describe('seedSampleData', () => {
         prompt: sampleDataset.prompt,
         context: sampleDataset.context,
         recipe: sampleDataset.recipe,
+        trail: sampleDataset.trail,
         run: {
           ...sampleDataset.run,
           recipeId: 'missing-recipe' as typeof sampleDataset.run.recipeId,
@@ -236,6 +243,7 @@ describe('seedSampleData', () => {
     await expect(database.prompts.count()).resolves.toBe(0);
     await expect(database.contexts.count()).resolves.toBe(0);
     await expect(database.recipes.count()).resolves.toBe(0);
+    await expect(database.trails.count()).resolves.toBe(0);
     await expect(database.runs.count()).resolves.toBe(0);
     await expect(database.links.count()).resolves.toBe(0);
   });

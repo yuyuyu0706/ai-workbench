@@ -12,10 +12,15 @@ export type {
   PromptTrailEntityKind,
   RecipeId,
   RunId,
+  TrailId,
   UtcDateTimeString,
+  WorkspaceId,
 } from './common';
 
 export { PROMPT_TRAIL_ENTITY_KINDS } from './common';
+
+export type { Workspace } from './workspace';
+export { createDefaultWorkspace, DEFAULT_WORKSPACE_ID } from './workspace';
 
 export type { Project } from './project';
 export { createDefaultProject, DEFAULT_PROJECT_ID } from './project';
@@ -28,6 +33,9 @@ export { CONTEXT_KINDS, CONTEXT_STATUSES } from './context';
 
 export type { Recipe } from './recipe';
 
+export type { Trail, TrailKind } from './trail';
+export { TRAIL_KINDS } from './trail';
+
 export type {
   ContextSnapshot,
   JsonPrimitive,
@@ -36,9 +44,8 @@ export type {
   Run,
   RunEvaluation,
   RunStatus,
-  TrailKind,
 } from './run';
-export { RUN_EVALUATIONS, RUN_STATUSES, TRAIL_KINDS } from './run';
+export { RUN_EVALUATIONS, RUN_STATUSES } from './run';
 
 export type { Link, LinkRole, LinkType } from './link';
 export { LINK_ROLES, LINK_TYPES } from './link';

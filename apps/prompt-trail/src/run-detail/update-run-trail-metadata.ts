@@ -1,4 +1,4 @@
-import type { Run, RunId, UtcDateTimeString } from '../domain';
+import type { Trail, TrailId, UtcDateTimeString } from '../domain';
 import {
   PromptTrailRepositoryError,
   type PromptTrailRepository,
@@ -10,14 +10,14 @@ import {
 } from '../trail-metadata';
 
 export interface UpdateRunTrailMetadataInput {
-  readonly runId: RunId;
+  readonly trailId: TrailId;
   readonly expectedUpdatedAt: UtcDateTimeString;
   readonly trailTitle: string;
   readonly trailKind: unknown;
 }
 
 export type UpdateRunTrailMetadataResult =
-  | { readonly status: 'success'; readonly run: Run }
+  | { readonly status: 'success'; readonly trail: Trail }
   | { readonly status: 'invalid' }
   | { readonly status: 'not-found' | 'unavailable' | 'stale' };
 
@@ -42,14 +42,14 @@ export async function updateRunTrailMetadata(
     ).toISOString() as UtcDateTimeString;
   }
   try {
-    const run = await repository.updateRunTrailMetadata({
-      runId: input.runId,
+    const trail = await repository.updateTrailMetadata({
+      trailId: input.trailId,
       expectedUpdatedAt: input.expectedUpdatedAt,
-      trailTitle: normalizeTrailTitle(input.trailTitle),
-      trailKind: input.trailKind,
+      title: normalizeTrailTitle(input.trailTitle),
+      kind: input.trailKind,
       updatedAt,
     });
-    return { status: 'success', run };
+    return { status: 'success', trail };
   } catch (error) {
     if (error instanceof PromptTrailRepositoryError) {
       if (error.code === 'reference-not-found') return { status: 'not-found' };

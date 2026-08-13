@@ -5,6 +5,7 @@ import type {
   PromptId,
   RecipeId,
   RunId,
+  TrailId,
 } from '../domain';
 
 export const SAMPLE_IDS = {
@@ -12,6 +13,7 @@ export const SAMPLE_IDS = {
   prompt: 'sample-prompt-github-issue-request' as PromptId,
   context: 'sample-context-ai-driven-development' as ContextId,
   recipe: 'sample-recipe-codex-development-request' as RecipeId,
+  trail: 'sample-trail-roadmap-resync' as TrailId,
   run: 'sample-run-roadmap-resync' as RunId,
   links: {
     chat: 'sample-link-chat' as LinkId,
@@ -25,6 +27,7 @@ export const SAMPLE_ID_SET = new Set<string>([
   SAMPLE_IDS.prompt,
   SAMPLE_IDS.context,
   SAMPLE_IDS.recipe,
+  SAMPLE_IDS.trail,
   SAMPLE_IDS.run,
   SAMPLE_IDS.links.chat,
   SAMPLE_IDS.links.issue100,
