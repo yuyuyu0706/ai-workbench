@@ -1,11 +1,14 @@
-import type { Context, Link, Project, Prompt, Recipe, Run } from '../../domain';
+import type { Context, Link, Project, Prompt, Recipe, Run, Trail, Workspace } from '../../domain';
+import { DEFAULT_WORKSPACE_ID, createDefaultWorkspace } from '../../domain';
 import type { ContextId } from '../../domain';
 import type { DeveloperDataScenario } from '../developer-data-scenario';
-import { linkId, projectId, promptId, recipeId, runId, utc } from './helpers';
+import { linkId, projectId, promptId, recipeId, runId, trailId, utc } from './helpers';
 
 const time = utc('2026-07-23T11:00:00.000Z');
+const workspace: Workspace = createDefaultWorkspace(time);
 const project: Project = {
   id: projectId('legacy-compatible-project'),
+  workspaceId: DEFAULT_WORKSPACE_ID,
   name: 'Legacy compatibility',
   description: null,
   tags: ['legacy'],
@@ -52,11 +55,20 @@ const recipe: Recipe = {
   updatedAt: time,
   deletedAt: null,
 };
+const trail: Trail = {
+  id: trailId('legacy-compatible-trail-recipe'),
+  projectId: project.id,
+  title: prompt.title,
+  kind: 'other',
+  createdAt: utc('2026-07-23T11:10:00.000Z'),
+  updatedAt: utc('2026-07-23T11:20:00.000Z'),
+  deletedAt: null,
+  archivedAt: null,
+};
 const run: Run = {
   id: runId('legacy-compatible-run-recipe'),
   projectId: project.id,
-  trailTitle: prompt.title,
-  trailKind: 'other',
+  trailId: trail.id,
   recipeId: recipe.id,
   promptSnapshot: {
     promptId: prompt.id,
@@ -96,18 +108,22 @@ export const legacyCompatibleScenario: DeveloperDataScenario = {
   description:
     'A Recipe Run retaining an unnamed external Link and stored legacy role.',
   dataset: {
+    workspaces: [workspace],
     projects: [project],
     prompts: [prompt],
     contexts: [context],
     recipes: [recipe],
+    trails: [trail],
     runs: [run],
     links: [link],
   },
   expectedCounts: {
+    workspaces: 1,
     projects: 1,
     prompts: 1,
     contexts: 1,
     recipes: 1,
+    trails: 1,
     runs: 1,
     links: 1,
   },

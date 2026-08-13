@@ -1,8 +1,8 @@
-import type { Run } from '../domain';
+import type { Run, Trail } from '../domain';
 import type { PromptTrailRepository } from '../repository';
 
 export type ReusableRunState =
-  | { readonly status: 'data'; readonly run: Run }
+  | { readonly status: 'data'; readonly run: Run; readonly trail: Trail }
   | { readonly status: 'not-found' }
   | { readonly status: 'failure' };
 
@@ -15,9 +15,10 @@ export async function loadReusableRun(
 
   try {
     const run = await repository.getRun(sourceRunId as Run['id']);
-    return run === null || run.deletedAt !== null
-      ? { status: 'not-found' }
-      : { status: 'data', run };
+    if (run === null || run.deletedAt !== null) return { status: 'not-found' };
+    const trail = await repository.getTrail(run.trailId);
+    if (trail === null) return { status: 'not-found' };
+    return { status: 'data', run, trail };
   } catch {
     return { status: 'failure' };
   }

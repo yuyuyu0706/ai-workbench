@@ -11,6 +11,7 @@ import type {
   RecipeId,
   UtcDateTimeString,
 } from '../domain';
+import { DEFAULT_WORKSPACE_ID } from '../domain';
 import { createDatabaseTestScope } from '../test/database-test-utils';
 
 import {
@@ -47,6 +48,7 @@ function utc(value: string): UtcDateTimeString {
 function buildProject(overrides: Partial<Project> = {}): Project {
   return {
     id: projectId('project-1'),
+    workspaceId: DEFAULT_WORKSPACE_ID,
     createdAt: utc('2026-07-06T00:00:00.000Z'),
     updatedAt: utc('2026-07-06T00:00:00.000Z'),
     deletedAt: null,

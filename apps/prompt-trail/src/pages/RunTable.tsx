@@ -39,7 +39,7 @@ export function RunTable({ runs }: { runs: readonly DashboardRecentRun[] }) {
 }
 
 function RunTableRow({ recentRun }: { recentRun: DashboardRecentRun }) {
-  const { run, links } = recentRun;
+  const { run, trail, links } = recentRun;
 
   return (
     <tr className="pt-dashboard-run-row">
@@ -49,13 +49,13 @@ function RunTableRow({ recentRun }: { recentRun: DashboardRecentRun }) {
             className="pt-dashboard-run-row__title-link"
             to={buildRunDetailPath(run.id)}
           >
-            {run.trailTitle}
+            {trail.title}
           </RouterLink>
         </h3>
       </th>
       <td className="pt-dashboard-run-row__kind">
         <span className="pt-dashboard-run-row__mobile-label">Trail種別</span>
-        <span>{TRAIL_KIND_LABELS[run.trailKind]}</span>
+        <span>{TRAIL_KIND_LABELS[trail.kind]}</span>
       </td>
       <td className="pt-dashboard-run-row__status">
         <span className="pt-dashboard-run-row__mobile-label">ステータス</span>

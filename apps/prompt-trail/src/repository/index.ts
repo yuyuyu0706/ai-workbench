@@ -9,6 +9,6 @@ export type {
   DirectRunFromPromptCreation,
   DirectRunFromPromptResult,
   PromptBodyUpdate,
-  RunTrailMetadataUpdate,
   TrailBundle,
+  TrailMetadataUpdate,
 } from './prompt-trail-repository';

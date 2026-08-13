@@ -21,18 +21,22 @@ import { DeveloperToolsProvider } from './DeveloperToolsContext';
 import { DeveloperToolsPanel } from './DeveloperToolsPanel';
 
 const emptyCounts: DeveloperRecordCounts = {
+  workspaces: 0,
   projects: 0,
   prompts: 0,
   contexts: 0,
   recipes: 0,
+  trails: 0,
   runs: 0,
   links: 0,
 };
 const standardCounts: DeveloperRecordCounts = {
+  workspaces: 1,
   projects: 1,
   prompts: 1,
   contexts: 0,
   recipes: 0,
+  trails: 1,
   runs: 1,
   links: 1,
 };

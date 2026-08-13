@@ -5,8 +5,10 @@ import type {
   Prompt,
   Recipe,
   Run,
+  Trail,
   UtcDateTimeString,
 } from '../domain';
+import { DEFAULT_WORKSPACE_ID } from '../domain';
 
 import { SAMPLE_IDS } from './sample-ids';
 
@@ -34,12 +36,14 @@ export const SAMPLE_EXPECTED_COUNTS = {
   prompts: 1,
   contexts: 1,
   recipes: 1,
+  trails: 1,
   runs: 1,
   links: 3,
 } as const;
 
 export const sampleProject: Project = {
   id: SAMPLE_IDS.project,
+  workspaceId: DEFAULT_WORKSPACE_ID,
   name: 'PromptTrail Development',
   description:
     'Phase 0のPromptTrail開発とRoadmap再同期を説明するサンプルProject。',
@@ -92,11 +96,21 @@ export const sampleRecipe: Recipe = {
   deletedAt: null,
 };
 
+export const sampleTrail: Trail = {
+  id: SAMPLE_IDS.trail,
+  projectId: SAMPLE_IDS.project,
+  title: samplePrompt.title,
+  kind: 'other',
+  createdAt: SAMPLE_DATASET_TIMELINE.runStartedAt,
+  updatedAt: SAMPLE_DATASET_TIMELINE.runUpdatedAt,
+  deletedAt: null,
+  archivedAt: null,
+};
+
 export const sampleRun: Run = {
   id: SAMPLE_IDS.run,
   projectId: SAMPLE_IDS.project,
-  trailTitle: samplePrompt.title,
-  trailKind: 'other',
+  trailId: SAMPLE_IDS.trail,
   recipeId: SAMPLE_IDS.recipe,
   promptSnapshot: {
     promptId: SAMPLE_IDS.prompt,
@@ -177,6 +191,7 @@ export const sampleDataset = {
   prompt: samplePrompt,
   context: sampleContext,
   recipe: sampleRecipe,
+  trail: sampleTrail,
   run: sampleRun,
   links: sampleLinks,
 } as const;

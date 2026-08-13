@@ -7,12 +7,14 @@
  */
 
 export const PROMPT_TRAIL_ENTITY_KINDS = [
+  'workspace',
   'project',
   'prompt',
   'context',
   'recipe',
   'run',
   'link',
+  'trail',
 ] as const;
 
 export type PromptTrailEntityKind = (typeof PROMPT_TRAIL_ENTITY_KINDS)[number];
@@ -28,12 +30,14 @@ export type EntityId<Kind extends PromptTrailEntityKind> = string & {
   readonly __promptTrailEntityKind: Kind;
 };
 
+export type WorkspaceId = EntityId<'workspace'>;
 export type ProjectId = EntityId<'project'>;
 export type PromptId = EntityId<'prompt'>;
 export type ContextId = EntityId<'context'>;
 export type RecipeId = EntityId<'recipe'>;
 export type RunId = EntityId<'run'>;
 export type LinkId = EntityId<'link'>;
+export type TrailId = EntityId<'trail'>;
 
 /** ISO 8601 UTC timestamp string, for example 2026-07-04T00:00:00.000Z. */
 export type UtcDateTimeString = string & {

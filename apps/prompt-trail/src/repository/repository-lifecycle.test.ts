@@ -13,8 +13,11 @@ import type {
   RecipeId,
   Run,
   RunId,
+  Trail,
+  TrailId,
   UtcDateTimeString,
 } from '../domain';
+import { DEFAULT_WORKSPACE_ID } from '../domain';
 import { createDatabaseTestScope } from '../test/database-test-utils';
 
 import {
@@ -40,6 +43,7 @@ interface RepresentativeTrail {
   readonly globalContext: Context;
   readonly projectContext: Context;
   readonly recipe: Recipe;
+  readonly trail: Trail;
   readonly run: Run;
   readonly link: Link;
 }
@@ -68,6 +72,10 @@ function runId(value: string): RunId {
   return value as RunId;
 }
 
+function trailId(value: string): TrailId {
+  return value as TrailId;
+}
+
 function linkId(value: string): LinkId {
   return value as LinkId;
 }
@@ -86,6 +94,7 @@ function expectedRepositoryError(code: PromptTrailRepositoryErrorCode) {
 function buildProject(overrides: Partial<Project> = {}): Project {
   return {
     id: projectId('project-lifecycle'),
+    workspaceId: DEFAULT_WORKSPACE_ID,
     createdAt: T0,
     updatedAt: T0,
     deletedAt: null,
@@ -146,6 +155,20 @@ function buildRecipe(overrides: Partial<Recipe> = {}): Recipe {
   };
 }
 
+function buildTrail(overrides: Partial<Trail> = {}): Trail {
+  return {
+    id: trailId('trail-lifecycle'),
+    createdAt: T2,
+    updatedAt: T2,
+    deletedAt: null,
+    archivedAt: null,
+    projectId: projectId('project-lifecycle'),
+    title: 'Initial prompt title',
+    kind: 'other',
+    ...overrides,
+  };
+}
+
 function buildRun(overrides: Partial<Run> = {}): Run {
   return {
     id: runId('run-lifecycle'),
@@ -154,8 +177,7 @@ function buildRun(overrides: Partial<Run> = {}): Run {
     deletedAt: null,
     archivedAt: null,
     projectId: projectId('project-lifecycle'),
-    trailTitle: 'Initial prompt title',
-    trailKind: 'other',
+    trailId: trailId('trail-lifecycle'),
     recipeId: recipeId('recipe-lifecycle'),
     promptSnapshot: {
       promptId: promptId('prompt-lifecycle'),
@@ -220,6 +242,7 @@ async function saveRepresentativeTrail(
   } as Context;
   const projectContext = buildContext();
   const recipe = buildRecipe();
+  const trail = buildTrail();
   const run = buildRun();
   const link = buildLink();
 
@@ -228,10 +251,20 @@ async function saveRepresentativeTrail(
   await repository.saveContext(globalContext);
   await repository.saveContext(projectContext);
   await repository.saveRecipe(recipe);
+  await repository.saveTrail(trail);
   await repository.saveRun(run);
   await repository.saveLink(link);
 
-  return { project, prompt, globalContext, projectContext, recipe, run, link };
+  return {
+    project,
+    prompt,
+    globalContext,
+    projectContext,
+    recipe,
+    trail,
+    run,
+    link,
+  };
 }
 
 describe('PromptTrailRepository cross-store lifecycle integration', () => {
@@ -370,8 +403,7 @@ describe('PromptTrailRepository cross-store lifecycle integration', () => {
       trail.run,
     ]);
     await expect(repository.getRun(trail.run.id)).resolves.toMatchObject({
-      trailTitle: trail.run.trailTitle,
-      trailKind: trail.run.trailKind,
+      trailId: trail.run.trailId,
     });
 
     await expect(repository.listActiveLinks(trail.run.id)).resolves.toEqual([

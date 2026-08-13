@@ -1,8 +1,9 @@
-import type { Link, Project, Recipe, Run } from '../domain';
+import type { Link, Project, Recipe, Run, Trail } from '../domain';
 import type { PromptTrailRepository } from '../repository';
 
 export type DashboardRecentRun = {
   readonly run: Run;
+  readonly trail: Trail;
   readonly project: Project;
   readonly recipe: Recipe | null;
   readonly links: readonly Link[];
@@ -44,19 +45,25 @@ export async function loadDashboardReadModel(
 
   const recentRuns = await Promise.all(
     recentRunSources.map(async ({ project, run }) => {
-      const [recipe, links] = await Promise.all([
+      const [recipe, links, trail] = await Promise.all([
         run.recipeId === null
           ? Promise.resolve(null)
           : repository.getRecipe(run.recipeId),
         repository.listActiveLinks(run.id),
+        repository.getTrail(run.trailId),
       ]);
 
       if (run.recipeId !== null && recipe === null) {
         throw new Error(`Recipe not found for dashboard run: ${run.recipeId}`);
       }
 
+      if (trail === null) {
+        throw new Error(`Trail not found for dashboard run: ${run.trailId}`);
+      }
+
       return {
         run,
+        trail,
         project,
         recipe,
         links,

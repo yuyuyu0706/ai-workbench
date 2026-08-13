@@ -418,17 +418,18 @@ describe('NewTrailPage', () => {
     const user = userEvent.setup();
     const sourceRun = {
       id: 'run-source',
+      trailId: 'trail-source',
       deletedAt: null,
-      trailTitle: 'Source Trail',
-      trailKind: 'research',
       promptSnapshot: { title: 'Source prompt', body: 'original snapshot' },
     };
+    const sourceTrail = { title: 'Source Trail', kind: 'research' };
     const createDirectRunBundle = vi.fn(async (bundle: any) => ({
       ...bundle,
       run: { ...bundle.run, id: 'run-reused' },
     }));
     const repository = {
       getRun: vi.fn(async () => sourceRun),
+      getTrail: vi.fn(async () => sourceTrail),
       createDirectRunBundle,
     } as unknown as PromptTrailRepository;
     renderPage(repository, undefined, '/runs/new?sourceRunId=run-source');
@@ -474,7 +475,7 @@ describe('NewTrailPage', () => {
 
     expect(createDirectRunBundle.mock.calls[0]?.[0]).toMatchObject({
       prompt: { title: 'Generated title' },
-      run: { trailTitle: 'Manual Trail', trailKind: 'review' },
+      trail: { title: 'Manual Trail', kind: 'review' },
     });
   });
 
@@ -483,6 +484,7 @@ describe('NewTrailPage', () => {
     let resolve!: (value: any) => void;
     const repository = {
       getRun: vi.fn(() => new Promise((done) => (resolve = done))),
+      getTrail: vi.fn(async () => ({ title: 'Source Trail', kind: 'research' })),
     } as unknown as PromptTrailRepository;
     renderPage(repository, undefined, '/runs/new?sourceRunId=slow-run');
 
@@ -492,9 +494,8 @@ describe('NewTrailPage', () => {
     await act(async () =>
       resolve({
         id: 'slow-run',
+        trailId: 'trail-slow',
         deletedAt: null,
-        trailTitle: 'Source Trail',
-        trailKind: 'research',
         promptSnapshot: { title: 'Source Prompt', body: 'Source body' },
       }),
     );
@@ -542,6 +543,7 @@ describe('NewTrailPage', () => {
     let resolve!: (value: any) => void;
     const repository = {
       getRun: vi.fn(() => new Promise((done) => (resolve = done))),
+      getTrail: vi.fn(async () => ({ title: 'Slow Trail', kind: 'review' })),
     } as unknown as PromptTrailRepository;
     renderPage(repository, undefined, '/runs/new?sourceRunId=slow-run');
 
@@ -550,9 +552,8 @@ describe('NewTrailPage', () => {
     await act(async () =>
       resolve({
         id: 'slow-run',
+        trailId: 'trail-slow',
         deletedAt: null,
-        trailTitle: 'Slow Trail',
-        trailKind: 'review',
         promptSnapshot: { title: 'Slow', body: 'late snapshot' },
       }),
     );
@@ -591,6 +592,9 @@ describe('NewTrailPage', () => {
           ? Promise.resolve(reusableRun('run-a', 'Run A body'))
           : new Promise((resolve) => (resolveRunB = resolve)),
       ),
+      getTrail: vi.fn(async (id: string) =>
+        reusableTrail(id.replace(/^trail-/, '')),
+      ),
     } as unknown as PromptTrailRepository;
     renderPage(repository, undefined, '/runs/new?sourceRunId=run-a', true);
     const input = await screen.findByDisplayValue('Run A body');
@@ -606,6 +610,7 @@ describe('NewTrailPage', () => {
     const user = userEvent.setup();
     const repository = {
       getRun: vi.fn(async () => reusableRun('run-a', 'Run A body')),
+      getTrail: vi.fn(async () => reusableTrail('run-a')),
     } as unknown as PromptTrailRepository;
     renderPage(repository, undefined, '/runs/new?sourceRunId=run-a', true);
     const input = await screen.findByDisplayValue('Run A body');
@@ -622,6 +627,7 @@ describe('NewTrailPage', () => {
         .fn()
         .mockRejectedValueOnce(new Error('temporary'))
         .mockResolvedValueOnce(reusableRun('run-a', 'Snapshot body')),
+      getTrail: vi.fn(async () => reusableTrail('run-a')),
     } as unknown as PromptTrailRepository;
     renderPage(repository, undefined, '/runs/new?sourceRunId=run-a');
     await screen.findByText(/読み込めませんでした/);
@@ -642,6 +648,9 @@ describe('NewTrailPage', () => {
           ? new Promise((resolve) => (resolveRunA = resolve))
           : Promise.resolve(reusableRun('run-b', 'Current Run B body')),
       ),
+      getTrail: vi.fn(async (id: string) =>
+        reusableTrail(id.replace(/^trail-/, '')),
+      ),
     } as unknown as PromptTrailRepository;
     renderPage(repository, undefined, '/runs/new?sourceRunId=run-a', true);
 
@@ -657,11 +666,14 @@ describe('NewTrailPage', () => {
 function reusableRun(id: string, body: string) {
   return {
     id,
+    trailId: `trail-${id}`,
     deletedAt: null,
-    trailTitle: `${id} Trail`,
-    trailKind: 'other',
     promptSnapshot: { title: `${id} title`, body },
   };
+}
+
+function reusableTrail(id: string) {
+  return { id: `trail-${id}`, title: `${id} Trail`, kind: 'other' };
 }
 
 function reusablePrompt(

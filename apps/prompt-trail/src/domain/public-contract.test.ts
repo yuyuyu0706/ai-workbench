@@ -42,8 +42,12 @@ import type {
   RunEvaluation,
   RunId,
   RunStatus,
+  Trail,
+  TrailId,
   TrailKind,
   UtcDateTimeString,
+  Workspace,
+  WorkspaceId,
 } from './index';
 
 const expectType = <T>(value: T): void => {
@@ -53,12 +57,14 @@ const expectType = <T>(value: T): void => {
 describe('Prompt Trail domain public contract', () => {
   it('exports all entity kinds from the domain entry point', () => {
     expect(PROMPT_TRAIL_ENTITY_KINDS).toEqual([
+      'workspace',
       'project',
       'prompt',
       'context',
       'recipe',
       'run',
       'link',
+      'trail',
     ]);
   });
 
@@ -122,12 +128,15 @@ describe('Prompt Trail domain public contract', () => {
       readonly recipeId: RecipeId;
       readonly runId: RunId;
       readonly linkId: LinkId;
+      readonly workspaceId: WorkspaceId;
+      readonly trailId: TrailId;
       readonly utc: UtcDateTimeString;
       readonly jsonPrimitive: JsonPrimitive;
       readonly jsonValue: JsonValue;
       readonly globalScope: GlobalScope;
       readonly projectScope: ProjectScope;
       readonly assetScope: AssetScope;
+      readonly workspace: Workspace;
       readonly project: Project;
       readonly prompt: Prompt;
       readonly promptStatus: PromptStatus;
@@ -138,6 +147,7 @@ describe('Prompt Trail domain public contract', () => {
       readonly run: Run;
       readonly runStatus: RunStatus;
       readonly runEvaluation: RunEvaluation;
+      readonly trail: Trail;
       readonly trailKind: TrailKind;
       readonly link: Link;
       readonly linkType: LinkType;

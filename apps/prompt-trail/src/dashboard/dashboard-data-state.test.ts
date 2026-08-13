@@ -26,6 +26,7 @@ describe('loadDashboardDataState', () => {
         recentRuns: [
           {
             run: sampleDataset.run,
+            trail: sampleDataset.trail,
             project: sampleDataset.project,
             recipe: sampleDataset.recipe,
             links: sampleDataset.links,

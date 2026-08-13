@@ -1,9 +1,14 @@
-import type { Link, Project, Prompt, Run, RunStatus } from '../../domain';
+import type { Link, Project, Prompt, Run, RunStatus, Trail, Workspace } from '../../domain';
+import { DEFAULT_WORKSPACE_ID, createDefaultWorkspace } from '../../domain';
 import type { DeveloperDataScenario } from '../developer-data-scenario';
-import { linkId, projectId, promptId, runId, utc } from './helpers';
+import { linkId, projectId, promptId, runId, trailId, utc } from './helpers';
 
+const workspace: Workspace = createDefaultWorkspace(
+  utc('2026-07-22T08:00:00.000Z'),
+);
 const project: Project = {
   id: projectId('dense-project-dashboard'),
+  workspaceId: DEFAULT_WORKSPACE_ID,
   name: 'Dense dashboard project',
   description: 'A deterministic high-density dashboard fixture.',
   tags: ['dense'],
@@ -36,16 +41,27 @@ const statuses: readonly RunStatus[] = [
   'done',
   'executed',
 ];
-const runs: readonly Run[] = statuses.map((status, index) => {
+const runsAndTrails = statuses.map((status, index) => {
   const ordinal = index + 1;
   const updatedAt = utc(
     `2026-07-22T${String(9 + index).padStart(2, '0')}:00:00.000Z`,
   );
-  return {
+  const trail: Trail = {
+    id: trailId(`dense-trail-${ordinal}`),
+    projectId: project.id,
+    title: prompt.title,
+    kind: 'other',
+    createdAt: utc(
+      `2026-07-22T${String(8 + index).padStart(2, '0')}:30:00.000Z`,
+    ),
+    updatedAt,
+    deletedAt: null,
+    archivedAt: null,
+  };
+  const run: Run = {
     id: runId(`dense-run-${ordinal}`),
     projectId: project.id,
-    trailTitle: prompt.title,
-    trailKind: 'other',
+    trailId: trail.id,
     recipeId: null,
     promptSnapshot: {
       promptId: prompt.id,
@@ -65,7 +81,10 @@ const runs: readonly Run[] = statuses.map((status, index) => {
     deletedAt: null,
     archivedAt: null,
   };
+  return { run, trail };
 });
+const runs: readonly Run[] = runsAndTrails.map(({ run }) => run);
+const trails: readonly Trail[] = runsAndTrails.map(({ trail }) => trail);
 const links: readonly Link[] = [
   {
     id: linkId('dense-link-run-2-single'),
@@ -131,18 +150,22 @@ export const denseScenario: DeveloperDataScenario = {
   description:
     'Seven ordered Runs with varied statuses, link densities, deleted data, and long content.',
   dataset: {
+    workspaces: [workspace],
     projects: [project],
     prompts: [prompt],
     contexts: [],
     recipes: [],
+    trails,
     runs,
     links,
   },
   expectedCounts: {
+    workspaces: 1,
     projects: 1,
     prompts: 1,
     contexts: 0,
     recipes: 0,
+    trails: 7,
     runs: 7,
     links: 4,
   },
