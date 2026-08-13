@@ -12,14 +12,14 @@ Build Minimum → Release → Validation Readiness → Learn → Prioritize → 
 
 ## 全体像
 
-| Phase   | 名称                                   | 状態・目的                                                                  |
-| ------- | -------------------------------------- | --------------------------------------------------------------------------- |
-| Phase 0 | Foundation                             | **完了**。技術・品質・配信基盤を維持する                                    |
-| Phase 1 | Validation Release                     | **完了**。Public Alpha を公開し、初期 Feedback を受領した                   |
-| Phase 2 | Validation Readiness & User Validation | MVP を検証可能な状態へ補完し、利用観察から次の投資先を決める                |
-| Phase 3 | Guided Execution Foundation            | Workspace / Trail / AI・GitHub 実行基盤を成立させる（Rebaseline案）         |
-| Phase 4 | Workflow & Integration Expansion       | 実行可能 Trail の種類、Context / Recipe、外部連携を拡張する（Rebaseline案） |
-| Phase 5 | Productization & Administration        | 認証、契約、権限、同期、運用管理を備える                                    |
+| Phase   | 名称                                   | 状態・目的                                                          |
+| ------- | -------------------------------------- | ------------------------------------------------------------------- |
+| Phase 0 | Foundation                             | **完了**。技術・品質・配信基盤を維持する                            |
+| Phase 1 | Validation Release                     | **完了**。Public Alpha を公開し、初期 Feedback を受領した           |
+| Phase 2 | Validation Readiness & User Validation | MVP を検証可能な状態へ補完し、利用観察から次の投資先を決める        |
+| Phase 3 | Guided Execution Foundation            | Workspace / Trail / AI・GitHub 実行基盤を成立させる（確定）         |
+| Phase 4 | Workflow & Integration Expansion       | 実行可能 Trail の種類、Context / Recipe、外部連携を拡張する（確定） |
+| Phase 5 | Productization & Administration        | 認証、契約、権限、同期、運用管理を備える                            |
 
 ```text
 Phase 0  Foundation                                  ✓
@@ -107,11 +107,11 @@ Validation Readiness の統合受入後、次を観察します。
 
 観察結果を頻度、深刻度、中核価値への寄与、変更コストで整理し、Phase 3 で実施する機能と実施しない機能を決定します。
 
-## Phase 3〜4: Rebaseline 案（P2-6 の Scope Decision で最終確定）
+## Phase 3〜4: 確定（P2-6 Scope Decision で最終確定）
 
-> 以下の Phase 3・Phase 4 の記述は、[Roadmap Rebaseline Issue](https://github.com/yuyuyu0706/ai-workbench/issues/259) による **Rebaseline 案** であり、まだ確定した実装対象ではありません。Phase 2 の User Validation で得る利用証拠と、Phase 3 Investment Hypotheses（下記）の観察結果を踏まえ、**P2-6 の Scope Decision で最終確定**します。それまでは Investment Hypothesis（投資仮説）として扱い、Phase 2 の実装スコープ・完了条件には影響しません。
+> 以下の Phase 3・Phase 4 の記述は、[Roadmap Rebaseline Issue](https://github.com/yuyuyu0706/ai-workbench/issues/259) の Rebaseline 案を、[P2-6 Scope Decision](https://github.com/yuyuyu0706/ai-workbench/issues/268) で Phase 2 の利用証拠（[#266](https://github.com/yuyuyu0706/ai-workbench/issues/266)）と突き合わせ、**最終確定**したものです。Investment Hypothesis 3・6（AI / GitHub への手動転記の負荷、Execution Integration への優先投資）が証拠により強く支持され、Hypothesis 1（Prompt 資産管理の深化）は Phase 2 で既に対応済みのため優先度が低いと判断しました。
 
-### Phase 3: Guided Execution Foundation（Rebaseline 案）
+### Phase 3: Guided Execution Foundation（確定）
 
 キーメッセージ：PromptTrail を「記録・再利用するツール」から「AI と開発プロセスを実行する環境」へ進化させる。
 
@@ -119,29 +119,37 @@ Validation Readiness の統合受入後、次を観察します。
 - **Executable Trail**: Trail 一覧、Trail Detail、Trail 内の Run / Step、Execution Status、Execute 導線。
 - **GitHub / AI Execution Gateway**: Azure Static Web Apps + SWA Managed Function + GitHub Actions（workflow_dispatch）による軽量構成。最初の Thin Vertical Slice は PLAN + ISSUE（実装方針の Markdown 生成と GitHub Issue 作成）に限定する。
 
-Workspace / Project / Trail / Run の将来責務は、現時点では確定した設計ではなく Hypothesis として記録するにとどめます。GitHub / AI Integration の一部前倒しも同様に仮確定とします。
+#### 最初の投資対象：P3-1 Execution Domain 再設計
 
-### Phase 4: Workflow & Integration Expansion（Rebaseline 案）
+Phase 3 の最初の Release/Learn 単位は **P3-1（Execution Domain 再設計）** とします。#266 で判明した Dashboard の表示バグ（Trail 名列が実際には Prompt Snapshot タイトルを表示していた）が、Trail / Run / Prompt の概念境界が実装上も曖昧になりやすいことを具体的に証拠化したため、GitHub / AI Integration（P3-4 以降）より前に Domain 設計を確定させます。
+
+- Trail / Run 責務の確定（独立 Entity 化するか、現行 Run の拡張に留めるかを含む）。
+- 既存 `trailTitle` / `trailKind` の移行方針。
+- Workspace / Project 責務の最小定義（Default Workspace のみ。CRUD・切替は含まない。Hypothesis 4 は今回の証拠からは判断できず、追加観察に委ねる）。
+
+Prompt 資産管理のさらなる深化（Hypothesis 1）は、Phase 2 で主要な不足が解消済みのため、当面 Evidence Backlog に留め、優先着手対象としません。
+
+### Phase 4: Workflow & Integration Expansion（確定）
 
 Phase 3 で成立した Execution Foundation を使い、実行パターンと連携先を拡張します。新しい基盤を作るのではなく、Phase 3 の Execution Platform 上に Workflow を増やすことを主眼とします。GitHub API による Issue、PR、Commit 情報取得、Link の状態更新、URL からのメタデータ補完、Issue 本文生成支援と Integration 設定はここに含まれます。
 
-### Phase 3 Investment Hypotheses（Phase 2 利用観察で確認する 6 つの問い）
+### Phase 3 Investment Hypotheses（P2-6 で証拠と突き合わせ済み）
 
-Phase 2 の User Validation で、次の問いを観察項目として確認します。結果は P2-5 / P2-6 の Issue 設計、および P2-6 の Scope Decision の入力とします。
+Phase 2 の User Validation（[#266](https://github.com/yuyuyu0706/ai-workbench/issues/266)）の観察結果と突き合わせた評価は次のとおりです。
 
-1. Prompt 資産管理のさらなる深化が必要か。
-2. Trail の再発見・整理にまだ重大な摩擦があるか。
-3. AI / GitHub への手動転記が最大の離脱・負荷要因になっているか。
-4. Project 分離がないことが継続利用を妨げているか。
-5. 「Prompt を保存する」より「Trail を進める」体験の方が価値が高いか。
-6. Context / Recipe より先に Execution Integration へ投資すべきか。
+1. Prompt 資産管理のさらなる深化が必要か → **弱い**。Phase 2 で主要な不足は既に対応済み。
+2. Trail の再発見・整理にまだ重大な摩擦があるか → **部分的**。到達性の摩擦は Phase 2 で緩和済みだが、Trail / Prompt 識別の混同という構造的課題が残る。
+3. AI / GitHub への手動転記が最大の離脱・負荷要因になっているか → **強い**。実行結果を取得できずコピペが実行導線になっている実態が直接裏付ける。
+4. Project 分離がないことが継続利用を妨げているか → **未確認**。今回の証拠からは判断できない。
+5. 「Prompt を保存する」より「Trail を進める」体験の方が価値が高いか → **中程度**。Trail 概念が Run に従属していることが識別の混乱と実行体験の弱さの根にある可能性がある。
+6. Context / Recipe より先に Execution Integration へ投資すべきか → **強い**。Context / Recipe への不満は観察されず、Execution 関連の摩擦のみが明確に観測された。
 
 ```text
 Phase 2 Observation
         +
 Phase 3 Architecture Hypothesis
         ↓
-Phase 3 Scope Decision（P2-6 で確定）
+Phase 3 Scope Decision（P2-6 で確定）→ 最初の投資対象は P3-1
 ```
 
 ### Evidence Backlog
@@ -188,6 +196,6 @@ Phase 2 の Lv2 / Lv3 Issue は、次の順序と境界で設計します。
 3. Dashboard の到達性と表示整合。
 4. Validation Readiness の Hosted 統合受入。
 5. 改善後 MVP の利用観察。
-6. Phase 3 の投資対象決定。
+6. Phase 3 の投資対象決定（[P2-6](https://github.com/yuyuyu0706/ai-workbench/issues/268) で確定。最初の投資対象は P3-1 Execution Domain 再設計）。
 
 Context Library、Recipe Builder、Prompt 復元・版管理、高度な検索、Integration、Productization を Phase 2 の必須スコープへ連鎖的に追加しません。
