@@ -12,14 +12,14 @@ Build Minimum → Release → Validation Readiness → Learn → Prioritize → 
 
 ## 全体像
 
-| Phase   | 名称                                   | 状態・目的                                                                  |
-| ------- | -------------------------------------- | --------------------------------------------------------------------------- |
-| Phase 0 | Foundation                             | **完了**。技術・品質・配信基盤を維持する                                    |
-| Phase 1 | Validation Release                     | **完了**。Public Alpha を公開し、初期 Feedback を受領した                   |
-| Phase 2 | Validation Readiness & User Validation | MVP を検証可能な状態へ補完し、利用観察から次の投資先を決める                |
-| Phase 3 | Guided Execution Foundation            | Workspace / Trail / AI・GitHub 実行基盤を成立させる（確定）                 |
-| Phase 4 | Workflow & Integration Expansion       | 実行可能 Trail の種類、Context / Recipe、外部連携を拡張する（確定）         |
-| Phase 5 | Productization & Administration        | 認証、契約、権限、同期、運用管理を備える                                    |
+| Phase   | 名称                                   | 状態・目的                                                          |
+| ------- | -------------------------------------- | ------------------------------------------------------------------- |
+| Phase 0 | Foundation                             | **完了**。技術・品質・配信基盤を維持する                            |
+| Phase 1 | Validation Release                     | **完了**。Public Alpha を公開し、初期 Feedback を受領した           |
+| Phase 2 | Validation Readiness & User Validation | MVP を検証可能な状態へ補完し、利用観察から次の投資先を決める        |
+| Phase 3 | Guided Execution Foundation            | Workspace / Trail / AI・GitHub 実行基盤を成立させる（確定）         |
+| Phase 4 | Workflow & Integration Expansion       | 実行可能 Trail の種類、Context / Recipe、外部連携を拡張する（確定） |
+| Phase 5 | Productization & Administration        | 認証、契約、権限、同期、運用管理を備える                            |
 
 ```text
 Phase 0  Foundation                                  ✓
