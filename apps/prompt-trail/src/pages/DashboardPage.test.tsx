@@ -9,7 +9,7 @@ import {
   PromptTrailDataRevisionProvider,
   usePromptTrailDataRevision,
 } from '../app/PromptTrailDataRevisionContext';
-import { buildRunDetailPath, routePaths } from '../app/routes';
+import { buildTrailDetailPath, routePaths } from '../app/routes';
 import { createPromptTrailRuntime } from '../app/prompt-trail-runtime';
 import type { DeveloperToolsRuntime } from '../app/prompt-trail-runtime';
 import { DeveloperToolsProvider } from '../developer-tools/DeveloperToolsContext';
@@ -201,14 +201,14 @@ describe('DashboardPage', () => {
     const runListLink = screen.getByRole('link', {
       name: 'すべてのTrailを表示',
     });
-    expect(runListLink).toHaveAttribute('href', routePaths.runList);
+    expect(runListLink).toHaveAttribute('href', routePaths.trailList);
 
     const detailLink = screen.getByRole('link', {
       name: sampleDataset.trail.title,
     });
     expect(detailLink).toHaveAttribute(
       'href',
-      buildRunDetailPath(sampleDataset.run.id),
+      buildTrailDetailPath(sampleDataset.trail.id),
     );
     expect(screen.queryByRole('columnheader', { name: '操作' })).toBeNull();
     expect(screen.queryByRole('button', { name: /操作メニュー/ })).toBeNull();

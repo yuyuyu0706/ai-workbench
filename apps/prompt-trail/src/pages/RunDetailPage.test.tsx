@@ -22,14 +22,14 @@ import {
 import { RunDetailPage } from './RunDetailPage';
 function renderPage(
   repository: PromptTrailRepository,
-  id = 'run-1',
+  id = 'trail-1',
   state?: { trailCreated: true },
   uiStateStore?: DeveloperUiStateStore,
 ) {
   return render(
     <MemoryRouter
       initialEntries={[
-        state ? { pathname: `/runs/${id}`, state } : `/runs/${id}`,
+        state ? { pathname: `/trails/${id}`, state } : `/trails/${id}`,
       ]}
     >
       <PromptTrailRepositoryProvider repository={repository}>
@@ -39,7 +39,7 @@ function renderPage(
           }
         >
           <Routes>
-            <Route path="/runs/:runId" element={<RunDetailPage />} />
+            <Route path="/trails/:trailId" element={<RunDetailPage />} />
           </Routes>
         </DeveloperToolsProvider>
       </PromptTrailRepositoryProvider>
@@ -92,6 +92,7 @@ function createDetailRepository(
   return {
     getRun: vi.fn(async () => direct),
     getTrail: vi.fn(async () => trail),
+    listRunsByTrail: vi.fn(async () => [direct]),
     getProject: vi.fn(async () => ({ name: 'Project' })),
     listActiveLinks: vi.fn(async () => links),
     saveLink: vi.fn(async (link) => link),
@@ -197,7 +198,7 @@ describe('RunDetailPage', () => {
     const repository = createDetailRepository([]);
     repository.updateTrailMetadata = vi.fn();
     const store = createTestUiStateStore();
-    renderPage(repository, 'run-1', undefined, store);
+    renderPage(repository, 'trail-1', undefined, store);
     await screen.findByText('Trail A');
 
     for (const override of [
@@ -338,6 +339,9 @@ describe('RunDetailPage', () => {
       getTrail: vi.fn(async (id: string) =>
         id === 'trail-b' ? trailB : trailA,
       ),
+      listRunsByTrail: vi.fn(async (trailId: string) => [
+        trailId === 'trail-b' ? runB : runA,
+      ]),
       getProject: vi.fn(async (id: string) => ({
         name: id === 'project-a' ? 'Project A' : 'Project B',
       })),
@@ -347,11 +351,11 @@ describe('RunDetailPage', () => {
       }),
     } as any;
     render(
-      <MemoryRouter initialEntries={['/runs/run-a']}>
+      <MemoryRouter initialEntries={['/trails/trail-a']}>
         <PromptTrailRepositoryProvider repository={repository}>
-          <RouteSwitchProbe />
+          <RouteSwitchProbe to="/trails/trail-b" />
           <Routes>
-            <Route path="/runs/:runId" element={<RunDetailPage />} />
+            <Route path="/trails/:trailId" element={<RunDetailPage />} />
           </Routes>
         </PromptTrailRepositoryProvider>
       </MemoryRouter>,
@@ -381,14 +385,14 @@ describe('RunDetailPage', () => {
 
     expect(
       await screen.findByRole('link', { name: 'このPromptを再利用' }),
-    ).toHaveAttribute('href', '/runs/new?sourceRunId=run-1');
+    ).toHaveAttribute('href', '/trails/new?sourceRunId=run-1');
   });
 
   it('applies every page override and restores already-loaded data when cleared', async () => {
     const repository = createDetailRepository([]);
     const store = createTestUiStateStore();
     store.setActiveOverride({ target: 'run-detail-page', state: 'loading' });
-    renderPage(repository, 'run-1', undefined, store);
+    renderPage(repository, 'trail-1', undefined, store);
 
     expect(screen.getByText('Runを読み込んでいます...')).toBeVisible();
     await waitFor(() => expect(repository.getRun).toHaveBeenCalledOnce());
@@ -416,9 +420,9 @@ describe('RunDetailPage', () => {
       state: 'submitting',
     });
     const repository = {
-      getRun: vi.fn(() => new Promise(() => undefined)),
+      getTrail: vi.fn(() => new Promise(() => undefined)),
     } as unknown as PromptTrailRepository;
-    renderPage(repository, 'run-1', undefined, store);
+    renderPage(repository, 'trail-1', undefined, store);
 
     expect(screen.getByText('Runを読み込んでいます...')).toBeVisible();
     expect(screen.queryByRole('button', { name: '保存中...' })).toBeNull();
@@ -428,7 +432,7 @@ describe('RunDetailPage', () => {
     const user = (await import('@testing-library/user-event')).default.setup();
     const repository = createDetailRepository([]);
     const store = createTestUiStateStore();
-    renderPage(repository, 'run-1', undefined, store);
+    renderPage(repository, 'trail-1', undefined, store);
     await screen.findByText('Body A');
     await user.type(screen.getByLabelText('Link名称'), 'Saved link');
     await user.type(screen.getByLabelText('URL'), 'https://example.com/saved');
@@ -466,7 +470,7 @@ describe('RunDetailPage', () => {
     ];
     const repository = createDetailRepository(links);
     const store = createTestUiStateStore();
-    renderPage(repository, 'run-1', undefined, store);
+    renderPage(repository, 'trail-1', undefined, store);
     await user.click(
       await screen.findByRole('button', { name: 'Secondを削除' }),
     );
@@ -507,7 +511,7 @@ describe('RunDetailPage', () => {
       target: 'run-detail-link-delete',
       state: 'delete-failure',
     });
-    renderPage(createDetailRepository([]), 'run-1', undefined, store);
+    renderPage(createDetailRepository([]), 'trail-1', undefined, store);
     await screen.findByText('Body A');
 
     expect(screen.queryByText(/を削除しますか/)).toBeNull();
@@ -521,7 +525,7 @@ describe('RunDetailPage', () => {
       createTrailLink('link-2', 'Second'),
     ]);
     const store = createTestUiStateStore();
-    renderPage(repository, 'run-1', undefined, store);
+    renderPage(repository, 'trail-1', undefined, store);
     await user.click(
       await screen.findByRole('button', { name: 'Secondを削除' }),
     );
@@ -558,6 +562,7 @@ describe('RunDetailPage', () => {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
       getTrail: vi.fn(async () => trail),
+      listRunsByTrail: vi.fn(async () => [direct]),
       listActiveLinks: vi.fn(async () => [trailLink]),
       softDeleteLink: vi.fn(async () => ({
         ...trailLink,
@@ -605,6 +610,7 @@ describe('RunDetailPage', () => {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
       getTrail: vi.fn(async () => trail),
+      listRunsByTrail: vi.fn(async () => [direct]),
       listActiveLinks: vi.fn(async () => [
         {
           id: 'link-1',
@@ -665,6 +671,7 @@ describe('RunDetailPage', () => {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
       getTrail: vi.fn(async () => trail),
+      listRunsByTrail: vi.fn(async () => [direct]),
       listActiveLinks: vi.fn(async () => [linkA, linkB]),
       softDeleteLink: vi.fn(async () => {
         await deletionPending;
@@ -697,16 +704,16 @@ describe('RunDetailPage', () => {
     expect(screen.getByRole('button', { name: 'Link Bを削除' })).toBeEnabled();
   });
   it('shows loading, not-found, and failure states', async () => {
-    const pending = { getRun: vi.fn(() => new Promise(() => {})) } as any;
+    const pending = { getTrail: vi.fn(() => new Promise(() => {})) } as any;
     renderPage(pending);
     expect(screen.getByText('Runを読み込んでいます...')).toBeInTheDocument();
-    const missing = { getRun: vi.fn(async () => null) } as any;
+    const missing = { getTrail: vi.fn(async () => null) } as any;
     renderPage(missing);
     expect(
       await screen.findByText('指定されたRunが見つかりません。'),
     ).toBeInTheDocument();
     const failed = {
-      getRun: vi.fn(async () => {
+      getTrail: vi.fn(async () => {
         throw new Error('db');
       }),
     } as any;
@@ -720,6 +727,7 @@ describe('RunDetailPage', () => {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
       getTrail: vi.fn(async () => trail),
+      listRunsByTrail: vi.fn(async () => [direct]),
       listActiveLinks: vi.fn(async () => []),
       getRecipe: vi.fn(),
     } as any;
@@ -765,6 +773,7 @@ describe('RunDetailPage', () => {
       })),
       getProject: vi.fn(async () => ({ name: 'Project' })),
       getTrail: vi.fn(async () => trail),
+      listRunsByTrail: vi.fn(async () => [direct]),
       listActiveLinks: vi.fn(async () => []),
     } as any;
     renderPage(repository);
@@ -790,6 +799,7 @@ describe('RunDetailPage', () => {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
       getTrail: vi.fn(async () => trail),
+      listRunsByTrail: vi.fn(async () => [direct]),
       listActiveLinks: vi.fn(async () => []),
     } as any;
     renderPage(repository);
@@ -820,6 +830,7 @@ describe('RunDetailPage', () => {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
       getTrail: vi.fn(async () => trail),
+      listRunsByTrail: vi.fn(async () => [direct]),
       listActiveLinks: vi.fn(async () => []),
     } as any;
 
@@ -830,7 +841,7 @@ describe('RunDetailPage', () => {
     ).toBeNull();
     directAccess.unmount();
 
-    renderPage(repository, 'run-1', { trailCreated: true });
+    renderPage(repository, 'trail-1', { trailCreated: true });
     expect(
       await screen.findByText('Trailを作成しました。', { exact: false }),
     ).toHaveAttribute('role', 'status');
@@ -844,6 +855,7 @@ describe('RunDetailPage Link form', () => {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
       getTrail: vi.fn(async () => trail),
+      listRunsByTrail: vi.fn(async () => [direct]),
       listActiveLinks: vi.fn(async () => []),
       saveLink: vi.fn(),
     } as any;
@@ -864,6 +876,7 @@ describe('RunDetailPage Link form', () => {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
       getTrail: vi.fn(async () => trail),
+      listRunsByTrail: vi.fn(async () => [direct]),
       listActiveLinks: vi.fn(async () => []),
       saveLink: vi.fn(),
     } as any;
@@ -884,6 +897,7 @@ describe('RunDetailPage Link form', () => {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
       getTrail: vi.fn(async () => trail),
+      listRunsByTrail: vi.fn(async () => [direct]),
       listActiveLinks: vi.fn(async () => []),
       saveLink: vi.fn(),
     } as any;
@@ -905,6 +919,7 @@ describe('RunDetailPage Link form', () => {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
       getTrail: vi.fn(async () => trail),
+      listRunsByTrail: vi.fn(async () => [direct]),
       listActiveLinks: vi.fn(async () => []),
       saveLink: vi.fn(async (link: any) => link),
     } as any;
@@ -935,6 +950,7 @@ describe('RunDetailPage Link form', () => {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
       getTrail: vi.fn(async () => trail),
+      listRunsByTrail: vi.fn(async () => [direct]),
       listActiveLinks: vi.fn(async () => []),
       saveLink: vi.fn(async () => {
         throw new Error('db');
@@ -964,6 +980,7 @@ it('prevents duplicate Link submissions while saving and then lists the result',
     getRun: vi.fn(async () => direct),
     getProject: vi.fn(async () => ({ name: 'Project' })),
     getTrail: vi.fn(async () => trail),
+    listRunsByTrail: vi.fn(async () => [direct]),
     listActiveLinks: vi.fn(async () => []),
     saveLink: vi.fn(
       () =>
@@ -988,23 +1005,27 @@ it('prevents duplicate Link submissions while saving and then lists the result',
   ).toBeInTheDocument();
 });
 
-function RouteSwitchProbe() {
+function RouteSwitchProbe({ to = '/trails/trail-b' }: { to?: string }) {
   const navigate = useNavigate();
-  return <button onClick={() => navigate('/runs/run-b')}>Run Bへ切替</button>;
+  return <button onClick={() => navigate(to)}>Run Bへ切替</button>;
 }
 it('keeps Run B state when a pending Run A Link save resolves after a route change', async () => {
   const user = (await import('@testing-library/user-event')).default.setup();
   let resolve!: (link: any) => void;
+  const trailA = { ...trail, id: 'trail-a', projectId: 'project-a' };
+  const trailB = { ...trail, id: 'trail-b', projectId: 'project-b' };
   const runA = {
     ...direct,
     id: 'run-a',
     projectId: 'project-a',
+    trailId: 'trail-a',
     promptSnapshot: { title: 'Prompt A', body: 'Body A' },
   };
   const runB = {
     ...direct,
     id: 'run-b',
     projectId: 'project-b',
+    trailId: 'trail-b',
     promptSnapshot: { title: 'Prompt B', body: 'Body B' },
   };
   const repository = {
@@ -1012,7 +1033,10 @@ it('keeps Run B state when a pending Run A Link save resolves after a route chan
     getProject: vi.fn(async (id) => ({
       name: id === 'project-a' ? 'Project A' : 'Project B',
     })),
-    getTrail: vi.fn(async () => trail),
+    getTrail: vi.fn(async (id: string) => (id === 'trail-b' ? trailB : trailA)),
+    listRunsByTrail: vi.fn(async (trailId: string) => [
+      trailId === 'trail-b' ? runB : runA,
+    ]),
     listActiveLinks: vi.fn(async (id) => [
       {
         id: id === 'run-a' ? 'link-a' : 'link-b',
@@ -1030,11 +1054,11 @@ it('keeps Run B state when a pending Run A Link save resolves after a route chan
     ),
   } as any;
   render(
-    <MemoryRouter initialEntries={['/runs/run-a']}>
+    <MemoryRouter initialEntries={['/trails/trail-a']}>
       <PromptTrailRepositoryProvider repository={repository}>
         <RouteSwitchProbe />
         <Routes>
-          <Route path="/runs/:runId" element={<RunDetailPage />} />
+          <Route path="/trails/:trailId" element={<RunDetailPage />} />
         </Routes>
       </PromptTrailRepositoryProvider>
     </MemoryRouter>,

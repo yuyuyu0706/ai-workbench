@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test';
 export type BrowserCanonicalSampleSeedResult = {
   readonly status: 'seeded' | 'already-present' | 'conflict';
   readonly sampleRunId: string;
+  readonly sampleTrailId: string;
   readonly sampleRunUpdatedAt: string;
 };
 
@@ -25,6 +26,7 @@ export async function seedCanonicalSampleDataInBrowser(
       return {
         status: result.status,
         sampleRunId: sampleDataset.run.id,
+        sampleTrailId: sampleDataset.trail.id,
         sampleRunUpdatedAt: sampleDataset.run.updatedAt,
       };
     } finally {

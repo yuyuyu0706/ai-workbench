@@ -79,7 +79,7 @@ describe('GlobalNavigation', () => {
   it.each([
     '/contexts',
     '/recipes/builder',
-    '/runs/run-123',
+    '/trails/trail-123',
     '/unknown-route',
     '/prompts/unknown',
   ])('does not mark any global navigation item active for %s', (pathname) => {

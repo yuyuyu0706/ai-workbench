@@ -42,7 +42,7 @@ test.describe('first Trail creation acceptance', () => {
     await expectNoHorizontalOverflow(page);
 
     await page.getByRole('link', { name: '新しいTrailを始める' }).click();
-    await expect(page).toHaveURL(/\/runs\/new$/);
+    await expect(page).toHaveURL(/\/trails\/new$/);
     await expectNoHorizontalOverflow(page);
 
     await page.getByLabel('Trail名').fill(trailTitle);
@@ -53,7 +53,7 @@ test.describe('first Trail creation acceptance', () => {
     await expect(
       page.getByRole('heading', { level: 1, name: 'Run Detail' }),
     ).toBeVisible();
-    await expect(page).toHaveURL(/\/runs\/(?!new$)[^/]+$/);
+    await expect(page).toHaveURL(/\/trails\/(?!new$)[^/]+$/);
     await expect(
       page.getByRole('status').filter({ hasText: 'Trailを作成しました。' }),
     ).toBeVisible();
@@ -189,7 +189,7 @@ test.describe('first Trail creation acceptance', () => {
   test('recovers from representative validation and not-found states', async ({
     page,
   }) => {
-    await page.goto('/runs/new');
+    await page.goto('/trails/new');
 
     const promptInput = page.getByLabel('Prompt本文');
     await promptInput.fill('   ');
@@ -202,7 +202,7 @@ test.describe('first Trail creation acceptance', () => {
 
     await promptInput.fill(promptBody);
     await page.getByRole('button', { name: 'Trailを作成' }).click();
-    await expect(page).toHaveURL(/\/runs\/[^/]+$/);
+    await expect(page).toHaveURL(/\/trails\/[^/]+$/);
 
     const urlInput = page.getByLabel('URL');
     await page.getByLabel('Link名称').fill(linkTitle);
@@ -219,7 +219,7 @@ test.describe('first Trail creation acceptance', () => {
       linkUrl,
     );
 
-    await page.goto('/runs/missing-issue-161-run');
+    await page.goto('/trails/missing-issue-161-trail');
     await expect(
       page.getByText('指定されたRunが見つかりません。'),
     ).toBeVisible();

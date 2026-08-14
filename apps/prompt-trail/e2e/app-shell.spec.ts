@@ -91,8 +91,8 @@ test.describe('Public Alpha shell', () => {
     ).toHaveAttribute('aria-current', 'page');
 
     for (const path of [
-      '/runs/new',
-      '/runs/run-e2e',
+      '/trails/new',
+      '/trails/trail-e2e',
       '/prompts/unknown/path',
     ] as const) {
       await page.goto(path);

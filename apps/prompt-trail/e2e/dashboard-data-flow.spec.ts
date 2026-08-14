@@ -96,7 +96,7 @@ test.describe('Dashboard data flow', () => {
       .getByRole('link', { name: 'GitHub Issue作成依頼' })
       .click();
     await expect(page).toHaveURL(
-      new RegExp(`/runs/${seedResult.sampleRunId}$`),
+      new RegExp(`/trails/${seedResult.sampleTrailId}$`),
     );
     await expect(
       page.getByRole('heading', { level: 1, name: 'Run Detail' }),
@@ -179,7 +179,7 @@ test.describe('Dashboard data flow', () => {
     await expect(trailLink).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(
-      new RegExp(`/runs/${seedResult.sampleRunId}$`),
+      new RegExp(`/trails/${seedResult.sampleTrailId}$`),
     );
   });
 });

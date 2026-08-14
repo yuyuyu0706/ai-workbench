@@ -29,7 +29,7 @@ describe('navigation contract', () => {
 
   it('keeps Run Detail contextual and Not Found recoverable instead of global', () => {
     expect(globalNavigationItems.map((item) => item.id)).not.toContain(
-      routeIds.runDetail,
+      routeIds.trailDetail,
     );
     expect(globalNavigationItems.map((item) => item.id)).not.toContain(
       routeIds.newTrail,
@@ -43,10 +43,10 @@ describe('navigation contract', () => {
     expect(globalNavigationItems.map((item) => item.id)).not.toContain(
       routeIds.recipeBuilder,
     );
-    expect(contextualRouteIds).toEqual([routeIds.newTrail, routeIds.runDetail]);
+    expect(contextualRouteIds).toEqual([routeIds.newTrail, routeIds.trailDetail]);
     expect(recoveryRouteIds).toEqual([routeIds.notFound]);
     expect(isContextualRoute(routeIds.newTrail)).toBe(true);
-    expect(isContextualRoute(routeIds.runDetail)).toBe(true);
+    expect(isContextualRoute(routeIds.trailDetail)).toBe(true);
     expect(isRecoveryRoute(routeIds.notFound)).toBe(true);
   });
 
@@ -69,8 +69,8 @@ describe('navigation contract', () => {
     expect(getActiveNavigationItemId('/contexts')).toBeUndefined();
     expect(getActiveNavigationItemId('/recipes/builder')).toBeUndefined();
     expect(getActiveNavigationItemId('/dashboard/')).toBe(routeIds.dashboard);
-    expect(getActiveNavigationItemId('/runs/run-1')).toBeUndefined();
-    expect(getActiveNavigationItemId('/runs/new')).toBeUndefined();
+    expect(getActiveNavigationItemId('/trails/trail-1')).toBeUndefined();
+    expect(getActiveNavigationItemId('/trails/new')).toBeUndefined();
     expect(getActiveNavigationItemId('/prompts/unknown')).toBeUndefined();
     expect(getActiveNavigationItemId('/prompts/prompt-1')).toBeUndefined();
     expect(

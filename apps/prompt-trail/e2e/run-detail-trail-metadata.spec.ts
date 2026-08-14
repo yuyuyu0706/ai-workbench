@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { expectNoHorizontalOverflow } from './support/layout';
 
-const runPath = '/runs/reuse-ready-run-completed-source';
+const runPath = '/trails/reuse-ready-trail-completed-source';
 
 async function loadReuseReady(page: import('@playwright/test').Page) {
   await page.goto('/dashboard');

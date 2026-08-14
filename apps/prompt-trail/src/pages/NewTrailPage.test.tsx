@@ -23,14 +23,14 @@ function QueryControls() {
   const navigate = useNavigate();
   return (
     <nav aria-label="Test query controls">
-      <button onClick={() => navigate('/runs/new?sourceRunId=run-a')}>
+      <button onClick={() => navigate('/trails/new?sourceRunId=run-a')}>
         Run A
       </button>
-      <button onClick={() => navigate('/runs/new?sourceRunId=run-b')}>
+      <button onClick={() => navigate('/trails/new?sourceRunId=run-b')}>
         Run B
       </button>
-      <button onClick={() => navigate('/runs/new')}>通常New Trail</button>
-      <button onClick={() => navigate('/runs/new?sourcePromptId=prompt-b')}>
+      <button onClick={() => navigate('/trails/new')}>通常New Trail</button>
+      <button onClick={() => navigate('/trails/new?sourcePromptId=prompt-b')}>
         Prompt B
       </button>
     </nav>
@@ -39,7 +39,7 @@ function QueryControls() {
 function renderPage(
   repository: PromptTrailRepository,
   uiStateStore?: DeveloperUiStateStore,
-  initialEntry = '/runs/new',
+  initialEntry = '/trails/new',
   withQueryControls = false,
 ) {
   return render(
@@ -69,7 +69,7 @@ describe('NewTrailPage', () => {
     const invalid = renderPage(
       repository,
       undefined,
-      '/runs/new?sourcePromptId=a&sourceRunId=b',
+      '/trails/new?sourcePromptId=a&sourceRunId=b',
     );
     expect(screen.getByRole('button', { name: 'Trailを作成' })).toBeDisabled();
     invalid.container
@@ -78,7 +78,7 @@ describe('NewTrailPage', () => {
     expect(repository.createDirectRunBundle).not.toHaveBeenCalled();
     invalid.unmount();
 
-    renderPage(repository, undefined, '/runs/new?sourcePromptId=missing');
+    renderPage(repository, undefined, '/trails/new?sourcePromptId=missing');
     await screen.findByText('指定されたPromptが見つかりません。');
     document
       .querySelector('form')
@@ -108,7 +108,7 @@ describe('NewTrailPage', () => {
         .fn()
         .mockRejectedValueOnce(new PromptTrailRepositoryError('stale-write')),
     } as unknown as PromptTrailRepository;
-    renderPage(repository, undefined, '/runs/new?sourcePromptId=prompt-1');
+    renderPage(repository, undefined, '/trails/new?sourcePromptId=prompt-1');
     await screen.findByDisplayValue('Old body');
     await user.clear(screen.getByLabelText('Trail名'));
     await user.type(screen.getByLabelText('Trail名'), 'My draft');
@@ -140,7 +140,7 @@ describe('NewTrailPage', () => {
         }),
       ),
     } as unknown as PromptTrailRepository;
-    renderPage(repository, undefined, '/runs/new?sourcePromptId=prompt-1');
+    renderPage(repository, undefined, '/trails/new?sourcePromptId=prompt-1');
     await screen.findByDisplayValue('Hello Rikki, welcome to ${place}.');
   });
 
@@ -163,7 +163,7 @@ describe('NewTrailPage', () => {
         .fn()
         .mockRejectedValueOnce(new PromptTrailRepositoryError('stale-write')),
     } as unknown as PromptTrailRepository;
-    renderPage(repository, undefined, '/runs/new?sourcePromptId=prompt-1');
+    renderPage(repository, undefined, '/trails/new?sourcePromptId=prompt-1');
     await screen.findByDisplayValue('Hi Old');
     await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
     const latestButton = await screen.findByRole('button', {
@@ -184,7 +184,7 @@ describe('NewTrailPage', () => {
         () => new Promise((done) => (resolve = done)),
       ),
     } as unknown as PromptTrailRepository;
-    renderPage(repository, undefined, '/runs/new?sourcePromptId=prompt-1');
+    renderPage(repository, undefined, '/trails/new?sourcePromptId=prompt-1');
     const body = await screen.findByDisplayValue('Body');
     expect(body).toHaveAttribute(
       'aria-describedby',
@@ -220,7 +220,7 @@ describe('NewTrailPage', () => {
     renderPage(
       repository,
       undefined,
-      '/runs/new?sourcePromptId=prompt-a',
+      '/trails/new?sourcePromptId=prompt-a',
       true,
     );
     await screen.findByDisplayValue('Prompt A body');
@@ -252,7 +252,7 @@ describe('NewTrailPage', () => {
     const view = renderSwitchableRepositories(
       oldRepository,
       newRepository,
-      '/runs/new?sourcePromptId=prompt-1',
+      '/trails/new?sourcePromptId=prompt-1',
     );
     await screen.findByDisplayValue('Old body');
     await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
@@ -275,7 +275,7 @@ describe('NewTrailPage', () => {
     const unmounted = renderPage(
       unmountedRepository,
       undefined,
-      '/runs/new?sourcePromptId=prompt-1',
+      '/trails/new?sourcePromptId=prompt-1',
     );
     await screen.findByDisplayValue('Unmount body');
     await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
@@ -289,7 +289,11 @@ describe('NewTrailPage', () => {
     const repository = {
       createDirectRunBundle: vi.fn(async (bundle) => ({
         ...bundle,
-        run: { ...bundle.run, id: 'run-after-override' },
+        run: {
+          ...bundle.run,
+          id: 'run-after-override',
+          trailId: 'trail-after-override',
+        },
       })),
     } as unknown as PromptTrailRepository;
     const store = createTestUiStateStore();
@@ -328,7 +332,7 @@ describe('NewTrailPage', () => {
     expect(repository.createDirectRunBundle).toHaveBeenCalledOnce();
     expect(
       await screen.findByText(
-        '["/runs/run-after-override",{"trailCreated":true}]',
+        '["/trails/trail-after-override",{"trailCreated":true}]',
       ),
     ).toBeInTheDocument();
   });
@@ -384,14 +388,16 @@ describe('NewTrailPage', () => {
     const repository = {
       createDirectRunBundle: vi.fn(async (bundle) => ({
         ...bundle,
-        run: { ...bundle.run, id: 'run-created' },
+        run: { ...bundle.run, id: 'run-created', trailId: 'trail-created' },
       })),
     } as unknown as PromptTrailRepository;
     renderPage(repository);
     await user.type(screen.getByLabelText('Prompt本文'), 'create me');
     await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
     expect(
-      await screen.findByText('["/runs/run-created",{"trailCreated":true}]'),
+      await screen.findByText(
+        '["/trails/trail-created",{"trailCreated":true}]',
+      ),
     ).toBeInTheDocument();
   });
   it('disables repeated submits while saving', async () => {
@@ -422,17 +428,21 @@ describe('NewTrailPage', () => {
       deletedAt: null,
       promptSnapshot: { title: 'Source prompt', body: 'original snapshot' },
     };
-    const sourceTrail = { title: 'Source Trail', kind: 'research' };
+    const sourceTrail = {
+      id: 'trail-source',
+      title: 'Source Trail',
+      kind: 'research',
+    };
     const createDirectRunBundle = vi.fn(async (bundle: any) => ({
       ...bundle,
-      run: { ...bundle.run, id: 'run-reused' },
+      run: { ...bundle.run, id: 'run-reused', trailId: 'trail-reused' },
     }));
     const repository = {
       getRun: vi.fn(async () => sourceRun),
       getTrail: vi.fn(async () => sourceTrail),
       createDirectRunBundle,
     } as unknown as PromptTrailRepository;
-    renderPage(repository, undefined, '/runs/new?sourceRunId=run-source');
+    renderPage(repository, undefined, '/trails/new?sourceRunId=run-source');
 
     const input = await screen.findByDisplayValue('original snapshot');
     expect(screen.getByText(/Source Trail/)).toBeVisible();
@@ -441,7 +451,7 @@ describe('NewTrailPage', () => {
     expect(screen.getByLabelText('Trail種別')).toHaveValue('research');
     expect(
       screen.getByRole('link', { name: '元のTrailを確認' }),
-    ).toHaveAttribute('href', '/runs/run-source');
+    ).toHaveAttribute('href', '/trails/trail-source');
     await user.clear(input);
     await user.type(input, 'edited snapshot');
     await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
@@ -489,7 +499,7 @@ describe('NewTrailPage', () => {
         kind: 'research',
       })),
     } as unknown as PromptTrailRepository;
-    renderPage(repository, undefined, '/runs/new?sourceRunId=slow-run');
+    renderPage(repository, undefined, '/trails/new?sourceRunId=slow-run');
 
     await user.type(screen.getByLabelText('Trail名'), 'My Trail');
     await user.selectOptions(screen.getByLabelText('Trail種別'), 'development');
@@ -524,7 +534,7 @@ describe('NewTrailPage', () => {
     await user.click(screen.getByRole('button', { name: 'Trailを作成' }));
     await user.click(screen.getByRole('button', { name: 'Switch Repository' }));
     await act(async () => resolve({ run: { id: 'old-run' } }));
-    expect(screen.getByText('["/runs/new",null]')).toBeInTheDocument();
+    expect(screen.getByText('["/trails/new",null]')).toBeInTheDocument();
     successView.unmount();
 
     let reject!: (reason: Error) => void;
@@ -548,7 +558,7 @@ describe('NewTrailPage', () => {
       getRun: vi.fn(() => new Promise((done) => (resolve = done))),
       getTrail: vi.fn(async () => ({ title: 'Slow Trail', kind: 'review' })),
     } as unknown as PromptTrailRepository;
-    renderPage(repository, undefined, '/runs/new?sourceRunId=slow-run');
+    renderPage(repository, undefined, '/trails/new?sourceRunId=slow-run');
 
     const input = screen.getByLabelText('Prompt本文');
     await user.type(input, 'my draft');
@@ -571,14 +581,14 @@ describe('NewTrailPage', () => {
         .mockRejectedValueOnce(new Error('temporary'))
         .mockResolvedValueOnce(null),
     } as unknown as PromptTrailRepository;
-    renderPage(repository, undefined, '/runs/new?sourceRunId=unavailable');
+    renderPage(repository, undefined, '/trails/new?sourceRunId=unavailable');
 
     expect(await screen.findByText(/読み込めませんでした/)).toBeVisible();
     await user.click(screen.getByRole('button', { name: '再試行' }));
     expect(await screen.findByText(/見つかりません/)).toBeVisible();
     expect(
       screen.getByRole('link', { name: '空のPromptから始める' }),
-    ).toHaveAttribute('href', '/runs/new');
+    ).toHaveAttribute('href', '/trails/new');
     await user.type(screen.getByLabelText('Prompt本文'), 'discard this');
     await user.click(
       screen.getByRole('link', { name: '空のPromptから始める' }),
@@ -599,7 +609,7 @@ describe('NewTrailPage', () => {
         reusableTrail(id.replace(/^trail-/, '')),
       ),
     } as unknown as PromptTrailRepository;
-    renderPage(repository, undefined, '/runs/new?sourceRunId=run-a', true);
+    renderPage(repository, undefined, '/trails/new?sourceRunId=run-a', true);
     const input = await screen.findByDisplayValue('Run A body');
 
     await user.click(screen.getByRole('button', { name: 'Run B' }));
@@ -615,7 +625,7 @@ describe('NewTrailPage', () => {
       getRun: vi.fn(async () => reusableRun('run-a', 'Run A body')),
       getTrail: vi.fn(async () => reusableTrail('run-a')),
     } as unknown as PromptTrailRepository;
-    renderPage(repository, undefined, '/runs/new?sourceRunId=run-a', true);
+    renderPage(repository, undefined, '/trails/new?sourceRunId=run-a', true);
     const input = await screen.findByDisplayValue('Run A body');
 
     await user.click(screen.getByRole('button', { name: '通常New Trail' }));
@@ -632,7 +642,7 @@ describe('NewTrailPage', () => {
         .mockResolvedValueOnce(reusableRun('run-a', 'Snapshot body')),
       getTrail: vi.fn(async () => reusableTrail('run-a')),
     } as unknown as PromptTrailRepository;
-    renderPage(repository, undefined, '/runs/new?sourceRunId=run-a');
+    renderPage(repository, undefined, '/trails/new?sourceRunId=run-a');
     await screen.findByText(/読み込めませんでした/);
     const input = screen.getByLabelText('Prompt本文');
     await user.type(input, 'User draft');
@@ -655,7 +665,7 @@ describe('NewTrailPage', () => {
         reusableTrail(id.replace(/^trail-/, '')),
       ),
     } as unknown as PromptTrailRepository;
-    renderPage(repository, undefined, '/runs/new?sourceRunId=run-a', true);
+    renderPage(repository, undefined, '/trails/new?sourceRunId=run-a', true);
 
     await user.click(screen.getByRole('button', { name: 'Run B' }));
     const input = await screen.findByDisplayValue('Current Run B body');
@@ -702,7 +712,7 @@ function reusablePrompt(
 function renderSwitchableRepositories(
   initialRepository: PromptTrailRepository,
   nextRepository: PromptTrailRepository,
-  initialEntry = '/runs/new',
+  initialEntry = '/trails/new',
 ) {
   function Harness() {
     const [repository, setRepository] = useState(initialRepository);

@@ -42,7 +42,7 @@ const primaryPages = [
 
 const secondaryPages = [
   {
-    path: '/runs/test-run',
+    path: '/trails/test-trail',
     heading: 'Run Detail',
     startState: '指定されたRunが見つかりません。',
   },

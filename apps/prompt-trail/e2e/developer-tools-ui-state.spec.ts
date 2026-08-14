@@ -41,7 +41,7 @@ test.describe('Developer Tools UI state overrides', () => {
   });
 
   test('restores a New Trail override after reload', async ({ page }) => {
-    await page.goto('/runs/new');
+    await page.goto('/trails/new');
     await applyOverride(page, 'new-trail-form', 'save-failure');
     await expect(page.getByText(/保存に失敗しました/)).toBeVisible();
 

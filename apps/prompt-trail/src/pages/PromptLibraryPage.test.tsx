@@ -131,7 +131,7 @@ describe('PromptLibraryPage', () => {
       screen.getByRole('link', {
         name: `「${prompts[0].title}」からTrailを作成`,
       }),
-    ).toHaveAttribute('href', '/runs/new?sourcePromptId=alpha');
+    ).toHaveAttribute('href', '/trails/new?sourcePromptId=alpha');
     const titleLink = screen.getByRole('link', {
       name: `「${prompts[0].title}」を編集`,
     });

@@ -92,7 +92,7 @@ function DashboardDataSections({ data }: { data: DashboardReadModel }) {
         actions={
           <RouterLink
             className="pt-button pt-button--secondary"
-            to={routePaths.runList}
+            to={routePaths.trailList}
           >
             すべてのTrailを表示
           </RouterLink>
