@@ -34,7 +34,7 @@ export function TrailListPage() {
       : ({ status: 'loading' } as const);
   const pageOverride = selectActiveDeveloperUiState(
     uiStateSnapshot,
-    'run-list-page',
+    'trail-list-page',
   );
   const displayedPageState: TrailListPageState =
     pageOverride === 'failure'

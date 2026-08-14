@@ -9,8 +9,8 @@ export const DEVELOPER_UI_STATE_CATALOG = [
     ],
   },
   {
-    target: 'run-list-page',
-    label: 'Run List Page',
+    target: 'trail-list-page',
+    label: 'Trail List Page',
     states: [
       { state: 'loading', label: 'Loading' },
       { state: 'empty', label: 'Empty' },

@@ -145,19 +145,19 @@ P0-4-3 の状態表示は、Repository 連携前の利用開始状態と、将�
 
 現行の Router / AppShell 実装は、画面構成・利用導線の正本である本資料と、技術・責務境界の正本である [Application Architecture](application-architecture.md) を接続するため、次の Route Contract を参照します。内部構造や Provider / Repository / DB の責務境界は Application Architecture を正本とし、本節では利用者から見える URL、画面概念、ナビゲーション上の扱いのみを固定します。
 
-| route id         | path                      | 画面               | ナビ表示 | 分類 / 備考                                                                          |
-| ---------------- | ------------------------- | ------------------ | -------- | ------------------------------------------------------------------------------------ |
-| `root`           | `/`                       | Public Alpha Guide | あり     | 価値、主要操作、保存制約、Dashboard / Feedbackへの入口                               |
-| `dashboard`      | `/dashboard`              | Dashboard          | あり     | P0-4 以降の基本入口                                                                  |
-| `promptLibrary`  | `/prompts`                | Prompt Library     | あり     | Active Promptの一覧・検索と新規登録・編集への導線                                    |
-| `promptNew`      | `/prompts/new`            | Prompt Editor      | なし     | Prompt Libraryをactive表示し、Default Project配下のActive Promptを新規登録する       |
-| `promptEdit`     | `/prompts/:promptId/edit` | Prompt Editor      | なし     | Prompt Libraryをactive表示し、Active Promptを編集・論理削除する                      |
-| `contextLibrary` | `/contexts`               | Context Library    | なし     | 未完成の間はdirect accessのみ                                                        |
-| `recipeBuilder`  | `/recipes/builder`        | Recipe Builder     | なし     | 未完成の間はdirect accessのみ                                                        |
-| `newTrail`       | `/runs/new`               | New Trail          | なし     | Blank、`sourceRunId`、`sourcePromptId`を区別するcontextual route                     |
-| `runList`        | `/runs`                   | Trail一覧          | なし     | DashboardからのTrail到達性を補うcontextual route。Active Runを更新日時降順で全件表示 |
-| `runDetail`      | `/runs/:runId`            | Run Detail         | なし     | contextual route。常設グローバルナビではなく、Run などの文脈から到達する詳細画面     |
-| `notFound`       | `*`                       | Not Found          | なし     | recovery route。未知 URL から復帰導線を提示するための画面                            |
+| route id         | path                      | 画面               | ナビ表示 | 分類 / 備考                                                                            |
+| ---------------- | ------------------------- | ------------------ | -------- | -------------------------------------------------------------------------------------- |
+| `root`           | `/`                       | Public Alpha Guide | あり     | 価値、主要操作、保存制約、Dashboard / Feedbackへの入口                                 |
+| `dashboard`      | `/dashboard`              | Dashboard          | あり     | P0-4 以降の基本入口                                                                    |
+| `promptLibrary`  | `/prompts`                | Prompt Library     | あり     | Active Promptの一覧・検索と新規登録・編集への導線                                      |
+| `promptNew`      | `/prompts/new`            | Prompt Editor      | なし     | Prompt Libraryをactive表示し、Default Project配下のActive Promptを新規登録する         |
+| `promptEdit`     | `/prompts/:promptId/edit` | Prompt Editor      | なし     | Prompt Libraryをactive表示し、Active Promptを編集・論理削除する                        |
+| `contextLibrary` | `/contexts`               | Context Library    | なし     | 未完成の間はdirect accessのみ                                                          |
+| `recipeBuilder`  | `/recipes/builder`        | Recipe Builder     | なし     | 未完成の間はdirect accessのみ                                                          |
+| `newTrail`       | `/runs/new`               | New Trail          | なし     | Blank、`sourceRunId`、`sourcePromptId`を区別するcontextual route                       |
+| `trailList`      | `/trails`                 | Trail一覧          | なし     | DashboardからのTrail到達性を補うcontextual route。Active Trailを更新日時降順で全件表示 |
+| `runDetail`      | `/runs/:runId`            | Run Detail         | なし     | contextual route。常設グローバルナビではなく、Run などの文脈から到達する詳細画面       |
+| `notFound`       | `*`                       | Not Found          | なし     | recovery route。未知 URL から復帰導線を提示するための画面                              |
 
 Prompt EditorはPage Headerの説明を省き、タイトル、タグ、Prompt本文のDOM順で入力する。タグはテキスト入力とEnterキーでchipとして追加し、各chipの×ボタンで削除できる（trim、24文字上限、10個上限、大文字小文字を無視した重複排除のvalidationを適用し、上限超過・重複・空文字はエラー表示のうえ追加しない）。タグchipは変数バッジと配色を変えて視覚的に区別する。Prompt本文textareaはカード幅いっぱいまで横幅を広げ、タイトル・タグ欄は最大44remに制限する。Prompt本文ラベルの右にコピーアイコンボタンを配置し、textareaの現在入力値をクリップボードへコピーできる（保存中・削除中でも有効）。本文に`${varName}`形式（先頭が英字またはアンダースコア、以降は英数字またはアンダースコア）の変数プレースホルダーが検出されると、クリック不要で常にラベル行の下に変数入力パネル（各変数のバッジ風ラベル＋入力欄）を表示する。パネル内に個別のコピーボタンは持たず、コピーアイコンボタンのクリック時にパネルの現在値を使って置換・コピーする。未入力の変数は`${varName}`のままコピーされる。パネル表示・非表示の切替時にtextareaへ不用意にフォーカスは移動せず、変数が0件になりパネルが消える際にパネル内へフォーカスがあった場合のみコピーアイコンへフォーカスを戻す。編集時はパネルの入力初期値を`prompt.variableValues`から復元し、新規作成時は空で始める。保存時は本文中に存在する変数のキーだけをパネル値から抽出して`variableValues`として一緒に保存し、本文から削除された変数の値は破棄する。Page Header右上とform下部の保存Actionは単一formへ接続し、保存中および削除確認・削除処理・削除失敗中は同時に無効化する。loading、not-found、unavailable、failureではHeader保存を表示しない。
 
