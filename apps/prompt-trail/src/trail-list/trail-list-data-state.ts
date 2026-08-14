@@ -1,15 +1,15 @@
 import type { PromptTrailRepository } from '../repository';
 
 import {
-  loadDashboardReadModel,
-  type DashboardReadModel,
-  type DashboardReadOptions,
-} from './dashboard-read-query';
+  loadTrailListReadModel,
+  type TrailListReadModel,
+  type TrailListReadOptions,
+} from './trail-list-read-query';
 
-export type DashboardDataState =
+export type TrailListDataState =
   | {
       readonly status: 'data';
-      readonly data: DashboardReadModel;
+      readonly data: TrailListReadModel;
     }
   | {
       readonly status: 'empty';
@@ -19,14 +19,14 @@ export type DashboardDataState =
       readonly error: unknown;
     };
 
-export async function loadDashboardDataState(
+export async function loadTrailListDataState(
   repository: PromptTrailRepository,
-  options: DashboardReadOptions,
-): Promise<DashboardDataState> {
+  options?: TrailListReadOptions,
+): Promise<TrailListDataState> {
   try {
-    const data = await loadDashboardReadModel(repository, options);
+    const data = await loadTrailListReadModel(repository, options);
 
-    if (data.recentRuns.length === 0) {
+    if (data.trails.length === 0) {
       return { status: 'empty' };
     }
 
