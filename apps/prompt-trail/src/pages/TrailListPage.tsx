@@ -1,30 +1,30 @@
 import { useEffect, useState } from 'react';
 
-import { loadDashboardDataState, type DashboardDataState } from '../dashboard';
-import type { DashboardReadModel } from '../dashboard';
+import { loadTrailListDataState, type TrailListDataState } from '../trail-list';
+import type { TrailListReadModel } from '../trail-list';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { usePromptTrailDataRevision } from '../app/PromptTrailDataRevisionContext';
 import { PageHeader, PageSection, StateMessage } from '../components/ui';
 import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
 import { selectActiveDeveloperUiState } from '../developer-ui-state';
 
-import { RunTable } from './RunTable';
+import { TrailTable } from './TrailTable';
 
-const RUN_LIST_LIMIT = Number.MAX_SAFE_INTEGER;
+const TRAIL_LIST_LIMIT = Number.MAX_SAFE_INTEGER;
 
-type RunListPageState = { readonly status: 'loading' } | DashboardDataState;
+type TrailListPageState = { readonly status: 'loading' } | TrailListDataState;
 
-type RunListPageStateSnapshot = {
+type TrailListPageStateSnapshot = {
   readonly repository: ReturnType<typeof usePromptTrailRepository>;
-  readonly state: RunListPageState;
+  readonly state: TrailListPageState;
 };
 
-export function RunListPage() {
+export function TrailListPage() {
   const repository = usePromptTrailRepository();
   const { revision } = usePromptTrailDataRevision();
   const uiStateSnapshot = useDeveloperUiStateSnapshot();
   const [pageStateSnapshot, setPageStateSnapshot] =
-    useState<RunListPageStateSnapshot>({
+    useState<TrailListPageStateSnapshot>({
       repository,
       state: { status: 'loading' },
     });
@@ -34,9 +34,9 @@ export function RunListPage() {
       : ({ status: 'loading' } as const);
   const pageOverride = selectActiveDeveloperUiState(
     uiStateSnapshot,
-    'run-list-page',
+    'trail-list-page',
   );
-  const displayedPageState: RunListPageState =
+  const displayedPageState: TrailListPageState =
     pageOverride === 'failure'
       ? { status: 'failure', error: undefined }
       : pageOverride === 'loading' || pageOverride === 'empty'
@@ -46,8 +46,8 @@ export function RunListPage() {
   useEffect(() => {
     let isActive = true;
 
-    loadDashboardDataState(repository, {
-      recentRunLimit: RUN_LIST_LIMIT,
+    loadTrailListDataState(repository, {
+      limit: TRAIL_LIST_LIMIT,
     }).then((dataState) => {
       if (isActive) {
         setPageStateSnapshot({ repository, state: dataState });
@@ -66,25 +66,29 @@ export function RunListPage() {
         title="Trail一覧"
         description="すべてのActive TrailをUpdated日時の降順で表示します。"
       />
-      <RunListStateMessage pageState={displayedPageState} />
+      <TrailListStateMessage pageState={displayedPageState} />
       {displayedPageState.status === 'data' ? (
-        <RunListDataSection data={displayedPageState.data} />
+        <TrailListDataSection data={displayedPageState.data} />
       ) : null}
     </section>
   );
 }
 
-function RunListDataSection({ data }: { data: DashboardReadModel }) {
+function TrailListDataSection({ data }: { data: TrailListReadModel }) {
   return (
     <div className="prompt-trail-page__sections">
       <PageSection title="Trail一覧">
-        <RunTable runs={data.recentRuns} />
+        <TrailTable trails={data.trails} />
       </PageSection>
     </div>
   );
 }
 
-function RunListStateMessage({ pageState }: { pageState: RunListPageState }) {
+function TrailListStateMessage({
+  pageState,
+}: {
+  pageState: TrailListPageState;
+}) {
   switch (pageState.status) {
     case 'loading':
       return (

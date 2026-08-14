@@ -2,19 +2,19 @@ import { useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 
 import { routePaths } from '../app/routes';
-import { loadDashboardDataState, type DashboardDataState } from '../dashboard';
-import type { DashboardReadModel } from '../dashboard';
+import { loadTrailListDataState, type TrailListDataState } from '../trail-list';
+import type { TrailListReadModel } from '../trail-list';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { usePromptTrailDataRevision } from '../app/PromptTrailDataRevisionContext';
 import { PageHeader, PageSection, StateMessage } from '../components/ui';
 import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
 import { selectActiveDeveloperUiState } from '../developer-ui-state';
 
-import { RunTable } from './RunTable';
+import { TrailTable } from './TrailTable';
 
-const DASHBOARD_RECENT_RUN_LIMIT = 5;
+const DASHBOARD_RECENT_TRAIL_LIMIT = 5;
 
-type DashboardPageState = { readonly status: 'loading' } | DashboardDataState;
+type DashboardPageState = { readonly status: 'loading' } | TrailListDataState;
 
 type DashboardPageStateSnapshot = {
   readonly repository: ReturnType<typeof usePromptTrailRepository>;
@@ -48,8 +48,8 @@ export function DashboardPage() {
   useEffect(() => {
     let isActive = true;
 
-    loadDashboardDataState(repository, {
-      recentRunLimit: DASHBOARD_RECENT_RUN_LIMIT,
+    loadTrailListDataState(repository, {
+      limit: DASHBOARD_RECENT_TRAIL_LIMIT,
     }).then((dashboardDataState) => {
       if (isActive) {
         setPageStateSnapshot({ repository, state: dashboardDataState });
@@ -84,21 +84,21 @@ export function DashboardPage() {
   );
 }
 
-function DashboardDataSections({ data }: { data: DashboardReadModel }) {
+function DashboardDataSections({ data }: { data: TrailListReadModel }) {
   return (
     <div className="prompt-trail-page__sections">
       <PageSection
         title="最近のTrail"
         actions={
           <RouterLink
-            className="pt-button pt-button--secondary"
+            className="pt-button pt-button--secondary pt-dashboard-header__all-trails-link"
             to={routePaths.trailList}
           >
             すべてのTrailを表示
           </RouterLink>
         }
       >
-        <RunTable runs={data.recentRuns} />
+        <TrailTable trails={data.trails} />
       </PageSection>
     </div>
   );

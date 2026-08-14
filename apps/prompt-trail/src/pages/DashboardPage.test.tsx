@@ -17,7 +17,7 @@ import {
   createDeveloperUiStateStore,
   type DeveloperUiStateStore,
 } from '../developer-ui-state';
-import type { Link, Project, Recipe, Run, RunStatus, Trail } from '../domain';
+import type { Link, Project, Run, RunStatus, Trail } from '../domain';
 import type { PromptTrailRepository } from '../repository';
 import { sampleDataset, seedSampleData } from '../sample-data';
 import { createDatabaseTestScope } from '../test/database-test-utils';
@@ -191,17 +191,19 @@ describe('DashboardPage', () => {
     expect(screen.getByText('その他')).toBeInTheDocument();
     expect(screen.getByText('完了')).toHaveClass('pt-status-pin--done');
     expect(screen.queryByText(sampleDataset.project.name)).toBeNull();
-    expect(screen.queryByText(sampleDataset.run.evaluation!)).toBeNull();
     const updatedAt = screen.getByText(
-      formatDateTime(sampleDataset.run.updatedAt),
+      formatDateTime(sampleDataset.trail.updatedAt),
     );
-    expect(updatedAt).toHaveAttribute('datetime', sampleDataset.run.updatedAt);
+    expect(updatedAt).toHaveAttribute(
+      'datetime',
+      sampleDataset.trail.updatedAt,
+    );
     expect(screen.getByText('3件')).toBeInTheDocument();
 
-    const runListLink = screen.getByRole('link', {
+    const trailListLink = screen.getByRole('link', {
       name: 'すべてのTrailを表示',
     });
-    expect(runListLink).toHaveAttribute('href', routePaths.trailList);
+    expect(trailListLink).toHaveAttribute('href', routePaths.trailList);
 
     const detailLink = screen.getByRole('link', {
       name: sampleDataset.trail.title,
@@ -218,72 +220,49 @@ describe('DashboardPage', () => {
       screen.getByRole('columnheader', { name: '関連リンク' }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: 'Recipe' })).toBeNull();
-    expect(
-      screen.queryByText(
-        '最近作成したTrailを確認できます。詳細なPromptと関連リンクはTrailから確認してください。',
-      ),
-    ).toBeNull();
-    expect(screen.queryByText('Roadmap再同期 Chat')).toBeNull();
-    expect(screen.queryByText(/Type: chat/)).toBeNull();
-    expect(screen.queryByText(/Role: source/)).toBeNull();
-    expect(
-      screen.queryByText(`Recipe: ${sampleDataset.recipe.title}`),
-    ).toBeNull();
   });
 
-  it('keeps recent runs in read model order and does not fabricate null evaluation text', async () => {
-    const firstRun = createRun({
-      id: 'run-newer' as Run['id'],
-      recipeId: 'recipe-newer' as Run['recipeId'],
-      status: 'in-progress',
-      evaluation: null,
-      updatedAt: '2026-07-13T00:00:00.000Z' as Run['updatedAt'],
+  it('keeps Trails in read model order (most recently updated first)', async () => {
+    const olderTrail = createTrail({
+      id: 'trail-older' as Trail['id'],
+      title: '後に表示されるTrail',
+      updatedAt: '2026-07-12T00:00:00.000Z' as Trail['updatedAt'],
     });
-    const secondRun = createRun({
+    const newerTrail = createTrail({
+      id: 'trail-newer' as Trail['id'],
+      title: '先に表示されるTrail',
+      updatedAt: '2026-07-13T00:00:00.000Z' as Trail['updatedAt'],
+    });
+    const olderRun = createRun({
       id: 'run-older' as Run['id'],
-      recipeId: 'recipe-older' as Run['recipeId'],
+      trailId: olderTrail.id,
       status: 'done',
-      evaluation: 'needs-improvement',
-      updatedAt: '2026-07-12T00:00:00.000Z' as Run['updatedAt'],
     });
-    const firstRecipe = createRecipe({
-      id: 'recipe-newer' as Recipe['id'],
-      title: '先に表示されるRecipe',
-    });
-    const secondRecipe = createRecipe({
-      id: 'recipe-older' as Recipe['id'],
-      title: '後に表示されるRecipe',
-    });
-    const fallbackTitleLink = createLink({
-      id: 'link-fallback' as Link['id'],
-      runId: firstRun.id,
-      title: null,
-      type: 'external',
-      role: 'reference',
+    const newerRun = createRun({
+      id: 'run-newer' as Run['id'],
+      trailId: newerTrail.id,
+      status: 'in-progress',
     });
     const repository = createResolvedDataRepository({
-      runs: [firstRun, secondRun],
-      recipes: new Map([
-        [firstRun.recipeId, firstRecipe],
-        [secondRun.recipeId, secondRecipe],
+      trails: [newerTrail, olderTrail],
+      runsByTrailId: new Map([
+        [newerTrail.id, [newerRun]],
+        [olderTrail.id, [olderRun]],
       ]),
-      linksByRunId: new Map([[firstRun.id, [fallbackTitleLink]]]),
+      linksByRunId: new Map([
+        [newerRun.id, [createLink({ runId: newerRun.id })]],
+      ]),
     });
 
     renderDashboardPage(repository);
 
-    const runHeadings = await screen.findAllByRole('heading', { level: 3 });
-    expect(runHeadings.map((heading) => heading.textContent)).toEqual([
-      sampleDataset.trail.title,
-      sampleDataset.trail.title,
+    const trailHeadings = await screen.findAllByRole('heading', { level: 3 });
+    expect(trailHeadings.map((heading) => heading.textContent)).toEqual([
+      newerTrail.title,
+      olderTrail.title,
     ]);
-    expect(screen.queryByText('未評価')).toBeNull();
-    expect(screen.queryByText('なし')).toBeNull();
     expect(screen.getByText('1件')).toBeInTheDocument();
-    expect(screen.queryByText('external')).toBeNull();
-    expect(screen.queryByText(/Type: external/)).toBeNull();
-    expect(screen.queryByText(/Role: reference/)).toBeNull();
-    expect(screen.queryByText(`Recipe: ${firstRecipe.title}`)).toBeNull();
+    expect(screen.getByText('0件')).toBeInTheDocument();
     expect(screen.getByText('実行中')).toHaveClass(
       'pt-status-pin--in-progress',
     );
@@ -303,7 +282,11 @@ describe('DashboardPage', () => {
         status,
       });
 
-      renderDashboardPage(createResolvedDataRepository({ runs: [run] }));
+      renderDashboardPage(
+        createResolvedDataRepository({
+          runsByTrailId: new Map([[sampleDataset.trail.id, [run]]]),
+        }),
+      );
 
       expect(await screen.findByText(label)).toHaveClass(
         'pt-status-pin',
@@ -312,7 +295,7 @@ describe('DashboardPage', () => {
     },
   );
 
-  it('renders a Direct Run Snapshot title without Recipe metadata', async () => {
+  it('renders a Direct Run Trail without Recipe metadata', async () => {
     const directTrail = createTrail({
       id: 'direct-dashboard-trail' as Trail['id'],
       title: 'Direct Run Prompt',
@@ -334,8 +317,8 @@ describe('DashboardPage', () => {
 
     renderDashboardPage(
       createResolvedDataRepository({
-        runs: [directRun],
-        trails: new Map([[directTrail.id, directTrail]]),
+        trails: [directTrail],
+        runsByTrailId: new Map([[directTrail.id, [directRun]]]),
       }),
     );
 
@@ -346,8 +329,6 @@ describe('DashboardPage', () => {
       }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: 'Recipe' })).toBeNull();
-    expect(screen.queryByText('—')).toBeNull();
-    expect(screen.queryByText(/Recipe:/)).toBeNull();
   });
 
   it('does not overwrite the active repository result with a stale repository result', async () => {
@@ -443,29 +424,27 @@ function DataRevisionTrigger() {
 }
 
 type ResolvedDataRepositoryOptions = {
-  readonly runs?: readonly Run[];
-  readonly recipes?: ReadonlyMap<Run['recipeId'], Recipe>;
-  readonly trails?: ReadonlyMap<Run['trailId'], Trail>;
+  readonly trails?: readonly Trail[];
+  readonly runsByTrailId?: ReadonlyMap<Trail['id'], readonly Run[]>;
   readonly linksByRunId?: ReadonlyMap<Run['id'], readonly Link[]>;
 };
 
 function createResolvedDataRepository(
   options: ResolvedDataRepositoryOptions = {},
 ): PromptTrailRepository {
+  const trails = options.trails ?? [sampleDataset.trail];
+  const runsByTrailId =
+    options.runsByTrailId ??
+    new Map([[sampleDataset.trail.id, [sampleDataset.run]]]);
+
   return {
     listActiveProjects: vi.fn(async () => [sampleDataset.project]),
-    listActiveRuns: vi.fn(async () => options.runs ?? [sampleDataset.run]),
-    getRecipe: vi.fn(
-      async (recipeId: Run['recipeId']) =>
-        options.recipes?.get(recipeId) ?? sampleDataset.recipe,
-    ),
-    getTrail: vi.fn(
-      async (trailId: Run['trailId']) =>
-        options.trails?.get(trailId) ?? sampleDataset.trail,
+    listActiveTrails: vi.fn(async () => trails),
+    listRunsByTrail: vi.fn(
+      async (trailId: Trail['id']) => runsByTrailId.get(trailId) ?? [],
     ),
     listActiveLinks: vi.fn(
-      async (runId: Run['id']) =>
-        options.linksByRunId?.get(runId) ?? sampleDataset.links,
+      async (runId: Run['id']) => options.linksByRunId?.get(runId) ?? [],
     ),
   } as unknown as PromptTrailRepository;
 }
@@ -476,10 +455,6 @@ function createRun(overrides: Partial<Run>): Run {
 
 function createTrail(overrides: Partial<Trail>): Trail {
   return { ...sampleDataset.trail, ...overrides };
-}
-
-function createRecipe(overrides: Partial<Recipe>): Recipe {
-  return { ...sampleDataset.recipe, ...overrides };
 }
 
 function createLink(overrides: Partial<Link>): Link {
