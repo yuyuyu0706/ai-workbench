@@ -135,4 +135,79 @@ describe('loadTrailListReadModel', () => {
       sampleDataset.trail.id,
     ]);
   });
+
+  it('sums active Link counts across every Run of a Trail into linkCount', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    await repository.insertTrailBundle({
+      project: { ...sampleDataset.project },
+      prompt: { ...sampleDataset.prompt },
+      context: { ...sampleDataset.context },
+      recipe: { ...sampleDataset.recipe },
+      trail: { ...sampleDataset.trail },
+      run: cloneSampleRun(),
+      links: [...sampleDataset.links],
+    });
+    await repository.saveRun(
+      cloneSampleRun({
+        id: runId('run-list-link-count'),
+        updatedAt: utc('2026-07-13T00:00:00.000Z'),
+      }),
+    );
+    await repository.saveLink({
+      ...sampleDataset.links[0],
+      id: 'link-list-extra' as (typeof sampleDataset.links)[0]['id'],
+      runId: runId('run-list-link-count'),
+    });
+
+    const model = await loadTrailListReadModel(repository);
+
+    expect(model.trails[0]).toMatchObject({
+      linkCount: sampleDataset.links.length + 1,
+    });
+  });
+
+  it('applies the limit option after sorting by updatedAt descending', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    await repository.insertTrailBundle({
+      project: { ...sampleDataset.project },
+      prompt: { ...sampleDataset.prompt },
+      context: { ...sampleDataset.context },
+      recipe: { ...sampleDataset.recipe },
+      trail: {
+        ...sampleDataset.trail,
+        updatedAt: utc('2026-07-12T00:00:00.000Z'),
+      },
+      run: cloneSampleRun(),
+      links: [],
+    });
+    const secondTrail = {
+      ...sampleDataset.trail,
+      id: 'trail-list-limit-second' as (typeof sampleDataset.trail)['id'],
+      updatedAt: utc('2026-07-13T00:00:00.000Z'),
+    };
+    const secondRun = cloneSampleRun({
+      id: runId('run-list-limit-second'),
+      trailId: secondTrail.id,
+      updatedAt: utc('2026-07-13T00:00:00.000Z'),
+    });
+    await repository.saveTrail(secondTrail);
+    await repository.saveRun(secondRun);
+
+    const model = await loadTrailListReadModel(repository, { limit: 1 });
+
+    expect(model.trails.map((item) => item.trail.id)).toEqual([
+      secondTrail.id,
+    ]);
+  });
+
+  it('rejects a negative limit', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+
+    await expect(
+      loadTrailListReadModel(repository, { limit: -1 }),
+    ).rejects.toThrow('limit must be a non-negative integer');
+  });
 });

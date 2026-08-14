@@ -11,16 +11,16 @@ import type { PromptTrailRepository } from '../repository';
 import { sampleDataset, seedSampleData } from '../sample-data';
 import { createDatabaseTestScope } from '../test/database-test-utils';
 
-import { RunListPage } from './RunListPage';
+import { TrailListPage } from './TrailListPage';
 import { formatDateTime } from './date-time';
 
-const databaseTestScope = createDatabaseTestScope('run-list-page');
+const databaseTestScope = createDatabaseTestScope('trail-list-page');
 
 afterEach(async () => {
   await databaseTestScope.cleanup();
 });
 
-describe('RunListPage', () => {
+describe('TrailListPage', () => {
   it('shows a page-local loading state while the repository read is pending', () => {
     const listActiveProjects = vi.fn<() => Promise<readonly Project[]>>(
       () => new Promise(() => undefined),
@@ -29,7 +29,7 @@ describe('RunListPage', () => {
       listActiveProjects,
     } as unknown as PromptTrailRepository;
 
-    renderRunListPage(repository);
+    renderTrailListPage(repository);
 
     expect(screen.getByRole('status')).toHaveTextContent(
       'Trail一覧を読み込んでいます...',
@@ -41,7 +41,7 @@ describe('RunListPage', () => {
     const database = databaseTestScope.createDatabase();
     const runtime = createPromptTrailRuntime(database);
 
-    renderRunListPage(runtime.repository);
+    renderTrailListPage(runtime.repository);
 
     expect(
       await screen.findByText('Repositoryに表示できるTrailがまだありません。'),
@@ -53,7 +53,7 @@ describe('RunListPage', () => {
     const runtime = createPromptTrailRuntime(database);
     await seedSampleData(runtime.repository);
 
-    renderRunListPage(runtime.repository);
+    renderTrailListPage(runtime.repository);
 
     await waitFor(() => {
       expect(screen.queryByText('Trail一覧を読み込んでいます...')).toBeNull();
@@ -71,9 +71,12 @@ describe('RunListPage', () => {
       buildTrailDetailPath(sampleDataset.trail.id),
     );
     const updatedAt = screen.getByText(
-      formatDateTime(sampleDataset.run.updatedAt),
+      formatDateTime(sampleDataset.trail.updatedAt),
     );
-    expect(updatedAt).toHaveAttribute('datetime', sampleDataset.run.updatedAt);
+    expect(updatedAt).toHaveAttribute(
+      'datetime',
+      sampleDataset.trail.updatedAt,
+    );
   });
 
   it('shows a failure state without exposing the internal error value', async () => {
@@ -83,7 +86,7 @@ describe('RunListPage', () => {
       }),
     } as unknown as PromptTrailRepository;
 
-    renderRunListPage(repository);
+    renderTrailListPage(repository);
 
     expect(
       await screen.findByText('Trail一覧の読み込みに失敗しました。'),
@@ -91,7 +94,7 @@ describe('RunListPage', () => {
     expect(screen.queryByText('raw database stack detail')).toBeNull();
   });
 
-  it('lists more than five Runs, unlike the Dashboard recent list', async () => {
+  it('lists more than five Trails, unlike the Dashboard recent list', async () => {
     const trails = Array.from({ length: 6 }, (_, index) =>
       createTrail({
         id: `trail-${index}` as Trail['id'],
@@ -116,7 +119,7 @@ describe('RunListPage', () => {
     );
     const repository = createResolvedDataRepository(runs, trails);
 
-    renderRunListPage(repository);
+    renderTrailListPage(repository);
 
     for (const trail of trails) {
       expect(
@@ -126,11 +129,11 @@ describe('RunListPage', () => {
   });
 });
 
-function renderRunListPage(repository: PromptTrailRepository) {
+function renderTrailListPage(repository: PromptTrailRepository) {
   return render(
     <MemoryRouter>
       <PromptTrailRepositoryProvider repository={repository}>
-        <RunListPage />
+        <TrailListPage />
       </PromptTrailRepositoryProvider>
     </MemoryRouter>,
   );
@@ -142,11 +145,9 @@ function createResolvedDataRepository(
 ): PromptTrailRepository {
   return {
     listActiveProjects: vi.fn(async () => [sampleDataset.project]),
-    listActiveRuns: vi.fn(async () => runs),
-    getRecipe: vi.fn(async () => sampleDataset.recipe),
-    getTrail: vi.fn(
-      async (id: Trail['id']) =>
-        trails.find((trail) => trail.id === id) ?? null,
+    listActiveTrails: vi.fn(async () => trails),
+    listRunsByTrail: vi.fn(async (trailId: Trail['id']) =>
+      runs.filter((run) => run.trailId === trailId),
     ),
     listActiveLinks: vi.fn(async () => sampleDataset.links),
   } as unknown as PromptTrailRepository;

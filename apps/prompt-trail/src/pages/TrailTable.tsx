@@ -1,13 +1,17 @@
 import { Link as RouterLink } from 'react-router-dom';
 
 import { buildTrailDetailPath } from '../app/routes';
-import type { DashboardRecentRun } from '../dashboard';
 import { RunStatusPin } from '../run-status';
+import type { TrailListItem } from '../trail-list';
 import { TRAIL_KIND_LABELS } from '../trail-metadata';
 
 import { formatDateTime } from './date-time';
 
-export function RunTable({ runs }: { runs: readonly DashboardRecentRun[] }) {
+export function TrailTable({
+  trails,
+}: {
+  trails: readonly TrailListItem[];
+}) {
   return (
     <table className="pt-dashboard-runs">
       <thead>
@@ -30,16 +34,23 @@ export function RunTable({ runs }: { runs: readonly DashboardRecentRun[] }) {
         </tr>
       </thead>
       <tbody>
-        {runs.map((recentRun) => (
-          <RunTableRow key={recentRun.run.id} recentRun={recentRun} />
+        {trails.map((trailListItem) => (
+          <TrailTableRow
+            key={trailListItem.trail.id}
+            trailListItem={trailListItem}
+          />
         ))}
       </tbody>
     </table>
   );
 }
 
-function RunTableRow({ recentRun }: { recentRun: DashboardRecentRun }) {
-  const { run, trail, links } = recentRun;
+function TrailTableRow({
+  trailListItem,
+}: {
+  trailListItem: TrailListItem;
+}) {
+  const { trail, kind, status, updatedAt, linkCount } = trailListItem;
 
   return (
     <tr className="pt-dashboard-run-row">
@@ -49,25 +60,25 @@ function RunTableRow({ recentRun }: { recentRun: DashboardRecentRun }) {
             className="pt-dashboard-run-row__title-link"
             to={buildTrailDetailPath(trail.id)}
           >
-            {trail.title}
+            {trailListItem.trail.title}
           </RouterLink>
         </h3>
       </th>
       <td className="pt-dashboard-run-row__kind">
         <span className="pt-dashboard-run-row__mobile-label">Trail種別</span>
-        <span>{TRAIL_KIND_LABELS[trail.kind]}</span>
+        <span>{TRAIL_KIND_LABELS[kind]}</span>
       </td>
       <td className="pt-dashboard-run-row__status">
         <span className="pt-dashboard-run-row__mobile-label">ステータス</span>
-        <RunStatusPin status={run.status} />
+        <RunStatusPin status={status} />
       </td>
       <td className="pt-dashboard-run-row__updated-at">
         <span className="pt-dashboard-run-row__mobile-label">更新日時</span>
-        <time dateTime={run.updatedAt}>{formatDateTime(run.updatedAt)}</time>
+        <time dateTime={updatedAt}>{formatDateTime(updatedAt)}</time>
       </td>
       <td className="pt-dashboard-run-row__links">
         <span className="pt-dashboard-run-row__mobile-label">関連リンク</span>
-        <span>{links.length}件</span>
+        <span>{linkCount}件</span>
       </td>
     </tr>
   );
