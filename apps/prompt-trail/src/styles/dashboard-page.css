@@ -1,3 +1,8 @@
+.pt-dashboard-header__all-trails-link {
+  border: none;
+  background: none;
+}
+
 .pt-dashboard-runs {
   width: 100%;
   border-collapse: separate;

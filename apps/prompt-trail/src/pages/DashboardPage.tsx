@@ -91,7 +91,7 @@ function DashboardDataSections({ data }: { data: TrailListReadModel }) {
         title="最近のTrail"
         actions={
           <RouterLink
-            className="pt-button pt-button--secondary"
+            className="pt-button pt-button--secondary pt-dashboard-header__all-trails-link"
             to={routePaths.trailList}
           >
             すべてのTrailを表示
