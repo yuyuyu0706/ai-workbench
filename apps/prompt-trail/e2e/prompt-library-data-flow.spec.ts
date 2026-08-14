@@ -1007,7 +1007,7 @@ test.describe('Prompt Library data flow', () => {
     await expect(page.getByLabel('Prompt本文')).toHaveAttribute('readonly', '');
     await page.getByLabel('Trail名').fill('反復利用Trail 1');
     await page.getByRole('button', { name: 'Trailを作成' }).click();
-    await expect(page).toHaveURL(/\/trails\/run-/);
+    await expect(page).toHaveURL(/\/trails\/trail-/);
     await expect(
       page.getByText('変更内容を確認して実装してください。'),
     ).toBeVisible();
@@ -1016,7 +1016,7 @@ test.describe('Prompt Library data flow', () => {
     await page.reload();
     await page.getByLabel('Trail名').fill('反復利用Trail 2');
     await page.getByRole('button', { name: 'Trailを作成' }).click();
-    await expect(page).toHaveURL(/\/trails\/run-/);
+    await expect(page).toHaveURL(/\/trails\/trail-/);
 
     const counts = await page.evaluate(async () => {
       const { createPromptTrailRuntime } =
@@ -1059,7 +1059,7 @@ test.describe('Prompt Library data flow', () => {
     await page.goto('/trails/new?sourcePromptId=prompt-library-e2e');
     await page.getByLabel('Trail名').fill('編集前Run A');
     await page.getByRole('button', { name: 'Trailを作成' }).click();
-    await expect(page).toHaveURL(/\/trails\/run-/);
+    await expect(page).toHaveURL(/\/trails\/trail-/);
     const runAUrl = page.url();
     await expect(
       page.getByText('変更内容を確認して実装してください。'),
@@ -1099,7 +1099,7 @@ test.describe('Prompt Library data flow', () => {
       '保持する競合draft',
     );
     await stalePage.getByRole('button', { name: 'Trailを作成' }).click();
-    await expect(stalePage).toHaveURL(/\/trails\/run-/);
+    await expect(stalePage).toHaveURL(/\/trails\/trail-/);
     await expect(stalePage.getByText('編集後のPrompt本文')).toBeVisible();
 
     await editorPage.goto('/prompts/prompt-library-e2e/edit');

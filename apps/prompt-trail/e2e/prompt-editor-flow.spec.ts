@@ -271,7 +271,7 @@ test.describe('Prompt Editor flow', () => {
       .getByLabel('Prompt本文')
       .fill('New Trailから保存されるActive Prompt');
     await page.getByRole('button', { name: 'Trailを作成' }).click();
-    await expect(page).toHaveURL(/\/trails\/run-/);
+    await expect(page).toHaveURL(/\/trails\/trail-/);
     await page.goto('/prompts');
     await expect(page.getByRole('table', { name: 'Prompt一覧' })).toContainText(
       'New Trailから保存されるActive Prompt',
