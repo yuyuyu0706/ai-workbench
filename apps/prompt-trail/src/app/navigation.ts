@@ -8,7 +8,7 @@ export type GlobalNavigationRouteId =
   | typeof routeIds.promptLibrary;
 
 export type ContextualRouteId =
-  typeof routeIds.newTrail | typeof routeIds.runDetail;
+  typeof routeIds.newTrail | typeof routeIds.trailDetail;
 export type RecoveryRouteId = typeof routeIds.notFound;
 
 export interface NavigationItem {
@@ -19,7 +19,7 @@ export interface NavigationItem {
 
 export const contextualRouteIds = [
   routeIds.newTrail,
-  routeIds.runDetail,
+  routeIds.trailDetail,
 ] as const satisfies readonly ContextualRouteId[];
 export const recoveryRouteIds = [
   routeIds.notFound,

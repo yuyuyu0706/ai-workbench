@@ -266,12 +266,12 @@ test.describe('Prompt Editor flow', () => {
       .fill('320pxでも操作できる本文');
     await expectNoHorizontalOverflow(page);
 
-    await page.goto('/runs/new');
+    await page.goto('/trails/new');
     await page
       .getByLabel('Prompt本文')
       .fill('New Trailから保存されるActive Prompt');
     await page.getByRole('button', { name: 'Trailを作成' }).click();
-    await expect(page).toHaveURL(/\/runs\/run-/);
+    await expect(page).toHaveURL(/\/trails\/trail-/);
     await page.goto('/prompts');
     await expect(page.getByRole('table', { name: 'Prompt一覧' })).toContainText(
       'New Trailから保存されるActive Prompt',

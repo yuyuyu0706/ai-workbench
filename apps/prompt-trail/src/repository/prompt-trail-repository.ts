@@ -600,6 +600,15 @@ export class PromptTrailRepository {
     return (await this.database.runs.get(runId)) ?? null;
   }
 
+  async listRunsByTrail(trailId: TrailId): Promise<readonly Run[]> {
+    const runs = await this.database.runs
+      .where('trailId')
+      .equals(trailId)
+      .toArray();
+
+    return runs.filter((run) => run.deletedAt === null);
+  }
+
   async listActiveRuns(projectId: ProjectId): Promise<readonly Run[]> {
     const runs = await this.database.runs
       .orderBy('updatedAt')

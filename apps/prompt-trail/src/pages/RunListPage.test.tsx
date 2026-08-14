@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
 import { PromptTrailRepositoryProvider } from '../app/PromptTrailRepositoryContext';
-import { buildRunDetailPath } from '../app/routes';
+import { buildTrailDetailPath } from '../app/routes';
 import { createPromptTrailRuntime } from '../app/prompt-trail-runtime';
 import type { Project, Run, Trail } from '../domain';
 import type { PromptTrailRepository } from '../repository';
@@ -68,7 +68,7 @@ describe('RunListPage', () => {
     });
     expect(detailLink).toHaveAttribute(
       'href',
-      buildRunDetailPath(sampleDataset.run.id),
+      buildTrailDetailPath(sampleDataset.trail.id),
     );
     const updatedAt = screen.getByText(
       formatDateTime(sampleDataset.run.updatedAt),

@@ -33,7 +33,7 @@ import {
 import { RunStatusPin } from '../run-status';
 export function RunDetailPage() {
   const repository = usePromptTrailRepository();
-  const { runId = '' } = useParams();
+  const { trailId = '' } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const uiStateSnapshot = useDeveloperUiStateSnapshot();
@@ -42,7 +42,7 @@ export function RunDetailPage() {
   const metadataEditButtonRef = useRef<HTMLButtonElement>(null);
   const metadataReloadButtonRef = useRef<HTMLButtonElement>(null);
   const metadataErrorId = useId();
-  const activeIdentityRef = useRef({ repository, runId, mounted: true });
+  const activeIdentityRef = useRef({ repository, trailId, mounted: true });
   const metadataSubmissionRef = useRef<symbol | null>(null);
   const metadataReloadRef = useRef<symbol | null>(null);
   const linkInformationId = useId();
@@ -53,16 +53,16 @@ export function RunDetailPage() {
   const trailCreated =
     (location.state as { trailCreated?: boolean } | null)?.trailCreated ===
     true;
-  const [createdNoticeRunId] = useState(trailCreated ? runId : null);
+  const [createdNoticeRunId] = useState(trailCreated ? trailId : null);
   const [snapshot, setSnapshot] = useState<{
     repository: typeof repository;
-    runId: string;
+    trailId: string;
     state: RunDetailDataState | { status: 'loading' };
     links: readonly TrailLink[];
-  }>({ repository, runId, state: { status: 'loading' }, links: [] });
+  }>({ repository, trailId, state: { status: 'loading' }, links: [] });
   const [formSnapshot, setFormSnapshot] = useState({
     repository,
-    runId,
+    trailId,
     title: '',
     url: '',
     type: '' as SelectableLinkType | '',
@@ -72,14 +72,14 @@ export function RunDetailPage() {
   });
   const [deleteSnapshot, setDeleteSnapshot] = useState({
     repository,
-    runId,
+    trailId,
     linkId: null as LinkId | null,
     status: 'idle' as 'idle' | 'deleting' | 'failure',
     successNotice: false,
   });
   const [metadataSnapshot, setMetadataSnapshot] = useState({
     repository,
-    runId,
+    trailId,
     trailTitle: '',
     trailKind: 'other' as TrailKind,
     expectedUpdatedAt: '' as UtcDateTimeString,
@@ -88,15 +88,15 @@ export function RunDetailPage() {
     successNotice: false,
   });
   const isCurrent =
-    snapshot.repository === repository && snapshot.runId === runId;
+    snapshot.repository === repository && snapshot.trailId === trailId;
   const state = isCurrent ? snapshot.state : ({ status: 'loading' } as const);
   const links = isCurrent ? snapshot.links : [];
   const form =
-    formSnapshot.repository === repository && formSnapshot.runId === runId
+    formSnapshot.repository === repository && formSnapshot.trailId === trailId
       ? formSnapshot
       : {
           repository,
-          runId,
+          trailId,
           title: '',
           url: '',
           type: '' as const,
@@ -105,20 +105,21 @@ export function RunDetailPage() {
           successNotice: false,
         };
   const deletion =
-    deleteSnapshot.repository === repository && deleteSnapshot.runId === runId
+    deleteSnapshot.repository === repository &&
+    deleteSnapshot.trailId === trailId
       ? deleteSnapshot
       : {
           repository,
-          runId,
+          trailId,
           linkId: null,
           status: 'idle' as const,
           successNotice: false,
         };
   const metadata =
     metadataSnapshot.repository === repository &&
-    metadataSnapshot.runId === runId
+    metadataSnapshot.trailId === trailId
       ? metadataSnapshot
-      : { ...metadataSnapshot, repository, runId, status: 'view' as const };
+      : { ...metadataSnapshot, repository, trailId, status: 'view' as const };
   const pageOverride = selectActiveDeveloperUiState(
     uiStateSnapshot,
     'run-detail-page',
@@ -175,13 +176,13 @@ export function RunDetailPage() {
       : links[0]?.id
     : null;
   useLayoutEffect(() => {
-    activeIdentityRef.current = { repository, runId, mounted: true };
+    activeIdentityRef.current = { repository, trailId, mounted: true };
     metadataSubmissionRef.current = null;
     metadataReloadRef.current = null;
     return () => {
       activeIdentityRef.current.mounted = false;
     };
-  }, [repository, runId]);
+  }, [repository, trailId]);
   useEffect(() => {
     if (trailCreated) {
       void navigate(`${location.pathname}${location.search}${location.hash}`, {
@@ -198,11 +199,11 @@ export function RunDetailPage() {
   ]);
   useEffect(() => {
     let active = true;
-    loadRunDetailDataState(repository, runId).then((next) => {
+    loadRunDetailDataState(repository, trailId).then((next) => {
       if (active)
         setSnapshot({
           repository,
-          runId,
+          trailId,
           state: next,
           links: next.status === 'data' ? next.data.links : [],
         });
@@ -210,7 +211,7 @@ export function RunDetailPage() {
     return () => {
       active = false;
     };
-  }, [repository, runId]);
+  }, [repository, trailId]);
   useEffect(() => {
     if (displayedMetadataStatus === 'editing')
       metadataInputRef.current?.focus();
@@ -250,7 +251,7 @@ export function RunDetailPage() {
       const button = deleteButtonRefs.current.get(deletion.linkId);
       setDeleteSnapshot({
         repository,
-        runId,
+        trailId,
         linkId: null,
         status: 'idle',
         successNotice: false,
@@ -259,14 +260,14 @@ export function RunDetailPage() {
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [deleteOverride, deletion.linkId, deletion.status, repository, runId]);
+  }, [deleteOverride, deletion.linkId, deletion.status, repository, trailId]);
 
   function cancelDelete(linkId: LinkId) {
     if (deleteOverride !== null) return;
     const button = deleteButtonRefs.current.get(linkId);
     setDeleteSnapshot({
       repository,
-      runId,
+      trailId,
       linkId: null,
       status: 'idle',
       successNotice: false,
@@ -283,7 +284,7 @@ export function RunDetailPage() {
       return;
     setDeleteSnapshot({
       repository,
-      runId,
+      trailId,
       linkId,
       status: 'deleting',
       successNotice: false,
@@ -295,7 +296,7 @@ export function RunDetailPage() {
         new Date().toISOString() as UtcDateTimeString,
       );
       setSnapshot((current) =>
-        current.repository === repository && current.runId === runId
+        current.repository === repository && current.trailId === trailId
           ? {
               ...current,
               links: current.links.filter((link) => link.id !== linkId),
@@ -304,12 +305,12 @@ export function RunDetailPage() {
       );
       setDeleteSnapshot((current) =>
         current.repository === repository &&
-        current.runId === runId &&
+        current.trailId === trailId &&
         current.linkId === linkId &&
         current.status === 'deleting'
           ? {
               repository,
-              runId,
+              trailId,
               linkId: null,
               status: 'idle',
               successNotice: true,
@@ -319,7 +320,7 @@ export function RunDetailPage() {
     } catch {
       setDeleteSnapshot((current) =>
         current.repository === repository &&
-        current.runId === runId &&
+        current.trailId === trailId &&
         current.linkId === linkId &&
         current.status === 'deleting'
           ? { ...current, status: 'failure', successNotice: false }
@@ -352,7 +353,7 @@ export function RunDetailPage() {
       url = parsed.toString();
     } catch {
       setFormSnapshot((current) =>
-        current.repository === repository && current.runId === runId
+        current.repository === repository && current.trailId === trailId
           ? {
               ...current,
               status: 'failure',
@@ -389,15 +390,15 @@ export function RunDetailPage() {
         }),
       );
       setSnapshot((current) =>
-        current.repository === repository && current.runId === runId
+        current.repository === repository && current.trailId === trailId
           ? { ...current, links: [...current.links, link] }
           : current,
       );
       setFormSnapshot((current) =>
-        current.repository === repository && current.runId === runId
+        current.repository === repository && current.trailId === trailId
           ? {
               repository,
-              runId,
+              trailId,
               title: '',
               url: '',
               type: '',
@@ -409,7 +410,7 @@ export function RunDetailPage() {
       );
     } catch {
       setFormSnapshot((current) =>
-        current.repository === repository && current.runId === runId
+        current.repository === repository && current.trailId === trailId
           ? {
               ...current,
               status: 'failure',
@@ -424,7 +425,7 @@ export function RunDetailPage() {
     if (metadataOverride !== null || state.status !== 'data') return;
     setMetadataSnapshot({
       repository,
-      runId,
+      trailId,
       trailTitle: state.data.trail.title,
       trailKind: state.data.trail.kind,
       expectedUpdatedAt: state.data.trail.updatedAt,
@@ -489,7 +490,7 @@ export function RunDetailPage() {
       if (
         !active.mounted ||
         active.repository !== repository ||
-        active.runId !== runId ||
+        active.trailId !== trailId ||
         metadataSubmissionRef.current !== token
       )
         return;
@@ -497,7 +498,7 @@ export function RunDetailPage() {
       if (result.status === 'success') {
         setSnapshot((current) =>
           current.repository === repository &&
-          current.runId === runId &&
+          current.trailId === trailId &&
           current.state.status === 'data'
             ? {
                 ...current,
@@ -510,7 +511,7 @@ export function RunDetailPage() {
         );
         setMetadataSnapshot({
           repository,
-          runId,
+          trailId,
           trailTitle: result.trail.title,
           trailKind: result.trail.kind,
           expectedUpdatedAt: result.trail.updatedAt,
@@ -530,7 +531,7 @@ export function RunDetailPage() {
       if (metadataSubmissionRef.current === token) {
         metadataSubmissionRef.current = null;
         setMetadataSnapshot((current) =>
-          current.repository === repository && current.runId === runId
+          current.repository === repository && current.trailId === trailId
             ? { ...current, status: 'failure' }
             : current,
         );
@@ -542,22 +543,27 @@ export function RunDetailPage() {
     const token = Symbol('metadata-reload');
     metadataReloadRef.current = token;
     const requestedRepository = repository;
-    const requestedRunId = runId;
-    const latest = await loadRunDetailDataState(repository, runId);
+    const requestedRunId = trailId;
+    const latest = await loadRunDetailDataState(repository, trailId);
     const active = activeIdentityRef.current;
     if (
       !active.mounted ||
       active.repository !== requestedRepository ||
-      active.runId !== requestedRunId ||
+      active.trailId !== requestedRunId ||
       metadataReloadRef.current !== token
     )
       return;
     metadataReloadRef.current = null;
     if (latest.status !== 'data') return;
-    setSnapshot({ repository, runId, state: latest, links: latest.data.links });
+    setSnapshot({
+      repository,
+      trailId,
+      state: latest,
+      links: latest.data.links,
+    });
     setMetadataSnapshot({
       repository,
-      runId,
+      trailId,
       trailTitle: latest.data.trail.title,
       trailKind: latest.data.trail.kind,
       expectedUpdatedAt: latest.data.trail.updatedAt,
@@ -599,7 +605,7 @@ export function RunDetailPage() {
         description={`${project.name} のTrail: ${trail.title}`}
       />
       <div className="prompt-trail-page__sections">
-        {createdNoticeRunId === runId ? (
+        {createdNoticeRunId === trailId ? (
           <p className="pt-success-notice" role="status">
             Trailを作成しました。Promptを確認し、作業に関係する関連リンクを追加してください。
           </p>
@@ -974,7 +980,7 @@ export function RunDetailPage() {
                         if (deletion.status === 'deleting') return;
                         setDeleteSnapshot({
                           repository,
-                          runId,
+                          trailId,
                           linkId: link.id,
                           status: 'idle',
                           successNotice: false,

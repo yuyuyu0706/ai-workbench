@@ -7,14 +7,14 @@ import {
 } from 'react-router-dom';
 import {
   buildPromptEditPath,
-  buildRunDetailPath,
+  buildTrailDetailPath,
   routePaths,
 } from '../app/routes';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageHeader, PageSection } from '../components/ui';
 import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
 import { selectActiveDeveloperUiState } from '../developer-ui-state';
-import { TRAIL_KINDS, type Run, type TrailKind } from '../domain';
+import { TRAIL_KINDS, type Trail, type TrailKind } from '../domain';
 import { TRAIL_KIND_LABELS, validateTrailMetadata } from '../trail-metadata';
 import {
   createDirectTrail,
@@ -99,13 +99,13 @@ export function NewTrailPage() {
   const [completionSnapshot, setCompletionSnapshot] = useState<{
     repository: typeof repository;
     identity: string;
-    runId: Run['id'] | null;
-  }>(() => ({ repository, identity, runId: null }));
+    trailId: Trail['id'] | null;
+  }>(() => ({ repository, identity, trailId: null }));
   if (
     completionSnapshot.repository !== repository ||
     completionSnapshot.identity !== identity
   )
-    setCompletionSnapshot({ repository, identity, runId: null });
+    setCompletionSnapshot({ repository, identity, trailId: null });
   const mountedRef = useRef(true);
   useEffect(() => {
     mountedRef.current = true;
@@ -114,11 +114,11 @@ export function NewTrailPage() {
     };
   }, []);
   useEffect(() => {
-    if (completionSnapshot.runId === null) return;
-    navigate(buildRunDetailPath(completionSnapshot.runId), {
+    if (completionSnapshot.trailId === null) return;
+    navigate(buildTrailDetailPath(completionSnapshot.trailId), {
       state: { trailCreated: true },
     });
-  }, [completionSnapshot.runId, navigate]);
+  }, [completionSnapshot.trailId, navigate]);
 
   const form =
     formSnapshot.repository === repository && formSnapshot.identity === identity
@@ -299,7 +299,7 @@ export function NewTrailPage() {
       if (mountedRef.current && submissionRef.current?.token === token)
         setCompletionSnapshot((current) =>
           current.repository === repository && current.identity === identity
-            ? { ...current, runId: run.id }
+            ? { ...current, trailId: run.trailId }
             : current,
         );
     } catch {
@@ -394,7 +394,7 @@ export function NewTrailPage() {
                     元のTrailを確認
                   </span>
                 ) : (
-                  <Link to={buildRunDetailPath(reuseState.run.id)}>
+                  <Link to={buildTrailDetailPath(reuseState.trail.id)}>
                     元のTrailを確認
                   </Link>
                 )}

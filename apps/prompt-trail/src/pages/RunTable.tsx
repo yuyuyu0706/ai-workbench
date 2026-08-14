@@ -1,6 +1,6 @@
 import { Link as RouterLink } from 'react-router-dom';
 
-import { buildRunDetailPath } from '../app/routes';
+import { buildTrailDetailPath } from '../app/routes';
 import type { DashboardRecentRun } from '../dashboard';
 import { RunStatusPin } from '../run-status';
 import { TRAIL_KIND_LABELS } from '../trail-metadata';
@@ -47,7 +47,7 @@ function RunTableRow({ recentRun }: { recentRun: DashboardRecentRun }) {
         <h3 className="pt-dashboard-run-row__title">
           <RouterLink
             className="pt-dashboard-run-row__title-link"
-            to={buildRunDetailPath(run.id)}
+            to={buildTrailDetailPath(trail.id)}
           >
             {trail.title}
           </RouterLink>

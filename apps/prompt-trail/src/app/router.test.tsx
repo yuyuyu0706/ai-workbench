@@ -8,7 +8,7 @@ import { PromptTrailRepositoryProvider } from './PromptTrailRepositoryContext';
 import { createPromptTrailRuntime } from './prompt-trail-runtime';
 import { createDatabaseTestScope } from '../test/database-test-utils';
 import { AppRouter } from './router';
-import { buildRunDetailPath, routePaths } from './routes';
+import { buildTrailDetailPath, routePaths } from './routes';
 
 function LocationProbe({
   onLocationChange,
@@ -193,7 +193,7 @@ describe('AppRouter', () => {
 
   it('renders a repository-backed run detail loading state with a dashboard recovery link', () => {
     const user = userEvent.setup();
-    renderRoute(buildRunDetailPath('run-123'));
+    renderRoute(buildTrailDetailPath('trail-123'));
 
     expect(
       screen.getByRole('heading', { name: 'Run Detail' }),

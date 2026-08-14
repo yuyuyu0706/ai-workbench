@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildPromptEditPath,
-  buildRunDetailPath,
+  buildTrailDetailPath,
   buildNewTrailReusePath,
   routeDefinitions,
   routeIds,
@@ -19,9 +19,9 @@ describe('route contract', () => {
       [routeIds.promptEdit]: '/prompts/:promptId/edit',
       [routeIds.contextLibrary]: '/contexts',
       [routeIds.recipeBuilder]: '/recipes/builder',
-      [routeIds.newTrail]: '/runs/new',
-      [routeIds.runList]: '/runs',
-      [routeIds.runDetail]: '/runs/:runId',
+      [routeIds.newTrail]: '/trails/new',
+      [routeIds.trailList]: '/trails',
+      [routeIds.trailDetail]: '/trails/:trailId',
       [routeIds.notFound]: '*',
     });
   });
@@ -61,22 +61,22 @@ describe('route contract', () => {
       },
       { id: routeIds.newTrail, path: routePaths.newTrail, label: 'New Trail' },
       {
-        id: routeIds.runList,
-        path: routePaths.runList,
-        label: 'Run List',
+        id: routeIds.trailList,
+        path: routePaths.trailList,
+        label: 'Trail List',
       },
       {
-        id: routeIds.runDetail,
-        path: routePaths.runDetail,
-        label: 'Run Detail',
+        id: routeIds.trailDetail,
+        path: routePaths.trailDetail,
+        label: 'Trail Detail',
       },
       { id: routeIds.notFound, path: routePaths.notFound, label: 'Not Found' },
     ]);
   });
 
-  it('builds URL-encoded Run Detail paths', () => {
-    expect(buildRunDetailPath('run 1/with symbols?')).toBe(
-      '/runs/run%201%2Fwith%20symbols%3F',
+  it('builds URL-encoded Trail Detail paths', () => {
+    expect(buildTrailDetailPath('trail 1/with symbols?')).toBe(
+      '/trails/trail%201%2Fwith%20symbols%3F',
     );
   });
 
@@ -88,7 +88,7 @@ describe('route contract', () => {
 
   it('builds URL-encoded New Trail reuse paths', () => {
     expect(buildNewTrailReusePath('run 1/with symbols?&')).toBe(
-      '/runs/new?sourceRunId=run+1%2Fwith+symbols%3F%26',
+      '/trails/new?sourceRunId=run+1%2Fwith+symbols%3F%26',
     );
   });
 });

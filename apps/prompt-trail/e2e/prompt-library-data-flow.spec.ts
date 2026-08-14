@@ -600,7 +600,7 @@ test.describe('Prompt Library data flow', () => {
     await expect(
       page.getByRole('link', { name: '「Codex開発依頼」を編集' }),
     ).toBeVisible();
-    await page.goto('/runs/new?sourcePromptId=prompt-library-e2e');
+    await page.goto('/trails/new?sourcePromptId=prompt-library-e2e');
     await expect(page.getByLabel('Prompt本文')).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });
@@ -713,7 +713,7 @@ test.describe('Prompt Library data flow', () => {
     await trailLink.focus();
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(
-      /\/runs\/new\?sourcePromptId=prompt-library-e2e$/,
+      /\/trails\/new\?sourcePromptId=prompt-library-e2e$/,
     );
     await expectNoHorizontalOverflow(page);
   });
@@ -1002,21 +1002,21 @@ test.describe('Prompt Library data flow', () => {
       .getByRole('link', { name: '「Codex開発依頼」からTrailを作成' })
       .click();
     await expect(page).toHaveURL(
-      /\/runs\/new\?sourcePromptId=prompt-library-e2e/,
+      /\/trails\/new\?sourcePromptId=prompt-library-e2e/,
     );
     await expect(page.getByLabel('Prompt本文')).toHaveAttribute('readonly', '');
     await page.getByLabel('Trail名').fill('反復利用Trail 1');
     await page.getByRole('button', { name: 'Trailを作成' }).click();
-    await expect(page).toHaveURL(/\/runs\/run-/);
+    await expect(page).toHaveURL(/\/trails\/trail-/);
     await expect(
       page.getByText('変更内容を確認して実装してください。'),
     ).toBeVisible();
 
-    await page.goto('/runs/new?sourcePromptId=prompt-library-e2e');
+    await page.goto('/trails/new?sourcePromptId=prompt-library-e2e');
     await page.reload();
     await page.getByLabel('Trail名').fill('反復利用Trail 2');
     await page.getByRole('button', { name: 'Trailを作成' }).click();
-    await expect(page).toHaveURL(/\/runs\/run-/);
+    await expect(page).toHaveURL(/\/trails\/trail-/);
 
     const counts = await page.evaluate(async () => {
       const { createPromptTrailRuntime } =
@@ -1044,7 +1044,7 @@ test.describe('Prompt Library data flow', () => {
   }) => {
     await page.goto('/prompts');
     await seedVariablePromptInBrowser(page, { name: '太郎' });
-    await page.goto('/runs/new?sourcePromptId=prompt-library-variable-e2e');
+    await page.goto('/trails/new?sourcePromptId=prompt-library-variable-e2e');
     await expect(page.getByLabel('Prompt本文')).toHaveValue(
       'こんにちは 太郎さん、${topic}について教えてください。',
     );
@@ -1056,17 +1056,17 @@ test.describe('Prompt Library data flow', () => {
   }) => {
     await page.goto('/prompts');
     await seedPromptLibraryInBrowser(page);
-    await page.goto('/runs/new?sourcePromptId=prompt-library-e2e');
+    await page.goto('/trails/new?sourcePromptId=prompt-library-e2e');
     await page.getByLabel('Trail名').fill('編集前Run A');
     await page.getByRole('button', { name: 'Trailを作成' }).click();
-    await expect(page).toHaveURL(/\/runs\/run-/);
+    await expect(page).toHaveURL(/\/trails\/trail-/);
     const runAUrl = page.url();
     await expect(
       page.getByText('変更内容を確認して実装してください。'),
     ).toBeVisible();
 
     const stalePage = await context.newPage();
-    await stalePage.goto('/runs/new?sourcePromptId=prompt-library-e2e');
+    await stalePage.goto('/trails/new?sourcePromptId=prompt-library-e2e');
     await stalePage.getByLabel('Trail名').fill('保持する競合draft');
     await stalePage.getByLabel('Trail種別').selectOption('review');
 
@@ -1099,7 +1099,7 @@ test.describe('Prompt Library data flow', () => {
       '保持する競合draft',
     );
     await stalePage.getByRole('button', { name: 'Trailを作成' }).click();
-    await expect(stalePage).toHaveURL(/\/runs\/run-/);
+    await expect(stalePage).toHaveURL(/\/trails\/trail-/);
     await expect(stalePage.getByText('編集後のPrompt本文')).toBeVisible();
 
     await editorPage.goto('/prompts/prompt-library-e2e/edit');
@@ -1109,7 +1109,7 @@ test.describe('Prompt Library data flow', () => {
     await expect(
       page.getByText('変更内容を確認して実装してください。'),
     ).toBeVisible();
-    await page.goto('/runs/new?sourcePromptId=prompt-library-e2e');
+    await page.goto('/trails/new?sourcePromptId=prompt-library-e2e');
     await expect(
       page.getByText('元のPromptは削除されたか、現在は利用できません。'),
     ).toBeVisible();
