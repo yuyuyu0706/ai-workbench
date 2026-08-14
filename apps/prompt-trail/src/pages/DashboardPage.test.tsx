@@ -249,7 +249,9 @@ describe('DashboardPage', () => {
         [newerTrail.id, [newerRun]],
         [olderTrail.id, [olderRun]],
       ]),
-      linksByRunId: new Map([[newerRun.id, [createLink({ runId: newerRun.id })]]]),
+      linksByRunId: new Map([
+        [newerRun.id, [createLink({ runId: newerRun.id })]],
+      ]),
     });
 
     renderDashboardPage(repository);

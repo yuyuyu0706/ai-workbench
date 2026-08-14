@@ -7,11 +7,7 @@ import { TRAIL_KIND_LABELS } from '../trail-metadata';
 
 import { formatDateTime } from './date-time';
 
-export function TrailTable({
-  trails,
-}: {
-  trails: readonly TrailListItem[];
-}) {
+export function TrailTable({ trails }: { trails: readonly TrailListItem[] }) {
   return (
     <table className="pt-dashboard-runs">
       <thead>
@@ -45,11 +41,7 @@ export function TrailTable({
   );
 }
 
-function TrailTableRow({
-  trailListItem,
-}: {
-  trailListItem: TrailListItem;
-}) {
+function TrailTableRow({ trailListItem }: { trailListItem: TrailListItem }) {
   const { trail, kind, status, updatedAt, linkCount } = trailListItem;
 
   return (

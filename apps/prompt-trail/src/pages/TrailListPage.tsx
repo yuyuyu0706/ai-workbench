@@ -1,9 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import {
-  loadTrailListDataState,
-  type TrailListDataState,
-} from '../trail-list';
+import { loadTrailListDataState, type TrailListDataState } from '../trail-list';
 import type { TrailListReadModel } from '../trail-list';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { usePromptTrailDataRevision } from '../app/PromptTrailDataRevisionContext';

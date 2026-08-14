@@ -40,7 +40,9 @@ export async function loadTrailListReadModel(
     trails.map(async (trail) => {
       const runs = await repository.listRunsByTrail(trail.id);
       const linkCounts = await Promise.all(
-        runs.map(async (run) => (await repository.listActiveLinks(run.id)).length),
+        runs.map(
+          async (run) => (await repository.listActiveLinks(run.id)).length,
+        ),
       );
       const linkCount = linkCounts.reduce((sum, count) => sum + count, 0);
 

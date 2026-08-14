@@ -197,9 +197,7 @@ describe('loadTrailListReadModel', () => {
 
     const model = await loadTrailListReadModel(repository, { limit: 1 });
 
-    expect(model.trails.map((item) => item.trail.id)).toEqual([
-      secondTrail.id,
-    ]);
+    expect(model.trails.map((item) => item.trail.id)).toEqual([secondTrail.id]);
   });
 
   it('rejects a negative limit', async () => {

@@ -2,10 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 
 import { routePaths } from '../app/routes';
-import {
-  loadTrailListDataState,
-  type TrailListDataState,
-} from '../trail-list';
+import { loadTrailListDataState, type TrailListDataState } from '../trail-list';
 import type { TrailListReadModel } from '../trail-list';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { usePromptTrailDataRevision } from '../app/PromptTrailDataRevisionContext';
