@@ -43,7 +43,10 @@ describe('navigation contract', () => {
     expect(globalNavigationItems.map((item) => item.id)).not.toContain(
       routeIds.recipeBuilder,
     );
-    expect(contextualRouteIds).toEqual([routeIds.newTrail, routeIds.trailDetail]);
+    expect(contextualRouteIds).toEqual([
+      routeIds.newTrail,
+      routeIds.trailDetail,
+    ]);
     expect(recoveryRouteIds).toEqual([routeIds.notFound]);
     expect(isContextualRoute(routeIds.newTrail)).toBe(true);
     expect(isContextualRoute(routeIds.trailDetail)).toBe(true);

@@ -105,7 +105,8 @@ export function RunDetailPage() {
           successNotice: false,
         };
   const deletion =
-    deleteSnapshot.repository === repository && deleteSnapshot.trailId === trailId
+    deleteSnapshot.repository === repository &&
+    deleteSnapshot.trailId === trailId
       ? deleteSnapshot
       : {
           repository,
@@ -554,7 +555,12 @@ export function RunDetailPage() {
       return;
     metadataReloadRef.current = null;
     if (latest.status !== 'data') return;
-    setSnapshot({ repository, trailId, state: latest, links: latest.data.links });
+    setSnapshot({
+      repository,
+      trailId,
+      state: latest,
+      links: latest.data.links,
+    });
     setMetadataSnapshot({
       repository,
       trailId,

@@ -32,10 +32,7 @@ export async function loadTrailDetailReadModel(
         repository.listActiveLinks(run.id),
       ]);
 
-      if (
-        project === null ||
-        (run.recipeId !== null && recipe === null)
-      )
+      if (project === null || (run.recipeId !== null && recipe === null))
         throw new Error('Run data is inconsistent.');
 
       return { run, project, recipe, links } satisfies TrailDetailRunItem;
