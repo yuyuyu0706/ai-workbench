@@ -77,8 +77,8 @@ Guided Execution（[Roadmap](roadmap.md)参照）の実現に向け、Domainの�
 Gateway層を追加する計画です（[ADR 0006](../../adr/0006-external-execution-boundary.md)・
 [ADR 0007](../../adr/0007-github-source-of-truth.md)で境界を確定済み）。
 
-| 領域 | 主な責務 | 非責務 |
-|---|---|---|
+| 領域            | 主な責務                                          | 非責務                                                                                 |
+| --------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | Gateway（計画） | AI API・GitHub APIの呼び出し、PLAN生成・Issue作成 | Domain（Trail/Run/Snapshot）の実行方法に関する知識、GitHub上リソースの複製・キャッシュ |
 
 Gatewayは Azure Static Web Apps の Managed Function として実装し、秘密情報（AI APIキー、
