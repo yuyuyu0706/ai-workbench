@@ -205,6 +205,16 @@ Evidence Backlog の記録場所は、まず本セクション（roadmap.md 内�
 
 機能要件文書（[Functional Requirements](functional-requirements.md)）における「Phase 3候補」という表記は、本 Rebaseline 以降「Evidence Backlog候補」と読み替えます。詳細は同文書冒頭の注記を参照してください。
 
+#### 長期的な方向性（メモ）
+
+Trailモデルの発想起源は、個別管理していたPromptが徐々にテンプレート化し、一連の作業プロセス
+（現在の7ステップ）へ結晶化していった経緯にあります。現状のTrailは「Webアプリ個人開発プロセス」
+に特化していますが、Trailという入れ物の設計（Promptの並び＝作業工程、実行結果＝Run/Stepという
+関係モデル）自体は、中身のPromptを差し替えれば別ドメインへも転用できる形になっています。
+将来的には、開発以外の用途にも適用できるTrail設計、Trail自体の組み立てを支援するシステム、
+断片的なPrompt実行をTrailへ進化させる思考習慣の醸成といった方向性も考えられます。
+現時点では検討の初期段階のため、実装対象としてではなく、将来立ち返るための記録としてここに残します。
+
 ## Phase 4: Workflow & Integration Expansion（確定）
 
 Phase 3 と同じ経緯で確定した Phase です。Phase 3 で成立した Execution Foundation を使い、実行パターンと連携先を拡張します。新しい基盤を作るのではなく、Phase 3 の Execution Platform 上に Workflow を増やすことを主眼とします。GitHub API による Issue、PR、Commit 情報取得、Link の状態更新、URL からのメタデータ補完、Issue 本文生成支援と Integration 設定はここに含まれます。
