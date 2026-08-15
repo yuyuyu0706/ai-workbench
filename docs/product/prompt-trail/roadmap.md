@@ -107,19 +107,17 @@ Validation Readiness の統合受入後、次を観察します。
 
 観察結果を頻度、深刻度、中核価値への寄与、変更コストで整理し、Phase 3 で実施する機能と実施しない機能を決定します。
 
-## Phase 3〜4: 確定（P2-6 Scope Decision で最終確定）
+## Phase 3: Guided Execution Foundation（確定）
 
 > 以下の Phase 3・Phase 4 の記述は、[Roadmap Rebaseline Issue](https://github.com/yuyuyu0706/ai-workbench/issues/259) の Rebaseline 案を、[P2-6 Scope Decision](https://github.com/yuyuyu0706/ai-workbench/issues/268) で Phase 2 の利用証拠（[#266](https://github.com/yuyuyu0706/ai-workbench/issues/266)）と突き合わせ、**最終確定**したものです。Investment Hypothesis 3・6（AI / GitHub への手動転記の負荷、Execution Integration への優先投資）が証拠により強く支持され、Hypothesis 1（Prompt 資産管理の深化）は Phase 2 で既に対応済みのため優先度が低いと判断しました。
-
-### Phase 3: Guided Execution Foundation（確定）
 
 キーメッセージ：PromptTrail を「記録・再利用するツール」から「AI と開発プロセスを実行する環境」へ進化させる。
 
 - **Execution Domain**: Workspace / Project の責務整理、Trail / Run の責務整理、Asset と Execution の責務分離、外部状態の Source of Truth 整理。
 - **Executable Trail**: Trail 一覧、Trail Detail、Trail 内の Run / Step、Execution Status、Execute 導線。
-- **GitHub / AI Execution Gateway**: Azure Static Web Apps + SWA Managed Function + GitHub Actions（workflow_dispatch）による軽量構成。最初の Thin Vertical Slice は PLAN + ISSUE（実装方針の Markdown 生成と GitHub Issue 作成）に限定する。
+- **GitHub / AI Execution Gateway**: 「開発テーマ→PLAN生成→ISSUE作成→実装・PR→レビュー→マージ→Issue更新→親Issue引継ぎ」という7ステップの Guided Execution モデルのうち、最初のThin Vertical Slice はPLAN + ISSUE（実装方針のMarkdown生成とGitHub Issue作成）に限定する。技術構成の詳細はP3-3の項（下記）を参照。
 
-#### 最初の投資対象：P3-1 Execution Domain 再設計
+### 最初の投資対象：P3-1 Execution Domain 再設計
 
 Phase 3 の最初の Release/Learn 単位は **P3-1（Execution Domain 再設計）** とします。#266 で判明した Dashboard の表示バグ（Trail 名列が実際には Prompt Snapshot タイトルを表示していた）が、Trail / Run / Prompt の概念境界が実装上も曖昧になりやすいことを具体的に証拠化したため、GitHub / AI Integration（P3-4 以降）より前に Domain 設計を確定させます。
 
@@ -129,9 +127,43 @@ Phase 3 の最初の Release/Learn 単位は **P3-1（Execution Domain 再設計
 
 Prompt 資産管理のさらなる深化（Hypothesis 1）は、Phase 2 で主要な不足が解消済みのため、当面 Evidence Backlog に留め、優先着手対象としません。
 
-### Phase 4: Workflow & Integration Expansion（確定）
+### P3-3：Guided Executionの7ステップモデルとスコープ判断
 
-Phase 3 で成立した Execution Foundation を使い、実行パターンと連携先を拡張します。新しい基盤を作るのではなく、Phase 3 の Execution Platform 上に Workflow を増やすことを主眼とします。GitHub API による Issue、PR、Commit 情報取得、Link の状態更新、URL からのメタデータ補完、Issue 本文生成支援と Integration 設定はここに含まれます。
+P3-1（Execution Domain再設計）の完了を受け、P3-3（GitHub / AI Execution Gateway）の
+検討過程で、Guided Executionが目指す最終形を次のように整理しました。
+
+これは、本プロジェクトの開発プロセス自体（y.kとAIアシスタントが繰り返してきた
+「開発テーマを渡す→実装計画を受け取る→Issueを作る→実装・PRを受け取る→レビューする→
+マージする→更新する」という一連の流れ）を、PromptTrail上のTrailとして自動化する構想です。
+
+| #   | ステップ                                | 対応するPrompt                       |
+| --- | --------------------------------------- | ------------------------------------ |
+| 1   | 開発テーマ→実装計画Markdown生成（PLAN） | AI呼び出し1回                        |
+| 2   | 実装方針→Issue作成（ISSUE）             | GitHub API呼び出し1回                |
+| 3   | Issue→実装・PR作成                      | AIコーディングエージェントの自律実行 |
+| 4   | 実装・PR→レビュー                       | AI呼び出し（diff評価）               |
+| 5   | レビュー結果→mainマージ                 | 人間の承認を必ず伴う（下記参照）     |
+| 6   | マージ済みPR→issue単純アップデート      | AI呼び出し＋GitHub API               |
+| 7   | 更新issue→親issueへの引継ぎアップデート | AI呼び出し＋GitHub API               |
+
+この7ステップ全体が1つの**Trail**、各ステップが個別実行可能な**Prompt**、各実行結果が
+**Run/Step**として履歴管理される、という関係モデルとして整理しました。
+
+「マージ」（ステップ5）は、常に自動実行しないという技術的制約ではなく、**「承認」という
+人間の判断ポイントを必ず設ける**という設計原則として扱います。ステップ5自体をPromptとして
+定義することは妨げず、実行過程に承認アシスト機能（実行前の承認催促、承認要件の定義、
+レビュー結果の最終チェック取り込み等）を将来組み込める余地を残します。
+
+7ステップを技術的難易度で見ると、大きな段差があります。ステップ1・2・4・6・7は単発の
+リクエスト/レスポンス処理で完結しますが、ステップ3のみリポジトリのcheckout、AIコーディング
+エージェントの実行、テスト、PR作成という、CI環境そのものを要する非同期・長時間処理です。
+この段差を踏まえ、**P3-3はステップ1・2（PLAN＋ISSUE）の基盤に限定**し、ステップ3以降は
+規模が質的に異なるため別テーマとして切り出します（Phase 3後半、またはPhase 4候補として
+Evidence Backlogに記録）。
+
+Gatewayの技術構成は、Managed FunctionからAI API・GitHub APIを直接呼ぶ軽量な構成とし、
+workflow_dispatch／GitHub Actions連携はステップ3着手時まで見送ります（詳細は
+[ADR 0008](../../adr/0008-gateway-implementation-shape.md)を参照）。
 
 ### Phase 3 Investment Hypotheses（P2-6 で証拠と突き合わせ済み）
 
@@ -173,6 +205,20 @@ Evidence Backlog の記録場所は、まず本セクション（roadmap.md 内�
 
 機能要件文書（[Functional Requirements](functional-requirements.md)）における「Phase 3候補」という表記は、本 Rebaseline 以降「Evidence Backlog候補」と読み替えます。詳細は同文書冒頭の注記を参照してください。
 
+#### 長期的な方向性（メモ）
+
+Trailモデルの発想起源は、個別管理していたPromptが徐々にテンプレート化し、一連の作業プロセス
+（現在の7ステップ）へ結晶化していった経緯にあります。現状のTrailは「Webアプリ個人開発プロセス」
+に特化していますが、Trailという入れ物の設計（Promptの並び＝作業工程、実行結果＝Run/Stepという
+関係モデル）自体は、中身のPromptを差し替えれば別ドメインへも転用できる形になっています。
+将来的には、開発以外の用途にも適用できるTrail設計、Trail自体の組み立てを支援するシステム、
+断片的なPrompt実行をTrailへ進化させる思考習慣の醸成といった方向性も考えられます。
+現時点では検討の初期段階のため、実装対象としてではなく、将来立ち返るための記録としてここに残します。
+
+## Phase 4: Workflow & Integration Expansion（確定）
+
+Phase 3 と同じ経緯で確定した Phase です。Phase 3 で成立した Execution Foundation を使い、実行パターンと連携先を拡張します。新しい基盤を作るのではなく、Phase 3 の Execution Platform 上に Workflow を増やすことを主眼とします。GitHub API による Issue、PR、Commit 情報取得、Link の状態更新、URL からのメタデータ補完、Issue 本文生成支援と Integration 設定はここに含まれます。
+
 ## Phase 5: Productization & Administration
 
 Persona / Experience、Identity / Authentication、Authorization Role、Plan / Entitlement、Admin Console、User management、Cloud Database、Cloud Sync、Cross-device synchronization、Operational settings を扱います。各責務は分離します。
@@ -185,7 +231,7 @@ Persona / Experience、Identity / Authentication、Authorization Role、Plan / E
 - Trail / Run Responsibility
 - External Execution Boundary
 - GitHub Source of Truth
-- SWA Managed Function + GitHub Actions 採用判断
+- ~~SWA Managed Function + GitHub Actions 採用判断~~ → [ADR 0008](../../adr/0008-gateway-implementation-shape.md)として起票済み（P3-3検討時）
 
 ## 後続 Issue 設計への引き継ぎ
 

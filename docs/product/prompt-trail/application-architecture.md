@@ -71,6 +71,22 @@ Mount が返す handle の `dispose()` は、React root を unmount した後に
 | Repository             | 永続化契約、ドメイン操作                                                 | 画面状態、UI 表示                      |
 | DB                     | Dexie schema、IndexedDB 接続                                             | UI 判断、Page 固有の Read Model        |
 
+## 3-1. Gateway層（計画・P3-3で実装予定）
+
+Guided Execution（[Roadmap](roadmap.md)参照）の実現に向け、Domainの外側に新たな
+Gateway層を追加する計画です（[ADR 0006](../../adr/0006-external-execution-boundary.md)・
+[ADR 0007](../../adr/0007-github-source-of-truth.md)で境界を確定済み）。
+
+| 領域            | 主な責務                                          | 非責務                                                                                 |
+| --------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Gateway（計画） | AI API・GitHub APIの呼び出し、PLAN生成・Issue作成 | Domain（Trail/Run/Snapshot）の実行方法に関する知識、GitHub上リソースの複製・キャッシュ |
+
+Gatewayは Azure Static Web Apps の Managed Function として実装し、秘密情報（AI APIキー、
+GitHub token）はApplication Settingsで管理し、クライアント側には露出させません
+（技術構成の詳細は[ADR 0008](../../adr/0008-gateway-implementation-shape.md)を参照）。
+本セクションは計画段階であり、実装（P3-3のLv3-3以降）が完了次第、実際の構成に合わせて
+更新します。
+
 ## 4. P1-1-1-2 Page データフロー
 
 ### Prompt EditorのCommandと削除状態
