@@ -72,3 +72,19 @@ jobs:
 
       - name: Build workspace
         run: pnpm build
+
+      - name: Install API dependencies
+        working-directory: apps/prompt-trail/api
+        run: npm install
+
+      - name: Lint API
+        working-directory: apps/prompt-trail/api
+        run: npm run lint
+
+      - name: Type-check API
+        working-directory: apps/prompt-trail/api
+        run: npm run build
+
+      - name: Test API
+        working-directory: apps/prompt-trail/api
+        run: npm test

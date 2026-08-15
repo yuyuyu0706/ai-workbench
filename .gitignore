@@ -37,6 +37,9 @@ Thumbs.db
 # Temporary files
 .tmp/
 tmp/
+
+# Azure Functions local settings
+local.settings.json
 # Playwright artifacts
 playwright-report/
 test-results/

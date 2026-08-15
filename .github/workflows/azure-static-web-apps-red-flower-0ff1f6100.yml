@@ -42,5 +42,5 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_RED_FLOWER_0FF1F6100 }}
           action: upload
           app_location: apps/prompt-trail/dist
-          api_location: ''
+          api_location: 'apps/prompt-trail/api'
           skip_app_build: true

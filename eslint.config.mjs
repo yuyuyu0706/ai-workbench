@@ -13,6 +13,7 @@ export default tseslint.config(
       '**/playwright-report/**',
       '**/test-results/**',
       '**/vite.config.*.timestamp-*',
+      'apps/prompt-trail/api/**',
     ],
   },
   js.configs.recommended,
