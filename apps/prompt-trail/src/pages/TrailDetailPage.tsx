@@ -204,8 +204,7 @@ export function TrailDetailPage() {
           repository,
           trailId,
           state: next,
-          links:
-            next.status === 'data' ? (next.data.runs[0]?.links ?? []) : [],
+          links: next.status === 'data' ? (next.data.runs[0]?.links ?? []) : [],
         });
     });
     return () => {

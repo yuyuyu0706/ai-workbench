@@ -333,7 +333,9 @@ describe('TrailDetailPage', () => {
         trailAReads += 1;
         return trailAReads === 1
           ? Promise.resolve([runA])
-          : new Promise<(typeof runA)[]>((resolve) => (resolveReload = resolve));
+          : new Promise<(typeof runA)[]>(
+              (resolve) => (resolveReload = resolve),
+            );
       }),
       getProject: vi.fn(async (id: string) => ({
         name: id === 'project-a' ? 'Project A' : 'Project B',
