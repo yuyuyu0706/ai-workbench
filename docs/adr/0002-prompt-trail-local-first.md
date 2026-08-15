@@ -12,7 +12,7 @@ PromptTrail は個人の試行錯誤や未公開のプロンプトを扱いま�
 
 - PromptTrail は Phase 0 で local-first を採用します。
 - 保存境界は browser origin ごとの IndexedDB とし、Dexie をその永続化境界に利用します。
-- Local、GitHub Pages、Azure Static Web Apps の各 origin 間で IndexedDB は共有しません。
+- Local、Azure Static Web Apps の各 origin 間で IndexedDB は共有しません。
 - Cloud DB、同期、認証は Phase 0 の対象外とします。
 - 同期または共同利用が必要になった時点で、この判断を再評価します。
 

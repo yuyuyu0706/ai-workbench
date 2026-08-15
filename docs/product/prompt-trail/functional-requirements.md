@@ -454,7 +454,7 @@ Persona / Experience、Identity / Authentication、Authorization Role、Plan / E
 
 ## 11. Local-first / IndexedDB の制約
 
-PromptTrail は Local-first で、IndexedDB に browser origin ごとにデータを保存する。localhost、GitHub Pages、Azure Static Web Apps のデータは共有されず、PC とスマートフォンの間でも同期しない。browser の変更や storage の削除によりデータを失う可能性があるため、Public Alpha は Cloud Sync 環境ではないことを利用者へ明示する。
+PromptTrail は Local-first で、IndexedDB に browser origin ごとにデータを保存する。localhost、Azure Static Web Apps のデータは共有されず、PC とスマートフォンの間でも同期しない。browser の変更や storage の削除によりデータを失う可能性があるため、Public Alpha は Cloud Sync 環境ではないことを利用者へ明示する。
 
 ## 12. 結論
 
