@@ -107,6 +107,11 @@ Phase 2 後半では、Prompt の事前登録・改善・反復利用、同一 P
 
 Phase 3 以降の方向性は [Roadmap #259](https://github.com/yuyuyu0706/ai-workbench/issues/259) により Rebaseline 案として再定義されました（最終確定は P2-6 の Scope Decision）。Phase 3「Guided Execution Foundation」では Workspace / Trail / AI・GitHub 実行基盤を成立させ、Prompt 復元・版管理・高度な検索・絞り込み、Context Library、Recipe Builder 等は Evidence Backlog として利用証拠に基づき選択実装します。Phase 4「Workflow & Integration Expansion」では Phase 3 の実行基盤上で Trail の種類と Integration を拡張し、Phase 5 では Productization & Administration として複数の利用者像・契約・権限・習熟度に対応します。Guest / Plus / Pro の Plan / Entitlement、Admin / Member の Authorization Role、Simple / Standard / Advanced の Persona / Experience は別軸として扱います。
 
+Phase 3が目指す「実行できる」体験の具体像は、開発テーマからPLAN生成・Issue作成・実装・
+レビュー・マージ・更新までの一連の流れを1つのTrailとして自動化することです。各ステップは
+個別実行可能なPromptとして定義され、実行結果はRun/Stepとして履歴管理されます。詳細は
+[Roadmap](roadmap.md)を参照してください。
+
 ## 関連ドキュメント
 
 - [Functional Requirements](functional-requirements.md)
