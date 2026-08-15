@@ -553,16 +553,17 @@ describe('TrailDetailPage', () => {
       updatedAt: '2026-01-01',
       deletedAt: null,
     };
+    let activeLinks = [trailLink];
     const repository = {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
       getTrail: vi.fn(async () => trail),
       listRunsByTrail: vi.fn(async () => [direct]),
-      listActiveLinks: vi.fn(async () => [trailLink]),
-      softDeleteLink: vi.fn(async () => ({
-        ...trailLink,
-        deletedAt: '2026-01-02',
-      })),
+      listActiveLinks: vi.fn(async () => activeLinks),
+      softDeleteLink: vi.fn(async (_runId, linkId) => {
+        activeLinks = activeLinks.filter((link) => link.id !== linkId);
+        return { ...trailLink, deletedAt: '2026-01-02' };
+      }),
     } as any;
     renderPage(repository);
 
@@ -662,14 +663,16 @@ describe('TrailDetailPage', () => {
       title: 'Link B',
       url: 'https://example.com/b',
     };
+    let activeLinks = [linkA, linkB];
     const repository = {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
       getTrail: vi.fn(async () => trail),
       listRunsByTrail: vi.fn(async () => [direct]),
-      listActiveLinks: vi.fn(async () => [linkA, linkB]),
-      softDeleteLink: vi.fn(async () => {
+      listActiveLinks: vi.fn(async () => activeLinks),
+      softDeleteLink: vi.fn(async (_runId, linkId) => {
         await deletionPending;
+        activeLinks = activeLinks.filter((link) => link.id !== linkId);
         return { ...linkA, deletedAt: '2026-01-02' };
       }),
     } as any;
@@ -913,13 +916,17 @@ describe('TrailDetailPage Link form', () => {
   });
   it('adds saved Links and resets the form', async () => {
     const user = (await import('@testing-library/user-event')).default.setup();
+    let activeLinks: any[] = [];
     const repository = {
       getRun: vi.fn(async () => direct),
       getProject: vi.fn(async () => ({ name: 'Project' })),
       getTrail: vi.fn(async () => trail),
       listRunsByTrail: vi.fn(async () => [direct]),
-      listActiveLinks: vi.fn(async () => []),
-      saveLink: vi.fn(async (link: any) => link),
+      listActiveLinks: vi.fn(async () => activeLinks),
+      saveLink: vi.fn(async (link: any) => {
+        activeLinks = [...activeLinks, link];
+        return link;
+      }),
     } as any;
     renderPage(repository);
     await screen.findByText('Direct Prompt');
@@ -974,16 +981,20 @@ describe('TrailDetailPage Link form', () => {
 it('prevents duplicate Link submissions while saving and then lists the result', async () => {
   const user = (await import('@testing-library/user-event')).default.setup();
   let resolve!: (link: any) => void;
+  let activeLinks: any[] = [];
   const repository = {
     getRun: vi.fn(async () => direct),
     getProject: vi.fn(async () => ({ name: 'Project' })),
     getTrail: vi.fn(async () => trail),
     listRunsByTrail: vi.fn(async () => [direct]),
-    listActiveLinks: vi.fn(async () => []),
+    listActiveLinks: vi.fn(async () => activeLinks),
     saveLink: vi.fn(
       () =>
         new Promise((done) => {
-          resolve = done;
+          resolve = (link: any) => {
+            activeLinks = [...activeLinks, link];
+            done(link);
+          };
         }),
     ),
   } as any;
