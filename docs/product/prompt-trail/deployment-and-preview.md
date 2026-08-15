@@ -11,9 +11,9 @@ PromptTrail CI、Azure Static Web Apps Deploy の trigger、責務、成功が�
 ## 2. Environment Contract
 
 | Environment           | 位置づけ            | 対象ブランチ / 成果        | 利用目的                                       |
-| ---------------------- | -------------------- | -------------------------- | ---------------------------------------------- |
-| Local                  | Development / Debug  | 開発者のローカル作業ツリー | 実装、デバッグ、ローカル確認（`swa-cli`）      |
-| Azure Static Web Apps  | Public Preview       | `main` 統合版              | `main` マージ後に自動更新される public preview |
+| --------------------- | ------------------- | -------------------------- | ---------------------------------------------- |
+| Local                 | Development / Debug | 開発者のローカル作業ツリー | 実装、デバッグ、ローカル確認（`swa-cli`）      |
+| Azure Static Web Apps | Public Preview      | `main` 統合版              | `main` マージ後に自動更新される public preview |
 
 Azure Static Web Apps は `main` 統合版の Public Preview です。`main` への push 後に、統合済み成果物を自動配信します。
 
@@ -41,10 +41,10 @@ main push
 
 ## 4. Workflow Contract
 
-| Workflow                        | Trigger                           | 責務                     | 成功が意味すること                                   |
-| ------------------------------- | --------------------------------- | ------------------------ | ---------------------------------------------------- |
-| PromptTrail CI                  | PR → `main` / push `main`         | アプリ品質判定           | Lint / Format / Unit / E2E / Build が成功した        |
-| PromptTrail Public Preview      | push `main`                       | Public Preview 配信      | `main` 統合版を Public Preview へ配信できた          |
+| Workflow                   | Trigger                   | 責務                | 成功が意味すること                            |
+| -------------------------- | ------------------------- | ------------------- | --------------------------------------------- |
+| PromptTrail CI             | PR → `main` / push `main` | アプリ品質判定      | Lint / Format / Unit / E2E / Build が成功した |
+| PromptTrail Public Preview | push `main`               | Public Preview 配信 | `main` 統合版を Public Preview へ配信できた   |
 
 PromptTrail CI は、アプリ品質判定の正本です。Deploy workflow は配信責務を持ちます。
 
