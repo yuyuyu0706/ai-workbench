@@ -84,6 +84,7 @@ export async function createDirectTrail(
     status: 'prepared',
     evaluation: null,
     improvementNote: null,
+    output: null,
   };
   return (
     await repository.createDirectRunBundle({ project, prompt, trail, run })

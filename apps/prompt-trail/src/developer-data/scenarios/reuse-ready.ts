@@ -63,6 +63,7 @@ const run: Run = {
   status: 'done',
   evaluation: 'good',
   improvementNote: null,
+  output: null,
   createdAt: utc('2026-07-21T10:10:00.000Z'),
   updatedAt: utc('2026-07-21T10:20:00.000Z'),
   deletedAt: null,

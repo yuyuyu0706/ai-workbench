@@ -1,6 +1,6 @@
 export const PROMPT_TRAIL_DB_NAME = 'prompt-trail';
 
-export const PROMPT_TRAIL_SCHEMA_VERSION = 6;
+export const PROMPT_TRAIL_SCHEMA_VERSION = 7;
 
 export const PROMPT_TRAIL_STORE_NAMES = [
   'projects',

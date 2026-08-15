@@ -134,6 +134,7 @@ export const sampleRun: Run = {
   evaluation: 'good',
   improvementNote:
     '後続IssueでSeed実装とDashboard表示を分離する方針を確認できた。',
+  output: null,
   createdAt: SAMPLE_DATASET_TIMELINE.runStartedAt,
   updatedAt: SAMPLE_DATASET_TIMELINE.runUpdatedAt,
   deletedAt: null,
