@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Trail, UtcDateTimeString } from '../domain';
 import { PromptTrailRepositoryError } from '../repository';
-import { updateRunTrailMetadata } from './update-run-trail-metadata';
+import { updateRunTrailMetadata } from './update-trail-metadata';
 
 const input = {
   trailId: 'trail-1' as Trail['id'],

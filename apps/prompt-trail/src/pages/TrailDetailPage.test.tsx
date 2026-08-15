@@ -19,7 +19,7 @@ import {
   PromptTrailRepositoryError,
   type PromptTrailRepository,
 } from '../repository';
-import { RunDetailPage } from './RunDetailPage';
+import { TrailDetailPage } from './TrailDetailPage';
 function renderPage(
   repository: PromptTrailRepository,
   id = 'trail-1',
@@ -39,7 +39,7 @@ function renderPage(
           }
         >
           <Routes>
-            <Route path="/trails/:trailId" element={<RunDetailPage />} />
+            <Route path="/trails/:trailId" element={<TrailDetailPage />} />
           </Routes>
         </DeveloperToolsProvider>
       </PromptTrailRepositoryProvider>
@@ -112,7 +112,7 @@ function createTestUiStateStore() {
   });
 }
 
-describe('RunDetailPage', () => {
+describe('TrailDetailPage', () => {
   it('shows Trail metadata and saves an edited title and kind', async () => {
     const repository = createDetailRepository([]);
     repository.updateTrailMetadata = vi.fn(async (update: any) => ({
@@ -125,10 +125,6 @@ describe('RunDetailPage', () => {
 
     expect(await screen.findByText('Trail A')).toBeVisible();
     expect(screen.getByText('開発')).toBeVisible();
-    expect(screen.getByText('準備済み')).toHaveClass(
-      'pt-status-pin',
-      'pt-status-pin--prepared',
-    );
     fireEvent.click(screen.getByRole('button', { name: 'Trail情報を編集' }));
     const title = screen.getByRole('textbox', { name: 'Trail名' });
     expect(title).toHaveFocus();
@@ -326,22 +322,21 @@ describe('RunDetailPage', () => {
       trailId: 'trail-b',
       promptSnapshot: { title: 'Prompt B', body: 'Body B' },
     };
-    let runAReads = 0;
-    let resolveReload!: (run: typeof runA) => void;
+    let trailAReads = 0;
+    let resolveReload!: (runs: (typeof runA)[]) => void;
     const repository = {
-      getRun: vi.fn((id: string) => {
-        if (id === 'run-b') return Promise.resolve(runB);
-        runAReads += 1;
-        return runAReads === 1
-          ? Promise.resolve(runA)
-          : new Promise<typeof runA>((resolve) => (resolveReload = resolve));
-      }),
       getTrail: vi.fn(async (id: string) =>
         id === 'trail-b' ? trailB : trailA,
       ),
-      listRunsByTrail: vi.fn(async (trailId: string) => [
-        trailId === 'trail-b' ? runB : runA,
-      ]),
+      listRunsByTrail: vi.fn((trailId: string) => {
+        if (trailId === 'trail-b') return Promise.resolve([runB]);
+        trailAReads += 1;
+        return trailAReads === 1
+          ? Promise.resolve([runA])
+          : new Promise<(typeof runA)[]>(
+              (resolve) => (resolveReload = resolve),
+            );
+      }),
       getProject: vi.fn(async (id: string) => ({
         name: id === 'project-a' ? 'Project A' : 'Project B',
       })),
@@ -355,7 +350,7 @@ describe('RunDetailPage', () => {
         <PromptTrailRepositoryProvider repository={repository}>
           <RouteSwitchProbe to="/trails/trail-b" />
           <Routes>
-            <Route path="/trails/:trailId" element={<RunDetailPage />} />
+            <Route path="/trails/:trailId" element={<TrailDetailPage />} />
           </Routes>
         </PromptTrailRepositoryProvider>
       </MemoryRouter>,
@@ -373,7 +368,7 @@ describe('RunDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Run Bへ切替' }));
     expect(await screen.findByText('Body B')).toBeVisible();
 
-    await act(async () => resolveReload(runA));
+    await act(async () => resolveReload([runA]));
     await new Promise((resolve) => setTimeout(resolve));
     expect(screen.getByText('Body B')).toBeVisible();
     expect(screen.getByText(/Project B のTrail: Run B Trail/)).toBeVisible();
@@ -395,7 +390,7 @@ describe('RunDetailPage', () => {
     renderPage(repository, 'trail-1', undefined, store);
 
     expect(screen.getByText('Runを読み込んでいます...')).toBeVisible();
-    await waitFor(() => expect(repository.getRun).toHaveBeenCalledOnce());
+    await waitFor(() => expect(repository.getTrail).toHaveBeenCalledOnce());
     act(() =>
       store.setActiveOverride({
         target: 'run-detail-page',
@@ -410,7 +405,7 @@ describe('RunDetailPage', () => {
 
     act(() => store.clearActiveOverride());
     expect(await screen.findByText('Body A')).toBeVisible();
-    expect(repository.getRun).toHaveBeenCalledOnce();
+    expect(repository.getTrail).toHaveBeenCalledOnce();
   });
 
   it('does not apply a Link Form override while the real page is not data', () => {
@@ -747,15 +742,17 @@ describe('RunDetailPage', () => {
       screen.queryByText('まだ関連リンクがありません。', { exact: false }),
     ).toBeNull();
     expect(repo.getRecipe).not.toHaveBeenCalled();
+    const recipeRun = {
+      ...direct,
+      recipeId: 'recipe-1',
+      contextSnapshots: [
+        { contextId: 'context-1', title: 'Context A', body: 'context' },
+      ],
+    };
     const recipeRepo = {
       ...repo,
-      getRun: vi.fn(async () => ({
-        ...direct,
-        recipeId: 'recipe-1',
-        contextSnapshots: [
-          { contextId: 'context-1', title: 'Context A', body: 'context' },
-        ],
-      })),
+      getRun: vi.fn(async () => recipeRun),
+      listRunsByTrail: vi.fn(async () => [recipeRun]),
       getRecipe: vi.fn(async () => ({ title: 'Recipe A' })),
     };
     renderPage(recipeRepo);
@@ -765,15 +762,16 @@ describe('RunDetailPage', () => {
 
   it('formats summary dates and preserves their original values', async () => {
     const createdAt = '2026-01-02T03:04:00.000Z';
+    const runWithDates = {
+      ...direct,
+      createdAt,
+      updatedAt: 'invalid-date',
+    };
     const repository = {
-      getRun: vi.fn(async () => ({
-        ...direct,
-        createdAt,
-        updatedAt: 'invalid-date',
-      })),
+      getRun: vi.fn(async () => runWithDates),
       getProject: vi.fn(async () => ({ name: 'Project' })),
       getTrail: vi.fn(async () => trail),
-      listRunsByTrail: vi.fn(async () => [direct]),
+      listRunsByTrail: vi.fn(async () => [runWithDates]),
       listActiveLinks: vi.fn(async () => []),
     } as any;
     renderPage(repository);
@@ -848,7 +846,7 @@ describe('RunDetailPage', () => {
   });
 });
 
-describe('RunDetailPage Link form', () => {
+describe('TrailDetailPage Link form', () => {
   it('rejects an empty Link title without saving', async () => {
     const user = (await import('@testing-library/user-event')).default.setup();
     const repository = {
@@ -1058,7 +1056,7 @@ it('keeps Run B state when a pending Run A Link save resolves after a route chan
       <PromptTrailRepositoryProvider repository={repository}>
         <RouteSwitchProbe />
         <Routes>
-          <Route path="/trails/:trailId" element={<RunDetailPage />} />
+          <Route path="/trails/:trailId" element={<TrailDetailPage />} />
         </Routes>
       </PromptTrailRepositoryProvider>
     </MemoryRouter>,

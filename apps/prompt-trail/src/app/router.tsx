@@ -7,7 +7,7 @@ import { NotFoundPage } from '../pages/NotFoundPage';
 import { PromptLibraryPage } from '../pages/PromptLibraryPage';
 import { PromptEditorPage } from '../pages/PromptEditorPage';
 import { RecipeBuilderPage } from '../pages/RecipeBuilderPage';
-import { RunDetailPage } from '../pages/RunDetailPage';
+import { TrailDetailPage } from '../pages/TrailDetailPage';
 import { TrailListPage } from '../pages/TrailListPage';
 import { WelcomePage } from '../pages/WelcomePage';
 import { routeIds, routePaths } from './routes';
@@ -47,7 +47,7 @@ export function AppRouter() {
       />
       <Route
         path={routePaths[routeIds.trailDetail]}
-        element={<RunDetailPage />}
+        element={<TrailDetailPage />}
       />
       <Route path={routePaths[routeIds.notFound]} element={<NotFoundPage />} />
     </Routes>
