@@ -1,0 +1,27 @@
+{
+  "name": "prompt-trail-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Azure Functions API for PromptTrail (SWA Managed Functions)",
+  "type": "module",
+  "main": "dist/src/functions/*.js",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "start": "func start"
+  },
+  "engines": {
+    "node": "20.x"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.5.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.9.0",
+    "eslint": "^9.9.0",
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^2.1.9"
+  }
+}

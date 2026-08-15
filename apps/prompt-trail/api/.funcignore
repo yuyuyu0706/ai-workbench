@@ -1,0 +1,13 @@
+*.ts
+!dist/**/*.js
+.vscode
+src
+tsconfig.json
+local.settings.json
+local.settings.json.example
+test
+**/*.test.ts
+node_modules/.bin
+.git*
+.eslintrc*
+eslint.config.*
