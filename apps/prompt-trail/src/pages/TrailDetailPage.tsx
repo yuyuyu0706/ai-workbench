@@ -19,19 +19,18 @@ import {
   type SelectableLinkType,
 } from '../trail-creation/create-run-link';
 import {
-  loadRunDetailDataState,
-  type RunDetailDataState,
-} from '../run-detail/run-detail-data-state';
+  loadTrailDetailDataState,
+  type TrailDetailDataState,
+} from '../trail-detail/trail-detail-data-state';
 import { formatDateTime } from './date-time';
-import { updateRunTrailMetadata } from '../run-detail/update-run-trail-metadata';
+import { updateRunTrailMetadata } from '../trail-detail/update-trail-metadata';
 import {
   normalizeTrailTitle,
   TRAIL_KIND_LABELS,
   TRAIL_TITLE_MAX_LENGTH,
   validateTrailMetadata,
 } from '../trail-metadata';
-import { RunStatusPin } from '../run-status';
-export function RunDetailPage() {
+export function TrailDetailPage() {
   const repository = usePromptTrailRepository();
   const { trailId = '' } = useParams();
   const location = useLocation();
@@ -57,7 +56,7 @@ export function RunDetailPage() {
   const [snapshot, setSnapshot] = useState<{
     repository: typeof repository;
     trailId: string;
-    state: RunDetailDataState | { status: 'loading' };
+    state: TrailDetailDataState | { status: 'loading' };
     links: readonly TrailLink[];
   }>({ repository, trailId, state: { status: 'loading' }, links: [] });
   const [formSnapshot, setFormSnapshot] = useState({
@@ -199,13 +198,14 @@ export function RunDetailPage() {
   ]);
   useEffect(() => {
     let active = true;
-    loadRunDetailDataState(repository, trailId).then((next) => {
+    loadTrailDetailDataState(repository, trailId).then((next) => {
       if (active)
         setSnapshot({
           repository,
           trailId,
           state: next,
-          links: next.status === 'data' ? next.data.links : [],
+          links:
+            next.status === 'data' ? (next.data.runs[0]?.links ?? []) : [],
         });
     });
     return () => {
@@ -279,9 +279,11 @@ export function RunDetailPage() {
     if (
       deleteOverride !== null ||
       deletion.status === 'deleting' ||
-      state.status !== 'data'
+      state.status !== 'data' ||
+      state.data.runs[0] === undefined
     )
       return;
+    const activeRunId = state.data.runs[0].run.id;
     setDeleteSnapshot({
       repository,
       trailId,
@@ -291,7 +293,7 @@ export function RunDetailPage() {
     });
     try {
       await repository.softDeleteLink(
-        state.data.run.id,
+        activeRunId,
         linkId,
         new Date().toISOString() as UtcDateTimeString,
       );
@@ -333,9 +335,11 @@ export function RunDetailPage() {
     if (
       formOverride !== null ||
       state.status !== 'data' ||
+      state.data.runs[0] === undefined ||
       form.status === 'submitting'
     )
       return;
+    const activeRunId = state.data.runs[0].run.id;
     const title = form.title.trim();
     if (title.length === 0) {
       setFormSnapshot({
@@ -383,7 +387,7 @@ export function RunDetailPage() {
     try {
       const link = await repository.saveLink(
         createRunLink({
-          runId: state.data.run.id,
+          runId: activeRunId,
           title,
           url,
           type: form.type,
@@ -544,7 +548,7 @@ export function RunDetailPage() {
     metadataReloadRef.current = token;
     const requestedRepository = repository;
     const requestedRunId = trailId;
-    const latest = await loadRunDetailDataState(repository, trailId);
+    const latest = await loadTrailDetailDataState(repository, trailId);
     const active = activeIdentityRef.current;
     if (
       !active.mounted ||
@@ -559,7 +563,7 @@ export function RunDetailPage() {
       repository,
       trailId,
       state: latest,
-      links: latest.data.links,
+      links: latest.data.runs[0]?.links ?? [],
     });
     setMetadataSnapshot({
       repository,
@@ -596,7 +600,17 @@ export function RunDetailPage() {
         description="ページを再読み込みするか、Dashboardへ戻ってください。"
       />
     );
-  const { run, trail, project, recipe } = displayedState.data;
+  const { trail, runs } = displayedState.data;
+  const activeRun = runs[0];
+  if (activeRun === undefined)
+    return (
+      <DetailMessage
+        variant="empty"
+        title="指定されたRunが見つかりません。"
+        description="Dashboardから別のRunを選択してください。"
+      />
+    );
+  const { run, project, recipe } = activeRun;
   return (
     <section className="prompt-trail-page">
       <PageHeader
@@ -635,12 +649,6 @@ export function RunDetailPage() {
                 <div>
                   <dt>Trail種別</dt>
                   <dd>{TRAIL_KIND_LABELS[trail.kind]}</dd>
-                </div>
-                <div>
-                  <dt>ステータス</dt>
-                  <dd>
-                    <RunStatusPin status={run.status} />
-                  </dd>
                 </div>
               </dl>
               {metadataOverride === null && metadata.successNotice ? (
