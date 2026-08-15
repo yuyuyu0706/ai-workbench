@@ -126,8 +126,7 @@ export function RunStepSection({
   }
 
   async function deleteLink(linkId: LinkId) {
-    if (deleteOverride !== null || deleteSnapshot.status === 'deleting')
-      return;
+    if (deleteOverride !== null || deleteSnapshot.status === 'deleting') return;
     setDeleteSnapshot({ linkId, status: 'deleting', successNotice: false });
     try {
       await repository.softDeleteLink(
