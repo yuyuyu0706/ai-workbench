@@ -180,6 +180,7 @@ function buildRun(overrides: Partial<Run> = {}): Run {
     status: 'done',
     evaluation: 'good',
     improvementNote: 'Keep it',
+    output: null,
     ...overrides,
   };
 }

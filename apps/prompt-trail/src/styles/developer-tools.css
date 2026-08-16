@@ -83,10 +83,23 @@
   font-weight: 700;
 }
 
-.developer-tools__field select {
+.developer-tools__field select,
+.developer-tools__field textarea,
+.developer-tools__field input {
   width: 100%;
   min-width: 0;
   padding: var(--pt-space-2);
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.developer-tools__field textarea {
+  resize: vertical;
+}
+
+.developer-tools__execute-result {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 @media (max-width: 360px) {

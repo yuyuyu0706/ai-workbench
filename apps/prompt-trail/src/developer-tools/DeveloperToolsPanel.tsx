@@ -14,6 +14,11 @@ import {
   type DeveloperUiStateSnapshot,
 } from '../developer-ui-state';
 import {
+  callGatewayExecute,
+  GATEWAY_PROVIDERS,
+  type GatewayProvider,
+} from '../gateway/execute-client';
+import {
   useDeveloperTools,
   useDeveloperUiStateSnapshot,
 } from './DeveloperToolsContext';
@@ -443,7 +448,137 @@ function DeveloperToolsPanelContent({
         </div>
         {uiStateError ? <p role="alert">{uiStateError}</p> : null}
       </section>
+
+      <ExecuteSection />
     </aside>
+  );
+}
+
+function ExecuteSection() {
+  const [prompt, setPrompt] = useState('');
+  const [provider, setProvider] = useState<GatewayProvider>(
+    GATEWAY_PROVIDERS[0],
+  );
+  const [model, setModel] = useState('');
+  const [maxTokens, setMaxTokens] = useState('');
+  const [temperature, setTemperature] = useState('');
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [result, setResult] = useState<
+    | { readonly kind: 'success'; readonly output: string }
+    | { readonly kind: 'error'; readonly message: string }
+    | null
+  >(null);
+
+  async function handleExecute() {
+    setIsExecuting(true);
+    setResult(null);
+    try {
+      const output = await callGatewayExecute(prompt, provider, {
+        model: model.trim() === '' ? undefined : model.trim(),
+        maxTokens: maxTokens.trim() === '' ? undefined : Number(maxTokens),
+        temperature:
+          temperature.trim() === '' ? undefined : Number(temperature),
+      });
+      setResult({ kind: 'success', output });
+    } catch (error) {
+      setResult({
+        kind: 'error',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'AI Execution Gatewayの呼び出しに失敗しました。',
+      });
+    } finally {
+      setIsExecuting(false);
+    }
+  }
+
+  return (
+    <section
+      className="developer-tools__section"
+      aria-labelledby="gateway-execute-heading"
+    >
+      <h3 id="gateway-execute-heading">AI Execution Gateway (/api/execute)</h3>
+      <p>
+        任意のPromptをAI Execution Gatewayへ送信して、生成結果を確認できます。
+      </p>
+
+      <label className="developer-tools__field">
+        <span>Prompt</span>
+        <textarea
+          rows={4}
+          value={prompt}
+          disabled={isExecuting}
+          onChange={(event) => setPrompt(event.target.value)}
+        />
+      </label>
+
+      <label className="developer-tools__field">
+        <span>Provider</span>
+        <select
+          value={provider}
+          disabled={isExecuting}
+          onChange={(event) =>
+            setProvider(event.target.value as GatewayProvider)
+          }
+        >
+          {GATEWAY_PROVIDERS.map((providerId) => (
+            <option key={providerId} value={providerId}>
+              {providerId}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="developer-tools__field">
+        <span>Model（任意）</span>
+        <input
+          type="text"
+          value={model}
+          disabled={isExecuting}
+          onChange={(event) => setModel(event.target.value)}
+        />
+      </label>
+
+      <label className="developer-tools__field">
+        <span>Max Tokens（任意）</span>
+        <input
+          type="number"
+          value={maxTokens}
+          disabled={isExecuting}
+          onChange={(event) => setMaxTokens(event.target.value)}
+        />
+      </label>
+
+      <label className="developer-tools__field">
+        <span>Temperature（任意）</span>
+        <input
+          type="number"
+          step="0.1"
+          value={temperature}
+          disabled={isExecuting}
+          onChange={(event) => setTemperature(event.target.value)}
+        />
+      </label>
+
+      <div className="developer-tools__actions">
+        <button
+          className="pt-button pt-button--primary"
+          type="button"
+          disabled={isExecuting || prompt.trim() === ''}
+          onClick={() => void handleExecute()}
+        >
+          {isExecuting ? '実行中...' : 'Execute'}
+        </button>
+      </div>
+
+      {result?.kind === 'success' ? (
+        <p className="developer-tools__execute-result" role="status">
+          {result.output}
+        </p>
+      ) : null}
+      {result?.kind === 'error' ? <p role="alert">{result.message}</p> : null}
+    </section>
   );
 }
 

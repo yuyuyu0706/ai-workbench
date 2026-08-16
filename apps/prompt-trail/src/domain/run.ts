@@ -62,4 +62,6 @@ export interface Run extends BaseEntity<'run'>, ArchivableEntity {
   readonly status: RunStatus;
   readonly evaluation: RunEvaluation | null;
   readonly improvementNote: string | null;
+  /** Generated output text from an AI Execution Gateway call (e.g. PLAN generation). */
+  readonly output: string | null;
 }

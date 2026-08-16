@@ -74,6 +74,7 @@ function buildRun(
     status: 'prepared',
     evaluation: null,
     improvementNote: null,
+    output: null,
     ...overrides,
   };
 }
