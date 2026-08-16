@@ -1,4 +1,5 @@
 {
+  "routes": [{ "route": "/api/execute", "allowedRoles": ["owner"] }],
   "navigationFallback": {
     "rewrite": "/index.html"
   }

@@ -26,6 +26,9 @@
 
 - Node.js と Corepack を利用できる環境が必要です。
 - 依存取得は Workspace root で行います。`apps/prompt-trail` 配下で npm / yarn の個別 install は行いません。
+  例外として、`apps/prompt-trail/api/`（Azure Static Web Apps Managed Function）は
+  pnpm workspaceに含まれない独立したpackageであり、この配下だけは個別に`npm install`を行います。
+  理由はLv3-3（Issue #289）を参照してください。
 - npm / yarn の lockfile は生成しません。
 
 ## 4. Repository を取得する
@@ -86,7 +89,39 @@ pnpm install --frozen-lockfile
 **成功判定:** 終了コードが 0、`pnpm-lock.yaml` が変更されず、npm / yarn の lockfile が生成されません。manifest と lockfile が不一致でも `--no-frozen-lockfile` へ変更しません。  
 **次の工程:** Vite dev server を起動します。
 
-## 8. Vite dev server を起動する
+## 8. API（Managed Function）の依存を取得する
+
+**目的:** AI Execution Gateway（`apps/prompt-trail/api/`）の依存を取得します。
+このディレクトリはpnpm workspaceの外にあるため、個別にinstallします。
+**実行場所:** `apps/prompt-trail/api/`
+
+```bash
+cd apps/prompt-trail/api
+npm install
+cd ../../..
+```
+
+**成功判定:** 終了コードが0、`apps/prompt-trail/api/node_modules`が生成されます。
+**次の工程:** ローカル用の秘密情報ファイルを準備します。
+
+## 9. ローカル用の秘密情報ファイルを準備する
+
+**目的:** ローカルでAPIを実行するための設定ファイルを用意します。
+**実行場所:** `apps/prompt-trail/api/`
+
+```bash
+cp apps/prompt-trail/api/local.settings.json.example apps/prompt-trail/api/local.settings.json
+```
+
+`local.settings.json`は`.gitignore`対象です。実際にAI APIの応答まで確認したい場合は、
+`ANTHROPIC_API_KEY`・`OPENAI_API_KEY`の値を自分のキーで埋めてください
+（Gateway自体の疎通・認証設定のみ確認したい場合は、値を空のままでも`/api/health`の
+動作確認は可能です）。
+
+**成功判定:** `apps/prompt-trail/api/local.settings.json`が存在する。
+**次の工程:** SPAとAPIを同時に起動して確認します（`swa-cli`）。
+
+## 10. Vite dev server を起動する
 
 **目的:** 日常開発用の Vite dev server で PromptTrail を開きます。  
 **実行場所:** Workspace root。
@@ -102,7 +137,7 @@ pnpm --filter prompt-trail dev
 **成功判定:** 通常は `http://localhost:5173/` が表示されます。5173 が競合する場合は Vite ログの `Local:` URL を使用します。停止は `Ctrl+C` です。  
 **次の工程:** ブラウザで現行 Route を確認します。
 
-## 9. ブラウザを確認する
+## 11. ブラウザを確認する
 
 **目的:** Application Shell、Router、Dashboard が起動していることを確認します。  
 **実行場所:** 起動した dev server を開くブラウザ。
@@ -115,9 +150,31 @@ pnpm --filter prompt-trail dev
 - Desktop / Mobile 幅で重大なレイアウト崩れがない。
 
 **成功判定:** 上記の画面と遷移を確認できます。Fresh Browser では IndexedDB が空のため Dashboard が empty state になる可能性がありますが、異常ではありません。production application に test-only Seed UI を追加せず、sample data の表示を起動成功の必須条件にしません。  
-**次の工程:** 静的品質を確認します。
+**次の工程:** SPA + API を同時に起動して確認します。
 
-## 10. lint / format check を実行する
+## 12. SPA + API（`swa-cli`）を起動する
+
+**目的:** `/api/*`ルーティング・`staticwebapp.config.json`の認証保護ルールを含めて、
+本番相当の挙動をローカルで確認します。単なる`vite dev`（10章）ではAPIへ到達できません。
+**実行場所:** Workspace root
+
+```bash
+npx @azure/static-web-apps-cli start http://localhost:5173 \
+  --api-location apps/prompt-trail/api \
+  --run "pnpm --filter prompt-trail dev"
+```
+
+**成功判定:** `http://localhost:4280/`が表示され、`/api/health`が疎通する。
+`allowedRoles`で保護されたルート（`/api/execute`）へアクセスすると、ローカル専用の
+簡易ログイン画面が表示される。
+
+ローカルのログイン画面では、実際のGitHub認証は行われません。「Roles」欄へ`owner`と
+自分で入力するだけで、本番の招待済みロールを持つユーザーとして動作確認できます
+（ローカルサーバーはインターネットに公開されていないため、これは意図された挙動です）。
+
+**次の工程:** 静的品質・テストへ進む場合は、以下の章を参照してください。
+
+## 13. lint / format check を実行する
 
 **目的:** 静的解析と整形差分を確認します。  
 **実行場所:** Workspace root。
@@ -136,7 +193,7 @@ pnpm format
 **成功判定:** lint と `format:check` が終了コード 0 で完了します。`format:check` は副作用のない確認、`format` はファイルを書き換える修正コマンドです。  
 **次の工程:** Unit / Component Test を実行します。
 
-## 11. Unit / Component Test を実行する
+## 14. Unit / Component Test を実行する
 
 **目的:** Vitest、React Testing Library、jsdom により、利用者が認識する role、heading、text、状態表示を高速に確認します。実ブラウザ、Vite Web Server、Desktop / Mobile 表示は E2E の責務です。  
 **実行場所:** Workspace root。
@@ -160,7 +217,7 @@ pnpm --filter prompt-trail test:watch
 `test:watch` はローカル開発専用で、CI では使用しません。
 **次の工程:** 初回など必要な場合は Playwright Chromium を導入します。
 
-## 12. Playwright Chromium を導入する
+## 15. Playwright Chromium を導入する
 
 **目的:** Browser E2E 用の Chromium を準備します。  
 **実行場所:** Workspace root。
@@ -178,7 +235,7 @@ pnpm --filter prompt-trail test:e2e:install --with-deps
 **成功判定:** Chromium の導入が終了コード 0 で完了します。  
 **次の工程:** Browser E2E を実行します。
 
-## 13. Browser E2E を実行する
+## 16. Browser E2E を実行する
 
 **目的:** Playwright で実ブラウザの Router、Dashboard、browser IndexedDB 経路、Desktop / Mobile 表示を確認します。  
 **実行場所:** Workspace root。
@@ -193,7 +250,7 @@ E2E は Playwright が `pnpm exec vite` を管理し、`http://127.0.0.1:4173` �
 **成功判定:** Desktop / Mobile の E2E が終了コード 0 で完了します。4173 は `strictPort` で固定のため競合すると失敗します。詳しい診断は[環境・起動・品質ゲートのトラブルシューティング](troubleshooting.md#11-browser-e2e)を参照してください。
 **次の工程:** production build を実行します。
 
-## 14. production build を実行する
+## 17. production build を実行する
 
 **目的:** production 成果物を生成できることを確認します。  
 **実行場所:** Workspace root。
@@ -209,7 +266,7 @@ pnpm build
 **成功判定:** 対象の build が終了コード 0 で完了します。  
 **次の工程:** production preview を確認します。
 
-## 15. production preview を確認する
+## 18. production preview を確認する
 
 **目的:** production build 成果物を Vite preview server で確認します。  
 **実行場所:** Workspace root。事前に build を完了します。
@@ -221,7 +278,7 @@ pnpm --filter prompt-trail preview
 **成功判定:** 通常は `http://localhost:4173/` に production 成果物が表示されます。競合時は Vite の `Local:` URL を使用します。`preview` は日常開発の `dev` や Playwright 管理の E2E Web Server とは異なります。  
 **次の工程:** 必要に応じて CI 相当の通し確認を実行します。
 
-## 16. CI 相当の通し確認
+## 19. CI 相当の通し確認
 
 **目的:** GitHub Actions の `Quality and build` と同じ順序でローカル確認します。  
 **実行場所:** Workspace root。
@@ -241,7 +298,7 @@ CI では Chromium 導入に `--with-deps` を付けます。順序は Install d
 **成功判定:** 各コマンドが終了コード 0 で完了します。  
 **次の工程:** PR の品質判断は [品質ゲートと開発運用](quality-gates.md) に従います。
 
-## 17. dev / E2E / preview の比較
+## 20. dev / E2E / preview の比較
 
 | 種別    | 目的                  | 標準ポート | サーバー                      |
 | ------- | --------------------- | ---------: | ----------------------------- |
@@ -253,10 +310,11 @@ CI では Chromium 導入に `--with-deps` を付けます。順序は Install d
 - E2E は `strictPort` のため 4173 が競合すると失敗します。
 - origin が異なる場合、IndexedDB は共有されません。dev、preview、Hosted Preview で同じローカルデータが表示されなくても、直ちに異常とは判断しません。
 
-## 18. 関連文書
+## 21. 関連文書
 
 - [root README](../../README.md): リポジトリ全体の最短入口。
 - [PromptTrail README](../../apps/prompt-trail/README.md): アプリ固有の入口。
 - [品質ゲートと開発運用](quality-gates.md): 品質判断、PR 前確認、失敗時の初動。
 - [環境・起動・品質ゲートのトラブルシューティング](troubleshooting.md): 環境・起動・品質ゲート障害の詳細診断と復旧。
 - [Deployment and Hosted Preview](../product/prompt-trail/deployment-and-preview.md): Hosted Preview / Deploy の運用。
+- [AI Execution Gateway：Azure Static Web Apps 手動設定手順](../product/prompt-trail/gateway-azure-swa-setup.md): 本番環境のAPIキー登録・認証ロール招待の手順。

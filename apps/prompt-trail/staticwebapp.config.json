@@ -1,3 +1,0 @@
-{
-  "routes": [{ "route": "/api/execute", "allowedRoles": ["owner"] }]
-}
