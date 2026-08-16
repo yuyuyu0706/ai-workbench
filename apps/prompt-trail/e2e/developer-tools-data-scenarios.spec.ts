@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 async function openDeveloperTools(page: import('@playwright/test').Page) {
   await page.goto('/dashboard');
   await page.getByRole('button', { name: 'Developer Tools' }).click();
-  await page.getByRole('button', { name: 'Data Scenario' }).click();
+  await page.locator('summary', { hasText: 'Data Scenario' }).click();
   await expect(page.getByText('Projects', { exact: true })).toBeVisible();
 }
 

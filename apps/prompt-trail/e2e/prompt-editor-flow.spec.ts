@@ -143,7 +143,7 @@ test.describe('Prompt Editor flow', () => {
     await expectNoHorizontalOverflow(page);
 
     await page.getByRole('button', { name: 'Developer Tools' }).click();
-    await page.getByRole('button', { name: 'UI State Override' }).click();
+    await page.locator('summary', { hasText: 'UI State Override' }).click();
     await page
       .getByRole('combobox', { name: 'Target' })
       .selectOption('prompt-editor-delete');
