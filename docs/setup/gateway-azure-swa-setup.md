@@ -95,7 +95,7 @@ Azure Static Web Appsリソース側の**手動設定**（Claude Codeでは代�
 
 ## 7. 関連文書
 
-- [Deployment and Hosted Preview](deployment-and-preview.md)：デプロイパイプライン全体の契約
+- [Deployment and Hosted Preview](../product/prompt-trail/deployment-and-preview.md)：デプロイパイプライン全体の契約
 - ADR 0006：External Execution Boundary
 - ADR 0009：Gateway External Dependencies and Domain Representation
 - Issue #291：本手順が必要になった経緯・設計判断の記録

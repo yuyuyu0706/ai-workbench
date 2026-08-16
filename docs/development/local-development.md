@@ -317,4 +317,4 @@ CI では Chromium 導入に `--with-deps` を付けます。順序は Install d
 - [品質ゲートと開発運用](quality-gates.md): 品質判断、PR 前確認、失敗時の初動。
 - [環境・起動・品質ゲートのトラブルシューティング](troubleshooting.md): 環境・起動・品質ゲート障害の詳細診断と復旧。
 - [Deployment and Hosted Preview](../product/prompt-trail/deployment-and-preview.md): Hosted Preview / Deploy の運用。
-- [AI Execution Gateway：Azure Static Web Apps 手動設定手順](../product/prompt-trail/gateway-azure-swa-setup.md): 本番環境のAPIキー登録・認証ロール招待の手順。
+- [AI Execution Gateway：Azure Static Web Apps 手動設定手順](../setup/gateway-azure-swa-setup.md): 本番環境のAPIキー登録・認証ロール招待の手順。
