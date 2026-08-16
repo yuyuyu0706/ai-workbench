@@ -34,6 +34,8 @@ jobs:
 
       - name: Build PromptTrail
         run: pnpm --filter prompt-trail build
+        env:
+          VITE_ENABLE_DEVELOPER_TOOLS: 'true'
 
       - name: Deploy prebuilt PromptTrail artifact to Azure Static Web Apps
         id: builddeploy
