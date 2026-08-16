@@ -465,9 +465,7 @@ function ExecuteSection() {
   const [provider, setProvider] = useState<GatewayProvider>(
     GATEWAY_PROVIDERS[0],
   );
-  const [modelChoice, setModelChoice] = useState<string>(
-    DEFAULT_CLAUDE_MODEL,
-  );
+  const [modelChoice, setModelChoice] = useState<string>(DEFAULT_CLAUDE_MODEL);
   const [customModel, setCustomModel] = useState('');
   const [maxTokens, setMaxTokens] = useState('');
   const [temperature, setTemperature] = useState('');
