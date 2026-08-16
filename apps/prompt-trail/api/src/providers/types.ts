@@ -11,6 +11,9 @@ export type AiProviderOptions = {
   readonly model?: string;
   readonly maxTokens?: number;
   readonly temperature?: number;
+  readonly topP?: number;
+  readonly topK?: number;
+  readonly stopSequences?: readonly string[];
 };
 
 export const AI_PROVIDER_IDS = ['claude', 'openai'] as const;

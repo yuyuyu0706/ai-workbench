@@ -7,6 +7,9 @@ export type CallGatewayExecuteOptions = {
   readonly model?: string;
   readonly maxTokens?: number;
   readonly temperature?: number;
+  readonly topP?: number;
+  readonly topK?: number;
+  readonly stopSequences?: readonly string[];
 };
 
 /** Thrown when the AI Execution Gateway (`POST /api/execute`) call fails. */
@@ -41,6 +44,9 @@ export async function callGatewayExecute(
         model: options.model,
         maxTokens: options.maxTokens,
         temperature: options.temperature,
+        topP: options.topP,
+        topK: options.topK,
+        stopSequences: options.stopSequences,
       }),
     });
   } catch {

@@ -14,6 +14,7 @@ test.describe('Trail reuse acceptance', () => {
   }) => {
     await page.goto('/dashboard');
     await page.getByRole('button', { name: 'Developer Tools' }).click();
+    await page.locator('summary', { hasText: 'Data Scenario' }).click();
     await page
       .getByRole('combobox', { name: 'Scenario' })
       .selectOption('reuse-ready');

@@ -101,10 +101,17 @@ function renderPanel(
   );
 }
 
+async function openSection(name: string) {
+  const heading = screen.getByRole('heading', { name });
+  await userEvent.click(heading.closest('summary')!);
+}
+
 async function openReadyPanel() {
   const toggle = screen.getByRole('button', { name: 'Developer Tools' });
   await userEvent.click(toggle);
   await screen.findByText('Projects');
+  await openSection('Data Scenario');
+  await openSection('UI State Override');
   return toggle;
 }
 
@@ -232,6 +239,7 @@ describe('DeveloperToolsPanel', () => {
     await userEvent.click(
       screen.getByRole('button', { name: 'Developer Tools' }),
     );
+    await openSection('Data Scenario');
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       '件数を読み込めませんでした',
@@ -333,6 +341,7 @@ describe('DeveloperToolsPanel', () => {
     await userEvent.click(
       screen.getByRole('button', { name: 'Developer Tools' }),
     );
+    await openSection('UI State Override');
     expect(screen.getAllByText(/New Trail Form \/ Save failure/)).toHaveLength(
       2,
     );
