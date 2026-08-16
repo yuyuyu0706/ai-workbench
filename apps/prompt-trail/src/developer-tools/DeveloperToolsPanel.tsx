@@ -263,11 +263,10 @@ function DeveloperToolsPanelContent({
         </button>
       </div>
 
-      <section
-        className="developer-tools__section"
-        aria-labelledby="data-scenario-heading"
-      >
-        <h3 id="data-scenario-heading">Data Scenario</h3>
+      <details className="developer-tools__section">
+        <summary>
+          <h3>Data Scenario</h3>
+        </summary>
         <div>
           <h4>Current Record Counts</h4>
           {countsState.status === 'loading' ? (
@@ -379,13 +378,12 @@ function DeveloperToolsPanelContent({
             {feedback.message}
           </p>
         ) : null}
-      </section>
+      </details>
 
-      <section
-        className="developer-tools__section"
-        aria-labelledby="ui-state-heading"
-      >
-        <h3 id="ui-state-heading">UI State Override</h3>
+      <details className="developer-tools__section">
+        <summary>
+          <h3>UI State Override</h3>
+        </summary>
         <p>実データを変更せず、確認したい画面状態を一度に1つだけ固定します。</p>
         <p aria-live="polite">
           Active Override: {getActiveOverrideLabel(uiStateSnapshot)}
@@ -447,27 +445,45 @@ function DeveloperToolsPanelContent({
           </button>
         </div>
         {uiStateError ? <p role="alert">{uiStateError}</p> : null}
-      </section>
+      </details>
 
       <ExecuteSection />
     </aside>
   );
 }
 
+const CLAUDE_KNOWN_MODELS = [
+  'claude-sonnet-5',
+  'claude-opus-4-8',
+  'claude-haiku-4-5-20251001',
+] as const;
+const CUSTOM_MODEL_OPTION = 'custom';
+const DEFAULT_CLAUDE_MODEL = 'claude-sonnet-5';
+
 function ExecuteSection() {
   const [prompt, setPrompt] = useState('');
   const [provider, setProvider] = useState<GatewayProvider>(
     GATEWAY_PROVIDERS[0],
   );
-  const [model, setModel] = useState('');
+  const [modelChoice, setModelChoice] = useState<string>(
+    DEFAULT_CLAUDE_MODEL,
+  );
+  const [customModel, setCustomModel] = useState('');
   const [maxTokens, setMaxTokens] = useState('');
   const [temperature, setTemperature] = useState('');
+  const [topP, setTopP] = useState('');
+  const [topK, setTopK] = useState('');
+  const [stopSequences, setStopSequences] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
   const [result, setResult] = useState<
     | { readonly kind: 'success'; readonly output: string }
     | { readonly kind: 'error'; readonly message: string }
     | null
   >(null);
+
+  const model =
+    modelChoice === CUSTOM_MODEL_OPTION ? customModel.trim() : modelChoice;
+  const isClaude = provider === 'claude';
 
   async function handleExecute() {
     setIsExecuting(true);
@@ -478,6 +494,12 @@ function ExecuteSection() {
         maxTokens: maxTokens.trim() === '' ? undefined : Number(maxTokens),
         temperature:
           temperature.trim() === '' ? undefined : Number(temperature),
+        topP: isClaude && topP.trim() !== '' ? Number(topP) : undefined,
+        topK: isClaude && topK.trim() !== '' ? Number(topK) : undefined,
+        stopSequences:
+          isClaude && stopSequences.trim() !== ''
+            ? stopSequences.split('\n').filter((line) => line.trim() !== '')
+            : undefined,
       });
       setResult({ kind: 'success', output });
     } catch (error) {
@@ -494,11 +516,10 @@ function ExecuteSection() {
   }
 
   return (
-    <section
-      className="developer-tools__section"
-      aria-labelledby="gateway-execute-heading"
-    >
-      <h3 id="gateway-execute-heading">AI Execution Gateway (/api/execute)</h3>
+    <details className="developer-tools__section">
+      <summary>
+        <h3>AI Execution Gateway (/api/execute)</h3>
+      </summary>
       <p>
         任意のPromptをAI Execution Gatewayへ送信して、生成結果を確認できます。
       </p>
@@ -531,14 +552,32 @@ function ExecuteSection() {
       </label>
 
       <label className="developer-tools__field">
-        <span>Model（任意）</span>
-        <input
-          type="text"
-          value={model}
+        <span>Model</span>
+        <select
+          value={modelChoice}
           disabled={isExecuting}
-          onChange={(event) => setModel(event.target.value)}
-        />
+          onChange={(event) => setModelChoice(event.target.value)}
+        >
+          {CLAUDE_KNOWN_MODELS.map((knownModel) => (
+            <option key={knownModel} value={knownModel}>
+              {knownModel}
+            </option>
+          ))}
+          <option value={CUSTOM_MODEL_OPTION}>その他（自由入力）</option>
+        </select>
       </label>
+
+      {modelChoice === CUSTOM_MODEL_OPTION ? (
+        <label className="developer-tools__field">
+          <span>Model（自由入力）</span>
+          <input
+            type="text"
+            value={customModel}
+            disabled={isExecuting}
+            onChange={(event) => setCustomModel(event.target.value)}
+          />
+        </label>
+      ) : null}
 
       <label className="developer-tools__field">
         <span>Max Tokens（任意）</span>
@@ -561,6 +600,41 @@ function ExecuteSection() {
         />
       </label>
 
+      {isClaude ? (
+        <>
+          <label className="developer-tools__field">
+            <span>Top P（任意）</span>
+            <input
+              type="number"
+              step="0.1"
+              value={topP}
+              disabled={isExecuting}
+              onChange={(event) => setTopP(event.target.value)}
+            />
+          </label>
+
+          <label className="developer-tools__field">
+            <span>Top K（任意）</span>
+            <input
+              type="number"
+              value={topK}
+              disabled={isExecuting}
+              onChange={(event) => setTopK(event.target.value)}
+            />
+          </label>
+
+          <label className="developer-tools__field">
+            <span>Stop Sequences（任意・改行区切り）</span>
+            <textarea
+              rows={3}
+              value={stopSequences}
+              disabled={isExecuting}
+              onChange={(event) => setStopSequences(event.target.value)}
+            />
+          </label>
+        </>
+      ) : null}
+
       <div className="developer-tools__actions">
         <button
           className="pt-button pt-button--primary"
@@ -578,7 +652,7 @@ function ExecuteSection() {
         </p>
       ) : null}
       {result?.kind === 'error' ? <p role="alert">{result.message}</p> : null}
-    </section>
+    </details>
   );
 }
 

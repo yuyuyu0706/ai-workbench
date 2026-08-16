@@ -6,6 +6,7 @@ const runPath = '/trails/reuse-ready-trail-completed-source';
 async function loadReuseReady(page: import('@playwright/test').Page) {
   await page.goto('/dashboard');
   await page.getByRole('button', { name: 'Developer Tools' }).click();
+  await page.getByRole('button', { name: 'Data Scenario' }).click();
   await page
     .getByRole('combobox', { name: 'Scenario' })
     .selectOption('reuse-ready');

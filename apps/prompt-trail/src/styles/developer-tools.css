@@ -22,14 +22,34 @@
   overflow-wrap: anywhere;
 }
 
-.developer-tools__panel,
+.developer-tools__panel {
+  display: grid;
+  gap: var(--pt-space-4);
+  border-top: 1px solid var(--pt-color-border);
+}
+
 .developer-tools__section {
+  padding: var(--pt-space-3);
+  border: 1px solid var(--pt-color-border);
+  border-radius: var(--pt-radius-sm);
+}
+
+.developer-tools__section[open] {
   display: grid;
   gap: var(--pt-space-4);
 }
 
-.developer-tools__panel {
-  border-top: 1px solid var(--pt-color-border);
+.developer-tools__section summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.developer-tools__section summary::-webkit-details-marker {
+  display: none;
+}
+
+.developer-tools__section summary h3 {
+  display: inline;
 }
 
 .developer-tools__heading,

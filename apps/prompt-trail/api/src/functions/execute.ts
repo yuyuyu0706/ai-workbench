@@ -17,6 +17,9 @@ type ExecuteRequestBody = {
   readonly model?: unknown;
   readonly maxTokens?: unknown;
   readonly temperature?: unknown;
+  readonly topP?: unknown;
+  readonly topK?: unknown;
+  readonly stopSequences?: unknown;
 };
 
 /**
@@ -58,6 +61,24 @@ export async function execute(
     return badRequest('temperature must be a number when provided');
   }
 
+  if (body.topP !== undefined && typeof body.topP !== 'number') {
+    return badRequest('topP must be a number when provided');
+  }
+
+  if (body.topK !== undefined && typeof body.topK !== 'number') {
+    return badRequest('topK must be a number when provided');
+  }
+
+  if (
+    body.stopSequences !== undefined &&
+    (!Array.isArray(body.stopSequences) ||
+      !body.stopSequences.every((entry) => typeof entry === 'string'))
+  ) {
+    return badRequest(
+      'stopSequences must be an array of strings when provided',
+    );
+  }
+
   const aiProvider = resolveAiProvider(body.provider);
 
   try {
@@ -65,6 +86,9 @@ export async function execute(
       model: body.model,
       maxTokens: body.maxTokens,
       temperature: body.temperature,
+      topP: body.topP,
+      topK: body.topK,
+      stopSequences: body.stopSequences as readonly string[] | undefined,
     });
 
     return { status: 200, jsonBody: { output } };

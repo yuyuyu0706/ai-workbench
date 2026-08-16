@@ -6,7 +6,7 @@ import {
 
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 const CLAUDE_API_VERSION = '2023-06-01';
-const DEFAULT_MODEL = 'claude-sonnet-4-5';
+const DEFAULT_MODEL = 'claude-sonnet-5';
 const DEFAULT_MAX_TOKENS = 1024;
 
 /** Claude API (Anthropic) provider. Reads its key from ANTHROPIC_API_KEY (ADR 0009). */
@@ -39,6 +39,9 @@ export class ClaudeProvider implements AiProvider {
           model: options.model ?? DEFAULT_MODEL,
           max_tokens: options.maxTokens ?? DEFAULT_MAX_TOKENS,
           temperature: options.temperature,
+          top_p: options.topP,
+          top_k: options.topK,
+          stop_sequences: options.stopSequences,
           messages: [{ role: 'user', content: prompt }],
         }),
       });

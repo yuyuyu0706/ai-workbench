@@ -12,6 +12,14 @@ async function openDeveloperTools(page: Page) {
     await page.getByRole('button', { name: 'Developer Tools' }).click();
   }
   await expect(page.getByText('UI State Override')).toBeVisible();
+  const target = page.getByRole('combobox', { name: 'Target' });
+  if (!(await target.isVisible().catch(() => false))) {
+    await page.getByRole('button', { name: 'UI State Override' }).click();
+  }
+  const scenario = page.getByRole('combobox', { name: 'Scenario' });
+  if (!(await scenario.isVisible().catch(() => false))) {
+    await page.getByRole('button', { name: 'Data Scenario' }).click();
+  }
 }
 
 async function applyOverride(page: Page, target: string, state: string) {
