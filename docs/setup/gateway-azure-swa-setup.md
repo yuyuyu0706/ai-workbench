@@ -6,15 +6,15 @@
 Azure Static Web Appsリソース側の**手動設定**（Claude Codeでは代行できない、Azure Portal／CLI
 での操作）の正本です。コード側の実装・デプロイ設定は各Issue（#289、#291等）を参照してください。
 
-対象のリソース：`red-flower-0ff1f6100`（`.github/workflows/azure-static-web-apps-red-flower-0ff1f6100.yml`
+対象のリソース：`salmon-mushroom-087d1ad1e`（`.github/workflows/azure-static-web-apps-salmon-mushroom-087d1ad1e.yml`
 が参照する既存のAzure Static Web Appsインスタンス）
 
 ## 2. 前提知識：2種類の秘密情報を混同しないこと
 
-| 名称                                                   | 保管場所                                                   | 用途                                                     |
-| ------------------------------------------------------ | ---------------------------------------------------------- | -------------------------------------------------------- |
-| `AZURE_STATIC_WEB_APPS_API_TOKEN_RED_FLOWER_0FF1F6100` | GitHub Secrets（既存・設定済み）                           | GitHub ActionsがAzureへ**デプロイする**ためのトークン    |
-| `ANTHROPIC_API_KEY`・`OPENAI_API_KEY`                  | Azure Static Web Apps Application Settings（本手順で設定） | Managed Functionが**実行時に**AI APIを呼び出すためのキー |
+| 名称                                                        | 保管場所                                                   | 用途                                                     |
+| ----------------------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------- |
+| `AZURE_STATIC_WEB_APPS_API_TOKEN_SALMON_MUSHROOM_087D1AD1E` | GitHub Secrets（既存・設定済み）                           | GitHub ActionsがAzureへ**デプロイする**ためのトークン    |
+| `ANTHROPIC_API_KEY`・`OPENAI_API_KEY`                       | Azure Static Web Apps Application Settings（本手順で設定） | Managed Functionが**実行時に**AI APIを呼び出すためのキー |
 
 前者は既に設定済みで本手順の対象外です。後者を本手順で設定します。
 
@@ -25,7 +25,7 @@ Azure Static Web Appsリソース側の**手動設定**（Claude Codeでは代�
 
 **実行場所:** Azure Portal
 
-1. 対象のStatic Web Appリソース（`red-flower-0ff1f6100`）を開く
+1. 対象のStatic Web Appリソース（`salmon-mushroom-087d1ad1e`）を開く
 2. 左メニューから「Environment variables」（または「Configuration」）を選択する
 3. 以下のキーと値を追加する
 
@@ -74,7 +74,7 @@ Azure Static Web Appsリソース側の**手動設定**（Claude Codeでは代�
 
 **目的:** 上記A・Bの設定が正しく機能していることを確認します。
 
-**実行場所:** ブラウザ（Hosted環境：`https://red-flower-0ff1f6100.7.azurestaticapps.net/`）
+**実行場所:** ブラウザ（Hosted環境：`https://salmon-mushroom-087d1ad1e.7.azurestaticapps.net/`）
 
 1. ブラウザのシークレットウィンドウ（未ログイン状態）でHosted環境を開き、Developer Toolsパネルの
    簡易実行フォームから`/api/execute`を呼び出す

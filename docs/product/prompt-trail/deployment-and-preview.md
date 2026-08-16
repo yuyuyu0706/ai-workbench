@@ -197,7 +197,7 @@ Phase 2のValidation Readiness受入では、実データ接続後のPrompt Libr
 ### Workflow
 
 - `.github/workflows/ci.yml`
-- `.github/workflows/azure-static-web-apps-red-flower-0ff1f6100.yml`
+- `.github/workflows/azure-static-web-apps-salmon-mushroom-087d1ad1e.yml`
 
 ### Issue / PR
 
