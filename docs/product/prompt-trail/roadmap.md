@@ -234,6 +234,23 @@ Plan / Entitlement）と直接関わるが、現時点では実装対象とせ�
   まだ言えない。Gateway機能（Lv3-5以降）を実際に使っていく中で、同種の必要性が
   繰り返し浮上するようであれば、その時点でPhase 5の前倒しを検討する
 
+#### 商用ライセンスに関する長期的な方向性（メモ）
+
+現行のGateway設計（運営持ち出し方式、Anthropic Commercial Terms of Serviceが適用）を
+前提に、将来の商用ローンチに向けて確認した事項を記録する。
+
+- Anthropic Commercial Terms of Serviceでは、生成Outputの権利はCustomer（運営側）に
+  帰属し、正当な利用に対する著作権侵害クレームからの補償も提供される
+- 一方で「Servicesの転売」「競合製品の開発」を禁じる条項があり、「単なるAPIの素通し
+  ラッパー」と「独自の付加価値を持つ製品」の境界線はAnthropic側の裁量判断の余地がある。
+  PromptTrailはPrompt資産管理・Trail履歴・GitHub連携ワークフローという独自価値を持つため
+  単純な転売とは言いにくいが、商用ローンチ前に最新の規約全文と照らして再確認する
+- 規約上、Output内の事実主張は独立した検証なしに信頼すべきでない旨を、Customerの
+  利用者（＝PromptTrailのエンドユーザー）へ告知する義務がある。これは「承認を必ず挟む」
+  というGatewayの設計原則（#291）と自然に整合している
+- 対応地域の制限（Supported Regions Policy）にも留意する
+- 商用ローンチ判断時には、規約全文の再確認と、必要に応じた弁護士への相談を前提とする
+
 ## Phase 4: Workflow & Integration Expansion（確定）
 
 Phase 3 と同じ経緯で確定した Phase です。Phase 3 で成立した Execution Foundation を使い、実行パターンと連携先を拡張します。新しい基盤を作るのではなく、Phase 3 の Execution Platform 上に Workflow を増やすことを主眼とします。GitHub API による Issue、PR、Commit 情報取得、Link の状態更新、URL からのメタデータ補完、Issue 本文生成支援と Integration 設定はここに含まれます。
