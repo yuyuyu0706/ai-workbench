@@ -59,10 +59,7 @@ export class OpenAIProvider implements AiProvider {
     const text = data.choices?.[0]?.message?.content;
 
     if (!text) {
-      throw new AiProviderError(
-        'openai',
-        'OpenAI API returned no text output',
-      );
+      throw new AiProviderError('openai', 'OpenAI API returned no text output');
     }
 
     return text;

@@ -17,13 +17,14 @@ describe('OpenAIProvider', () => {
   it('returns the generated text on success', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify({
-            choices: [{ message: { content: 'Generated text' } }],
-          }),
-          { status: 200 },
-        ),
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              choices: [{ message: { content: 'Generated text' } }],
+            }),
+            { status: 200 },
+          ),
       ),
     );
 
@@ -60,7 +61,10 @@ describe('OpenAIProvider', () => {
   it('throws AiProviderError when the response has no message content', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response(JSON.stringify({ choices: [] }), { status: 200 })),
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ choices: [] }), { status: 200 }),
+      ),
     );
 
     const provider = new OpenAIProvider('test-key');

@@ -62,15 +62,14 @@ export class ClaudeProvider implements AiProvider {
       content?: ReadonlyArray<{ type: string; text?: string }>;
     };
     const text = data.content
-      ?.filter((block) => block.type === 'text' && typeof block.text === 'string')
+      ?.filter(
+        (block) => block.type === 'text' && typeof block.text === 'string',
+      )
       .map((block) => block.text)
       .join('');
 
     if (!text) {
-      throw new AiProviderError(
-        'claude',
-        'Claude API returned no text output',
-      );
+      throw new AiProviderError('claude', 'Claude API returned no text output');
     }
 
     return text;

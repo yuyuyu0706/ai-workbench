@@ -54,10 +54,7 @@ export async function execute(
     return badRequest('maxTokens must be a number when provided');
   }
 
-  if (
-    body.temperature !== undefined &&
-    typeof body.temperature !== 'number'
-  ) {
+  if (body.temperature !== undefined && typeof body.temperature !== 'number') {
     return badRequest('temperature must be a number when provided');
   }
 

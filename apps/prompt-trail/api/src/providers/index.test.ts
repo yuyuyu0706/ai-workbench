@@ -18,8 +18,6 @@ describe('resolveAiProvider', () => {
   });
 
   it('throws for a missing provider id', () => {
-    expect(() => resolveAiProvider(undefined)).toThrow(
-      /Unsupported provider/,
-    );
+    expect(() => resolveAiProvider(undefined)).toThrow(/Unsupported provider/);
   });
 });

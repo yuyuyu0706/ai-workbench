@@ -17,13 +17,14 @@ describe('ClaudeProvider', () => {
   it('returns the generated text on success', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify({
-            content: [{ type: 'text', text: 'Generated text' }],
-          }),
-          { status: 200 },
-        ),
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              content: [{ type: 'text', text: 'Generated text' }],
+            }),
+            { status: 200 },
+          ),
       ),
     );
 
@@ -60,7 +61,10 @@ describe('ClaudeProvider', () => {
   it('throws AiProviderError when the response has no text content', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response(JSON.stringify({ content: [] }), { status: 200 })),
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ content: [] }), { status: 200 }),
+      ),
     );
 
     const provider = new ClaudeProvider('test-key');

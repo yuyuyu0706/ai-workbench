@@ -88,11 +88,14 @@ describe('execute', () => {
 
   it('returns 200 with the generated output on success', async () => {
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn(async () =>
-      new Response(
-        JSON.stringify({ content: [{ type: 'text', text: 'Generated text' }] }),
-        { status: 200 },
-      ),
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            content: [{ type: 'text', text: 'Generated text' }],
+          }),
+          { status: 200 },
+        ),
     ) as unknown as typeof fetch;
     const originalKey = process.env.ANTHROPIC_API_KEY;
     process.env.ANTHROPIC_API_KEY = 'test-key';
