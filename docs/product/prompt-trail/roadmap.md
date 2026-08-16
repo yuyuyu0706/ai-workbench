@@ -215,6 +215,25 @@ Trailモデルの発想起源は、個別管理していたPromptが徐々にテ
 断片的なPrompt実行をTrailへ進化させる思考習慣の醸成といった方向性も考えられます。
 現時点では検討の初期段階のため、実装対象としてではなく、将来立ち返るための記録としてここに残します。
 
+#### 権限管理・マルチユーザー対応に関する長期的な方向性（メモ）
+
+P3-3（GitHub / AI Execution Gateway）の実装・検証過程で、権限管理に関する2つの論点が
+浮上した。いずれもPhase 5（Identity / Authentication、Authorization Role、
+Plan / Entitlement）と直接関わるが、現時点では実装対象とせず記録に留める。
+
+- **APIキーの持ち出しパターン**：現行のGateway設計は、運営（y.k）が保有する単一の
+  AI APIキーを全アクセスで共用する「運営側持ち出し」パターンである。これに対し、
+  利用者が自分のAPIキーを持ち込む「BYOK（Bring Your Own Key）」パターンも将来的には
+  考えられるが、これには「誰がアクセスしているか」を区別する本人認証・アカウント機能が
+  前提として必要であり、Phase 5が事実上の前提条件になる（#291での議論）
+- **管理者モード・マルチユーザー対応**：現行の認証保護（Azure Static Web Appsの
+  招待制カスタムロール、ビルド時フラグによるDeveloper Tools切り替え）は、
+  「y.k一人だけを通す」ための、アプリ外側（Azure設定・ビルド設定）に分散した
+  応急的な仕組みである。実装・検証時に「アプリ内部でのランタイムな権限判定」の
+  必要性を感じたが、これは1回の気づきであり、繰り返し実感されるシグナルとは
+  まだ言えない。Gateway機能（Lv3-5以降）を実際に使っていく中で、同種の必要性が
+  繰り返し浮上するようであれば、その時点でPhase 5の前倒しを検討する
+
 ## Phase 4: Workflow & Integration Expansion（確定）
 
 Phase 3 と同じ経緯で確定した Phase です。Phase 3 で成立した Execution Foundation を使い、実行パターンと連携先を拡張します。新しい基盤を作るのではなく、Phase 3 の Execution Platform 上に Workflow を増やすことを主眼とします。GitHub API による Issue、PR、Commit 情報取得、Link の状態更新、URL からのメタデータ補完、Issue 本文生成支援と Integration 設定はここに含まれます。
