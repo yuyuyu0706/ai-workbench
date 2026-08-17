@@ -663,7 +663,11 @@ function CreateIssueSection() {
   const [body, setBody] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
   const [result, setResult] = useState<
-    | { readonly kind: 'success'; readonly url: string; readonly number: number }
+    | {
+        readonly kind: 'success';
+        readonly url: string;
+        readonly number: number;
+      }
     | { readonly kind: 'error'; readonly message: string }
     | null
   >(null);
@@ -744,7 +748,9 @@ function CreateIssueSection() {
           className="pt-button pt-button--primary"
           type="button"
           disabled={
-            isExecuting || owner.trim() === '' || repo.trim() === '' ||
+            isExecuting ||
+            owner.trim() === '' ||
+            repo.trim() === '' ||
             title.trim() === ''
           }
           onClick={() => void handleCreateIssue()}

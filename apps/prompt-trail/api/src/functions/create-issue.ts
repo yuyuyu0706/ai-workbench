@@ -31,7 +31,10 @@ export async function createIssue(
     return badRequest('Request body must be valid JSON');
   }
 
-  if (typeof requestBody.owner !== 'string' || requestBody.owner.trim() === '') {
+  if (
+    typeof requestBody.owner !== 'string' ||
+    requestBody.owner.trim() === ''
+  ) {
     return badRequest('owner is required and must be a non-empty string');
   }
 
@@ -39,7 +42,10 @@ export async function createIssue(
     return badRequest('repo is required and must be a non-empty string');
   }
 
-  if (typeof requestBody.title !== 'string' || requestBody.title.trim() === '') {
+  if (
+    typeof requestBody.title !== 'string' ||
+    requestBody.title.trim() === ''
+  ) {
     return badRequest('title is required and must be a non-empty string');
   }
 
@@ -97,7 +103,10 @@ export async function createIssue(
     return { status: response.status, jsonBody: { error: message } };
   }
 
-  if (typeof payload.html_url !== 'string' || typeof payload.number !== 'number') {
+  if (
+    typeof payload.html_url !== 'string' ||
+    typeof payload.number !== 'number'
+  ) {
     return {
       status: 502,
       jsonBody: { error: 'GitHub API returned an unexpected response' },

@@ -29,11 +29,11 @@ Azure Static Web Appsリソース側の**手動設定**（Claude Codeでは代�
 2. 左メニューから「Environment variables」（または「Configuration」）を選択する
 3. 以下のキーと値を追加する
 
-   | 名前                | 値                                       |
-   | ------------------- | ---------------------------------------- |
-   | `ANTHROPIC_API_KEY` | Anthropic Consoleで発行した実際のAPIキー |
-   | `OPENAI_API_KEY`    | OpenAI Platformで発行した実際のAPIキー   |
-   | `GITHUB_PAT`        | GitHub Fine-grained PAT（`ai-workbench`リポジトリの`Issues`書き込み権限のみを付与）|
+   | 名前                | 値                                                                                  |
+   | ------------------- | ----------------------------------------------------------------------------------- |
+   | `ANTHROPIC_API_KEY` | Anthropic Consoleで発行した実際のAPIキー                                            |
+   | `OPENAI_API_KEY`    | OpenAI Platformで発行した実際のAPIキー                                              |
+   | `GITHUB_PAT`        | GitHub Fine-grained PAT（`ai-workbench`リポジトリの`Issues`書き込み権限のみを付与） |
 
 4. 保存する
 
@@ -104,11 +104,11 @@ Azure Static Web Appsリソース側の**手動設定**（Claude Codeでは代�
 2. 「Generate new token」をクリックする
 3. 以下を設定する
 
-   | 項目               | 値                                            |
-   | ------------------ | ---------------------------------------------- |
-   | Resource owner      | `yuyuyu0706`                                   |
-   | Repository access   | Only select repositories → `ai-workbench`のみ |
-   | Permissions         | Repository permissions > Issues：Read and write |
+   | 項目              | 値                                              |
+   | ----------------- | ----------------------------------------------- |
+   | Resource owner    | `yuyuyu0706`                                    |
+   | Repository access | Only select repositories → `ai-workbench`のみ   |
+   | Permissions       | Repository permissions > Issues：Read and write |
 
 4. トークンを発行し、値を手順Aの`GITHUB_PAT`としてApplication Settingsへ登録する
 

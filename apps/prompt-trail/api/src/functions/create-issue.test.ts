@@ -121,31 +121,34 @@ describe('createIssue', () => {
     [403, 'Forbidden'],
     [404, 'Not Found'],
     [422, 'Validation Failed'],
-  ])('passes through GitHub API status %i with its message', async (status, message) => {
-    const originalFetch = globalThis.fetch;
-    const originalPat = process.env.GITHUB_PAT;
-    process.env.GITHUB_PAT = 'test-pat';
-    globalThis.fetch = vi.fn(
-      async () => new Response(JSON.stringify({ message }), { status }),
-    ) as unknown as typeof fetch;
+  ])(
+    'passes through GitHub API status %i with its message',
+    async (status, message) => {
+      const originalFetch = globalThis.fetch;
+      const originalPat = process.env.GITHUB_PAT;
+      process.env.GITHUB_PAT = 'test-pat';
+      globalThis.fetch = vi.fn(
+        async () => new Response(JSON.stringify({ message }), { status }),
+      ) as unknown as typeof fetch;
 
-    try {
-      const response = await createIssue(
-        fakeRequest({
-          owner: 'yuyuyu0706',
-          repo: 'ai-workbench',
-          title: 'Hello',
-        }),
-        {} as InvocationContext,
-      );
+      try {
+        const response = await createIssue(
+          fakeRequest({
+            owner: 'yuyuyu0706',
+            repo: 'ai-workbench',
+            title: 'Hello',
+          }),
+          {} as InvocationContext,
+        );
 
-      expect(response.status).toBe(status);
-      expect(response.jsonBody).toEqual({ error: message });
-    } finally {
-      globalThis.fetch = originalFetch;
-      process.env.GITHUB_PAT = originalPat;
-    }
-  });
+        expect(response.status).toBe(status);
+        expect(response.jsonBody).toEqual({ error: message });
+      } finally {
+        globalThis.fetch = originalFetch;
+        process.env.GITHUB_PAT = originalPat;
+      }
+    },
+  );
 
   it('returns 502 when the GitHub API is unreachable', async () => {
     const originalFetch = globalThis.fetch;
