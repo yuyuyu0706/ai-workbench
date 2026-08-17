@@ -1,5 +1,8 @@
 {
-  "routes": [{ "route": "/api/execute", "allowedRoles": ["owner"] }],
+  "routes": [
+    { "route": "/api/execute", "allowedRoles": ["owner"] },
+    { "route": "/api/create-issue", "allowedRoles": ["owner"] }
+  ],
   "navigationFallback": {
     "rewrite": "/index.html"
   }

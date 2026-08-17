@@ -13,6 +13,7 @@ import {
   type DeveloperUiStateOverride,
   type DeveloperUiStateSnapshot,
 } from '../developer-ui-state';
+import { callGatewayCreateIssue } from '../gateway/create-issue-client';
 import {
   callGatewayExecute,
   GATEWAY_PROVIDERS,
@@ -448,6 +449,7 @@ function DeveloperToolsPanelContent({
       </details>
 
       <ExecuteSection />
+      <CreateIssueSection />
     </aside>
   );
 }
@@ -647,6 +649,115 @@ function ExecuteSection() {
       {result?.kind === 'success' ? (
         <p className="developer-tools__execute-result" role="status">
           {result.output}
+        </p>
+      ) : null}
+      {result?.kind === 'error' ? <p role="alert">{result.message}</p> : null}
+    </details>
+  );
+}
+
+function CreateIssueSection() {
+  const [owner, setOwner] = useState('yuyuyu0706');
+  const [repo, setRepo] = useState('ai-workbench');
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [result, setResult] = useState<
+    | { readonly kind: 'success'; readonly url: string; readonly number: number }
+    | { readonly kind: 'error'; readonly message: string }
+    | null
+  >(null);
+
+  async function handleCreateIssue() {
+    setIsExecuting(true);
+    setResult(null);
+    try {
+      const { url, number } = await callGatewayCreateIssue(
+        owner,
+        repo,
+        title,
+        body,
+      );
+      setResult({ kind: 'success', url, number });
+    } catch (error) {
+      setResult({
+        kind: 'error',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'GitHub Issue作成の呼び出しに失敗しました。',
+      });
+    } finally {
+      setIsExecuting(false);
+    }
+  }
+
+  return (
+    <details className="developer-tools__section">
+      <summary>
+        <h3>GitHub Issue作成（/api/create-issue）</h3>
+      </summary>
+      <p>指定したリポジトリへGitHub Issueを作成して、動作を確認できます。</p>
+
+      <label className="developer-tools__field">
+        <span>Owner</span>
+        <input
+          type="text"
+          value={owner}
+          disabled={isExecuting}
+          onChange={(event) => setOwner(event.target.value)}
+        />
+      </label>
+
+      <label className="developer-tools__field">
+        <span>Repo</span>
+        <input
+          type="text"
+          value={repo}
+          disabled={isExecuting}
+          onChange={(event) => setRepo(event.target.value)}
+        />
+      </label>
+
+      <label className="developer-tools__field">
+        <span>Title</span>
+        <input
+          type="text"
+          value={title}
+          disabled={isExecuting}
+          onChange={(event) => setTitle(event.target.value)}
+        />
+      </label>
+
+      <label className="developer-tools__field">
+        <span>Body</span>
+        <textarea
+          rows={4}
+          value={body}
+          disabled={isExecuting}
+          onChange={(event) => setBody(event.target.value)}
+        />
+      </label>
+
+      <div className="developer-tools__actions">
+        <button
+          className="pt-button pt-button--primary"
+          type="button"
+          disabled={
+            isExecuting || owner.trim() === '' || repo.trim() === '' ||
+            title.trim() === ''
+          }
+          onClick={() => void handleCreateIssue()}
+        >
+          {isExecuting ? '実行中...' : 'Create Issue'}
+        </button>
+      </div>
+
+      {result?.kind === 'success' ? (
+        <p className="developer-tools__execute-result" role="status">
+          <a href={result.url} target="_blank" rel="noreferrer">
+            #{result.number} {result.url}
+          </a>
         </p>
       ) : null}
       {result?.kind === 'error' ? <p role="alert">{result.message}</p> : null}

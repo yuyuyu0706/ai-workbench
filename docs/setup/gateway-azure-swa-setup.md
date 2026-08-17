@@ -33,6 +33,7 @@ Azure Static Web Appsリソース側の**手動設定**（Claude Codeでは代�
    | ------------------- | ---------------------------------------- |
    | `ANTHROPIC_API_KEY` | Anthropic Consoleで発行した実際のAPIキー |
    | `OPENAI_API_KEY`    | OpenAI Platformで発行した実際のAPIキー   |
+   | `GITHUB_PAT`        | GitHub Fine-grained PAT（`ai-workbench`リポジトリの`Issues`書き込み権限のみを付与）|
 
 4. 保存する
 
@@ -89,9 +90,29 @@ Azure Static Web Appsリソース側の**手動設定**（Claude Codeでは代�
 
 ## 6. 今後の追加予定
 
-- Lv3-5（GitHub Issue作成）着手時に、`GITHUB_PAT`（Fine-grained Personal Access Token）を
-  同様に手順Aへ追加する
 - Lv3-5以降に追加するエンドポイントも、手順Bと同じ`owner`ロールで保護する
+
+## 6.1. `GITHUB_PAT`の発行手順（Lv3-5：GitHub Issue作成）
+
+**目的:** `create-issue.ts`が実行時に読み取るGitHub Fine-grained PATを発行し、
+手順AのApplication Settingsへ登録します。
+
+**実行場所:** GitHub（Settings > Developer settings）
+
+1. y.k様ご自身のGitHubアカウントで、Settings > Developer settings >
+   Fine-grained personal access tokens を開く
+2. 「Generate new token」をクリックする
+3. 以下を設定する
+
+   | 項目               | 値                                            |
+   | ------------------ | ---------------------------------------------- |
+   | Resource owner      | `yuyuyu0706`                                   |
+   | Repository access   | Only select repositories → `ai-workbench`のみ |
+   | Permissions         | Repository permissions > Issues：Read and write |
+
+4. トークンを発行し、値を手順Aの`GITHUB_PAT`としてApplication Settingsへ登録する
+
+**成功判定:** Environment variables一覧に`GITHUB_PAT`が登録されている。
 
 ## 7. 関連文書
 
