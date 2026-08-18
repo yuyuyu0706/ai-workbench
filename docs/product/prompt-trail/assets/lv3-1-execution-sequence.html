@@ -1,29 +1,31 @@
-<h2 class="sr-only">Trail Detailを唯一の実行入口としたPrompt実行の最終シーケンス図</h2>
+<h2 class="sr-only">
+  Trail Detailを唯一の実行入口としたPrompt実行の最終シーケンス図
+</h2>
 <div id="seq"></div>
 <script type="module">
-import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
-const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-await document.fonts.ready;
-mermaid.initialize({
-  startOnLoad: false,
-  theme: 'base',
-  fontFamily: '"anthropic-sans", sans-serif',
-  themeVariables: {
-    darkMode: dark,
-    fontSize: '13px',
+  import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  await document.fonts.ready;
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'base',
     fontFamily: '"anthropic-sans", sans-serif',
-    lineColor: dark ? '#9c9a92' : '#73726c',
-    textColor: dark ? '#c2c0b6' : '#3d3d3a',
-    actorBkg: dark ? '#444441' : '#F1EFE8',
-    actorBorder: dark ? '#B4B2A9' : '#5F5E5A',
-    actorTextColor: dark ? '#c2c0b6' : '#3d3d3a',
-    signalColor: dark ? '#9c9a92' : '#73726c',
-    signalTextColor: dark ? '#c2c0b6' : '#3d3d3a',
-    activationBkgColor: dark ? '#5F5E5A' : '#D3D1C7',
-    activationBorderColor: dark ? '#B4B2A9' : '#5F5E5A',
-  },
-});
-const src = `sequenceDiagram
+    themeVariables: {
+      darkMode: dark,
+      fontSize: '13px',
+      fontFamily: '"anthropic-sans", sans-serif',
+      lineColor: dark ? '#9c9a92' : '#73726c',
+      textColor: dark ? '#c2c0b6' : '#3d3d3a',
+      actorBkg: dark ? '#444441' : '#F1EFE8',
+      actorBorder: dark ? '#B4B2A9' : '#5F5E5A',
+      actorTextColor: dark ? '#c2c0b6' : '#3d3d3a',
+      signalColor: dark ? '#9c9a92' : '#73726c',
+      signalTextColor: dark ? '#c2c0b6' : '#3d3d3a',
+      activationBkgColor: dark ? '#5F5E5A' : '#D3D1C7',
+      activationBorderColor: dark ? '#B4B2A9' : '#5F5E5A',
+    },
+  });
+  const src = `sequenceDiagram
     actor User as 利用者
     participant TD as [画面]<br/>TrailDetail
     participant EX as [部品]<br/>共通実行ロジック
@@ -51,22 +53,22 @@ const src = `sequenceDiagram
     deactivate EX
     TD-->>User: 結果を表示（その場で更新）
     deactivate TD`;
-const { svg } = await mermaid.render('seq-svg', src);
-document.getElementById('seq').innerHTML = svg;
+  const { svg } = await mermaid.render('seq-svg', src);
+  document.getElementById('seq').innerHTML = svg;
 
-const extFill = dark ? '#712B13' : '#FAECE7';
-const extStroke = dark ? '#F0997B' : '#993C1D';
-document.querySelectorAll('#seq text').forEach((t) => {
-  if (t.textContent && t.textContent.includes('ClaudeAPI')) {
-    const group = t.closest('g');
-    const rect = group ? group.querySelector('rect') : null;
-    if (rect) {
-      rect.setAttribute('fill', extFill);
-      rect.setAttribute('stroke', extStroke);
-      rect.setAttribute('stroke-width', '1.5');
-      rect.setAttribute('stroke-dasharray', '5 3');
+  const extFill = dark ? '#712B13' : '#FAECE7';
+  const extStroke = dark ? '#F0997B' : '#993C1D';
+  document.querySelectorAll('#seq text').forEach((t) => {
+    if (t.textContent && t.textContent.includes('ClaudeAPI')) {
+      const group = t.closest('g');
+      const rect = group ? group.querySelector('rect') : null;
+      if (rect) {
+        rect.setAttribute('fill', extFill);
+        rect.setAttribute('stroke', extStroke);
+        rect.setAttribute('stroke-width', '1.5');
+        rect.setAttribute('stroke-dasharray', '5 3');
+      }
+      t.setAttribute('fill', extStroke);
     }
-    t.setAttribute('fill', extStroke);
-  }
-});
+  });
 </script>
