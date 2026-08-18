@@ -1,0 +1,62 @@
+<h2 class="sr-only">Trail・Prompt・Run・Stepの関係性を示すER図。実装済みとP3-6予定を区別する。</h2>
+<div id="erd"></div>
+<script type="module">
+import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+await document.fonts.ready;
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '"anthropic-sans", sans-serif',
+  themeVariables: {
+    darkMode: dark,
+    fontSize: '13px',
+    fontFamily: '"anthropic-sans", sans-serif',
+    lineColor: dark ? '#9c9a92' : '#73726c',
+    textColor: dark ? '#c2c0b6' : '#3d3d3a',
+    primaryColor: dark ? '#444441' : '#F1EFE8',
+    primaryBorderColor: dark ? '#B4B2A9' : '#5F5E5A',
+    primaryTextColor: dark ? '#c2c0b6' : '#3d3d3a',
+  },
+});
+const src = `erDiagram
+    PROJECT ||--o{ TRAIL : "束ねる（実装済み）"
+    TRAIL ||--o{ RUN : "束ねる（実装済み・P3-1）"
+    PROMPT ||--o{ RUN : "生成元（実装済み・promptSnapshot.promptId）"
+    RUN ||--o{ STEP : "往復（P3-4 Lv3-3で追加予定）"
+    TRAIL }o..o{ PROMPT : "間接参照・Run経由（P3-6で直接管理を検討）"
+
+    PROJECT {
+        string title
+        string repositoryUrl
+    }
+    TRAIL {
+        string title
+        string kind
+    }
+    PROMPT {
+        string title
+        string body
+        string tags
+    }
+    RUN {
+        string trailId FK
+        string promptSnapshot
+        string output
+        string status
+    }
+    STEP {
+        string role
+        string content
+    }`;
+const { svg } = await mermaid.render('erd-svg', src);
+document.getElementById('erd').innerHTML = svg;
+
+document.querySelectorAll('#erd .er.entityBox').forEach((box) => {
+  box.setAttribute('rx', '6');
+  box.setAttribute('ry', '6');
+});
+document.querySelectorAll('#erd .er.attributeBoxOdd, #erd .er.attributeBoxEven').forEach((row) => {
+  row.setAttribute('stroke', 'none');
+});
+</script>

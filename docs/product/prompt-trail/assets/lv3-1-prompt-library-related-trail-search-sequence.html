@@ -1,0 +1,47 @@
+<h2 class="sr-only">Prompt Libraryから紐づくTrailを検索し開くまでのシーケンス図</h2>
+<div id="seq2"></div>
+<script type="module">
+import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+await document.fonts.ready;
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '"anthropic-sans", sans-serif',
+  themeVariables: {
+    darkMode: dark,
+    fontSize: '13px',
+    fontFamily: '"anthropic-sans", sans-serif',
+    lineColor: dark ? '#9c9a92' : '#73726c',
+    textColor: dark ? '#c2c0b6' : '#3d3d3a',
+    actorBkg: dark ? '#444441' : '#F1EFE8',
+    actorBorder: dark ? '#B4B2A9' : '#5F5E5A',
+    actorTextColor: dark ? '#c2c0b6' : '#3d3d3a',
+    signalColor: dark ? '#9c9a92' : '#73726c',
+    signalTextColor: dark ? '#c2c0b6' : '#3d3d3a',
+    activationBkgColor: dark ? '#5F5E5A' : '#D3D1C7',
+    activationBorderColor: dark ? '#B4B2A9' : '#5F5E5A',
+  },
+});
+const src = `sequenceDiagram
+    actor User as 利用者
+    participant PL as [画面]<br/>PromptLibrary
+    participant Repo as [DB]<br/>Repository
+    participant TD as [画面]<br/>TrailDetail
+
+    User->>PL: Promptの「紐づくTrail」を開く
+    activate PL
+    PL->>Repo: promptSnapshot.promptIdで検索
+    Note right of Repo: index済み・直近N件のみ
+    activate Repo
+    Repo-->>PL: 該当Trail一覧（直近N件）
+    deactivate Repo
+    PL-->>User: Trailリンクを表示
+    deactivate PL
+    User->>TD: リンクをクリック
+    activate TD
+    TD-->>User: Trail Detailを表示
+    deactivate TD`;
+const { svg } = await mermaid.render('seq2-svg', src);
+document.getElementById('seq2').innerHTML = svg;
+</script>

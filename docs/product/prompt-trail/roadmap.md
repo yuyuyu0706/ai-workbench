@@ -127,6 +127,13 @@ Phase 3 の最初の Release/Learn 単位は **P3-1（Execution Domain 再設計
 
 Prompt 資産管理のさらなる深化（Hypothesis 1）は、Phase 2 で主要な不足が解消済みのため、当面 Evidence Backlog に留め、優先着手対象としません。
 
+### P3-4：Promptの実行体験を成立させる（設計合意）
+
+P3-4のLv3-1（[#305](https://github.com/yuyuyu0706/ai-workbench/issues/305)）で、
+実行の入口をTrail Detailへ一本化する方針、Prompt Library検索の応答性、Trail:Promptの
+間接参照の扱い、対話型実行のDomain拡張方針について合意した。詳細は
+[Lv3-1設計合意文書](lv3-1-prompt-execution-design-agreement.md)を参照。
+
 ### P3-3：Guided Executionの7ステップモデルとスコープ判断
 
 P3-1（Execution Domain再設計）の完了を受け、P3-3（GitHub / AI Execution Gateway）の
