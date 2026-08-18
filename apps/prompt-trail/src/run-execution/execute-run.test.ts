@@ -11,7 +11,11 @@ function buildRun(overrides: Partial<Run> = {}): Run {
     projectId: 'project-1',
     trailId: 'trail-1',
     recipeId: null,
-    promptSnapshot: { promptId: 'prompt-1', title: 'Title', body: 'Prompt body' },
+    promptSnapshot: {
+      promptId: 'prompt-1',
+      title: 'Title',
+      body: 'Prompt body',
+    },
     contextSnapshots: [],
     inputValues: {},
     finalPrompt: 'Prompt body',
@@ -65,7 +69,10 @@ describe('executeRun', () => {
       output: 'Generated text',
       updatedAt: '2026-01-02T00:00:00.000Z',
     });
-    expect(result).toEqual({ ...savedRun, updatedAt: '2026-01-02T00:00:00.000Z' });
+    expect(result).toEqual({
+      ...savedRun,
+      updatedAt: '2026-01-02T00:00:00.000Z',
+    });
 
     vi.unstubAllGlobals();
   });
