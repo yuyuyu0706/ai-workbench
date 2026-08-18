@@ -258,6 +258,29 @@ Plan / Entitlement）と直接関わるが、現時点では実装対象とせ�
 - 対応地域の制限（Supported Regions Policy）にも留意する
 - 商用ローンチ判断時には、規約全文の再確認と、必要に応じた弁護士への相談を前提とする
 
+#### Prompt変数機能の拡張に関する長期的な方向性（メモ）
+
+Phase 3の開発作業でPromptTrailを実際に使う中で、現行の変数機能（`${var}`、Prompt内に
+閉じたスコープの単純な文字列置換）に対し、2つの拡張ニーズが見えてきた。
+
+- **変数スコープの階層化**：現行はPromptごとに閉じた変数のみだが、複数のPromptへ横断的に
+  適用したい変数（Project変数、Workspace変数）への需要がある。一般には「変数スコープ
+  （Variable Scope）」と呼ばれる確立された概念で、Postman（Global→Collection→
+  Environment→Local）やGitHub Actions（Organization→Repository→Environment）が
+  近い先例である。実装する場合は、内側のスコープが外側を上書きする規則（シャドーイング）や、
+  「今この変数の値はどのスコープ由来か」を利用者が把握できるUIも合わせて設計する必要がある
+  （Postmanではこの分かりにくさが定番の不満点になっている）
+- **条件付きブロック（On/Offできる変数）**：同じテンプレートを使い回す中で、特定の1行・
+  1ブロックだけを状況に応じて含めたり除いたりしたい場面がある（例：稀にしか使わない
+  補足指示を、真偽値フラグでOn/Off切り替えたい）。これは新しい変数の種類というより、
+  「真偽値変数」＋「条件付きブロック構文」というテンプレートエンジンの機能であり、
+  C言語の`#ifdef`や、Jinja2／Handlebars等の`{% if %}...{% endif %}`が前例にあたる。
+  単純な文字列置換より一段複雑な構文解析（ブロックの開始・終了の認識）を要するため、
+  実装コストは変数スコープ階層化より高い
+- 上記2つは独立した機能ではなく、組み合わせて使われる可能性が高い（例：Project共通の
+  真偽値変数が、各Promptの条件付きブロックを制御する）
+- 現時点では実装対象とせず、将来立ち返るための記録としてここに残す
+
 ## Phase 4: Workflow & Integration Expansion（確定）
 
 Phase 3 と同じ経緯で確定した Phase です。Phase 3 で成立した Execution Foundation を使い、実行パターンと連携先を拡張します。新しい基盤を作るのではなく、Phase 3 の Execution Platform 上に Workflow を増やすことを主眼とします。GitHub API による Issue、PR、Commit 情報取得、Link の状態更新、URL からのメタデータ補完、Issue 本文生成支援と Integration 設定はここに含まれます。
