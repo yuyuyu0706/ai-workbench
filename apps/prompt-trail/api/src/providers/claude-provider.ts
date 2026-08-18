@@ -7,7 +7,7 @@ import {
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 const CLAUDE_API_VERSION = '2023-06-01';
 const DEFAULT_MODEL = 'claude-sonnet-5';
-const DEFAULT_MAX_TOKENS = 1024;
+const DEFAULT_MAX_TOKENS = 8192;
 
 /** Claude API (Anthropic) provider. Reads its key from ANTHROPIC_API_KEY (ADR 0009). */
 export class ClaudeProvider implements AiProvider {
