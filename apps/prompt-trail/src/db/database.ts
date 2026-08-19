@@ -31,6 +31,8 @@ import { migrateToV5 } from './migrations/v4-to-v5';
 // v5-to-v6 is a schema-only change (adds the runs.trailId index); see
 // ./migrations/v5-to-v6.ts for why no data migration is needed.
 import { migrateToV7 } from './migrations/v6-to-v7';
+// v7-to-v8 is a schema-only change (adds the runs.promptSnapshot.promptId
+// index); see ./migrations/v7-to-v8.ts for why no data migration is needed.
 
 const schemaV0 = {
   projects: 'id, updatedAt, archivedAt, deletedAt',
@@ -50,6 +52,11 @@ const schemaV5 = {
 const schemaV6 = {
   ...schemaV5,
   runs: 'id, projectId, recipeId, trailId, status, updatedAt, archivedAt, deletedAt',
+} satisfies Record<PromptTrailStoreName, string>;
+
+const schemaV8 = {
+  ...schemaV6,
+  runs: 'id, projectId, recipeId, trailId, promptSnapshot.promptId, status, updatedAt, archivedAt, deletedAt',
 } satisfies Record<PromptTrailStoreName, string>;
 
 export class PromptTrailDatabase extends Dexie {
@@ -86,9 +93,10 @@ export class PromptTrailDatabase extends Dexie {
       .stores(schemaV5)
       .upgrade((transaction) => migrateToV5(transaction));
     this.version(6).stores(schemaV6);
-    this.version(PROMPT_TRAIL_SCHEMA_VERSION)
+    this.version(7)
       .stores(schemaV6)
       .upgrade((transaction) => migrateToV7(transaction));
+    this.version(PROMPT_TRAIL_SCHEMA_VERSION).stores(schemaV8);
   }
 }
 

@@ -38,6 +38,7 @@ const expectedIndexes = {
     'projectId',
     'recipeId',
     'trailId',
+    'promptSnapshot.promptId',
     'status',
     'updatedAt',
     'archivedAt',
@@ -91,7 +92,7 @@ describe('PromptTrailDatabase schema v3', () => {
     );
 
     expect(database.verno).toBe(PROMPT_TRAIL_SCHEMA_VERSION);
-    expect(PROMPT_TRAIL_SCHEMA_VERSION).toBe(7);
+    expect(PROMPT_TRAIL_SCHEMA_VERSION).toBe(8);
   });
 
   it('registers the eight metadata store names only', () => {

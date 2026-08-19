@@ -6,7 +6,7 @@ import {
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 const DEFAULT_MODEL = 'gpt-4o-mini';
-const DEFAULT_MAX_TOKENS = 1024;
+const DEFAULT_MAX_TOKENS = 8192;
 
 /** OpenAI API (GPT/Codex) provider. Reads its key from OPENAI_API_KEY (ADR 0009). */
 export class OpenAIProvider implements AiProvider {

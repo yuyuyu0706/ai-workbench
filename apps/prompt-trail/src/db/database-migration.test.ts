@@ -280,7 +280,7 @@ describe('schema v1 to v2 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(7);
+    expect(database.verno).toBe(8);
     for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
       (storeName) =>
         storeName !== 'runs' &&
@@ -386,7 +386,7 @@ describe('schema v2 to v3 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(7);
+    expect(database.verno).toBe(8);
     for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
       (storeName) =>
         storeName !== 'prompts' &&
@@ -484,7 +484,7 @@ describe('schema v3 to v4 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(7);
+    expect(database.verno).toBe(8);
     for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
       (storeName) =>
         storeName !== 'prompts' &&
@@ -582,7 +582,7 @@ describe('schema v4 to v5 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(7);
+    expect(database.verno).toBe(8);
     expect(migrated.workspaces).toHaveLength(1);
     expect(migrated.trails).toHaveLength(1);
     expect(migrated.trails[0]).toMatchObject({
@@ -659,7 +659,7 @@ describe('schema v5 to v6 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(7);
+    expect(database.verno).toBe(8);
     for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
       (storeName) => storeName !== 'runs',
     )) {
@@ -733,7 +733,7 @@ describe('schema v6 to v7 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(7);
+    expect(database.verno).toBe(8);
     for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
       (storeName) => storeName !== 'runs',
     )) {
@@ -814,6 +814,81 @@ describe('schema v6 to v7 migration', () => {
       legacyDataset(before.runs),
     );
     legacy.close();
+  });
+});
+
+describe('schema v7 to v8 migration', () => {
+  it('upgrades a real database end to end without changing any store, and remains stable after reopening', async () => {
+    const name = `prompt-trail-migration-v8-${crypto.randomUUID()}`;
+    const runs = [
+      {
+        ...legacyRun('active-direct', 'Active'),
+        trailId: 'trail-1',
+        output: null,
+      },
+    ];
+    const before = {
+      ...legacyDataset(runs),
+      workspaces: [
+        {
+          id: 'prompt-trail-default-workspace',
+          name: 'Default Workspace',
+          createdAt,
+          updatedAt,
+          deletedAt: null,
+        },
+      ],
+      trails: [
+        {
+          id: 'trail-1',
+          createdAt,
+          updatedAt,
+          deletedAt: null,
+          archivedAt: null,
+          projectId: 'project-1',
+          title: 'Active',
+          kind: 'other',
+        },
+      ],
+    };
+    const legacyV7 = new Dexie(name);
+    databaseNames.add(name);
+    legacyV7.version(1).stores(schemaV1);
+    legacyV7.version(2).stores(schemaV1);
+    legacyV7.version(3).stores(schemaV1);
+    legacyV7.version(4).stores(schemaV1);
+    legacyV7.version(5).stores(schemaV5ForTest);
+    legacyV7.version(6).stores({
+      ...schemaV5ForTest,
+      runs: 'id, projectId, recipeId, trailId, status, updatedAt, archivedAt, deletedAt',
+    });
+    legacyV7.version(7).stores({
+      ...schemaV5ForTest,
+      runs: 'id, projectId, recipeId, trailId, status, updatedAt, archivedAt, deletedAt',
+    });
+    await legacyV7.open();
+    await legacyV7.transaction('rw', legacyV7.tables, async () =>
+      Promise.all(
+        PROMPT_TRAIL_STORE_NAMES.map((storeName) =>
+          legacyV7.table(storeName).bulkAdd(before[storeName]),
+        ),
+      ),
+    );
+    legacyV7.close();
+
+    const database = createPromptTrailDatabase(name);
+    await database.open();
+    const migrated = await readAllStores(database);
+    expect(database.verno).toBe(8);
+    for (const storeName of PROMPT_TRAIL_STORE_NAMES) {
+      expect(migrated[storeName]).toEqual(before[storeName]);
+    }
+    database.close();
+
+    const reopened = createPromptTrailDatabase(name);
+    await reopened.open();
+    expect(await readAllStores(reopened)).toEqual(migrated);
+    reopened.close();
   });
 });
 
