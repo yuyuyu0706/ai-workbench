@@ -18,7 +18,7 @@ import { formatDateTime } from './date-time';
 
 type ActivePopover = 'prompt' | 'result' | 'links' | null;
 
-const POPOVER_WIDTH_PX = 384; // 24rem
+const POPOVER_WIDTH_PX = 260; // 16.25rem
 const POPOVER_VIEWPORT_MARGIN_PX = 16;
 const POPOVER_GAP_PX = 8;
 
