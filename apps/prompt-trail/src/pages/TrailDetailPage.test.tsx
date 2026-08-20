@@ -444,7 +444,7 @@ describe('TrailDetailPage', () => {
     const repository = createDetailRepository([]);
     const store = createTestUiStateStore();
     renderPage(repository, 'trail-1', undefined, store);
-    await screen.findByText('Direct Prompt');
+    await screen.findByText('Prompt A');
     await openLinksPopover();
     await user.type(screen.getByLabelText('Link名称'), 'Saved link');
     await user.type(screen.getByLabelText('URL'), 'https://example.com/saved');
@@ -752,7 +752,7 @@ describe('TrailDetailPage', () => {
       getRecipe: vi.fn(),
     } as any;
     renderPage(repo);
-    expect(await screen.findByText('Direct Prompt')).toBeInTheDocument();
+    expect(await screen.findByText('Prompt A')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Prompt Snapshotを表示' }),
     ).toBeInTheDocument();
@@ -781,8 +781,7 @@ describe('TrailDetailPage', () => {
       getRecipe: vi.fn(async () => ({ title: 'Recipe A' })),
     };
     renderPage(recipeRepo);
-    expect(await screen.findByText('Recipe A')).toBeInTheDocument();
-    expect(screen.getByText('Context A')).toBeInTheDocument();
+    expect(await screen.findByText('Context A')).toBeInTheDocument();
   });
 
   it('formats summary dates and preserves their original values', async () => {
@@ -801,16 +800,7 @@ describe('TrailDetailPage', () => {
     } as any;
     renderPage(repository);
 
-    const createdDate = new Date(createdAt);
-    const pad = (value: number) => String(value).padStart(2, '0');
-    const expectedCreatedAt = `${createdDate.getFullYear()}-${pad(
-      createdDate.getMonth() + 1,
-    )}-${pad(createdDate.getDate())} ${pad(createdDate.getHours())}:${pad(
-      createdDate.getMinutes(),
-    )}:${pad(createdDate.getSeconds())}`;
-    const created = await screen.findByText(expectedCreatedAt);
-    expect(created).toHaveAttribute('datetime', createdAt);
-    expect(screen.getByText('invalid-date')).toHaveAttribute(
+    expect(await screen.findByText('invalid-date')).toHaveAttribute(
       'datetime',
       'invalid-date',
     );
@@ -861,7 +851,7 @@ describe('TrailDetailPage', () => {
     } as any;
 
     const directAccess = renderPage(repository);
-    await screen.findByText('Direct Prompt');
+    await screen.findByText('Prompt A');
     expect(
       screen.queryByText('Trailを作成しました。', { exact: false }),
     ).toBeNull();
@@ -886,7 +876,7 @@ describe('TrailDetailPage Link form', () => {
       saveLink: vi.fn(),
     } as any;
     renderPage(repository);
-    await screen.findByText('Direct Prompt');
+    await screen.findByText('Prompt A');
     await openLinksPopover();
     await user.type(screen.getByLabelText('URL'), 'https://example.com');
     await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
@@ -908,7 +898,7 @@ describe('TrailDetailPage Link form', () => {
       saveLink: vi.fn(),
     } as any;
     renderPage(repository);
-    await screen.findByText('Direct Prompt');
+    await screen.findByText('Prompt A');
     await openLinksPopover();
     await user.type(screen.getByLabelText('Link名称'), 'Result document');
     await user.type(screen.getByLabelText('URL'), 'https://example.com');
@@ -930,7 +920,7 @@ describe('TrailDetailPage Link form', () => {
       saveLink: vi.fn(),
     } as any;
     renderPage(repository);
-    await screen.findByText('Direct Prompt');
+    await screen.findByText('Prompt A');
     await openLinksPopover();
     expect(screen.getByLabelText('Link名称')).toBeInTheDocument();
     expect(screen.queryByLabelText('Link役割')).not.toBeInTheDocument();
@@ -957,7 +947,7 @@ describe('TrailDetailPage Link form', () => {
       }),
     } as any;
     renderPage(repository);
-    await screen.findByText('Direct Prompt');
+    await screen.findByText('Prompt A');
     await openLinksPopover();
     await user.type(screen.getByLabelText('Link名称'), 'Result document');
     await user.type(screen.getByLabelText('URL'), 'https://example.com/result');
@@ -991,7 +981,7 @@ describe('TrailDetailPage Link form', () => {
       }),
     } as any;
     renderPage(repository);
-    await screen.findByText('Direct Prompt');
+    await screen.findByText('Prompt A');
     await openLinksPopover();
     await user.type(screen.getByLabelText('Link名称'), 'Failed link');
     await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
@@ -1029,7 +1019,7 @@ it('prevents duplicate Link submissions while saving and then lists the result',
     ),
   } as any;
   renderPage(repository);
-  await screen.findByText('Direct Prompt');
+  await screen.findByText('Prompt A');
   await openLinksPopover();
   await user.type(screen.getByLabelText('Link名称'), 'Pending link');
   await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
@@ -1144,7 +1134,7 @@ describe('TrailDetailPage Run actions popovers', () => {
   it('opens only one of the Prompt, result, and Links popovers at a time', async () => {
     const user = (await import('@testing-library/user-event')).default.setup();
     renderPage(createDetailRepository([]));
-    await screen.findByText('Direct Prompt');
+    await screen.findByText('Prompt A');
 
     await user.click(
       screen.getByRole('button', { name: 'Prompt Snapshotを表示' }),
@@ -1203,7 +1193,7 @@ describe('TrailDetailPage Run actions popovers', () => {
       saveRun: vi.fn(async () => executedRun),
     } as any;
     renderPage(repository);
-    await screen.findByText('Direct Prompt');
+    await screen.findByText('Prompt A');
 
     const executeButton = screen.getByRole('button', { name: '実行する' });
     fireEvent.click(executeButton);
@@ -1240,7 +1230,7 @@ describe('TrailDetailPage Run actions popovers', () => {
       saveRun: vi.fn(),
     } as any;
     renderPage(repository);
-    await screen.findByText('Direct Prompt');
+    await screen.findByText('Prompt A');
 
     const executeButton = screen.getByRole('button', { name: '実行する' });
     fireEvent.click(executeButton);

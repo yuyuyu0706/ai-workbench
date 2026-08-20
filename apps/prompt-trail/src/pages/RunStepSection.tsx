@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { Link as RouterLink } from 'react-router-dom';
 import { buildNewTrailReusePath } from '../app/routes';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
@@ -17,6 +18,91 @@ import { formatDateTime } from './date-time';
 
 type ActivePopover = 'prompt' | 'result' | 'links' | null;
 
+const POPOVER_WIDTH_PX = 384; // 24rem
+const POPOVER_VIEWPORT_MARGIN_PX = 16;
+const POPOVER_GAP_PX = 8;
+
+type PopoverPosition = {
+  top: number;
+  left: number;
+  width: number;
+  arrowLeft: number;
+};
+
+function computePopoverPosition(
+  trigger: HTMLElement,
+): PopoverPosition {
+  const rect = trigger.getBoundingClientRect();
+  const width = Math.min(
+    POPOVER_WIDTH_PX,
+    window.innerWidth - 2 * POPOVER_VIEWPORT_MARGIN_PX,
+  );
+  const centerX = rect.left + rect.width / 2;
+  let left = centerX - width / 2;
+  const maxLeft = window.innerWidth - POPOVER_VIEWPORT_MARGIN_PX - width;
+  if (left < POPOVER_VIEWPORT_MARGIN_PX) left = POPOVER_VIEWPORT_MARGIN_PX;
+  if (left > maxLeft) left = Math.max(POPOVER_VIEWPORT_MARGIN_PX, maxLeft);
+  const top = rect.bottom + POPOVER_GAP_PX;
+  const arrowLeft = centerX - left;
+  return { top, left, width, arrowLeft };
+}
+
+function usePopoverPosition(
+  triggerRef: RefObject<HTMLElement | null>,
+  isOpen: boolean,
+) {
+  const [position, setPosition] = useState<PopoverPosition | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    function update() {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+      setPosition(computePopoverPosition(trigger));
+    }
+    update();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [isOpen, triggerRef]);
+
+  return position;
+}
+
+function RunPopover({
+  triggerRef,
+  className,
+  children,
+}: {
+  triggerRef: RefObject<HTMLElement | null>;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const position = usePopoverPosition(triggerRef, true);
+  if (position === null) return null;
+  return createPortal(
+    <div
+      className={
+        className ? `pt-run-popover ${className}` : 'pt-run-popover'
+      }
+      role="dialog"
+      style={{
+        top: `${position.top}px`,
+        left: `${position.left}px`,
+        width: `${position.width}px`,
+        // @ts-expect-error custom property for arrow offset
+        '--pt-run-popover-arrow-left': `${position.arrowLeft}px`,
+      }}
+    >
+      {children}
+    </div>,
+    document.body,
+  );
+}
+
 export function RunStepSection({
   run: runItem,
   onRunChanged,
@@ -26,7 +112,7 @@ export function RunStepSection({
 }) {
   const repository = usePromptTrailRepository();
   const uiStateSnapshot = useDeveloperUiStateSnapshot();
-  const { run, project, recipe } = runItem;
+  const { run } = runItem;
   const linkInformationId = useId();
   const linkInformationRef = useRef<HTMLDivElement>(null);
   const linkInformationButtonRef = useRef<HTMLButtonElement>(null);
@@ -134,7 +220,11 @@ export function RunStepSection({
   useEffect(() => {
     if (activePopover === null) return;
     function handlePointerDown(event: MouseEvent) {
-      if (!actionsCellRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const isInsideActionsCell = actionsCellRef.current?.contains(target);
+      const isInsidePortaledPopover =
+        target instanceof Element && target.closest('.pt-run-popover');
+      if (!isInsideActionsCell && !isInsidePortaledPopover) {
         setActivePopover(null);
       }
     }
@@ -279,30 +369,6 @@ export function RunStepSection({
   return (
     <>
       <PageSection title="実行サマリ">
-        <dl className="pt-detail-list">
-          <div>
-            <dt>Project</dt>
-            <dd>{project.name}</dd>
-          </div>
-          <div>
-            <dt>種類</dt>
-            <dd>{recipe === null ? 'Direct Prompt' : 'Recipe'}</dd>
-          </div>
-          <div>
-            <dt>Created At</dt>
-            <dd>
-              <time dateTime={run.createdAt}>
-                {formatDateTime(run.createdAt, { includeSeconds: true })}
-              </time>
-            </dd>
-          </div>
-          {recipe === null ? null : (
-            <div>
-              <dt>Recipe</dt>
-              <dd>{recipe.title}</dd>
-            </div>
-          )}
-        </dl>
         {run.contextSnapshots.length > 0 ? (
           <div className="pt-run-context-snapshots">
             {run.contextSnapshots.map((context) => (
@@ -374,7 +440,7 @@ export function RunStepSection({
                         <FileTextIcon />
                       </button>
                       {activePopover === 'prompt' ? (
-                        <div className="pt-run-popover" role="dialog">
+                        <RunPopover triggerRef={promptButtonRef}>
                           <div className="pt-run-popover__header">
                             <h3>Prompt Snapshot</h3>
                             <div className="pt-run-popover__header-actions">
@@ -398,7 +464,7 @@ export function RunStepSection({
                           <pre className="pt-snapshot">
                             {run.promptSnapshot.body}
                           </pre>
-                        </div>
+                        </RunPopover>
                       ) : null}
                     </span>
                     <span className="pt-run-action">
@@ -419,7 +485,7 @@ export function RunStepSection({
                         ) : null}
                       </button>
                       {activePopover === 'result' ? (
-                        <div className="pt-run-popover" role="dialog">
+                        <RunPopover triggerRef={resultButtonRef}>
                           <div className="pt-run-popover__header">
                             <h3>実行結果</h3>
                             <button
@@ -443,7 +509,7 @@ export function RunStepSection({
                           ) : (
                             <pre className="pt-snapshot">{run.output}</pre>
                           )}
-                        </div>
+                        </RunPopover>
                       ) : null}
                     </span>
                     <span className="pt-run-action">
@@ -463,9 +529,9 @@ export function RunStepSection({
                         ) : null}
                       </button>
                       {activePopover === 'links' ? (
-                        <div
-                          className="pt-run-popover pt-run-popover--links"
-                          role="dialog"
+                        <RunPopover
+                          triggerRef={linksButtonRef}
+                          className="pt-run-popover--links"
                         >
                           <div className="pt-run-popover__header">
                             <h3>関連リンク</h3>
@@ -716,7 +782,7 @@ export function RunStepSection({
                               関連リンクを削除しました。
                             </p>
                           ) : null}
-                        </div>
+                        </RunPopover>
                       ) : null}
                     </span>
                   </div>

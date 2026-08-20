@@ -50,7 +50,7 @@ test.describe('first Trail creation acceptance', () => {
     await page.getByRole('button', { name: 'Trailを作成' }).click();
 
     await expect(
-      page.getByRole('heading', { level: 1, name: 'Run Detail' }),
+      page.getByRole('heading', { level: 1, name: 'Trail Detail' }),
     ).toBeVisible();
     await expect(page).toHaveURL(/\/trails\/(?!new$)[^/]+$/);
     await expect(
