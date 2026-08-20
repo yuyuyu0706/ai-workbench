@@ -303,6 +303,7 @@
   position: fixed;
   z-index: 50;
   margin: 0;
+  width: min(16.25rem, calc(100vw - 2rem));
   border: 1px solid var(--pt-color-border);
   border-radius: var(--pt-radius-sm);
   box-shadow: var(--pt-shadow-card);
@@ -317,6 +318,8 @@
   padding: var(--pt-space-3) var(--pt-space-4);
 }
 
+/* Default (and 'above-right') placement: trigger sits below the popover, so
+   the arrow points down from the popover's bottom edge. */
 .pt-run-popover::before {
   content: '';
   position: absolute;
@@ -328,6 +331,18 @@
   border-inline-end: 1px solid var(--pt-color-border);
   border-block-end: 1px solid var(--pt-color-border);
   background: var(--pt-color-surface);
+}
+
+/* 'below-right' fallback: trigger sits above the popover (not enough room to
+   open upward, e.g. near the top of the viewport), so the arrow points up
+   from the popover's top edge instead. */
+.pt-run-popover[data-placement='below-right']::before {
+  top: -0.4rem;
+  bottom: auto;
+  border-inline-end: 0;
+  border-block-end: 0;
+  border-inline-start: 1px solid var(--pt-color-border);
+  border-block-start: 1px solid var(--pt-color-border);
 }
 
 .pt-run-popover h3 {

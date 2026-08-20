@@ -2,7 +2,6 @@ import {
   useCallback,
   useEffect,
   useId,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -24,6 +23,11 @@ import {
   routePaths,
 } from '../app/routes';
 import { PageSection, StateMessage } from '../components/ui';
+import {
+  usePopoverPosition,
+  type PopoverMeasurements,
+  type PopoverPlacementOption,
+} from '../components/usePopoverPosition';
 import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
 import { selectActiveDeveloperUiState } from '../developer-ui-state';
 import {
@@ -67,6 +71,86 @@ const CLEAN_PROMPT_BODY_GUARD: PromptBodyGuardState = {
   saving: false,
   requestDiscard: null,
 };
+
+type PromptBodyPopoverPlacement = 'right-start' | 'left-start' | 'bottom-start';
+
+const PROMPT_BODY_POPOVER_ARROW_SIZE_PX = 12;
+const PROMPT_BODY_POPOVER_ARROW_SAFE_MARGIN_PX = 16;
+
+function clampPromptBodyPopoverArrow(value: number, size: number) {
+  const safeMargin = PROMPT_BODY_POPOVER_ARROW_SAFE_MARGIN_PX;
+  return Math.max(safeMargin, Math.min(value, Math.max(safeMargin, size - safeMargin)));
+}
+
+function promptBodyPopoverSideTop(m: PopoverMeasurements) {
+  const maxTop = Math.max(m.margin, m.viewportHeight - m.panelHeight - m.margin);
+  return Math.max(m.margin, Math.min(m.triggerRect.top, maxTop));
+}
+
+const PROMPT_BODY_POPOVER_PLACEMENTS: readonly PopoverPlacementOption<PromptBodyPopoverPlacement>[] =
+  [
+    {
+      id: 'right-start',
+      fits: (m) =>
+        m.viewportWidth - m.triggerRect.right >= m.panelWidth + m.gap,
+      place: (m) => ({
+        left: m.triggerRect.right + m.gap,
+        top: promptBodyPopoverSideTop(m),
+      }),
+    },
+    {
+      id: 'left-start',
+      fits: (m) => m.triggerRect.left >= m.panelWidth + m.gap,
+      place: (m) => ({
+        left: m.triggerRect.left - m.panelWidth - m.gap,
+        top: promptBodyPopoverSideTop(m),
+      }),
+    },
+    {
+      id: 'bottom-start',
+      fits: () => true,
+      place: (m) => {
+        const maxLeft = Math.max(
+          m.margin,
+          m.viewportWidth - m.panelWidth - m.margin,
+        );
+        const left = Math.max(m.margin, Math.min(m.triggerRect.left, maxLeft));
+        const top = Math.min(
+          m.triggerRect.bottom + m.gap,
+          Math.max(m.margin, m.viewportHeight - m.panelHeight - m.margin),
+        );
+        return { left, top };
+      },
+    },
+  ];
+
+function buildPromptBodyPopoverStyle(
+  position: ReturnType<
+    typeof usePopoverPosition<PromptBodyPopoverPlacement>
+  >['position'],
+): { placement: PromptBodyPopoverPlacement; style: CSSProperties } | undefined {
+  if (position === null) return undefined;
+  const { triggerRect, panelWidth, panelHeight, left, top, placement } =
+    position;
+  const triggerCenterX = triggerRect.left + triggerRect.width / 2;
+  const triggerCenterY = triggerRect.top + triggerRect.height / 2;
+  return {
+    placement,
+    style: {
+      left,
+      top,
+      '--pt-prompt-body-arrow-x': `${clampPromptBodyPopoverArrow(
+        triggerCenterX - left,
+        panelWidth,
+      )}px`,
+      '--pt-prompt-body-arrow-y': `${clampPromptBodyPopoverArrow(
+        triggerCenterY - top,
+        panelHeight,
+      )}px`,
+      '--pt-prompt-body-arrow-offset': `${PROMPT_BODY_POPOVER_ARROW_SIZE_PX / 2}px`,
+    } as CSSProperties,
+  };
+}
 
 export function PromptLibraryPage() {
   const repository = usePromptTrailRepository();
@@ -618,9 +702,7 @@ function PromptBodyPopover({
   const [saving, setSaving] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const continueEditingRef = useRef<HTMLButtonElement>(null);
-  const animationFrameRef = useRef<number | null>(null);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastPositionRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
   const savingRef = useRef(false);
   const saveTokenRef = useRef(0);
@@ -633,97 +715,22 @@ function PromptBodyPopover({
   const reloadAfterCloseRef = useRef(false);
   const [recoveryStatus, setRecoveryStatus] =
     useState<PromptBodyRecoveryStatus>(null);
-  const [position, setPosition] = useState<{
-    placement: 'right-start' | 'left-start' | 'bottom-start';
-    style: CSSProperties;
-  }>();
 
-  const updatePosition = useCallback(() => {
-    const trigger = triggerRef.current;
-    const panel = panelRef.current;
-    if (trigger === null || panel === null) return;
-    const margin = 16;
-    const gap = 12;
-    const arrowSize = 12;
-    const arrowSafeMargin = 16;
-    const triggerRect = trigger.getBoundingClientRect();
-    const panelRect = panel.getBoundingClientRect();
-    const panelWidth = panelRect.width;
-    const panelHeight = panelRect.height;
-    const triggerCenterX = triggerRect.left + triggerRect.width / 2;
-    const triggerCenterY = triggerRect.top + triggerRect.height / 2;
-    const maxTop = Math.max(margin, window.innerHeight - panelHeight - margin);
-    const sideTop = Math.max(margin, Math.min(triggerRect.top, maxTop));
-    const maxLeft = Math.max(margin, window.innerWidth - panelWidth - margin);
-    const bottomLeft = Math.max(margin, Math.min(triggerRect.left, maxLeft));
-    const bottomTop = Math.min(
-      triggerRect.bottom + gap,
-      Math.max(margin, window.innerHeight - panelHeight - margin),
-    );
-    const clampArrow = (value: number, size: number) =>
-      Math.max(
-        arrowSafeMargin,
-        Math.min(value, Math.max(arrowSafeMargin, size - arrowSafeMargin)),
-      );
-    const buildStyle = (left: number, top: number): CSSProperties =>
-      ({
-        left,
-        top,
-        '--pt-prompt-body-arrow-x': `${clampArrow(
-          triggerCenterX - left,
-          panelWidth,
-        )}px`,
-        '--pt-prompt-body-arrow-y': `${clampArrow(
-          triggerCenterY - top,
-          panelHeight,
-        )}px`,
-        '--pt-prompt-body-arrow-offset': `${arrowSize / 2}px`,
-      }) as CSSProperties;
-    const next =
-      window.innerWidth - triggerRect.right >= panelWidth + gap
-        ? {
-            placement: 'right-start' as const,
-            style: buildStyle(triggerRect.right + gap, sideTop),
-          }
-        : triggerRect.left >= panelWidth + gap
-          ? {
-              placement: 'left-start' as const,
-              style: buildStyle(triggerRect.left - panelWidth - gap, sideTop),
-            }
-          : {
-              placement: 'bottom-start' as const,
-              style: buildStyle(bottomLeft, bottomTop),
-            };
-    const nextSignature = JSON.stringify(next);
-    if (lastPositionRef.current === nextSignature) return;
-    lastPositionRef.current = nextSignature;
-    setPosition(next);
-  }, []);
-
-  const schedulePositionUpdate = useCallback(() => {
-    if (animationFrameRef.current !== null) return;
-    animationFrameRef.current = requestAnimationFrame(() => {
-      animationFrameRef.current = null;
-      updatePosition();
+  const { position: rawPosition, scheduleUpdate: schedulePositionUpdate } =
+    usePopoverPosition({
+      triggerRef,
+      panelRef,
+      open,
+      placements: PROMPT_BODY_POPOVER_PLACEMENTS,
     });
-  }, [updatePosition]);
-
-  useLayoutEffect(() => {
-    if (!open) return;
-    updatePosition();
-    const panel = panelRef.current;
-    if (panel === null || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(() => schedulePositionUpdate());
-    observer.observe(panel);
-    return () => observer.disconnect();
-  }, [open, schedulePositionUpdate, updatePosition]);
+  const position = useMemo(() => buildPromptBodyPopoverStyle(rawPosition), [
+    rawPosition,
+  ]);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      if (animationFrameRef.current !== null)
-        cancelAnimationFrame(animationFrameRef.current);
       if (copyTimeoutRef.current !== null) clearTimeout(copyTimeoutRef.current);
     };
   }, []);

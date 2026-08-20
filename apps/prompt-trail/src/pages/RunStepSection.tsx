@@ -1,9 +1,22 @@
-import { useEffect, useId, useRef, useState, type RefObject } from 'react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type RefObject,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { Link as RouterLink } from 'react-router-dom';
 import { buildNewTrailReusePath } from '../app/routes';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageSection } from '../components/ui';
+import {
+  usePopoverPosition,
+  type PopoverMeasurements,
+  type PopoverPlacementOption,
+} from '../components/usePopoverPosition';
 import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
 import { selectActiveDeveloperUiState } from '../developer-ui-state';
 import type { LinkId, LinkType, UtcDateTimeString } from '../domain';
@@ -18,61 +31,46 @@ import { formatDateTime } from './date-time';
 
 type ActivePopover = 'prompt' | 'result' | 'links' | null;
 
-const POPOVER_WIDTH_PX = 260; // 16.25rem
-const POPOVER_VIEWPORT_MARGIN_PX = 16;
-const POPOVER_GAP_PX = 8;
+// Anchored above the trigger, right-aligned to it, speech-bubble style, so it
+// opens upward instead of overflowing below the viewport. Falls back to
+// opening below the trigger (still right-aligned, clamped to the viewport)
+// when there isn't enough room above it — e.g. a trigger near the top edge.
+type RunPopoverPlacement = 'above-right' | 'below-right';
 
-type PopoverPosition = {
-  bottom: number;
-  left: number;
-  width: number;
-  arrowRight: number;
-};
-
-function computePopoverPosition(
-  trigger: HTMLElement,
-): PopoverPosition {
-  const rect = trigger.getBoundingClientRect();
-  const width = Math.min(
-    POPOVER_WIDTH_PX,
-    window.innerWidth - 2 * POPOVER_VIEWPORT_MARGIN_PX,
+function runPopoverLeft(m: PopoverMeasurements) {
+  const maxLeft = Math.max(
+    m.margin,
+    m.viewportWidth - m.margin - m.panelWidth,
   );
-  // Anchor the popover above the trigger, right-aligned to it, speech-bubble
-  // style, so it opens upward instead of overflowing below the viewport.
-  const maxLeft = window.innerWidth - POPOVER_VIEWPORT_MARGIN_PX - width;
-  let left = rect.right - width;
-  if (left < POPOVER_VIEWPORT_MARGIN_PX) left = POPOVER_VIEWPORT_MARGIN_PX;
-  if (left > maxLeft) left = Math.max(POPOVER_VIEWPORT_MARGIN_PX, maxLeft);
-  const bottom = window.innerHeight - rect.top + POPOVER_GAP_PX;
-  const centerX = rect.left + rect.width / 2;
-  const arrowRight = left + width - centerX;
-  return { bottom, left, width, arrowRight };
+  const left = m.triggerRect.right - m.panelWidth;
+  return Math.max(m.margin, Math.min(left, maxLeft));
 }
 
-function usePopoverPosition(
-  triggerRef: RefObject<HTMLElement | null>,
-  isOpen: boolean,
-) {
-  const [position, setPosition] = useState<PopoverPosition | null>(null);
+const RUN_POPOVER_PLACEMENTS: readonly PopoverPlacementOption<RunPopoverPlacement>[] =
+  [
+    {
+      id: 'above-right',
+      fits: (m) => m.triggerRect.top - m.gap - m.panelHeight >= m.margin,
+      place: (m) => ({
+        left: runPopoverLeft(m),
+        top: m.triggerRect.top - m.gap - m.panelHeight,
+      }),
+    },
+    {
+      id: 'below-right',
+      fits: () => true,
+      place: (m) => {
+        const maxTop = Math.max(
+          m.margin,
+          m.viewportHeight - m.margin - m.panelHeight,
+        );
+        const top = Math.min(m.triggerRect.bottom + m.gap, maxTop);
+        return { left: runPopoverLeft(m), top: Math.max(m.margin, top) };
+      },
+    },
+  ];
 
-  useEffect(() => {
-    if (!isOpen) return;
-    function update() {
-      const trigger = triggerRef.current;
-      if (!trigger) return;
-      setPosition(computePopoverPosition(trigger));
-    }
-    update();
-    window.addEventListener('scroll', update, true);
-    window.addEventListener('resize', update);
-    return () => {
-      window.removeEventListener('scroll', update, true);
-      window.removeEventListener('resize', update);
-    };
-  }, [isOpen, triggerRef]);
-
-  return position;
-}
+const RUN_POPOVER_GAP_PX = 8;
 
 function RunPopover({
   triggerRef,
@@ -83,21 +81,33 @@ function RunPopover({
   className?: string;
   children: React.ReactNode;
 }) {
-  const position = usePopoverPosition(triggerRef, true);
-  if (position === null) return null;
+  const panelRef = useRef<HTMLDivElement>(null);
+  const { position } = usePopoverPosition({
+    triggerRef,
+    panelRef,
+    open: true,
+    placements: RUN_POPOVER_PLACEMENTS,
+    gap: RUN_POPOVER_GAP_PX,
+  });
+  const style = useMemo<CSSProperties>(() => {
+    if (position === null) return { left: 0, top: 0, visibility: 'hidden' };
+    const centerX = position.triggerRect.left + position.triggerRect.width / 2;
+    const arrowRight = position.left + position.panelWidth - centerX;
+    return {
+      left: position.left,
+      top: position.top,
+      '--pt-run-popover-arrow-right': `${arrowRight}px`,
+    } as CSSProperties;
+  }, [position]);
   return createPortal(
     <div
       className={
         className ? `pt-run-popover ${className}` : 'pt-run-popover'
       }
+      data-placement={position?.placement}
+      ref={panelRef}
       role="dialog"
-      style={{
-        bottom: `${position.bottom}px`,
-        left: `${position.left}px`,
-        width: `${position.width}px`,
-        // @ts-expect-error custom property for arrow offset
-        '--pt-run-popover-arrow-right': `${position.arrowRight}px`,
-      }}
+      style={style}
     >
       <div className="pt-run-popover__scroll">{children}</div>
     </div>,
