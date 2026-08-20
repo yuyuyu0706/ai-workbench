@@ -302,16 +302,19 @@
 .pt-run-popover {
   position: fixed;
   z-index: 50;
-  max-height: 24rem;
-  overflow-y: auto;
   margin: 0;
-  padding: var(--pt-space-3) var(--pt-space-4);
   border: 1px solid var(--pt-color-border);
   border-radius: var(--pt-radius-sm);
   box-shadow: var(--pt-shadow-card);
   color: var(--pt-color-text);
   background: var(--pt-color-surface);
   text-align: left;
+}
+
+.pt-run-popover__scroll {
+  max-height: 24rem;
+  overflow-y: auto;
+  padding: var(--pt-space-3) var(--pt-space-4);
 }
 
 .pt-run-popover::before {

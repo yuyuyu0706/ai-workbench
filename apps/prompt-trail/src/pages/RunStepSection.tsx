@@ -99,7 +99,7 @@ function RunPopover({
         '--pt-run-popover-arrow-right': `${position.arrowRight}px`,
       }}
     >
-      {children}
+      <div className="pt-run-popover__scroll">{children}</div>
     </div>,
     document.body,
   );
