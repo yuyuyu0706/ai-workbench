@@ -317,13 +317,13 @@
 .pt-run-popover::before {
   content: '';
   position: absolute;
-  top: -0.4rem;
-  left: var(--pt-run-popover-arrow-left, 50%);
+  bottom: -0.4rem;
+  right: var(--pt-run-popover-arrow-right, 1rem);
   width: 0.8rem;
   height: 0.8rem;
-  transform: translateX(-50%) rotate(45deg);
-  border-inline-start: 1px solid var(--pt-color-border);
-  border-block-start: 1px solid var(--pt-color-border);
+  transform: translateX(50%) rotate(45deg);
+  border-inline-end: 1px solid var(--pt-color-border);
+  border-block-end: 1px solid var(--pt-color-border);
   background: var(--pt-color-surface);
 }
 

@@ -23,10 +23,10 @@ const POPOVER_VIEWPORT_MARGIN_PX = 16;
 const POPOVER_GAP_PX = 8;
 
 type PopoverPosition = {
-  top: number;
+  bottom: number;
   left: number;
   width: number;
-  arrowLeft: number;
+  arrowRight: number;
 };
 
 function computePopoverPosition(
@@ -37,14 +37,16 @@ function computePopoverPosition(
     POPOVER_WIDTH_PX,
     window.innerWidth - 2 * POPOVER_VIEWPORT_MARGIN_PX,
   );
-  const centerX = rect.left + rect.width / 2;
-  let left = centerX - width / 2;
+  // Anchor the popover above the trigger, right-aligned to it, speech-bubble
+  // style, so it opens upward instead of overflowing below the viewport.
   const maxLeft = window.innerWidth - POPOVER_VIEWPORT_MARGIN_PX - width;
+  let left = rect.right - width;
   if (left < POPOVER_VIEWPORT_MARGIN_PX) left = POPOVER_VIEWPORT_MARGIN_PX;
   if (left > maxLeft) left = Math.max(POPOVER_VIEWPORT_MARGIN_PX, maxLeft);
-  const top = rect.bottom + POPOVER_GAP_PX;
-  const arrowLeft = centerX - left;
-  return { top, left, width, arrowLeft };
+  const bottom = window.innerHeight - rect.top + POPOVER_GAP_PX;
+  const centerX = rect.left + rect.width / 2;
+  const arrowRight = left + width - centerX;
+  return { bottom, left, width, arrowRight };
 }
 
 function usePopoverPosition(
@@ -90,11 +92,11 @@ function RunPopover({
       }
       role="dialog"
       style={{
-        top: `${position.top}px`,
+        bottom: `${position.bottom}px`,
         left: `${position.left}px`,
         width: `${position.width}px`,
         // @ts-expect-error custom property for arrow offset
-        '--pt-run-popover-arrow-left': `${position.arrowLeft}px`,
+        '--pt-run-popover-arrow-right': `${position.arrowRight}px`,
       }}
     >
       {children}
