@@ -481,7 +481,7 @@ export function TrailDetailPage() {
           <RunStepSection
             key={runItem.run.id}
             run={runItem}
-            onLinkChanged={() => void reloadLatestMetadata()}
+            onRunChanged={() => void reloadLatestMetadata()}
           />
         ))}
       </div>

@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link as RouterLink } from 'react-router-dom';
 import { buildNewTrailReusePath } from '../app/routes';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageSection } from '../components/ui';
@@ -7,6 +7,7 @@ import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsCo
 import { selectActiveDeveloperUiState } from '../developer-ui-state';
 import type { LinkId, LinkType, UtcDateTimeString } from '../domain';
 import { RunStatusPin } from '../run-status';
+import { executeRun } from '../run-execution/execute-run';
 import {
   createRunLink,
   type SelectableLinkType,
@@ -14,12 +15,14 @@ import {
 import type { TrailDetailRunItem } from '../trail-detail/trail-detail-read-query';
 import { formatDateTime } from './date-time';
 
+type ActivePopover = 'prompt' | 'result' | 'links' | null;
+
 export function RunStepSection({
   run: runItem,
-  onLinkChanged,
+  onRunChanged,
 }: {
   run: TrailDetailRunItem;
-  onLinkChanged: () => void;
+  onRunChanged: () => void;
 }) {
   const repository = usePromptTrailRepository();
   const uiStateSnapshot = useDeveloperUiStateSnapshot();
@@ -56,6 +59,16 @@ export function RunStepSection({
     status: 'idle' as 'idle' | 'deleting' | 'failure',
     successNotice: false,
   });
+
+  const [activePopover, setActivePopover] = useState<ActivePopover>(null);
+  const actionsCellRef = useRef<HTMLTableCellElement>(null);
+  const promptButtonRef = useRef<HTMLButtonElement>(null);
+  const resultButtonRef = useRef<HTMLButtonElement>(null);
+  const linksButtonRef = useRef<HTMLButtonElement>(null);
+  const [executeStatus, setExecuteStatus] = useState<
+    'idle' | 'running' | 'failure'
+  >('idle');
+  const [hasNewResult, setHasNewResult] = useState(false);
 
   const formOverride = selectActiveDeveloperUiState(
     uiStateSnapshot,
@@ -118,6 +131,35 @@ export function RunStepSection({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [deleteOverride, deleteSnapshot.linkId, deleteSnapshot.status]);
 
+  useEffect(() => {
+    if (activePopover === null) return;
+    function handlePointerDown(event: MouseEvent) {
+      if (!actionsCellRef.current?.contains(event.target as Node)) {
+        setActivePopover(null);
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (
+        event.key === 'Escape' &&
+        !isLinkInformationOpen &&
+        deleteSnapshot.linkId === null
+      ) {
+        setActivePopover(null);
+      }
+    }
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activePopover, isLinkInformationOpen, deleteSnapshot.linkId]);
+
+  function togglePopover(popover: Exclude<ActivePopover, null>) {
+    setActivePopover((current) => (current === popover ? null : popover));
+    if (popover === 'result') setHasNewResult(false);
+  }
+
   function cancelDelete(linkId: LinkId) {
     if (deleteOverride !== null) return;
     const button = deleteButtonRefs.current.get(linkId);
@@ -140,7 +182,7 @@ export function RunStepSection({
           ? { linkId: null, status: 'idle', successNotice: true }
           : current,
       );
-      onLinkChanged();
+      onRunChanged();
     } catch {
       setDeleteSnapshot((current) =>
         current.linkId === linkId && current.status === 'deleting'
@@ -210,7 +252,7 @@ export function RunStepSection({
         error: null,
         successNotice: true,
       });
-      onLinkChanged();
+      onRunChanged();
     } catch {
       setFormSnapshot((current) => ({
         ...current,
@@ -221,6 +263,19 @@ export function RunStepSection({
     }
   }
 
+  async function handleExecute() {
+    if (executeStatus === 'running') return;
+    setExecuteStatus('running');
+    try {
+      await executeRun(repository, run);
+      setExecuteStatus('idle');
+      setHasNewResult(true);
+      onRunChanged();
+    } catch {
+      setExecuteStatus('failure');
+    }
+  }
+
   return (
     <>
       <PageSection title="実行サマリ">
@@ -228,12 +283,6 @@ export function RunStepSection({
           <div>
             <dt>Project</dt>
             <dd>{project.name}</dd>
-          </div>
-          <div>
-            <dt>Status</dt>
-            <dd>
-              <RunStatusPin status={run.status} />
-            </dd>
           </div>
           <div>
             <dt>種類</dt>
@@ -247,14 +296,6 @@ export function RunStepSection({
               </time>
             </dd>
           </div>
-          <div>
-            <dt>Updated At</dt>
-            <dd>
-              <time dateTime={run.updatedAt}>
-                {formatDateTime(run.updatedAt, { includeSeconds: true })}
-              </time>
-            </dd>
-          </div>
           {recipe === null ? null : (
             <div>
               <dt>Recipe</dt>
@@ -262,235 +303,466 @@ export function RunStepSection({
             </div>
           )}
         </dl>
-      </PageSection>
-      <PageSection
-        title="Prompt"
-        actions={
-          <Link
-            className="pt-button pt-button--secondary"
-            to={buildNewTrailReusePath(run.id)}
-          >
-            このPromptを再利用
-          </Link>
-        }
-      >
-        <h3>{run.promptSnapshot.title}</h3>
-        <pre className="pt-snapshot">{run.promptSnapshot.body}</pre>
-      </PageSection>
-      {run.contextSnapshots.length > 0 ? (
-        <PageSection title="Context Snapshot">
-          {run.contextSnapshots.map((context) => (
-            <article key={context.contextId}>
-              <h3>{context.title}</h3>
-              <pre className="pt-snapshot">{context.body}</pre>
-            </article>
-          ))}
-        </PageSection>
-      ) : null}
-      <PageSection
-        title="関連リンク"
-        titleAccessory={
-          <div className="pt-run-link-information" ref={linkInformationRef}>
-            <button
-              ref={linkInformationButtonRef}
-              className="pt-run-link-information__button"
-              type="button"
-              aria-label="関連リンクについて"
-              aria-expanded={isLinkInformationOpen}
-              aria-controls={linkInformationId}
-              onClick={() => setIsLinkInformationOpen((open) => !open)}
-            >
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M12 11v6M12 7.5v.5" />
-              </svg>
-            </button>
-            {isLinkInformationOpen ? (
-              <p
-                className="pt-run-link-information__popover"
-                id={linkInformationId}
-              >
-                この作業で参照したChat・Issue・PR・Documentや、作成した成果物のURLを登録できます。
-              </p>
-            ) : null}
-          </div>
-        }
-      >
-        <form className="pt-form" onSubmit={saveLink}>
-          <label htmlFor={`link-title-${run.id}`}>Link名称</label>
-          <input
-            id={`link-title-${run.id}`}
-            value={formSnapshot.title}
-            onChange={(e) =>
-              setFormSnapshot({
-                ...formSnapshot,
-                title: e.target.value,
-                status: 'idle',
-                error: null,
-                successNotice: false,
-              })
-            }
-            disabled={displayedFormStatus === 'submitting'}
-          />
-          <label htmlFor={`link-url-${run.id}`}>URL</label>
-          <input
-            id={`link-url-${run.id}`}
-            type="url"
-            value={formSnapshot.url}
-            onChange={(e) =>
-              setFormSnapshot({
-                ...formSnapshot,
-                url: e.target.value,
-                status: 'idle',
-                error: null,
-                successNotice: false,
-              })
-            }
-            disabled={displayedFormStatus === 'submitting'}
-          />
-          <label htmlFor={`link-type-${run.id}`}>Link種別</label>
-          <select
-            id={`link-type-${run.id}`}
-            value={formSnapshot.type}
-            onChange={(e) =>
-              setFormSnapshot({
-                ...formSnapshot,
-                type: e.target.value as typeof formSnapshot.type,
-                status: 'idle',
-                error: null,
-                successNotice: false,
-              })
-            }
-            disabled={displayedFormStatus === 'submitting'}
-          >
-            <option value="">選択してください</option>
-            {SELECTABLE_LINK_TYPES.map((value) => (
-              <option key={value} value={value}>
-                {LINK_TYPE_LABELS[value]}
-              </option>
+        {run.contextSnapshots.length > 0 ? (
+          <div className="pt-run-context-snapshots">
+            {run.contextSnapshots.map((context) => (
+              <article key={context.contextId}>
+                <h3>{context.title}</h3>
+                <pre className="pt-snapshot">{context.body}</pre>
+              </article>
             ))}
-          </select>
-          {displayedFormStatus === 'failure' ? (
-            <p className="pt-form__error">
-              {formOverride === 'save-failure'
-                ? 'Linkを保存できませんでした。入力内容を保持しています。もう一度お試しください。'
-                : formSnapshot.error === 'title'
-                  ? 'Link名称を入力してください。'
-                  : formSnapshot.error === 'type'
-                    ? 'Link種別を選択してください。'
-                    : formSnapshot.error === 'url'
-                      ? 'http または https のURLを入力してください。'
-                      : 'Linkを保存できませんでした。入力内容を保持しています。もう一度お試しください。'}
-            </p>
-          ) : null}
-          {formOverride === null && formSnapshot.successNotice ? (
-            <p className="pt-success-notice" role="status">
-              関連リンクを登録しました。
-            </p>
-          ) : null}
-          <button
-            className="pt-button pt-button--primary pt-run-link-submit"
-            disabled={displayedFormStatus === 'submitting'}
-          >
-            {displayedFormStatus === 'submitting'
-              ? '保存中...'
-              : '関連リンクを登録'}
-          </button>
-        </form>
-        {links.length > 0 ? (
-          <ul className="pt-link-list">
-            {links.map((link) => {
-              const label = link.title?.trim() || link.url;
-              const isConfirming = deleteOverride
-                ? overrideDeleteLinkId === link.id
-                : deleteSnapshot.linkId === link.id;
-              const displayedDeleteStatus =
-                deleteOverride && overrideDeleteLinkId === link.id
-                  ? deleteOverride === 'confirming'
-                    ? 'idle'
-                    : deleteOverride === 'deleting'
-                      ? 'deleting'
-                      : 'failure'
-                  : deleteSnapshot.status;
-              return (
-                <li key={link.id} className="pt-run-link-row">
-                  <div className="pt-run-link-row__content">
-                    <a href={link.url} target="_blank" rel="noreferrer">
-                      {label}
-                    </a>
-                    {link.title?.trim() ? (
-                      <span className="pt-link-list__url">{link.url}</span>
-                    ) : null}
-                    <span>
-                      {LINK_TYPE_LABELS[link.type]} / {link.createdAt}
+          </div>
+        ) : null}
+        <div className="pt-run-table-wrapper">
+          <table className="pt-run-table">
+            <thead>
+              <tr>
+                <th scope="col">Prompt</th>
+                <th scope="col">ステータス</th>
+                <th scope="col">最終実行</th>
+                <th scope="col">アクション</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="pt-run-table__row">
+                <td className="pt-run-table__prompt">
+                  <span className="pt-run-table__mobile-label">Prompt</span>
+                  <span>{run.promptSnapshot.title}</span>
+                </td>
+                <td className="pt-run-table__status">
+                  <span className="pt-run-table__mobile-label">ステータス</span>
+                  <RunStatusPin status={run.status} />
+                </td>
+                <td className="pt-run-table__last-run">
+                  <span className="pt-run-table__mobile-label">最終実行</span>
+                  <time dateTime={run.updatedAt}>
+                    {formatDateTime(run.updatedAt, { includeSeconds: true })}
+                  </time>
+                </td>
+                <td className="pt-run-table__actions" ref={actionsCellRef}>
+                  <span className="pt-run-table__mobile-label">アクション</span>
+                  <div className="pt-run-actions">
+                    <button
+                      type="button"
+                      className="pt-run-actions__execute"
+                      aria-label="実行する"
+                      disabled={executeStatus === 'running'}
+                      onClick={() => void handleExecute()}
+                    >
+                      {executeStatus === 'running' ? (
+                        <span
+                          className="pt-run-actions__spinner"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <PlayIcon />
+                      )}
+                    </button>
+                    <span
+                      className="pt-run-actions__divider"
+                      aria-hidden="true"
+                    />
+                    <span className="pt-run-action">
+                      <button
+                        ref={promptButtonRef}
+                        type="button"
+                        className="pt-run-actions__icon-button ti-file-text"
+                        aria-label="Prompt Snapshotを表示"
+                        aria-expanded={activePopover === 'prompt'}
+                        onClick={() => togglePopover('prompt')}
+                      >
+                        <FileTextIcon />
+                      </button>
+                      {activePopover === 'prompt' ? (
+                        <div className="pt-run-popover" role="dialog">
+                          <div className="pt-run-popover__header">
+                            <h3>Prompt Snapshot</h3>
+                            <div className="pt-run-popover__header-actions">
+                              <RouterLink
+                                className="pt-button pt-button--secondary"
+                                to={buildNewTrailReusePath(run.id)}
+                              >
+                                このPromptを再利用
+                              </RouterLink>
+                              <button
+                                type="button"
+                                className="pt-run-popover__close"
+                                aria-label="閉じる"
+                                onClick={() => setActivePopover(null)}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          </div>
+                          <h4>{run.promptSnapshot.title}</h4>
+                          <pre className="pt-snapshot">
+                            {run.promptSnapshot.body}
+                          </pre>
+                        </div>
+                      ) : null}
+                    </span>
+                    <span className="pt-run-action">
+                      <button
+                        ref={resultButtonRef}
+                        type="button"
+                        className="pt-run-actions__icon-button ti-clock"
+                        aria-label="実行結果を表示"
+                        aria-expanded={activePopover === 'result'}
+                        onClick={() => togglePopover('result')}
+                      >
+                        <ClockIcon />
+                        {hasNewResult ? (
+                          <span
+                            className="pt-run-actions__badge-dot"
+                            aria-label="新しい実行結果があります"
+                          />
+                        ) : null}
+                      </button>
+                      {activePopover === 'result' ? (
+                        <div className="pt-run-popover" role="dialog">
+                          <div className="pt-run-popover__header">
+                            <h3>実行結果</h3>
+                            <button
+                              type="button"
+                              className="pt-run-popover__close"
+                              aria-label="閉じる"
+                              onClick={() => setActivePopover(null)}
+                            >
+                              ×
+                            </button>
+                          </div>
+                          {executeStatus === 'failure' ? (
+                            <p className="pt-form__error" role="alert">
+                              実行に失敗しました。もう一度お試しください。
+                            </p>
+                          ) : null}
+                          {run.output === null ? (
+                            <p className="pt-run-popover__empty">
+                              まだ実行されていません
+                            </p>
+                          ) : (
+                            <pre className="pt-snapshot">{run.output}</pre>
+                          )}
+                        </div>
+                      ) : null}
+                    </span>
+                    <span className="pt-run-action">
+                      <button
+                        ref={linksButtonRef}
+                        type="button"
+                        className="pt-run-actions__icon-button ti-link"
+                        aria-label="関連リンクを表示"
+                        aria-expanded={activePopover === 'links'}
+                        onClick={() => togglePopover('links')}
+                      >
+                        <LinkIcon />
+                        {links.length > 0 ? (
+                          <span className="pt-run-actions__badge-count">
+                            {links.length}
+                          </span>
+                        ) : null}
+                      </button>
+                      {activePopover === 'links' ? (
+                        <div
+                          className="pt-run-popover pt-run-popover--links"
+                          role="dialog"
+                        >
+                          <div className="pt-run-popover__header">
+                            <h3>関連リンク</h3>
+                            <div
+                              className="pt-run-link-information"
+                              ref={linkInformationRef}
+                            >
+                              <button
+                                ref={linkInformationButtonRef}
+                                className="pt-run-link-information__button"
+                                type="button"
+                                aria-label="関連リンクについて"
+                                aria-expanded={isLinkInformationOpen}
+                                aria-controls={linkInformationId}
+                                onClick={() =>
+                                  setIsLinkInformationOpen((open) => !open)
+                                }
+                              >
+                                <svg aria-hidden="true" viewBox="0 0 24 24">
+                                  <circle cx="12" cy="12" r="9" />
+                                  <path d="M12 11v6M12 7.5v.5" />
+                                </svg>
+                              </button>
+                              {isLinkInformationOpen ? (
+                                <p
+                                  className="pt-run-link-information__popover"
+                                  id={linkInformationId}
+                                >
+                                  この作業で参照したChat・Issue・PR・Documentや、作成した成果物のURLを登録できます。
+                                </p>
+                              ) : null}
+                            </div>
+                            <button
+                              type="button"
+                              className="pt-run-popover__close"
+                              aria-label="閉じる"
+                              onClick={() => setActivePopover(null)}
+                            >
+                              ×
+                            </button>
+                          </div>
+                          <form className="pt-form" onSubmit={saveLink}>
+                            <label htmlFor={`link-title-${run.id}`}>
+                              Link名称
+                            </label>
+                            <input
+                              id={`link-title-${run.id}`}
+                              value={formSnapshot.title}
+                              onChange={(e) =>
+                                setFormSnapshot({
+                                  ...formSnapshot,
+                                  title: e.target.value,
+                                  status: 'idle',
+                                  error: null,
+                                  successNotice: false,
+                                })
+                              }
+                              disabled={displayedFormStatus === 'submitting'}
+                            />
+                            <label htmlFor={`link-url-${run.id}`}>URL</label>
+                            <input
+                              id={`link-url-${run.id}`}
+                              type="url"
+                              value={formSnapshot.url}
+                              onChange={(e) =>
+                                setFormSnapshot({
+                                  ...formSnapshot,
+                                  url: e.target.value,
+                                  status: 'idle',
+                                  error: null,
+                                  successNotice: false,
+                                })
+                              }
+                              disabled={displayedFormStatus === 'submitting'}
+                            />
+                            <label htmlFor={`link-type-${run.id}`}>
+                              Link種別
+                            </label>
+                            <select
+                              id={`link-type-${run.id}`}
+                              value={formSnapshot.type}
+                              onChange={(e) =>
+                                setFormSnapshot({
+                                  ...formSnapshot,
+                                  type: e.target
+                                    .value as typeof formSnapshot.type,
+                                  status: 'idle',
+                                  error: null,
+                                  successNotice: false,
+                                })
+                              }
+                              disabled={displayedFormStatus === 'submitting'}
+                            >
+                              <option value="">選択してください</option>
+                              {SELECTABLE_LINK_TYPES.map((value) => (
+                                <option key={value} value={value}>
+                                  {LINK_TYPE_LABELS[value]}
+                                </option>
+                              ))}
+                            </select>
+                            {displayedFormStatus === 'failure' ? (
+                              <p className="pt-form__error">
+                                {formOverride === 'save-failure'
+                                  ? 'Linkを保存できませんでした。入力内容を保持しています。もう一度お試しください。'
+                                  : formSnapshot.error === 'title'
+                                    ? 'Link名称を入力してください。'
+                                    : formSnapshot.error === 'type'
+                                      ? 'Link種別を選択してください。'
+                                      : formSnapshot.error === 'url'
+                                        ? 'http または https のURLを入力してください。'
+                                        : 'Linkを保存できませんでした。入力内容を保持しています。もう一度お試しください。'}
+                              </p>
+                            ) : null}
+                            {formOverride === null &&
+                            formSnapshot.successNotice ? (
+                              <p className="pt-success-notice" role="status">
+                                関連リンクを登録しました。
+                              </p>
+                            ) : null}
+                            <button
+                              className="pt-button pt-button--primary pt-run-link-submit"
+                              disabled={displayedFormStatus === 'submitting'}
+                            >
+                              {displayedFormStatus === 'submitting'
+                                ? '保存中...'
+                                : '関連リンクを登録'}
+                            </button>
+                          </form>
+                          {links.length > 0 ? (
+                            <ul className="pt-link-list">
+                              {links.map((link) => {
+                                const label = link.title?.trim() || link.url;
+                                const isConfirming = deleteOverride
+                                  ? overrideDeleteLinkId === link.id
+                                  : deleteSnapshot.linkId === link.id;
+                                const displayedDeleteStatus =
+                                  deleteOverride &&
+                                  overrideDeleteLinkId === link.id
+                                    ? deleteOverride === 'confirming'
+                                      ? 'idle'
+                                      : deleteOverride === 'deleting'
+                                        ? 'deleting'
+                                        : 'failure'
+                                    : deleteSnapshot.status;
+                                return (
+                                  <li key={link.id} className="pt-run-link-row">
+                                    <div className="pt-run-link-row__content">
+                                      <a
+                                        href={link.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                      >
+                                        {label}
+                                      </a>
+                                      {link.title?.trim() ? (
+                                        <span className="pt-link-list__url">
+                                          {link.url}
+                                        </span>
+                                      ) : null}
+                                      <span>
+                                        {LINK_TYPE_LABELS[link.type]} /{' '}
+                                        {link.createdAt}
+                                      </span>
+                                    </div>
+                                    <button
+                                      ref={(node) => {
+                                        if (node)
+                                          deleteButtonRefs.current.set(
+                                            link.id,
+                                            node,
+                                          );
+                                        else
+                                          deleteButtonRefs.current.delete(
+                                            link.id,
+                                          );
+                                      }}
+                                      className="pt-run-link-row__delete"
+                                      type="button"
+                                      aria-label={`${label}を削除`}
+                                      onClick={() => {
+                                        if (deleteOverride !== null) return;
+                                        if (
+                                          deleteSnapshot.status === 'deleting'
+                                        )
+                                          return;
+                                        setDeleteSnapshot({
+                                          linkId: link.id,
+                                          status: 'idle',
+                                          successNotice: false,
+                                        });
+                                      }}
+                                      disabled={
+                                        deleteOverride !== null ||
+                                        displayedDeleteStatus === 'deleting'
+                                      }
+                                    >
+                                      削除
+                                    </button>
+                                    {isConfirming ? (
+                                      <div className="pt-run-link-confirmation">
+                                        <p>「{label}」を削除しますか？</p>
+                                        {displayedDeleteStatus === 'failure' ? (
+                                          <p className="pt-form__error">
+                                            関連リンクを削除できませんでした。もう一度お試しください。
+                                          </p>
+                                        ) : null}
+                                        <div className="pt-run-link-confirmation__actions">
+                                          <button
+                                            className="pt-button pt-button--primary"
+                                            type="button"
+                                            disabled={
+                                              displayedDeleteStatus ===
+                                              'deleting'
+                                            }
+                                            onClick={() =>
+                                              void deleteLink(link.id)
+                                            }
+                                          >
+                                            {displayedDeleteStatus ===
+                                            'deleting'
+                                              ? '削除中...'
+                                              : '削除する'}
+                                          </button>
+                                          <button
+                                            className="pt-button pt-button--secondary"
+                                            type="button"
+                                            disabled={
+                                              displayedDeleteStatus ===
+                                              'deleting'
+                                            }
+                                            onClick={() =>
+                                              cancelDelete(link.id)
+                                            }
+                                          >
+                                            キャンセル
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : null}
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          ) : null}
+                          {deleteOverride === null &&
+                          deleteSnapshot.successNotice ? (
+                            <p className="pt-success-notice" role="status">
+                              関連リンクを削除しました。
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </span>
                   </div>
-                  <button
-                    ref={(node) => {
-                      if (node) deleteButtonRefs.current.set(link.id, node);
-                      else deleteButtonRefs.current.delete(link.id);
-                    }}
-                    className="pt-run-link-row__delete"
-                    type="button"
-                    aria-label={`${label}を削除`}
-                    onClick={() => {
-                      if (deleteOverride !== null) return;
-                      if (deleteSnapshot.status === 'deleting') return;
-                      setDeleteSnapshot({
-                        linkId: link.id,
-                        status: 'idle',
-                        successNotice: false,
-                      });
-                    }}
-                    disabled={
-                      deleteOverride !== null ||
-                      displayedDeleteStatus === 'deleting'
-                    }
-                  >
-                    削除
-                  </button>
-                  {isConfirming ? (
-                    <div className="pt-run-link-confirmation">
-                      <p>「{label}」を削除しますか？</p>
-                      {displayedDeleteStatus === 'failure' ? (
-                        <p className="pt-form__error">
-                          関連リンクを削除できませんでした。もう一度お試しください。
-                        </p>
-                      ) : null}
-                      <div className="pt-run-link-confirmation__actions">
-                        <button
-                          className="pt-button pt-button--primary"
-                          type="button"
-                          disabled={displayedDeleteStatus === 'deleting'}
-                          onClick={() => void deleteLink(link.id)}
-                        >
-                          {displayedDeleteStatus === 'deleting'
-                            ? '削除中...'
-                            : '削除する'}
-                        </button>
-                        <button
-                          className="pt-button pt-button--secondary"
-                          type="button"
-                          disabled={displayedDeleteStatus === 'deleting'}
-                          onClick={() => cancelDelete(link.id)}
-                        >
-                          キャンセル
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        ) : null}
-        {deleteOverride === null && deleteSnapshot.successNotice ? (
-          <p className="pt-success-notice" role="status">
-            関連リンクを削除しました。
-          </p>
-        ) : null}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </PageSection>
     </>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M7 5.5v13l11-6.5-11-6.5Z" />
+    </svg>
+  );
+}
+
+function FileTextIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M6 3.5h8l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" />
+      <path d="M14 3.5V8h4M8 13h8M8 16.5h8M8 9.5h3" />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3.5 2" />
+    </svg>
+  );
+}
+
+function LinkIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M9.5 14.5 14.5 9.5" />
+      <path d="M11 6.5 12.5 5a3.5 3.5 0 0 1 5 5L16 11.5" />
+      <path d="M13 17.5 11.5 19a3.5 3.5 0 0 1-5-5L8 12.5" />
+    </svg>
   );
 }
 

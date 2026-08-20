@@ -8,26 +8,25 @@ const promptBody = `\n${promptTitle}\n\n作成したTrailの永続性を確認�
 const linkUrl = 'https://example.com/prompt-trail/issue-161';
 const linkTitle = 'Golden Path document';
 
-function getPromptSnapshot(page: Page): Locator {
-  return page.locator('section').filter({
-    has: page.getByRole('heading', { level: 2, name: 'Prompt' }),
-  });
+async function openPromptPopover(page: Page): Promise<Locator> {
+  await page.getByRole('button', { name: 'Prompt Snapshotを表示' }).click();
+  return page.locator('.pt-run-popover');
 }
 
-function getLinkSection(page: Page): Locator {
-  return page.locator('section').filter({
-    has: page.getByRole('heading', { level: 2, name: '関連リンク' }),
-  });
+async function openLinksPopover(page: Page): Promise<Locator> {
+  await page.getByRole('button', { name: '関連リンクを表示' }).click();
+  return page.locator('.pt-run-popover');
 }
 
 async function expectCreatedTrail(page: Page) {
-  const snapshot = getPromptSnapshot(page);
-  await expect(snapshot.getByRole('heading', { level: 3 })).toHaveText(
+  const promptPopover = await openPromptPopover(page);
+  await expect(promptPopover.getByRole('heading', { level: 4 })).toHaveText(
     promptTitle,
   );
-  await expect(snapshot.locator('pre')).toHaveText(promptBody);
+  await expect(promptPopover.locator('pre')).toHaveText(promptBody);
 
-  const savedLink = getLinkSection(page).getByRole('listitem');
+  const linkPopover = await openLinksPopover(page);
+  const savedLink = linkPopover.getByRole('listitem');
   await expect(savedLink.getByRole('link')).toHaveAttribute('href', linkUrl);
   await expect(savedLink.getByRole('link', { name: linkTitle })).toBeVisible();
   await expect(savedLink).toContainText(linkUrl);
@@ -64,6 +63,8 @@ test.describe('first Trail creation acceptance', () => {
     await expect(runSummary.locator('time').first()).toHaveText(
       /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/,
     );
+
+    await openLinksPopover(page);
     const linkInformationButton = page.getByRole('button', {
       name: '関連リンクについて',
     });
@@ -118,12 +119,13 @@ test.describe('first Trail creation acceptance', () => {
       await page.setViewportSize(originalViewport);
     }
     const runDetailUrl = page.url();
-    const snapshot = getPromptSnapshot(page);
-    await expect(snapshot.getByRole('heading', { level: 3 })).toHaveText(
+    const promptPopover = await openPromptPopover(page);
+    await expect(promptPopover.getByRole('heading', { level: 4 })).toHaveText(
       promptTitle,
     );
-    await expect(snapshot.locator('pre')).toHaveText(promptBody);
+    await expect(promptPopover.locator('pre')).toHaveText(promptBody);
 
+    await openLinksPopover(page);
     await page.getByLabel('Link名称').fill(linkTitle);
     await page.getByLabel('URL').fill(linkUrl);
     await page.getByLabel('Link種別').selectOption('document');
@@ -139,16 +141,19 @@ test.describe('first Trail creation acceptance', () => {
     await page.reload();
     await expect(page).toHaveURL(runDetailUrl);
     await expect(page.getByText('Trailを作成しました。')).toHaveCount(0);
+    await openLinksPopover(page);
     await expect(page.getByText('関連リンクを登録しました。')).toHaveCount(0);
     await expectCreatedTrail(page);
     await expectNoHorizontalOverflow(page);
 
+    await openPromptPopover(page);
     await page.getByRole('link', { name: 'このPromptを再利用' }).click();
     await expect(page.getByLabel('Trail名')).toHaveValue(trailTitle);
     await expect(page.getByLabel('Trail種別')).toHaveValue('development');
     await expect(page.getByLabel('Prompt本文')).toHaveValue(promptBody.trim());
     await page.goto(runDetailUrl);
 
+    await openLinksPopover(page);
     const deleteButton = page.getByRole('button', {
       name: `${linkTitle}を削除`,
     });
@@ -168,11 +173,16 @@ test.describe('first Trail creation acceptance', () => {
         .getByRole('status')
         .filter({ hasText: '関連リンクを削除しました。' }),
     ).toBeVisible();
-    await expect(getLinkSection(page).getByRole('listitem')).toHaveCount(0);
+    await expect(
+      page.locator('.pt-run-popover').getByRole('listitem'),
+    ).toHaveCount(0);
     await expectNoHorizontalOverflow(page);
 
     await page.reload();
-    await expect(getLinkSection(page).getByRole('listitem')).toHaveCount(0);
+    await openLinksPopover(page);
+    await expect(
+      page.locator('.pt-run-popover').getByRole('listitem'),
+    ).toHaveCount(0);
 
     await page.getByRole('link', { name: 'Dashboardへ戻る' }).click();
     const recentRun = page.getByRole('row').filter({
@@ -183,7 +193,10 @@ test.describe('first Trail creation acceptance', () => {
 
     await recentRun.getByRole('link', { name: trailTitle }).click();
     await expect(page).toHaveURL(runDetailUrl);
-    await expect(getLinkSection(page).getByRole('listitem')).toHaveCount(0);
+    await openLinksPopover(page);
+    await expect(
+      page.locator('.pt-run-popover').getByRole('listitem'),
+    ).toHaveCount(0);
   });
 
   test('recovers from representative validation and not-found states', async ({
@@ -204,6 +217,7 @@ test.describe('first Trail creation acceptance', () => {
     await page.getByRole('button', { name: 'Trailを作成' }).click();
     await expect(page).toHaveURL(/\/trails\/[^/]+$/);
 
+    await openLinksPopover(page);
     const urlInput = page.getByLabel('URL');
     await page.getByLabel('Link名称').fill(linkTitle);
     await page.getByLabel('Link種別').selectOption('document');

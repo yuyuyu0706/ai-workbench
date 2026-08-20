@@ -38,6 +38,7 @@ test.describe('Run Detail Trail metadata', () => {
     ).toBeVisible();
     await page.goto(runPath);
     await expect(page.getByText('障害対応')).toBeVisible();
+    await page.getByRole('button', { name: 'Prompt Snapshotを表示' }).click();
     await page.getByRole('link', { name: 'このPromptを再利用' }).click();
     await expect(page.getByLabel('Trail名')).toHaveValue(
       'Updated incident Trail',
