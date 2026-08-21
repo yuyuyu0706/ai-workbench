@@ -334,32 +334,46 @@
   gap: var(--pt-space-2);
 }
 
-/* Default ('above-right') placement: the popover opens up-and-right from its
-   trigger, so the arrow sits on the popover's left edge (lower portion),
-   pointing down-left back to the trigger. */
-.pt-run-popover::before {
-  content: '';
+/* Mirrors PromptLibraryPage's .pt-prompt-body-popover__arrow: a real <span>
+   arrow (not a pseudo-element) whose position is computed from the trigger's
+   vertical/horizontal center, matching the right-start / left-start /
+   bottom-start placement set. */
+.pt-run-popover__arrow {
   position: absolute;
-  left: -0.45rem;
-  bottom: var(--pt-run-popover-arrow-bottom, 1rem);
-  width: 0.8rem;
-  height: 0.8rem;
-  transform: rotate(45deg);
-  border-block-end: 1px solid var(--pt-color-border);
-  border-inline-start: 1px solid var(--pt-color-border);
+  width: 0.75rem;
+  height: 0.75rem;
   background: var(--pt-color-surface);
+  transform: rotate(45deg);
 }
 
-/* 'below-right' fallback: trigger sits above the popover (not enough room to
-   open upward, e.g. near the top of the viewport), so the arrow sits on the
-   popover's left edge (upper portion), pointing up-left back to the trigger. */
-.pt-run-popover[data-placement='below-right']::before {
+.pt-run-popover[data-placement='right-start'] .pt-run-popover__arrow {
+  top: calc(
+    var(--pt-run-popover-arrow-y, 1rem) -
+      var(--pt-run-popover-arrow-offset, 0.375rem)
+  );
   left: -0.45rem;
-  top: var(--pt-run-popover-arrow-top, 1rem);
-  bottom: auto;
-  border-block-end: 0;
-  border-inline-start: 1px solid var(--pt-color-border);
-  border-block-start: 1px solid var(--pt-color-border);
+  border-bottom: 1px solid var(--pt-color-border);
+  border-left: 1px solid var(--pt-color-border);
+}
+
+.pt-run-popover[data-placement='left-start'] .pt-run-popover__arrow {
+  top: calc(
+    var(--pt-run-popover-arrow-y, 1rem) -
+      var(--pt-run-popover-arrow-offset, 0.375rem)
+  );
+  right: -0.45rem;
+  border-top: 1px solid var(--pt-color-border);
+  border-right: 1px solid var(--pt-color-border);
+}
+
+.pt-run-popover[data-placement='bottom-start'] .pt-run-popover__arrow {
+  top: -0.45rem;
+  left: calc(
+    var(--pt-run-popover-arrow-x, 1rem) -
+      var(--pt-run-popover-arrow-offset, 0.375rem)
+  );
+  border-top: 1px solid var(--pt-color-border);
+  border-left: 1px solid var(--pt-color-border);
 }
 
 .pt-run-popover h3 {

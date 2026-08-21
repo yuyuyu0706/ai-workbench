@@ -12,6 +12,7 @@ import { Link as RouterLink } from 'react-router-dom';
 import { buildNewTrailReusePath } from '../app/routes';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageSection } from '../components/ui';
+import { buildPopoverArrowStyle } from '../components/popoverArrow';
 import {
   usePopoverPosition,
   type PopoverMeasurements,
@@ -31,56 +32,61 @@ import { formatDateTime } from './date-time';
 
 type ActivePopover = 'prompt' | 'result' | 'links' | null;
 
-// Anchored above the trigger, left-aligned to it, speech-bubble style, so it
-// opens upward and to the right instead of overflowing below the viewport.
-// Falls back to opening below the trigger (still left-aligned, clamped to
-// the viewport) when there isn't enough room above it — e.g. a trigger near
-// the top edge.
-type RunPopoverPlacement = 'above-right' | 'below-right';
+// Mirrors PromptLibraryPage's PromptBodyPopover placement set: opens beside
+// the trigger, vertically aligned to it ('right-start'), falling back to the
+// other side when the viewport is too narrow ('left-start'), and finally
+// below the trigger, clamped to the viewport, when there isn't room on
+// either side ('bottom-start').
+type RunPopoverPlacement = 'right-start' | 'left-start' | 'bottom-start';
 
-function runPopoverLeft(m: PopoverMeasurements) {
-  const maxLeft = Math.max(
-    m.margin,
-    m.viewportWidth - m.margin - m.panelWidth,
-  );
-  const left = m.triggerRect.right + m.gap;
-  return Math.max(m.margin, Math.min(left, maxLeft));
+function runPopoverSideTop(m: PopoverMeasurements) {
+  const maxTop = Math.max(m.margin, m.viewportHeight - m.panelHeight - m.margin);
+  return Math.max(m.margin, Math.min(m.triggerRect.top, maxTop));
 }
 
 const RUN_POPOVER_PLACEMENTS: readonly PopoverPlacementOption<RunPopoverPlacement>[] =
   [
     {
-      id: 'above-right',
-      fits: (m) => m.triggerRect.top - m.gap - m.panelHeight >= m.margin,
+      id: 'right-start',
+      fits: (m) =>
+        m.viewportWidth - m.triggerRect.right >= m.panelWidth + m.gap,
       place: (m) => ({
-        left: runPopoverLeft(m),
-        top: m.triggerRect.top - m.gap - m.panelHeight,
+        left: m.triggerRect.right + m.gap,
+        top: runPopoverSideTop(m),
       }),
     },
     {
-      id: 'below-right',
+      id: 'left-start',
+      fits: (m) => m.triggerRect.left >= m.panelWidth + m.gap,
+      place: (m) => ({
+        left: m.triggerRect.left - m.panelWidth - m.gap,
+        top: runPopoverSideTop(m),
+      }),
+    },
+    {
+      id: 'bottom-start',
       fits: () => true,
       place: (m) => {
-        const maxTop = Math.max(
+        const maxLeft = Math.max(
           m.margin,
-          m.viewportHeight - m.margin - m.panelHeight,
+          m.viewportWidth - m.panelWidth - m.margin,
         );
-        const top = Math.min(m.triggerRect.bottom + m.gap, maxTop);
-        return { left: runPopoverLeft(m), top: Math.max(m.margin, top) };
+        const left = Math.max(m.margin, Math.min(m.triggerRect.left, maxLeft));
+        const top = Math.min(
+          m.triggerRect.bottom + m.gap,
+          Math.max(m.margin, m.viewportHeight - m.panelHeight - m.margin),
+        );
+        return { left, top };
       },
     },
   ];
 
 const RUN_POPOVER_GAP_PX = 8;
+const RUN_POPOVER_ARROW_SIZE_PX = 12;
 
 // Keep the arrow clear of the popover's rounded corners, mirroring
-// PromptLibraryPage's clampPromptBodyPopoverArrow.
+// PromptLibraryPage's PROMPT_BODY_POPOVER_ARROW_SAFE_MARGIN_PX.
 const RUN_POPOVER_ARROW_SAFE_MARGIN_PX = 16;
-
-function clampRunPopoverArrow(value: number, size: number) {
-  const safeMargin = RUN_POPOVER_ARROW_SAFE_MARGIN_PX;
-  return Math.max(safeMargin, Math.min(value, Math.max(safeMargin, size - safeMargin)));
-}
 
 function RunPopover({
   triggerRef,
@@ -101,21 +107,14 @@ function RunPopover({
   });
   const style = useMemo<CSSProperties>(() => {
     if (position === null) return { left: 0, top: 0, visibility: 'hidden' };
-    const centerY = position.triggerRect.top + position.triggerRect.height / 2;
-    if (position.placement === 'below-right') {
-      const arrowTop = clampRunPopoverArrow(centerY - position.top, position.panelHeight);
-      return {
-        left: position.left,
-        top: position.top,
-        '--pt-run-popover-arrow-top': `${arrowTop}px`,
-      } as CSSProperties;
-    }
-    const panelBottom = position.top + position.panelHeight;
-    const arrowBottom = clampRunPopoverArrow(panelBottom - centerY, position.panelHeight);
     return {
       left: position.left,
       top: position.top,
-      '--pt-run-popover-arrow-bottom': `${arrowBottom}px`,
+      ...buildPopoverArrowStyle(position, {
+        varPrefix: '--pt-run-popover-arrow',
+        arrowSizePx: RUN_POPOVER_ARROW_SIZE_PX,
+        safeMarginPx: RUN_POPOVER_ARROW_SAFE_MARGIN_PX,
+      }),
     } as CSSProperties;
   }, [position]);
   return createPortal(
@@ -128,6 +127,7 @@ function RunPopover({
       role="dialog"
       style={style}
     >
+      <span aria-hidden="true" className="pt-run-popover__arrow" />
       <div className="pt-run-popover__scroll">{children}</div>
     </div>,
     document.body,

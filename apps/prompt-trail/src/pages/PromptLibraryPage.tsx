@@ -23,6 +23,7 @@ import {
   routePaths,
 } from '../app/routes';
 import { PageSection, StateMessage } from '../components/ui';
+import { buildPopoverArrowStyle } from '../components/popoverArrow';
 import {
   usePopoverPosition,
   type PopoverMeasurements,
@@ -77,11 +78,6 @@ type PromptBodyPopoverPlacement = 'right-start' | 'left-start' | 'bottom-start';
 const PROMPT_BODY_POPOVER_ARROW_SIZE_PX = 12;
 const PROMPT_BODY_POPOVER_ARROW_SAFE_MARGIN_PX = 16;
 
-function clampPromptBodyPopoverArrow(value: number, size: number) {
-  const safeMargin = PROMPT_BODY_POPOVER_ARROW_SAFE_MARGIN_PX;
-  return Math.max(safeMargin, Math.min(value, Math.max(safeMargin, size - safeMargin)));
-}
-
 function promptBodyPopoverSideTop(m: PopoverMeasurements) {
   const maxTop = Math.max(m.margin, m.viewportHeight - m.panelHeight - m.margin);
   return Math.max(m.margin, Math.min(m.triggerRect.top, maxTop));
@@ -130,24 +126,17 @@ function buildPromptBodyPopoverStyle(
   >['position'],
 ): { placement: PromptBodyPopoverPlacement; style: CSSProperties } | undefined {
   if (position === null) return undefined;
-  const { triggerRect, panelWidth, panelHeight, left, top, placement } =
-    position;
-  const triggerCenterX = triggerRect.left + triggerRect.width / 2;
-  const triggerCenterY = triggerRect.top + triggerRect.height / 2;
+  const { left, top, placement } = position;
   return {
     placement,
     style: {
       left,
       top,
-      '--pt-prompt-body-arrow-x': `${clampPromptBodyPopoverArrow(
-        triggerCenterX - left,
-        panelWidth,
-      )}px`,
-      '--pt-prompt-body-arrow-y': `${clampPromptBodyPopoverArrow(
-        triggerCenterY - top,
-        panelHeight,
-      )}px`,
-      '--pt-prompt-body-arrow-offset': `${PROMPT_BODY_POPOVER_ARROW_SIZE_PX / 2}px`,
+      ...buildPopoverArrowStyle(position, {
+        varPrefix: '--pt-prompt-body-arrow',
+        arrowSizePx: PROMPT_BODY_POPOVER_ARROW_SIZE_PX,
+        safeMarginPx: PROMPT_BODY_POPOVER_ARROW_SAFE_MARGIN_PX,
+      }),
     } as CSSProperties,
   };
 }
