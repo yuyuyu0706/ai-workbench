@@ -124,17 +124,16 @@ function RunPopover({
   });
   const style = useMemo<CSSProperties>(() => {
     if (position === null) return { left: 0, top: 0, visibility: 'hidden' };
-    // 'right-start' now uses a fixed bottom-edge arrow position (see
-    // run-detail-page.css), so it doesn't need the dynamically computed
-    // side-relative arrow offset that 'left-start'/'bottom-start' still use.
-    const arrowStyle: CSSProperties =
-      position.placement === 'right-start'
-        ? {}
-        : buildPopoverArrowStyle(position, {
-            varPrefix: '--pt-run-popover-arrow',
-            arrowSizePx: RUN_POPOVER_ARROW_SIZE_PX,
-            safeMarginPx: RUN_POPOVER_ARROW_SAFE_MARGIN_PX,
-          });
+    // 'right-start' keeps a fixed bottom-edge arrow position (see
+    // run-detail-page.css) but still needs the dynamically computed
+    // horizontal (--pt-run-popover-arrow-x) offset so the arrow tracks
+    // whichever trigger was actually clicked; 'left-start'/'bottom-start'
+    // use both axes from this same helper.
+    const arrowStyle = buildPopoverArrowStyle(position, {
+      varPrefix: '--pt-run-popover-arrow',
+      arrowSizePx: RUN_POPOVER_ARROW_SIZE_PX,
+      safeMarginPx: RUN_POPOVER_ARROW_SAFE_MARGIN_PX,
+    });
     return {
       left: position.left,
       top: position.top,

@@ -351,7 +351,10 @@
    trigger instead of sideways at it. */
 .pt-run-popover[data-placement='right-start'] .pt-run-popover__arrow {
   bottom: -0.4rem;
-  left: 0.625rem;
+  left: calc(
+    var(--pt-run-popover-arrow-x, 1rem) -
+      var(--pt-run-popover-arrow-offset, 0.375rem)
+  );
   top: auto;
   border-bottom: 1px solid var(--pt-color-border);
   border-right: 1px solid var(--pt-color-border);
