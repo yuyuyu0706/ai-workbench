@@ -31,10 +31,11 @@ import { formatDateTime } from './date-time';
 
 type ActivePopover = 'prompt' | 'result' | 'links' | null;
 
-// Anchored above the trigger, right-aligned to it, speech-bubble style, so it
-// opens upward instead of overflowing below the viewport. Falls back to
-// opening below the trigger (still right-aligned, clamped to the viewport)
-// when there isn't enough room above it — e.g. a trigger near the top edge.
+// Anchored above the trigger, left-aligned to it, speech-bubble style, so it
+// opens upward and to the right instead of overflowing below the viewport.
+// Falls back to opening below the trigger (still left-aligned, clamped to
+// the viewport) when there isn't enough room above it — e.g. a trigger near
+// the top edge.
 type RunPopoverPlacement = 'above-right' | 'below-right';
 
 function runPopoverLeft(m: PopoverMeasurements) {
@@ -42,7 +43,7 @@ function runPopoverLeft(m: PopoverMeasurements) {
     m.margin,
     m.viewportWidth - m.margin - m.panelWidth,
   );
-  const left = m.triggerRect.right - m.panelWidth;
+  const left = m.triggerRect.right + m.gap;
   return Math.max(m.margin, Math.min(left, maxLeft));
 }
 
@@ -92,11 +93,11 @@ function RunPopover({
   const style = useMemo<CSSProperties>(() => {
     if (position === null) return { left: 0, top: 0, visibility: 'hidden' };
     const centerX = position.triggerRect.left + position.triggerRect.width / 2;
-    const arrowRight = position.left + position.panelWidth - centerX;
+    const arrowLeft = centerX - position.left;
     return {
       left: position.left,
       top: position.top,
-      '--pt-run-popover-arrow-right': `${arrowRight}px`,
+      '--pt-run-popover-arrow-left': `${arrowLeft}px`,
     } as CSSProperties;
   }, [position]);
   return createPortal(

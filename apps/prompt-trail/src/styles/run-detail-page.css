@@ -318,13 +318,29 @@
   padding: var(--pt-space-3) var(--pt-space-4);
 }
 
+/* The Related Links popover stacks a 3-field form plus the existing link
+   list, which tends to exceed the default scroll max-height. Give it a bit
+   more width and vertical room so the common case (a handful of links plus
+   the form) doesn't need to scroll. */
+.pt-run-popover--links {
+  width: min(20rem, calc(100vw - 2rem));
+}
+
+.pt-run-popover--links .pt-run-popover__scroll {
+  max-height: 30rem;
+}
+
+.pt-run-popover--links .pt-form {
+  gap: var(--pt-space-2);
+}
+
 /* Default (and 'above-right') placement: trigger sits below the popover, so
    the arrow points down from the popover's bottom edge. */
 .pt-run-popover::before {
   content: '';
   position: absolute;
   bottom: -0.4rem;
-  right: var(--pt-run-popover-arrow-right, 1rem);
+  left: var(--pt-run-popover-arrow-left, 1rem);
   width: 0.8rem;
   height: 0.8rem;
   transform: translateX(50%) rotate(45deg);
