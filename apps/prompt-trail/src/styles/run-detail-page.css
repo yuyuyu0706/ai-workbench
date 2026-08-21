@@ -303,7 +303,7 @@
   position: fixed;
   z-index: 50;
   margin: 0;
-  width: min(16.25rem, calc(100vw - 2rem));
+  width: min(22rem, calc(100vw - 2rem));
   border: 1px solid var(--pt-color-border);
   border-radius: var(--pt-radius-sm);
   box-shadow: var(--pt-shadow-card);
@@ -319,13 +319,9 @@
 }
 
 /* The Related Links popover stacks a 3-field form plus the existing link
-   list, which tends to exceed the default scroll max-height. Give it a bit
-   more width and vertical room so the common case (a handful of links plus
-   the form) doesn't need to scroll. */
-.pt-run-popover--links {
-  width: min(20rem, calc(100vw - 2rem));
-}
-
+   list, which tends to exceed the default scroll max-height. It now shares
+   the base .pt-run-popover width (which is wider than this popover's old
+   20rem override), so only the extra vertical room is still needed here. */
 .pt-run-popover--links .pt-run-popover__scroll {
   max-height: 30rem;
 }
