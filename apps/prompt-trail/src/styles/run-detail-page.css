@@ -313,7 +313,7 @@
 }
 
 .pt-run-popover__scroll {
-  max-height: 24rem;
+  max-height: min(24rem, 50vh);
   overflow-y: auto;
   padding: var(--pt-space-3) var(--pt-space-4);
 }

@@ -46,15 +46,17 @@ function runPopoverSideTop(m: PopoverMeasurements) {
 
 // Per the Trail Detail mockup, the default 'right-start' placement opens
 // up-and-to-the-right of its trigger icon rather than directly beside it at
-// the same vertical level. These offsets are quick tunable knobs (not a
-// precise formula) — tune by eye in the browser if the app's icon size or
-// spacing changes.
-const RUN_POPOVER_VERTICAL_OFFSET_PX = 20;
-const RUN_POPOVER_HORIZONTAL_OFFSET_PX = 8;
+// the same vertical level. The popover's bottom edge should sit a small gap
+// above the trigger icon's top edge (no overlap) vertically, and overlap the
+// trigger's right edge slightly horizontally. These are quick tunable knobs
+// (not a precise formula) — tune by eye in the browser if the app's icon
+// size or spacing changes.
+const RUN_POPOVER_VERTICAL_GAP_PX = 8;
+const RUN_POPOVER_HORIZONTAL_OVERLAP_PX = 9;
 
 function runPopoverRightStartTop(m: PopoverMeasurements) {
   const desiredTop =
-    m.triggerRect.top - m.panelHeight + RUN_POPOVER_VERTICAL_OFFSET_PX;
+    m.triggerRect.top - m.panelHeight - RUN_POPOVER_VERTICAL_GAP_PX;
   const maxTop = Math.max(m.margin, m.viewportHeight - m.panelHeight - m.margin);
   return Math.max(m.margin, Math.min(desiredTop, maxTop));
 }
@@ -66,7 +68,7 @@ const RUN_POPOVER_PLACEMENTS: readonly PopoverPlacementOption<RunPopoverPlacemen
       fits: (m) =>
         m.viewportWidth - m.triggerRect.right >= m.panelWidth + m.gap,
       place: (m) => ({
-        left: m.triggerRect.right + m.gap - RUN_POPOVER_HORIZONTAL_OFFSET_PX,
+        left: m.triggerRect.right - RUN_POPOVER_HORIZONTAL_OVERLAP_PX,
         top: runPopoverRightStartTop(m),
       }),
     },
