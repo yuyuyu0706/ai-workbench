@@ -47,12 +47,15 @@ function runPopoverSideTop(m: PopoverMeasurements) {
 // Per the Trail Detail mockup, the default 'right-start' placement opens
 // up-and-to-the-right of its trigger icon rather than directly beside it at
 // the same vertical level. The popover's bottom edge should sit a small gap
-// above the trigger icon's top edge (no overlap) vertically, and overlap the
-// trigger's right edge slightly horizontally. These are quick tunable knobs
-// (not a precise formula) — tune by eye in the browser if the app's icon
-// size or spacing changes.
+// above the trigger icon's top edge (no overlap) vertically. Horizontally,
+// the popover is anchored to the trigger's *left* edge (rather than its
+// right edge) so the trigger icon's horizontal center reliably lands well
+// inside the arrow's clamped safe range (RUN_POPOVER_ARROW_SAFE_MARGIN_PX
+// below) instead of past the popover's own left edge. These are quick
+// tunable knobs (not a precise formula) — tune by eye in the browser if the
+// app's icon size or spacing changes.
 const RUN_POPOVER_VERTICAL_GAP_PX = 8;
-const RUN_POPOVER_HORIZONTAL_OVERLAP_PX = 9;
+const RUN_POPOVER_HORIZONTAL_OFFSET_PX = 4;
 
 function runPopoverRightStartTop(m: PopoverMeasurements) {
   const desiredTop =
@@ -65,10 +68,14 @@ const RUN_POPOVER_PLACEMENTS: readonly PopoverPlacementOption<RunPopoverPlacemen
   [
     {
       id: 'right-start',
+      // The popover's left edge sits at triggerRect.left - OFFSET_PX (see
+      // place() below), so the room needed to its right is measured from
+      // that same anchor rather than from triggerRect.right.
       fits: (m) =>
-        m.viewportWidth - m.triggerRect.right >= m.panelWidth + m.gap,
+        m.viewportWidth - (m.triggerRect.left - RUN_POPOVER_HORIZONTAL_OFFSET_PX) >=
+        m.panelWidth + m.gap,
       place: (m) => ({
-        left: m.triggerRect.right - RUN_POPOVER_HORIZONTAL_OVERLAP_PX,
+        left: m.triggerRect.left - RUN_POPOVER_HORIZONTAL_OFFSET_PX,
         top: runPopoverRightStartTop(m),
       }),
     },
