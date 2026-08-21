@@ -44,6 +44,21 @@ function runPopoverSideTop(m: PopoverMeasurements) {
   return Math.max(m.margin, Math.min(m.triggerRect.top, maxTop));
 }
 
+// Per the Trail Detail mockup, the default 'right-start' placement opens
+// up-and-to-the-right of its trigger icon rather than directly beside it at
+// the same vertical level. These offsets are quick tunable knobs (not a
+// precise formula) — tune by eye in the browser if the app's icon size or
+// spacing changes.
+const RUN_POPOVER_VERTICAL_OFFSET_PX = 20;
+const RUN_POPOVER_HORIZONTAL_OFFSET_PX = 8;
+
+function runPopoverRightStartTop(m: PopoverMeasurements) {
+  const desiredTop =
+    m.triggerRect.top - m.panelHeight + RUN_POPOVER_VERTICAL_OFFSET_PX;
+  const maxTop = Math.max(m.margin, m.viewportHeight - m.panelHeight - m.margin);
+  return Math.max(m.margin, Math.min(desiredTop, maxTop));
+}
+
 const RUN_POPOVER_PLACEMENTS: readonly PopoverPlacementOption<RunPopoverPlacement>[] =
   [
     {
@@ -51,8 +66,8 @@ const RUN_POPOVER_PLACEMENTS: readonly PopoverPlacementOption<RunPopoverPlacemen
       fits: (m) =>
         m.viewportWidth - m.triggerRect.right >= m.panelWidth + m.gap,
       place: (m) => ({
-        left: m.triggerRect.right + m.gap,
-        top: runPopoverSideTop(m),
+        left: m.triggerRect.right + m.gap - RUN_POPOVER_HORIZONTAL_OFFSET_PX,
+        top: runPopoverRightStartTop(m),
       }),
     },
     {
@@ -107,14 +122,21 @@ function RunPopover({
   });
   const style = useMemo<CSSProperties>(() => {
     if (position === null) return { left: 0, top: 0, visibility: 'hidden' };
+    // 'right-start' now uses a fixed bottom-edge arrow position (see
+    // run-detail-page.css), so it doesn't need the dynamically computed
+    // side-relative arrow offset that 'left-start'/'bottom-start' still use.
+    const arrowStyle: CSSProperties =
+      position.placement === 'right-start'
+        ? {}
+        : buildPopoverArrowStyle(position, {
+            varPrefix: '--pt-run-popover-arrow',
+            arrowSizePx: RUN_POPOVER_ARROW_SIZE_PX,
+            safeMarginPx: RUN_POPOVER_ARROW_SAFE_MARGIN_PX,
+          });
     return {
       left: position.left,
       top: position.top,
-      ...buildPopoverArrowStyle(position, {
-        varPrefix: '--pt-run-popover-arrow',
-        arrowSizePx: RUN_POPOVER_ARROW_SIZE_PX,
-        safeMarginPx: RUN_POPOVER_ARROW_SAFE_MARGIN_PX,
-      }),
+      ...arrowStyle,
     } as CSSProperties;
   }, [position]);
   return createPortal(
