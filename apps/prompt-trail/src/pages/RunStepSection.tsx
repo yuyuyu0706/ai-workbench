@@ -73,6 +73,15 @@ const RUN_POPOVER_PLACEMENTS: readonly PopoverPlacementOption<RunPopoverPlacemen
 
 const RUN_POPOVER_GAP_PX = 8;
 
+// Keep the arrow clear of the popover's rounded corners, mirroring
+// PromptLibraryPage's clampPromptBodyPopoverArrow.
+const RUN_POPOVER_ARROW_SAFE_MARGIN_PX = 16;
+
+function clampRunPopoverArrow(value: number, size: number) {
+  const safeMargin = RUN_POPOVER_ARROW_SAFE_MARGIN_PX;
+  return Math.max(safeMargin, Math.min(value, Math.max(safeMargin, size - safeMargin)));
+}
+
 function RunPopover({
   triggerRef,
   className,
@@ -92,12 +101,21 @@ function RunPopover({
   });
   const style = useMemo<CSSProperties>(() => {
     if (position === null) return { left: 0, top: 0, visibility: 'hidden' };
-    const centerX = position.triggerRect.left + position.triggerRect.width / 2;
-    const arrowLeft = centerX - position.left;
+    const centerY = position.triggerRect.top + position.triggerRect.height / 2;
+    if (position.placement === 'below-right') {
+      const arrowTop = clampRunPopoverArrow(centerY - position.top, position.panelHeight);
+      return {
+        left: position.left,
+        top: position.top,
+        '--pt-run-popover-arrow-top': `${arrowTop}px`,
+      } as CSSProperties;
+    }
+    const panelBottom = position.top + position.panelHeight;
+    const arrowBottom = clampRunPopoverArrow(panelBottom - centerY, position.panelHeight);
     return {
       left: position.left,
       top: position.top,
-      '--pt-run-popover-arrow-left': `${arrowLeft}px`,
+      '--pt-run-popover-arrow-bottom': `${arrowBottom}px`,
     } as CSSProperties;
   }, [position]);
   return createPortal(
