@@ -99,7 +99,7 @@ test.describe('Dashboard data flow', () => {
       new RegExp(`/trails/${seedResult.sampleTrailId}$`),
     );
     await expect(
-      page.getByRole('heading', { level: 1, name: 'Run Detail' }),
+      page.getByRole('heading', { level: 1, name: 'Trail Detail' }),
     ).toBeVisible();
   });
 

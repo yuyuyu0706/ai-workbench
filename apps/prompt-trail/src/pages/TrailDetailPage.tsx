@@ -315,8 +315,8 @@ export function TrailDetailPage() {
   return (
     <section className="prompt-trail-page">
       <PageHeader
-        eyebrow="Run Detail"
-        title="Run Detail"
+        eyebrow="Trail Detail"
+        title="Trail Detail"
         description={`${firstRun.project.name} のTrail: ${trail.title}`}
       />
       <div className="prompt-trail-page__sections">
@@ -344,6 +344,10 @@ export function TrailDetailPage() {
           {displayedMetadataStatus === 'view' ? (
             <>
               <dl className="pt-detail-list">
+                <div>
+                  <dt>Project</dt>
+                  <dd>{firstRun.project.name}</dd>
+                </div>
                 <div>
                   <dt>Trail名</dt>
                   <dd>{trail.title}</dd>
@@ -481,7 +485,7 @@ export function TrailDetailPage() {
           <RunStepSection
             key={runItem.run.id}
             run={runItem}
-            onLinkChanged={() => void reloadLatestMetadata()}
+            onRunChanged={() => void reloadLatestMetadata()}
           />
         ))}
       </div>
@@ -508,7 +512,7 @@ function DetailMessage({
 }) {
   return (
     <section className="prompt-trail-page">
-      <PageHeader eyebrow="Run Detail" title="Run Detail" />
+      <PageHeader eyebrow="Trail Detail" title="Trail Detail" />
       <StateMessage variant={variant} title={title} description={description} />
       <div className="prompt-trail-page__actions">
         <Link
