@@ -396,10 +396,10 @@
   margin-block-end: var(--pt-space-2);
 }
 
-.pt-run-popover__header-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--pt-space-2);
+.pt-run-popover__reuse-link {
+  display: inline-flex;
+  align-self: flex-start;
+  margin-block: var(--pt-space-1) var(--pt-space-2);
 }
 
 .pt-run-popover__close {

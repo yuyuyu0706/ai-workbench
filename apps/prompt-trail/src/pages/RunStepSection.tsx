@@ -504,23 +504,21 @@ export function RunStepSection({
                         <RunPopover triggerRef={promptButtonRef}>
                           <div className="pt-run-popover__header">
                             <h3>Prompt Snapshot</h3>
-                            <div className="pt-run-popover__header-actions">
-                              <RouterLink
-                                className="pt-button pt-button--secondary"
-                                to={buildNewTrailReusePath(run.id)}
-                              >
-                                このPromptを再利用
-                              </RouterLink>
-                              <button
-                                type="button"
-                                className="pt-run-popover__close"
-                                aria-label="閉じる"
-                                onClick={() => setActivePopover(null)}
-                              >
-                                ×
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              className="pt-run-popover__close"
+                              aria-label="閉じる"
+                              onClick={() => setActivePopover(null)}
+                            >
+                              ×
+                            </button>
                           </div>
+                          <RouterLink
+                            className="pt-button pt-button--secondary pt-run-popover__reuse-link"
+                            to={buildNewTrailReusePath(run.id)}
+                          >
+                            このPromptを再利用
+                          </RouterLink>
                           <h4>{run.promptSnapshot.title}</h4>
                           <pre className="pt-snapshot">
                             {run.promptSnapshot.body}
