@@ -40,7 +40,10 @@ type ActivePopover = 'prompt' | 'result' | 'links' | null;
 type RunPopoverPlacement = 'right-start' | 'left-start' | 'bottom-start';
 
 function runPopoverSideTop(m: PopoverMeasurements) {
-  const maxTop = Math.max(m.margin, m.viewportHeight - m.panelHeight - m.margin);
+  const maxTop = Math.max(
+    m.margin,
+    m.viewportHeight - m.panelHeight - m.margin,
+  );
   return Math.max(m.margin, Math.min(m.triggerRect.top, maxTop));
 }
 
@@ -60,7 +63,10 @@ const RUN_POPOVER_HORIZONTAL_OFFSET_PX = 4;
 function runPopoverRightStartTop(m: PopoverMeasurements) {
   const desiredTop =
     m.triggerRect.top - m.panelHeight - RUN_POPOVER_VERTICAL_GAP_PX;
-  const maxTop = Math.max(m.margin, m.viewportHeight - m.panelHeight - m.margin);
+  const maxTop = Math.max(
+    m.margin,
+    m.viewportHeight - m.panelHeight - m.margin,
+  );
   return Math.max(m.margin, Math.min(desiredTop, maxTop));
 }
 
@@ -72,7 +78,8 @@ const RUN_POPOVER_PLACEMENTS: readonly PopoverPlacementOption<RunPopoverPlacemen
       // place() below), so the room needed to its right is measured from
       // that same anchor rather than from triggerRect.right.
       fits: (m) =>
-        m.viewportWidth - (m.triggerRect.left - RUN_POPOVER_HORIZONTAL_OFFSET_PX) >=
+        m.viewportWidth -
+          (m.triggerRect.left - RUN_POPOVER_HORIZONTAL_OFFSET_PX) >=
         m.panelWidth + m.gap,
       place: (m) => ({
         left: m.triggerRect.left - RUN_POPOVER_HORIZONTAL_OFFSET_PX,
@@ -149,9 +156,7 @@ function RunPopover({
   }, [position]);
   return createPortal(
     <div
-      className={
-        className ? `pt-run-popover ${className}` : 'pt-run-popover'
-      }
+      className={className ? `pt-run-popover ${className}` : 'pt-run-popover'}
       data-placement={position?.placement}
       ref={panelRef}
       role="dialog"

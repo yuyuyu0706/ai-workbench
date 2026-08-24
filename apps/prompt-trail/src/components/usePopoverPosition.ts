@@ -35,9 +35,7 @@ export type PopoverPlacementResult = {
 export type PopoverPlacementOption<TId extends string = string> = {
   readonly id: TId;
   readonly fits: (measurements: PopoverMeasurements) => boolean;
-  readonly place: (
-    measurements: PopoverMeasurements,
-  ) => PopoverPlacementResult;
+  readonly place: (measurements: PopoverMeasurements) => PopoverPlacementResult;
 };
 
 export type PopoverPositionResult<TId extends string = string> = {
@@ -98,8 +96,7 @@ export function usePopoverPosition<TId extends string>({
   const updatePosition = useCallback(() => {
     const trigger = triggerRef.current;
     const panel = panelRef.current;
-    if (trigger === null || panel === null || placements.length === 0)
-      return;
+    if (trigger === null || panel === null || placements.length === 0) return;
     const triggerRect = trigger.getBoundingClientRect();
     const panelRect = panel.getBoundingClientRect();
     const measurements: PopoverMeasurements = {

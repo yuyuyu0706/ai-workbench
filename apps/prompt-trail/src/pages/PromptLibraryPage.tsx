@@ -79,7 +79,10 @@ const PROMPT_BODY_POPOVER_ARROW_SIZE_PX = 12;
 const PROMPT_BODY_POPOVER_ARROW_SAFE_MARGIN_PX = 16;
 
 function promptBodyPopoverSideTop(m: PopoverMeasurements) {
-  const maxTop = Math.max(m.margin, m.viewportHeight - m.panelHeight - m.margin);
+  const maxTop = Math.max(
+    m.margin,
+    m.viewportHeight - m.panelHeight - m.margin,
+  );
   return Math.max(m.margin, Math.min(m.triggerRect.top, maxTop));
 }
 
@@ -712,9 +715,10 @@ function PromptBodyPopover({
       open,
       placements: PROMPT_BODY_POPOVER_PLACEMENTS,
     });
-  const position = useMemo(() => buildPromptBodyPopoverStyle(rawPosition), [
-    rawPosition,
-  ]);
+  const position = useMemo(
+    () => buildPromptBodyPopoverStyle(rawPosition),
+    [rawPosition],
+  );
 
   useEffect(() => {
     mountedRef.current = true;
