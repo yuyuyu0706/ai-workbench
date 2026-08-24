@@ -33,11 +33,24 @@ test.describe('Trail reuse acceptance', () => {
 
     await page.getByRole('link', { name: sourceTitle, exact: true }).click();
     const sourceUrl = page.url();
-    await expect(page.getByText(sourceBody, { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Prompt Snapshotを表示' }).click();
+    const promptPopover = page.locator('.pt-run-popover');
     await expect(
-      page.getByRole('link', { name: 'Completed incident report' }),
+      promptPopover.getByText(sourceBody, { exact: true }),
     ).toBeVisible();
-    await page.getByRole('link', { name: 'このPromptを再利用' }).click();
+
+    await page.getByRole('button', { name: '関連リンクを表示' }).click();
+    const linksPopover = page.locator('.pt-run-popover');
+    await expect(
+      linksPopover.getByRole('link', { name: 'Completed incident report' }),
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    await page.getByRole('button', { name: 'Prompt Snapshotを表示' }).click();
+    await page
+      .locator('.pt-run-popover')
+      .getByRole('link', { name: 'このPromptを再利用' })
+      .click();
 
     await expect(page).toHaveURL(/\/trails\/new\?sourceRunId=/);
     await expect(page.getByLabel('Prompt本文')).toHaveValue(sourceBody);
@@ -58,14 +71,22 @@ test.describe('Trail reuse acceptance', () => {
     await expect(page.getByLabel('Trail種別')).toBeFocused();
     await page.getByRole('button', { name: 'Trailを作成' }).click();
     await expect(page).toHaveURL(/\/trails\/(?!new)[^/?]+$/);
-    await expect(page.getByText(reusedBody, { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Prompt Snapshotを表示' }).click();
+    await expect(
+      page.locator('.pt-run-popover').getByText(reusedBody, { exact: true }),
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
     await expect(
       page.getByRole('link', { name: 'Completed incident report' }),
     ).toHaveCount(0);
     await expectNoHorizontalOverflow(page);
 
     await page.reload();
-    await expect(page.getByText(reusedBody, { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Prompt Snapshotを表示' }).click();
+    await expect(
+      page.locator('.pt-run-popover').getByText(reusedBody, { exact: true }),
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
     await page.getByRole('link', { name: 'Dashboardへ戻る' }).click();
     await expect(
       page.getByRole('heading', { name: sourceTitle, exact: true }),
@@ -86,9 +107,16 @@ test.describe('Trail reuse acceptance', () => {
 
     await page.goto(sourceUrl);
     await expect(page).toHaveURL(sourceUrl);
-    await expect(page.getByText(sourceBody, { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Prompt Snapshotを表示' }).click();
     await expect(
-      page.getByRole('link', { name: 'Completed incident report' }),
+      page.locator('.pt-run-popover').getByText(sourceBody, { exact: true }),
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: '関連リンクを表示' }).click();
+    await expect(
+      page
+        .locator('.pt-run-popover')
+        .getByRole('link', { name: 'Completed incident report' }),
     ).toBeVisible();
   });
 });

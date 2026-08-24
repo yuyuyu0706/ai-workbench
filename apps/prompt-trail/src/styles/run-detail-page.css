@@ -2,6 +2,15 @@
   position: static;
 }
 
+/* On wide viewports there's room to show the info bubble beside its trigger
+   instead of stacked below the whole popover header, so it reads as
+   pointing at the icon rather than floating under the title row. */
+@media (min-width: 900px) {
+  .pt-run-link-information {
+    position: relative;
+  }
+}
+
 .pt-trail-metadata-form__actions {
   display: flex;
   flex-wrap: wrap;
@@ -56,6 +65,17 @@
   box-shadow: var(--pt-shadow-card);
   color: var(--pt-color-text);
   background: var(--pt-color-surface);
+}
+
+@media (min-width: 900px) {
+  .pt-run-link-information__popover {
+    top: auto;
+    bottom: 50%;
+    left: calc(100% + var(--pt-space-2));
+    right: auto;
+    width: max-content;
+    max-width: 18rem;
+  }
 }
 
 .pt-run-link-submit {
