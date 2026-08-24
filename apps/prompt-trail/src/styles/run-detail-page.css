@@ -42,10 +42,13 @@
 
 .pt-run-link-information__popover {
   position: absolute;
-  z-index: 1;
-  bottom: 50%;
-  left: calc(100% + var(--pt-space-2));
-  width: min(22rem, calc(100vw - 2 * var(--pt-space-5)));
+  z-index: 2;
+  top: calc(100% + var(--pt-space-2));
+  right: 0;
+  left: auto;
+  bottom: auto;
+  width: 100%;
+  max-width: 100%;
   margin: 0;
   padding: var(--pt-space-3) var(--pt-space-4);
   border: 1px solid var(--pt-color-border);
@@ -53,13 +56,6 @@
   box-shadow: var(--pt-shadow-card);
   color: var(--pt-color-text);
   background: var(--pt-color-surface);
-}
-
-@media (max-width: 40rem) {
-  .pt-run-link-information__popover {
-    right: auto;
-    left: 0;
-  }
 }
 
 .pt-run-link-submit {
@@ -388,12 +384,19 @@
 }
 
 .pt-run-popover__header {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--pt-space-2);
   margin-block-end: var(--pt-space-2);
+}
+
+.pt-run-popover__header-title {
+  display: flex;
+  align-items: center;
+  gap: var(--pt-space-1);
 }
 
 .pt-run-popover__reuse-link {

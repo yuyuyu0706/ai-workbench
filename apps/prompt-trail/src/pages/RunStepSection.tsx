@@ -593,35 +593,37 @@ export function RunStepSection({
                           className="pt-run-popover--links"
                         >
                           <div className="pt-run-popover__header">
-                            <h3>関連リンク</h3>
-                            <div
-                              className="pt-run-link-information"
-                              ref={linkInformationRef}
-                            >
-                              <button
-                                ref={linkInformationButtonRef}
-                                className="pt-run-link-information__button"
-                                type="button"
-                                aria-label="関連リンクについて"
-                                aria-expanded={isLinkInformationOpen}
-                                aria-controls={linkInformationId}
-                                onClick={() =>
-                                  setIsLinkInformationOpen((open) => !open)
-                                }
+                            <div className="pt-run-popover__header-title">
+                              <h3>関連リンク</h3>
+                              <div
+                                className="pt-run-link-information"
+                                ref={linkInformationRef}
                               >
-                                <svg aria-hidden="true" viewBox="0 0 24 24">
-                                  <circle cx="12" cy="12" r="9" />
-                                  <path d="M12 11v6M12 7.5v.5" />
-                                </svg>
-                              </button>
-                              {isLinkInformationOpen ? (
-                                <p
-                                  className="pt-run-link-information__popover"
-                                  id={linkInformationId}
+                                <button
+                                  ref={linkInformationButtonRef}
+                                  className="pt-run-link-information__button"
+                                  type="button"
+                                  aria-label="関連リンクについて"
+                                  aria-expanded={isLinkInformationOpen}
+                                  aria-controls={linkInformationId}
+                                  onClick={() =>
+                                    setIsLinkInformationOpen((open) => !open)
+                                  }
                                 >
-                                  この作業で参照したChat・Issue・PR・Documentや、作成した成果物のURLを登録できます。
-                                </p>
-                              ) : null}
+                                  <svg aria-hidden="true" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="9" />
+                                    <path d="M12 11v6M12 7.5v.5" />
+                                  </svg>
+                                </button>
+                                {isLinkInformationOpen ? (
+                                  <p
+                                    className="pt-run-link-information__popover"
+                                    id={linkInformationId}
+                                  >
+                                    この作業で参照したChat・Issue・PR・Documentや、作成した成果物のURLを登録できます。
+                                  </p>
+                                ) : null}
+                              </div>
                             </div>
                             <button
                               type="button"
