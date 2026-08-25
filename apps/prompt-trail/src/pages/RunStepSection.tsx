@@ -519,10 +519,19 @@ export function RunStepSection({
                             </button>
                           </div>
                           <RouterLink
-                            className="pt-button pt-button--secondary pt-run-popover__reuse-link"
+                            className="pt-run-popover__reuse-link"
                             to={buildNewTrailReusePath(run.id)}
+                            aria-label="このPromptを再利用"
+                            title="このPromptを再利用"
                           >
-                            このPromptを再利用
+                            <svg
+                              aria-hidden="true"
+                              focusable="false"
+                              viewBox="0 0 24 24"
+                            >
+                              <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" />
+                              <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" />
+                            </svg>
                           </RouterLink>
                           <h4>{run.promptSnapshot.title}</h4>
                           <pre className="pt-snapshot">

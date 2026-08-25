@@ -27,6 +27,7 @@
   padding: 0.625rem;
   border: 0;
   border-radius: var(--pt-radius-sm);
+  margin-block-start: -1px;
   color: var(--pt-color-accent-strong);
   background: transparent;
   cursor: pointer;
@@ -421,8 +422,28 @@
 
 .pt-run-popover__reuse-link {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   align-self: flex-start;
+  width: 1.75rem;
+  height: 1.75rem;
   margin-block: var(--pt-space-1) var(--pt-space-2);
+  border-radius: var(--pt-radius-sm);
+  border: 1px solid var(--pt-color-border);
+  color: var(--pt-color-accent-strong);
+}
+
+.pt-run-popover__reuse-link:hover {
+  background: var(--pt-color-surface-subtle);
+}
+
+.pt-run-popover__reuse-link svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.8;
 }
 
 .pt-run-popover__close {
