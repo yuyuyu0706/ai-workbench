@@ -196,7 +196,7 @@ describe('AppRouter', () => {
     renderRoute(buildTrailDetailPath('trail-123'));
 
     expect(
-      screen.getByRole('heading', { name: 'Run Detail' }),
+      screen.getByRole('heading', { name: 'Trail Detail' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Runを読み込んでいます...')).toBeInTheDocument();
     expect(

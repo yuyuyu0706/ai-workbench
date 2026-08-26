@@ -1008,8 +1008,11 @@ test.describe('Prompt Library data flow', () => {
     await page.getByLabel('Trail名').fill('反復利用Trail 1');
     await page.getByRole('button', { name: 'Trailを作成' }).click();
     await expect(page).toHaveURL(/\/trails\/trail-/);
+    await page.getByRole('button', { name: 'Prompt Snapshotを表示' }).click();
     await expect(
-      page.getByText('変更内容を確認して実装してください。'),
+      page
+        .locator('.pt-run-popover')
+        .getByText('変更内容を確認して実装してください。'),
     ).toBeVisible();
 
     await page.goto('/trails/new?sourcePromptId=prompt-library-e2e');
@@ -1061,9 +1064,13 @@ test.describe('Prompt Library data flow', () => {
     await page.getByRole('button', { name: 'Trailを作成' }).click();
     await expect(page).toHaveURL(/\/trails\/trail-/);
     const runAUrl = page.url();
+    await page.getByRole('button', { name: 'Prompt Snapshotを表示' }).click();
     await expect(
-      page.getByText('変更内容を確認して実装してください。'),
+      page
+        .locator('.pt-run-popover')
+        .getByText('変更内容を確認して実装してください。'),
     ).toBeVisible();
+    await page.getByRole('button', { name: '閉じる' }).click();
 
     const stalePage = await context.newPage();
     await stalePage.goto('/trails/new?sourcePromptId=prompt-library-e2e');
@@ -1100,14 +1107,22 @@ test.describe('Prompt Library data flow', () => {
     );
     await stalePage.getByRole('button', { name: 'Trailを作成' }).click();
     await expect(stalePage).toHaveURL(/\/trails\/trail-/);
-    await expect(stalePage.getByText('編集後のPrompt本文')).toBeVisible();
+    await stalePage
+      .getByRole('button', { name: 'Prompt Snapshotを表示' })
+      .click();
+    await expect(
+      stalePage.locator('.pt-run-popover').getByText('編集後のPrompt本文'),
+    ).toBeVisible();
 
     await editorPage.goto('/prompts/prompt-library-e2e/edit');
     await editorPage.getByRole('button', { name: 'Promptを削除' }).click();
     await editorPage.getByRole('button', { name: '削除する' }).click();
     await page.goto(runAUrl);
+    await page.getByRole('button', { name: 'Prompt Snapshotを表示' }).click();
     await expect(
-      page.getByText('変更内容を確認して実装してください。'),
+      page
+        .locator('.pt-run-popover')
+        .getByText('変更内容を確認して実装してください。'),
     ).toBeVisible();
     await page.goto('/trails/new?sourcePromptId=prompt-library-e2e');
     await expect(

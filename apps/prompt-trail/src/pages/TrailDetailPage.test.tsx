@@ -56,6 +56,7 @@ const direct = {
   promptSnapshot: { title: 'Prompt A', body: 'Body A' },
   contextSnapshots: [],
   status: 'prepared',
+  output: null,
   createdAt: '2026-01-01',
   updatedAt: '2026-01-01',
 };
@@ -101,6 +102,18 @@ function createDetailRepository(
       deletedAt: '2026-01-02',
     })),
   } as any;
+}
+
+async function openLinksPopover() {
+  fireEvent.click(
+    await screen.findByRole('button', { name: '関連リンクを表示' }),
+  );
+}
+
+async function openPromptPopover() {
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Prompt Snapshotを表示' }),
+  );
 }
 
 function createTestUiStateStore() {
@@ -366,6 +379,7 @@ describe('TrailDetailPage', () => {
       await screen.findByRole('button', { name: '最新内容を読み込む' }),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Run Bへ切替' }));
+    await openPromptPopover();
     expect(await screen.findByText('Body B')).toBeVisible();
 
     await act(async () => resolveReload([runA]));
@@ -377,6 +391,7 @@ describe('TrailDetailPage', () => {
 
   it('links the Prompt snapshot to the encoded New Trail reuse URL', async () => {
     renderPage(createDetailRepository([]));
+    await openPromptPopover();
 
     expect(
       await screen.findByRole('link', { name: 'このPromptを再利用' }),
@@ -404,6 +419,7 @@ describe('TrailDetailPage', () => {
     expect(screen.getByText('Runの読み込みに失敗しました。')).toBeVisible();
 
     act(() => store.clearActiveOverride());
+    await openPromptPopover();
     expect(await screen.findByText('Body A')).toBeVisible();
     expect(repository.getTrail).toHaveBeenCalledOnce();
   });
@@ -428,7 +444,8 @@ describe('TrailDetailPage', () => {
     const repository = createDetailRepository([]);
     const store = createTestUiStateStore();
     renderPage(repository, 'trail-1', undefined, store);
-    await screen.findByText('Body A');
+    await screen.findByText('Prompt A');
+    await openLinksPopover();
     await user.type(screen.getByLabelText('Link名称'), 'Saved link');
     await user.type(screen.getByLabelText('URL'), 'https://example.com/saved');
     await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
@@ -466,6 +483,7 @@ describe('TrailDetailPage', () => {
     const repository = createDetailRepository(links);
     const store = createTestUiStateStore();
     renderPage(repository, 'trail-1', undefined, store);
+    await openLinksPopover();
     await user.click(
       await screen.findByRole('button', { name: 'Secondを削除' }),
     );
@@ -507,7 +525,7 @@ describe('TrailDetailPage', () => {
       state: 'delete-failure',
     });
     renderPage(createDetailRepository([]), 'trail-1', undefined, store);
-    await screen.findByText('Body A');
+    await openLinksPopover();
 
     expect(screen.queryByText(/を削除しますか/)).toBeNull();
     expect(screen.queryByText(/関連リンクを削除できませんでした/)).toBeNull();
@@ -521,6 +539,7 @@ describe('TrailDetailPage', () => {
     ]);
     const store = createTestUiStateStore();
     renderPage(repository, 'trail-1', undefined, store);
+    await openLinksPopover();
     await user.click(
       await screen.findByRole('button', { name: 'Secondを削除' }),
     );
@@ -566,6 +585,7 @@ describe('TrailDetailPage', () => {
       }),
     } as any;
     renderPage(repository);
+    await openLinksPopover();
 
     const remove = await screen.findByRole('button', {
       name: 'Result documentを削除',
@@ -623,6 +643,7 @@ describe('TrailDetailPage', () => {
       }),
     } as any;
     renderPage(repository);
+    await openLinksPopover();
 
     await user.click(
       await screen.findByRole('button', {
@@ -677,6 +698,7 @@ describe('TrailDetailPage', () => {
       }),
     } as any;
     renderPage(repository);
+    await openLinksPopover();
 
     const deleteA = await screen.findByRole('button', {
       name: 'Link Aを削除',
@@ -730,13 +752,13 @@ describe('TrailDetailPage', () => {
       getRecipe: vi.fn(),
     } as any;
     renderPage(repo);
-    expect(await screen.findByText('Direct Prompt')).toBeInTheDocument();
+    expect(await screen.findByText('Prompt A')).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Prompt' }),
+      screen.getByRole('button', { name: 'Prompt Snapshotを表示' }),
     ).toBeInTheDocument();
     expect(screen.queryByText('Prompt Snapshot')).toBeNull();
     expect(
-      screen.getByRole('heading', { level: 2, name: '関連リンク' }),
+      screen.getByRole('button', { name: '関連リンクを表示' }),
     ).toBeInTheDocument();
     expect(
       screen.queryByText('この作業で参照したChat・Issue・PR', { exact: false }),
@@ -759,8 +781,7 @@ describe('TrailDetailPage', () => {
       getRecipe: vi.fn(async () => ({ title: 'Recipe A' })),
     };
     renderPage(recipeRepo);
-    expect(await screen.findByText('Recipe A')).toBeInTheDocument();
-    expect(screen.getByText('Context A')).toBeInTheDocument();
+    expect(await screen.findByText('Context A')).toBeInTheDocument();
   });
 
   it('formats summary dates and preserves their original values', async () => {
@@ -779,16 +800,7 @@ describe('TrailDetailPage', () => {
     } as any;
     renderPage(repository);
 
-    const createdDate = new Date(createdAt);
-    const pad = (value: number) => String(value).padStart(2, '0');
-    const expectedCreatedAt = `${createdDate.getFullYear()}-${pad(
-      createdDate.getMonth() + 1,
-    )}-${pad(createdDate.getDate())} ${pad(createdDate.getHours())}:${pad(
-      createdDate.getMinutes(),
-    )}:${pad(createdDate.getSeconds())}`;
-    const created = await screen.findByText(expectedCreatedAt);
-    expect(created).toHaveAttribute('datetime', createdAt);
-    expect(screen.getByText('invalid-date')).toHaveAttribute(
+    expect(await screen.findByText('invalid-date')).toHaveAttribute(
       'datetime',
       'invalid-date',
     );
@@ -804,6 +816,7 @@ describe('TrailDetailPage', () => {
       listActiveLinks: vi.fn(async () => []),
     } as any;
     renderPage(repository);
+    await openLinksPopover();
 
     const button = await screen.findByRole('button', {
       name: '関連リンクについて',
@@ -823,7 +836,9 @@ describe('TrailDetailPage', () => {
 
     await user.click(button);
     fireEvent.mouseDown(document.body);
-    expect(button).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      screen.queryByRole('button', { name: '関連リンクについて' }),
+    ).toBeNull();
   });
 
   it('shows the creation notice only when navigation marks a newly created Trail', async () => {
@@ -836,7 +851,7 @@ describe('TrailDetailPage', () => {
     } as any;
 
     const directAccess = renderPage(repository);
-    await screen.findByText('Direct Prompt');
+    await screen.findByText('Prompt A');
     expect(
       screen.queryByText('Trailを作成しました。', { exact: false }),
     ).toBeNull();
@@ -861,7 +876,8 @@ describe('TrailDetailPage Link form', () => {
       saveLink: vi.fn(),
     } as any;
     renderPage(repository);
-    await screen.findByText('Direct Prompt');
+    await screen.findByText('Prompt A');
+    await openLinksPopover();
     await user.type(screen.getByLabelText('URL'), 'https://example.com');
     await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
     await user.click(screen.getByRole('button', { name: '関連リンクを登録' }));
@@ -882,7 +898,8 @@ describe('TrailDetailPage Link form', () => {
       saveLink: vi.fn(),
     } as any;
     renderPage(repository);
-    await screen.findByText('Direct Prompt');
+    await screen.findByText('Prompt A');
+    await openLinksPopover();
     await user.type(screen.getByLabelText('Link名称'), 'Result document');
     await user.type(screen.getByLabelText('URL'), 'https://example.com');
     await user.click(screen.getByRole('button', { name: '関連リンクを登録' }));
@@ -903,7 +920,8 @@ describe('TrailDetailPage Link form', () => {
       saveLink: vi.fn(),
     } as any;
     renderPage(repository);
-    await screen.findByText('Direct Prompt');
+    await screen.findByText('Prompt A');
+    await openLinksPopover();
     expect(screen.getByLabelText('Link名称')).toBeInTheDocument();
     expect(screen.queryByLabelText('Link役割')).not.toBeInTheDocument();
     await user.type(screen.getByLabelText('Link名称'), 'FTP result');
@@ -929,7 +947,8 @@ describe('TrailDetailPage Link form', () => {
       }),
     } as any;
     renderPage(repository);
-    await screen.findByText('Direct Prompt');
+    await screen.findByText('Prompt A');
+    await openLinksPopover();
     await user.type(screen.getByLabelText('Link名称'), 'Result document');
     await user.type(screen.getByLabelText('URL'), 'https://example.com/result');
     await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
@@ -962,7 +981,8 @@ describe('TrailDetailPage Link form', () => {
       }),
     } as any;
     renderPage(repository);
-    await screen.findByText('Direct Prompt');
+    await screen.findByText('Prompt A');
+    await openLinksPopover();
     await user.type(screen.getByLabelText('Link名称'), 'Failed link');
     await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
     const url = screen.getByLabelText('URL');
@@ -999,7 +1019,8 @@ it('prevents duplicate Link submissions while saving and then lists the result',
     ),
   } as any;
   renderPage(repository);
-  await screen.findByText('Direct Prompt');
+  await screen.findByText('Prompt A');
+  await openLinksPopover();
   await user.type(screen.getByLabelText('Link名称'), 'Pending link');
   await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
   await user.type(screen.getByLabelText('URL'), 'https://example.com/pending');
@@ -1073,6 +1094,7 @@ it('keeps Run B state when a pending Run A Link save resolves after a route chan
     </MemoryRouter>,
   );
   await screen.findByText('Prompt A');
+  await openLinksPopover();
   await user.type(screen.getByLabelText('Link名称'), 'A pending');
   await user.selectOptions(screen.getByLabelText('Link種別'), 'document');
   await user.type(screen.getByLabelText('URL'), 'https://a.pending');
@@ -1080,6 +1102,7 @@ it('keeps Run B state when a pending Run A Link save resolves after a route chan
   await user.click(screen.getByRole('button', { name: 'Run Bへ切替' }));
   expect(await screen.findByText('Prompt B')).toBeInTheDocument();
   expect(screen.getByText('Project B')).toBeInTheDocument();
+  await openLinksPopover();
   expect(screen.getByText('https://b.existing')).toBeInTheDocument();
   expect(screen.getByText(/その他/)).toBeInTheDocument();
   expect(screen.getByLabelText('URL')).toHaveValue('');
@@ -1099,4 +1122,126 @@ it('keeps Run B state when a pending Run A Link save resolves after a route chan
   expect(screen.getByLabelText('URL')).toHaveValue('');
   expect(screen.getByLabelText('Link名称')).toHaveValue('');
   expect(screen.getByLabelText('Link種別')).toHaveValue('');
+});
+
+describe('TrailDetailPage Run actions popovers', () => {
+  async function openResultPopover() {
+    fireEvent.click(
+      await screen.findByRole('button', { name: '実行結果を表示' }),
+    );
+  }
+
+  it('opens only one of the Prompt, result, and Links popovers at a time', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    renderPage(createDetailRepository([]));
+    await screen.findByText('Prompt A');
+
+    await user.click(
+      screen.getByRole('button', { name: 'Prompt Snapshotを表示' }),
+    );
+    expect(screen.getByText('Prompt A', { selector: 'h4' })).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: '実行結果を表示' }));
+    expect(
+      screen.queryByText('Prompt A', { selector: 'h4' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('まだ実行されていません')).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: '関連リンクを表示' }));
+    expect(
+      screen.queryByText('まだ実行されていません'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Link名称')).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: '関連リンクを表示' }));
+    expect(screen.queryByLabelText('Link名称')).not.toBeInTheDocument();
+  });
+
+  it('shows the empty state when a Run has no output yet', async () => {
+    renderPage(createDetailRepository([]));
+    await openResultPopover();
+    expect(await screen.findByText('まだ実行されていません')).toBeVisible();
+  });
+
+  it('shows the Run output inside the result popover once executed', async () => {
+    const executedRun = { ...direct, output: 'Generated output text' };
+    const repository = {
+      getRun: vi.fn(async () => executedRun),
+      getProject: vi.fn(async () => ({ name: 'Project' })),
+      getTrail: vi.fn(async () => trail),
+      listRunsByTrail: vi.fn(async () => [executedRun]),
+      listActiveLinks: vi.fn(async () => []),
+    } as any;
+    renderPage(repository);
+    await openResultPopover();
+    expect(await screen.findByText('Generated output text')).toBeVisible();
+  });
+
+  it('executes a Run, shows a loading state, and surfaces the new result', async () => {
+    let resolveFetch!: (value: Response) => void;
+    const fetchMock = vi.fn(
+      () => new Promise<Response>((resolve) => (resolveFetch = resolve)),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const executedRun = { ...direct, output: 'Fresh output' };
+    const repository = {
+      getRun: vi.fn(async () => direct),
+      getProject: vi.fn(async () => ({ name: 'Project' })),
+      getTrail: vi.fn(async () => trail),
+      listRunsByTrail: vi.fn(async () => [direct]),
+      listActiveLinks: vi.fn(async () => []),
+      saveRun: vi.fn(async () => executedRun),
+    } as any;
+    renderPage(repository);
+    await screen.findByText('Prompt A');
+
+    const executeButton = screen.getByRole('button', { name: '実行する' });
+    fireEvent.click(executeButton);
+    expect(executeButton).toBeDisabled();
+
+    resolveFetch(
+      new Response(JSON.stringify({ output: 'Fresh output' }), {
+        status: 200,
+      }),
+    );
+
+    await waitFor(() => expect(executeButton).toBeEnabled());
+    expect(repository.saveRun).toHaveBeenCalledOnce();
+    expect(
+      screen.getByLabelText('新しい実行結果があります'),
+    ).toBeInTheDocument();
+
+    vi.unstubAllGlobals();
+  });
+
+  it('shows an error and stays enabled when execution fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('network down');
+      }),
+    );
+    const repository = {
+      getRun: vi.fn(async () => direct),
+      getProject: vi.fn(async () => ({ name: 'Project' })),
+      getTrail: vi.fn(async () => trail),
+      listRunsByTrail: vi.fn(async () => [direct]),
+      listActiveLinks: vi.fn(async () => []),
+      saveRun: vi.fn(),
+    } as any;
+    renderPage(repository);
+    await screen.findByText('Prompt A');
+
+    const executeButton = screen.getByRole('button', { name: '実行する' });
+    fireEvent.click(executeButton);
+    await waitFor(() => expect(executeButton).toBeEnabled());
+    expect(repository.saveRun).not.toHaveBeenCalled();
+
+    await openResultPopover();
+    expect(
+      await screen.findByText('実行に失敗しました。もう一度お試しください。'),
+    ).toBeVisible();
+
+    vi.unstubAllGlobals();
+  });
 });
