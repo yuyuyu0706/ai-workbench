@@ -508,7 +508,30 @@ export function RunStepSection({
                       {activePopover === 'prompt' ? (
                         <RunPopover triggerRef={promptButtonRef}>
                           <div className="pt-run-popover__header">
-                            <h3>Prompt Snapshot</h3>
+                            <div className="pt-run-popover__header-title">
+                              <h3>Prompt Snapshot</h3>
+                              <RouterLink
+                                className="pt-run-popover__reuse-link"
+                                to={buildNewTrailReusePath(run.id)}
+                                aria-label="このPromptを再利用"
+                                title="このPromptを再利用"
+                              >
+                                <svg
+                                  aria-hidden="true"
+                                  focusable="false"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <rect
+                                    x="8"
+                                    y="8"
+                                    width="11"
+                                    height="11"
+                                    rx="2"
+                                  />
+                                  <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+                                </svg>
+                              </RouterLink>
+                            </div>
                             <button
                               type="button"
                               className="pt-run-popover__close"
@@ -518,21 +541,6 @@ export function RunStepSection({
                               ×
                             </button>
                           </div>
-                          <RouterLink
-                            className="pt-run-popover__reuse-link"
-                            to={buildNewTrailReusePath(run.id)}
-                            aria-label="このPromptを再利用"
-                            title="このPromptを再利用"
-                          >
-                            <svg
-                              aria-hidden="true"
-                              focusable="false"
-                              viewBox="0 0 24 24"
-                            >
-                              <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" />
-                              <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" />
-                            </svg>
-                          </RouterLink>
                           <h4>{run.promptSnapshot.title}</h4>
                           <pre className="pt-snapshot">
                             {run.promptSnapshot.body}

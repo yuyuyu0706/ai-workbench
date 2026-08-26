@@ -27,7 +27,7 @@
   padding: 0.625rem;
   border: 0;
   border-radius: var(--pt-radius-sm);
-  margin-block-start: -1px;
+  margin-block-start: -2px;
   color: var(--pt-color-accent-strong);
   background: transparent;
   cursor: pointer;
@@ -424,10 +424,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  align-self: flex-start;
   width: 1.75rem;
   height: 1.75rem;
-  margin-block: var(--pt-space-1) var(--pt-space-2);
   border-radius: var(--pt-radius-sm);
   border: 1px solid var(--pt-color-border);
   color: var(--pt-color-accent-strong);
