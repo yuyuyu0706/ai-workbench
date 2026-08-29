@@ -1,4 +1,10 @@
-import { RUN_STATUSES, type Run, type RunStatus, type Trail } from '../domain';
+import {
+  RUN_STATUSES,
+  type PromptId,
+  type Run,
+  type RunStatus,
+  type Trail,
+} from '../domain';
 import type { PromptTrailRepository } from '../repository';
 
 export type TrailListItem = {
@@ -37,25 +43,7 @@ export async function loadTrailListReadModel(
   const trails = trailsByProject.flat();
 
   const items = await Promise.all(
-    trails.map(async (trail) => {
-      const runs = await repository.listRunsByTrail(trail.id);
-      const linkCounts = await Promise.all(
-        runs.map(
-          async (run) => (await repository.listActiveLinks(run.id)).length,
-        ),
-      );
-      const linkCount = linkCounts.reduce((sum, count) => sum + count, 0);
-
-      return {
-        trail,
-        title: trail.title,
-        kind: trail.kind,
-        status: mostAdvancedStatus(runs),
-        updatedAt: trail.updatedAt,
-        runCount: runs.length,
-        linkCount,
-      } satisfies TrailListItem;
-    }),
+    trails.map((trail) => buildTrailListItem(repository, trail)),
   );
 
   const sortedItems = items.sort(compareTrailByUpdatedAtDesc);
@@ -63,6 +51,61 @@ export async function loadTrailListReadModel(
     options === undefined ? sortedItems : sortedItems.slice(0, options.limit);
 
   return { trails: limitedItems };
+}
+
+/**
+ * Trails a Prompt was used to create, most recently updated first.
+ *
+ * Looks up Runs via the promptSnapshot.promptId index (see
+ * repository.listRunsByPrompt) rather than scanning every Trail, so cost
+ * scales with the matching Runs, not the full Trail table.
+ */
+export async function listTrailsByPromptId(
+  repository: PromptTrailRepository,
+  promptId: PromptId,
+  limit?: number,
+): Promise<readonly TrailListItem[]> {
+  if (limit !== undefined && (!Number.isInteger(limit) || limit < 0)) {
+    throw new Error('limit must be a non-negative integer');
+  }
+
+  const runs = await repository.listRunsByPrompt(promptId);
+  const trailIds = [...new Set(runs.map((run) => run.trailId))];
+  const candidateTrails = await Promise.all(
+    trailIds.map((trailId) => repository.getTrail(trailId)),
+  );
+  const trails = candidateTrails.filter(
+    (trail): trail is Trail =>
+      trail !== null && trail.deletedAt === null && trail.archivedAt === null,
+  );
+
+  const items = await Promise.all(
+    trails.map((trail) => buildTrailListItem(repository, trail)),
+  );
+  const sortedItems = items.sort(compareTrailByUpdatedAtDesc);
+
+  return limit === undefined ? sortedItems : sortedItems.slice(0, limit);
+}
+
+async function buildTrailListItem(
+  repository: PromptTrailRepository,
+  trail: Trail,
+): Promise<TrailListItem> {
+  const runs = await repository.listRunsByTrail(trail.id);
+  const linkCounts = await Promise.all(
+    runs.map(async (run) => (await repository.listActiveLinks(run.id)).length),
+  );
+  const linkCount = linkCounts.reduce((sum, count) => sum + count, 0);
+
+  return {
+    trail,
+    title: trail.title,
+    kind: trail.kind,
+    status: mostAdvancedStatus(runs),
+    updatedAt: trail.updatedAt,
+    runCount: runs.length,
+    linkCount,
+  } satisfies TrailListItem;
 }
 
 // A Trail with zero Runs cannot occur through normal creation flows (every

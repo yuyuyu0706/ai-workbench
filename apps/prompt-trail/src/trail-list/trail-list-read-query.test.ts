@@ -5,7 +5,10 @@ import { sampleDataset } from '../sample-data';
 import { createDatabaseTestScope } from '../test/database-test-utils';
 import { PromptTrailRepository } from '../repository';
 
-import { loadTrailListReadModel } from './trail-list-read-query';
+import {
+  listTrailsByPromptId,
+  loadTrailListReadModel,
+} from './trail-list-read-query';
 
 const databaseScope = createDatabaseTestScope('trail-list-read-query');
 
@@ -206,6 +209,134 @@ describe('loadTrailListReadModel', () => {
 
     await expect(
       loadTrailListReadModel(repository, { limit: -1 }),
+    ).rejects.toThrow('limit must be a non-negative integer');
+  });
+});
+
+describe('listTrailsByPromptId', () => {
+  it('returns an empty list when no Run references the Prompt', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    await repository.insertTrailBundle({
+      project: { ...sampleDataset.project },
+      prompt: { ...sampleDataset.prompt },
+      context: { ...sampleDataset.context },
+      recipe: { ...sampleDataset.recipe },
+      trail: { ...sampleDataset.trail },
+      run: cloneSampleRun(),
+      links: [],
+    });
+
+    await expect(
+      listTrailsByPromptId(
+        repository,
+        'prompt-list-missing' as (typeof sampleDataset.prompt)['id'],
+      ),
+    ).resolves.toEqual([]);
+  });
+
+  it('returns the Trail for a matching Run, found via the promptSnapshot.promptId index', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    await repository.insertTrailBundle({
+      project: { ...sampleDataset.project },
+      prompt: { ...sampleDataset.prompt },
+      context: { ...sampleDataset.context },
+      recipe: { ...sampleDataset.recipe },
+      trail: { ...sampleDataset.trail },
+      run: cloneSampleRun(),
+      links: [],
+    });
+
+    const items = await listTrailsByPromptId(
+      repository,
+      sampleDataset.prompt.id,
+    );
+
+    expect(items.map((item) => item.trail.id)).toEqual([
+      sampleDataset.trail.id,
+    ]);
+  });
+
+  it('deduplicates multiple Runs of the same Trail into a single entry', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    await repository.insertTrailBundle({
+      project: { ...sampleDataset.project },
+      prompt: { ...sampleDataset.prompt },
+      context: { ...sampleDataset.context },
+      recipe: { ...sampleDataset.recipe },
+      trail: { ...sampleDataset.trail },
+      run: cloneSampleRun(),
+      links: [],
+    });
+    await repository.saveRun(
+      cloneSampleRun({
+        id: runId('run-list-by-prompt-dup'),
+        updatedAt: utc('2026-07-13T00:00:00.000Z'),
+      }),
+    );
+
+    const items = await listTrailsByPromptId(
+      repository,
+      sampleDataset.prompt.id,
+    );
+
+    expect(items).toHaveLength(1);
+  });
+
+  it('sorts matching Trails by updatedAt descending and applies the limit', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    await repository.insertTrailBundle({
+      project: { ...sampleDataset.project },
+      prompt: { ...sampleDataset.prompt },
+      context: { ...sampleDataset.context },
+      recipe: { ...sampleDataset.recipe },
+      trail: {
+        ...sampleDataset.trail,
+        updatedAt: utc('2026-07-12T00:00:00.000Z'),
+      },
+      run: cloneSampleRun(),
+      links: [],
+    });
+    const secondTrail = {
+      ...sampleDataset.trail,
+      id: 'trail-list-by-prompt-second' as (typeof sampleDataset.trail)['id'],
+      updatedAt: utc('2026-07-13T00:00:00.000Z'),
+    };
+    await repository.saveTrail(secondTrail);
+    await repository.saveRun(
+      cloneSampleRun({
+        id: runId('run-list-by-prompt-second'),
+        trailId: secondTrail.id,
+        updatedAt: utc('2026-07-13T00:00:00.000Z'),
+      }),
+    );
+
+    const unlimited = await listTrailsByPromptId(
+      repository,
+      sampleDataset.prompt.id,
+    );
+    expect(unlimited.map((item) => item.trail.id)).toEqual([
+      secondTrail.id,
+      sampleDataset.trail.id,
+    ]);
+
+    const limited = await listTrailsByPromptId(
+      repository,
+      sampleDataset.prompt.id,
+      1,
+    );
+    expect(limited.map((item) => item.trail.id)).toEqual([secondTrail.id]);
+  });
+
+  it('rejects a negative limit', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+
+    await expect(
+      listTrailsByPromptId(repository, sampleDataset.prompt.id, -1),
     ).rejects.toThrow('limit must be a non-negative integer');
   });
 });

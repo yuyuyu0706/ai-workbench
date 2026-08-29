@@ -20,6 +20,8 @@ import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import {
   buildNewTrailFromPromptPath,
   buildPromptEditPath,
+  buildTrailDetailPath,
+  buildTrailListByPromptPath,
   routePaths,
 } from '../app/routes';
 import { PageSection, StateMessage } from '../components/ui';
@@ -42,6 +44,7 @@ import {
   type PromptSortMode,
   type PromptTagFilter,
 } from '../prompt-library';
+import { listTrailsByPromptId, type TrailListItem } from '../trail-list';
 import { updatePromptBody, validatePromptBody } from '../prompt-editor';
 import {
   extractPromptVariables,
@@ -139,6 +142,80 @@ function buildPromptBodyPopoverStyle(
         varPrefix: '--pt-prompt-body-arrow',
         arrowSizePx: PROMPT_BODY_POPOVER_ARROW_SIZE_PX,
         safeMarginPx: PROMPT_BODY_POPOVER_ARROW_SAFE_MARGIN_PX,
+      }),
+    } as CSSProperties,
+  };
+}
+
+type TrailSearchPopoverPlacement =
+  'right-start' | 'left-start' | 'bottom-start';
+
+const TRAIL_SEARCH_POPOVER_ARROW_SIZE_PX = 12;
+const TRAIL_SEARCH_POPOVER_ARROW_SAFE_MARGIN_PX = 16;
+const TRAIL_SEARCH_RESULT_LIMIT = 3;
+
+function trailSearchPopoverSideTop(m: PopoverMeasurements) {
+  const maxTop = Math.max(
+    m.margin,
+    m.viewportHeight - m.panelHeight - m.margin,
+  );
+  return Math.max(m.margin, Math.min(m.triggerRect.top, maxTop));
+}
+
+const TRAIL_SEARCH_POPOVER_PLACEMENTS: readonly PopoverPlacementOption<TrailSearchPopoverPlacement>[] =
+  [
+    {
+      id: 'right-start',
+      fits: (m) =>
+        m.viewportWidth - m.triggerRect.right >= m.panelWidth + m.gap,
+      place: (m) => ({
+        left: m.triggerRect.right + m.gap,
+        top: trailSearchPopoverSideTop(m),
+      }),
+    },
+    {
+      id: 'left-start',
+      fits: (m) => m.triggerRect.left >= m.panelWidth + m.gap,
+      place: (m) => ({
+        left: m.triggerRect.left - m.panelWidth - m.gap,
+        top: trailSearchPopoverSideTop(m),
+      }),
+    },
+    {
+      id: 'bottom-start',
+      fits: () => true,
+      place: (m) => {
+        const maxLeft = Math.max(
+          m.margin,
+          m.viewportWidth - m.panelWidth - m.margin,
+        );
+        const left = Math.max(m.margin, Math.min(m.triggerRect.left, maxLeft));
+        const top = Math.min(
+          m.triggerRect.bottom + m.gap,
+          Math.max(m.margin, m.viewportHeight - m.panelHeight - m.margin),
+        );
+        return { left, top };
+      },
+    },
+  ];
+
+function buildTrailSearchPopoverStyle(
+  position: ReturnType<
+    typeof usePopoverPosition<TrailSearchPopoverPlacement>
+  >['position'],
+):
+  { placement: TrailSearchPopoverPlacement; style: CSSProperties } | undefined {
+  if (position === null) return undefined;
+  const { left, top, placement } = position;
+  return {
+    placement,
+    style: {
+      left,
+      top,
+      ...buildPopoverArrowStyle(position, {
+        varPrefix: '--pt-prompt-body-arrow',
+        arrowSizePx: TRAIL_SEARCH_POPOVER_ARROW_SIZE_PX,
+        safeMarginPx: TRAIL_SEARCH_POPOVER_ARROW_SAFE_MARGIN_PX,
       }),
     } as CSSProperties,
   };
@@ -636,8 +713,182 @@ function PromptTableRow({
             Trailを作成
           </span>
         </span>
+        <TrailSearchPopover prompt={prompt} />
       </td>
     </tr>
+  );
+}
+
+function TrailSearchPopover({ prompt }: { prompt: PromptLibraryItem }) {
+  const repository = usePromptTrailRepository();
+  const { revision } = usePromptTrailDataRevision();
+  const reactId = useId();
+  const panelId = `trail-search-${reactId.replaceAll(':', '')}`;
+  const tooltipId = `${panelId}-tooltip`;
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [trailsResult, setTrailsResult] = useState<{
+    readonly key: string;
+    readonly items: readonly TrailListItem[];
+  } | null>(null);
+  const trailsKey = open ? `${prompt.id}:${revision}` : null;
+  const trailsLoading = trailsKey !== null && trailsResult?.key !== trailsKey;
+  const trailsItems = trailsResult?.key === trailsKey ? trailsResult.items : [];
+
+  const { position: rawPosition, scheduleUpdate: schedulePositionUpdate } =
+    usePopoverPosition({
+      triggerRef,
+      panelRef,
+      open,
+      placements: TRAIL_SEARCH_POPOVER_PLACEMENTS,
+    });
+  const position = useMemo(
+    () => buildTrailSearchPopoverStyle(rawPosition),
+    [rawPosition],
+  );
+
+  useEffect(() => {
+    if (trailsKey === null) return;
+    let active = true;
+    listTrailsByPromptId(repository, prompt.id, TRAIL_SEARCH_RESULT_LIMIT).then(
+      (items) => {
+        if (active) setTrailsResult({ key: trailsKey, items });
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [prompt.id, repository, trailsKey]);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeAndFocus = () => {
+      setOpen(false);
+      triggerRef.current?.focus({ preventScroll: true });
+    };
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (panelRef.current?.contains(target)) return;
+      if (triggerRef.current?.contains(target)) return;
+      closeAndFocus();
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      closeAndFocus();
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('resize', schedulePositionUpdate);
+    window.addEventListener('scroll', schedulePositionUpdate, true);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', schedulePositionUpdate);
+      window.removeEventListener('scroll', schedulePositionUpdate, true);
+    };
+  }, [open, schedulePositionUpdate]);
+
+  return (
+    <span className="pt-prompt-trail-action-wrap">
+      <button
+        ref={triggerRef}
+        className="pt-prompt-trail-action"
+        type="button"
+        aria-controls={panelId}
+        aria-describedby={tooltipId}
+        aria-expanded={open}
+        aria-label={`「${prompt.title}」から作成されたTrailを検索`}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+          <circle cx="10.5" cy="10.5" r="6.5" />
+          <path d="m20 20-4.85-4.85" />
+        </svg>
+      </button>
+      <span
+        className="pt-prompt-trail-action__tooltip"
+        id={tooltipId}
+        role="tooltip"
+      >
+        紐づくTrailを検索
+      </span>
+      {open
+        ? createPortal(
+            <div
+              ref={panelRef}
+              className="pt-prompt-body-popover pt-trail-search-popover"
+              data-placement={position?.placement}
+              id={panelId}
+              role="dialog"
+              aria-label={`「${prompt.title}」から作成されたTrail`}
+              style={
+                position?.style ?? { left: 0, top: 0, visibility: 'hidden' }
+              }
+            >
+              <span
+                aria-hidden="true"
+                className="pt-prompt-body-popover__arrow"
+              />
+              <header className="pt-prompt-body-popover__header">
+                <h3>紐づくTrail</h3>
+                <span className="pt-prompt-body-popover__close-wrap">
+                  <button
+                    aria-label="閉じる"
+                    className="pt-prompt-body-popover__close"
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      triggerRef.current?.focus({ preventScroll: true });
+                    }}
+                  >
+                    <svg
+                      aria-hidden="true"
+                      focusable="false"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M6 6l12 12M18 6 6 18" />
+                    </svg>
+                  </button>
+                </span>
+              </header>
+              <div className="pt-prompt-body-popover__content">
+                {trailsLoading ? (
+                  <p className="pt-trail-search-popover__empty">
+                    読み込み中...
+                  </p>
+                ) : trailsItems.length === 0 ? (
+                  <p className="pt-trail-search-popover__empty">
+                    まだ紐づくTrailはありません
+                  </p>
+                ) : (
+                  <ul className="pt-trail-search-popover__list">
+                    {trailsItems.map((item) => (
+                      <li key={item.trail.id}>
+                        <Link
+                          to={buildTrailDetailPath(item.trail.id)}
+                          onClick={() => setOpen(false)}
+                        >
+                          {item.title}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <Link
+                  className="pt-trail-search-popover__see-all"
+                  to={buildTrailListByPromptPath(prompt.id)}
+                  onClick={() => setOpen(false)}
+                >
+                  すべて見る
+                </Link>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+    </span>
   );
 }
 

@@ -91,3 +91,10 @@ export function buildNewTrailFromPromptPath(promptId: string) {
   const search = new URLSearchParams({ sourcePromptId: promptId });
   return `${routePaths.newTrail}?${search.toString()}`;
 }
+
+export const trailListPromptIdParam = 'promptId';
+
+export function buildTrailListByPromptPath(promptId: string) {
+  const search = new URLSearchParams({ [trailListPromptIdParam]: promptId });
+  return `${routePaths.trailList}?${search.toString()}`;
+}

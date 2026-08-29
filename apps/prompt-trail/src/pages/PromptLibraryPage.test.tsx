@@ -17,7 +17,7 @@ import {
   createDeveloperUiStateStore,
   type DeveloperUiStateStore,
 } from '../developer-ui-state';
-import type { Prompt, UtcDateTimeString } from '../domain';
+import type { Prompt, Run, Trail, UtcDateTimeString } from '../domain';
 import {
   PromptTrailRepositoryError,
   type PromptTrailRepository,
@@ -1482,6 +1482,62 @@ describe('PromptLibraryPage', () => {
       within(untaggedDialog).queryByLabelText('タグ'),
     ).not.toBeInTheDocument();
   });
+
+  it('opens the Trail search Popover and shows an empty state when no Trail is linked', async () => {
+    const user = userEvent.setup();
+    const repository = createRepositoryWithTrailSearch([prompts[0]], []);
+    renderPromptLibraryPage(repository);
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: `「${prompts[0].title}」から作成されたTrailを検索`,
+      }),
+    );
+
+    expect(
+      await screen.findByText('まだ紐づくTrailはありません'),
+    ).toBeVisible();
+    expect(screen.getByRole('link', { name: 'すべて見る' })).toHaveAttribute(
+      'href',
+      `/trails?promptId=${encodeURIComponent(prompts[0].id)}`,
+    );
+  });
+
+  it('shows linked Trails in the Trail search Popover, most recently updated first', async () => {
+    const user = userEvent.setup();
+    const trailA = createTrail('trail-a', 'Trail A', timestamp);
+    const trailB = createTrail(
+      'trail-b',
+      'Trail B',
+      '2026-08-02T00:00:00.000Z' as UtcDateTimeString,
+    );
+    const repository = createRepositoryWithTrailSearch(
+      [prompts[0]],
+      [
+        createRun('run-a', prompts[0].id, trailA.id),
+        createRun('run-b', prompts[0].id, trailB.id),
+      ],
+      [trailA, trailB],
+    );
+    renderPromptLibraryPage(repository);
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: `「${prompts[0].title}」から作成されたTrailを検索`,
+      }),
+    );
+
+    const list = await screen.findByRole('list');
+    const links = within(list).getAllByRole('link');
+    expect(links.map((link) => link.textContent)).toEqual([
+      trailB.title,
+      trailA.title,
+    ]);
+    expect(links[0]).toHaveAttribute(
+      'href',
+      `/trails/${encodeURIComponent(trailB.id)}`,
+    );
+  });
 });
 
 type LayoutRect = {
@@ -1622,6 +1678,67 @@ function createRepository(values: readonly Prompt[]): PromptTrailRepository {
   return {
     listActivePrompts: vi.fn(async () => values),
   } as unknown as PromptTrailRepository;
+}
+
+function createRepositoryWithTrailSearch(
+  values: readonly Prompt[],
+  runs: readonly Run[],
+  trails: readonly Trail[] = [],
+): PromptTrailRepository {
+  return {
+    listActivePrompts: vi.fn(async () => values),
+    listRunsByPrompt: vi.fn(async (promptId: Prompt['id']) =>
+      runs.filter((run) => run.promptSnapshot.promptId === promptId),
+    ),
+    getTrail: vi.fn(
+      async (trailId: Trail['id']) =>
+        trails.find((trail) => trail.id === trailId) ?? null,
+    ),
+    listRunsByTrail: vi.fn(async () => []),
+    listActiveLinks: vi.fn(async () => []),
+  } as unknown as PromptTrailRepository;
+}
+
+function createTrail(
+  id: string,
+  title: string,
+  updatedAt: UtcDateTimeString,
+): Trail {
+  return {
+    id: id as Trail['id'],
+    projectId: 'project-default' as Trail['projectId'],
+    title,
+    kind: 'other',
+    createdAt: timestamp,
+    updatedAt,
+    deletedAt: null,
+    archivedAt: null,
+  };
+}
+
+function createRun(
+  id: string,
+  promptId: Prompt['id'],
+  trailId: Trail['id'],
+): Run {
+  return {
+    id: id as Run['id'],
+    projectId: 'project-default' as Run['projectId'],
+    trailId,
+    recipeId: null,
+    promptSnapshot: { promptId, title: '', body: '' },
+    contextSnapshots: [],
+    inputValues: {},
+    finalPrompt: '',
+    status: 'draft',
+    evaluation: null,
+    improvementNote: null,
+    output: null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    deletedAt: null,
+    archivedAt: null,
+  };
 }
 
 function createPrompt(

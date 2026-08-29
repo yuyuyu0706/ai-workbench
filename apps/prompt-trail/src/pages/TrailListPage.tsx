@@ -1,12 +1,19 @@
 import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 
-import { loadTrailListDataState, type TrailListDataState } from '../trail-list';
+import {
+  listTrailsByPromptId,
+  loadTrailListDataState,
+  type TrailListDataState,
+} from '../trail-list';
 import type { TrailListReadModel } from '../trail-list';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { usePromptTrailDataRevision } from '../app/PromptTrailDataRevisionContext';
+import { routePaths, trailListPromptIdParam } from '../app/routes';
 import { PageHeader, PageSection, StateMessage } from '../components/ui';
 import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
 import { selectActiveDeveloperUiState } from '../developer-ui-state';
+import type { PromptId } from '../domain';
 
 import { TrailTable } from './TrailTable';
 
@@ -16,6 +23,8 @@ type TrailListPageState = { readonly status: 'loading' } | TrailListDataState;
 
 type TrailListPageStateSnapshot = {
   readonly repository: ReturnType<typeof usePromptTrailRepository>;
+  readonly promptId: string | null;
+  readonly promptName: string | null;
   readonly state: TrailListPageState;
 };
 
@@ -23,15 +32,25 @@ export function TrailListPage() {
   const repository = usePromptTrailRepository();
   const { revision } = usePromptTrailDataRevision();
   const uiStateSnapshot = useDeveloperUiStateSnapshot();
+  const [searchParams] = useSearchParams();
+  const promptId = searchParams.get(trailListPromptIdParam);
   const [pageStateSnapshot, setPageStateSnapshot] =
     useState<TrailListPageStateSnapshot>({
       repository,
+      promptId,
+      promptName: null,
       state: { status: 'loading' },
     });
   const pageState =
-    pageStateSnapshot.repository === repository
+    pageStateSnapshot.repository === repository &&
+    pageStateSnapshot.promptId === promptId
       ? pageStateSnapshot.state
       : ({ status: 'loading' } as const);
+  const promptName =
+    pageStateSnapshot.repository === repository &&
+    pageStateSnapshot.promptId === promptId
+      ? pageStateSnapshot.promptName
+      : null;
   const pageOverride = selectActiveDeveloperUiState(
     uiStateSnapshot,
     'trail-list-page',
@@ -46,25 +65,61 @@ export function TrailListPage() {
   useEffect(() => {
     let isActive = true;
 
-    loadTrailListDataState(repository, {
-      limit: TRAIL_LIST_LIMIT,
-    }).then((dataState) => {
-      if (isActive) {
-        setPageStateSnapshot({ repository, state: dataState });
-      }
+    if (promptId === null) {
+      loadTrailListDataState(repository, { limit: TRAIL_LIST_LIMIT }).then(
+        (state) => {
+          if (isActive) {
+            setPageStateSnapshot({
+              repository,
+              promptId,
+              promptName: null,
+              state,
+            });
+          }
+        },
+      );
+      return () => {
+        isActive = false;
+      };
+    }
+
+    Promise.all([
+      listTrailsByPromptId(repository, promptId as PromptId),
+      repository.getPrompt(promptId as PromptId),
+    ]).then(([trails, prompt]) => {
+      if (!isActive) return;
+      const state: TrailListPageState =
+        trails.length === 0
+          ? { status: 'empty' }
+          : { status: 'data', data: { trails } };
+      setPageStateSnapshot({
+        repository,
+        promptId,
+        promptName: prompt?.title ?? null,
+        state,
+      });
     });
 
     return () => {
       isActive = false;
     };
-  }, [repository, revision]);
+  }, [promptId, repository, revision]);
 
   return (
     <section className="prompt-trail-page">
       <PageHeader
         eyebrow="Trail一覧"
         title="Trail一覧"
-        description="すべてのActive TrailをUpdated日時の降順で表示します。"
+        description={
+          promptId === null ? (
+            'すべてのActive TrailをUpdated日時の降順で表示します。'
+          ) : (
+            <span className="pt-trail-list__filter-banner">
+              {`『${promptName ?? promptId}』から作成されたTrailのみ表示しています。`}
+              <Link to={routePaths.trailList}>すべてのTrailを見る</Link>
+            </span>
+          )
+        }
       />
       <TrailListStateMessage pageState={displayedPageState} />
       {displayedPageState.status === 'data' ? (

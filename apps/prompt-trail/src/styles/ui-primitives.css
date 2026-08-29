@@ -80,6 +80,13 @@
   color: var(--pt-color-text-muted);
 }
 
+.pt-trail-list__filter-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--pt-space-2) var(--pt-space-3);
+}
+
 .pt-page-header__actions {
   display: flex;
   flex-wrap: wrap;
