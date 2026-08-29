@@ -1,18 +1,59 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
-import { seedCanonicalSampleDataInBrowser } from './support/seed-canonical-sample-data';
 import { expectNoHorizontalOverflow } from './support/layout';
 
 const promptTitle = 'GitHub Issue作成依頼';
-const trailTitle = 'GitHub Issue作成依頼';
+const trailTitle = '紐づくTrail検索確認Trail';
+
+async function seedPromptInBrowser(page: Page) {
+  await page.evaluate(async (title) => {
+    const [{ createPromptTrailRuntime }, domain] = await Promise.all([
+      import('/src/app/prompt-trail-runtime.ts'),
+      import('/src/domain/index.ts'),
+    ]);
+    const runtime = createPromptTrailRuntime();
+    const timestamp = '2026-08-05T00:00:00.000Z';
+    try {
+      await runtime.initialize();
+      await runtime.repository.saveProject(
+        domain.createDefaultProject(timestamp),
+      );
+      await runtime.repository.savePrompt({
+        id: 'prompt-trail-search-e2e',
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        deletedAt: null,
+        scope: 'project',
+        projectId: domain.DEFAULT_PROJECT_ID,
+        title,
+        body: '対象範囲を確認して実装してください。',
+        status: 'active',
+        tags: [],
+        variableValues: {},
+      });
+    } finally {
+      runtime.dispose();
+    }
+  }, promptTitle);
+}
 
 test.describe('Prompt Library Trail search', () => {
   test('finds the linked Trail from the Prompt Library and can filter the Trail list', async ({
     page,
   }) => {
     await page.goto('/prompts');
-    await seedCanonicalSampleDataInBrowser(page);
+    await seedPromptInBrowser(page);
     await page.reload();
+
+    await page
+      .getByRole('link', { name: `「${promptTitle}」からTrailを作成` })
+      .click();
+    await expect(page).toHaveURL(/\/trails\/new\?sourcePromptId=/);
+    await page.getByLabel('Trail名').fill(trailTitle);
+    await page.getByRole('button', { name: 'Trailを作成' }).click();
+    await expect(page).toHaveURL(/\/trails\/trail-/);
+
+    await page.goto('/prompts');
 
     const searchButton = page.getByRole('button', {
       name: `「${promptTitle}」から作成されたTrailを検索`,
