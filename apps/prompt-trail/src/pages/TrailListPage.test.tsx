@@ -4,9 +4,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
 import { PromptTrailRepositoryProvider } from '../app/PromptTrailRepositoryContext';
-import { buildTrailDetailPath } from '../app/routes';
+import {
+  buildTrailDetailPath,
+  buildTrailListByPromptPath,
+} from '../app/routes';
 import { createPromptTrailRuntime } from '../app/prompt-trail-runtime';
-import type { Project, Run, Trail } from '../domain';
+import type { Project, Prompt, Run, Trail } from '../domain';
 import type { PromptTrailRepository } from '../repository';
 import { sampleDataset, seedSampleData } from '../sample-data';
 import { createDatabaseTestScope } from '../test/database-test-utils';
@@ -127,16 +130,99 @@ describe('TrailListPage', () => {
       ).toBeInTheDocument();
     }
   });
+
+  it('filters to only the Trails linked to the promptId query param, with a banner to clear it', async () => {
+    const prompt = { ...sampleDataset.prompt };
+    const matchingTrail = createTrail({
+      id: 'trail-matching' as Trail['id'],
+      title: 'Matching Trail',
+    });
+    const otherTrail = createTrail({
+      id: 'trail-other' as Trail['id'],
+      title: 'Other Trail',
+    });
+    const matchingRun = createRun({
+      id: 'run-matching' as Run['id'],
+      trailId: matchingTrail.id,
+      promptSnapshot: {
+        promptId: prompt.id,
+        title: prompt.title,
+        body: prompt.body,
+      },
+    });
+    const repository = createPromptFilteredRepository(
+      prompt,
+      [matchingTrail, otherTrail],
+      [matchingRun],
+    );
+
+    renderTrailListPage(repository, buildTrailListByPromptPath(prompt.id));
+
+    expect(
+      await screen.findByRole('link', { name: matchingTrail.title }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: otherTrail.title }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `『${prompt.title}』から作成されたTrailのみ表示しています。`,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'すべてのTrailを見る' }),
+    ).toHaveAttribute('href', '/trails');
+  });
+
+  it('shows the empty state with the filter banner when the Prompt has no linked Trail', async () => {
+    const prompt = { ...sampleDataset.prompt };
+    const repository = createPromptFilteredRepository(prompt, [], []);
+
+    renderTrailListPage(repository, buildTrailListByPromptPath(prompt.id));
+
+    expect(
+      await screen.findByText('Repositoryに表示できるTrailがまだありません。'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `『${prompt.title}』から作成されたTrailのみ表示しています。`,
+      ),
+    ).toBeInTheDocument();
+  });
 });
 
-function renderTrailListPage(repository: PromptTrailRepository) {
+function renderTrailListPage(
+  repository: PromptTrailRepository,
+  initialEntry = '/trails',
+) {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <PromptTrailRepositoryProvider repository={repository}>
         <TrailListPage />
       </PromptTrailRepositoryProvider>
     </MemoryRouter>,
   );
+}
+
+function createPromptFilteredRepository(
+  prompt: Prompt,
+  trails: readonly Trail[],
+  runs: readonly Run[],
+): PromptTrailRepository {
+  return {
+    getPrompt: vi.fn(async () => prompt),
+    listRunsByPrompt: vi.fn(async (promptId: Prompt['id']) =>
+      runs.filter((run) => run.promptSnapshot.promptId === promptId),
+    ),
+    getTrail: vi.fn(
+      async (trailId: Trail['id']) =>
+        trails.find((trail) => trail.id === trailId) ?? null,
+    ),
+    listRunsByTrail: vi.fn(async (trailId: Trail['id']) =>
+      runs.filter((run) => run.trailId === trailId),
+    ),
+    listActiveLinks: vi.fn(async () => []),
+  } as unknown as PromptTrailRepository;
 }
 
 function createResolvedDataRepository(

@@ -1,6 +1,9 @@
 export { loadTrailListDataState } from './trail-list-data-state';
 export type { TrailListDataState } from './trail-list-data-state';
-export { loadTrailListReadModel } from './trail-list-read-query';
+export {
+  listTrailsByPromptId,
+  loadTrailListReadModel,
+} from './trail-list-read-query';
 export type {
   TrailListItem,
   TrailListReadModel,

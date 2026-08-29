@@ -609,6 +609,15 @@ export class PromptTrailRepository {
     return runs.filter((run) => run.deletedAt === null);
   }
 
+  async listRunsByPrompt(promptId: PromptId): Promise<readonly Run[]> {
+    const runs = await this.database.runs
+      .where('promptSnapshot.promptId')
+      .equals(promptId)
+      .toArray();
+
+    return runs.filter((run) => run.deletedAt === null);
+  }
+
   async listActiveRuns(projectId: ProjectId): Promise<readonly Run[]> {
     const runs = await this.database.runs
       .orderBy('updatedAt')
