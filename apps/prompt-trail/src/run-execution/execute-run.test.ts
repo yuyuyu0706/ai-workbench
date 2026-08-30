@@ -23,6 +23,7 @@ function buildRun(overrides: Partial<Run> = {}): Run {
     evaluation: null,
     improvementNote: null,
     output: null,
+    messages: [],
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     deletedAt: null,
@@ -47,14 +48,14 @@ describe('executeRun', () => {
     const repository = { saveRun } as unknown as PromptTrailRepository;
     const now = () => '2026-01-02T00:00:00.000Z' as Run['updatedAt'];
 
-    const result = await executeRun(repository, run, {}, now);
+    const result = await executeRun(repository, run, undefined, {}, now);
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/execute',
       expect.objectContaining({
         body: JSON.stringify({
           provider: 'claude',
-          prompt: 'Prompt body',
+          messages: [{ role: 'user', content: 'Prompt body' }],
           model: undefined,
           maxTokens: undefined,
           temperature: undefined,
@@ -66,11 +67,19 @@ describe('executeRun', () => {
     );
     expect(saveRun).toHaveBeenCalledWith({
       ...run,
+      messages: [
+        { role: 'user', content: 'Prompt body' },
+        { role: 'assistant', content: 'Generated text' },
+      ],
       output: 'Generated text',
       updatedAt: '2026-01-02T00:00:00.000Z',
     });
     expect(result).toEqual({
       ...savedRun,
+      messages: [
+        { role: 'user', content: 'Prompt body' },
+        { role: 'assistant', content: 'Generated text' },
+      ],
       updatedAt: '2026-01-02T00:00:00.000Z',
     });
 
@@ -90,7 +99,7 @@ describe('executeRun', () => {
     const saveRun = vi.fn(async (input: Run) => input);
     const repository = { saveRun } as unknown as PromptTrailRepository;
 
-    await executeRun(repository, run, {
+    await executeRun(repository, run, undefined, {
       provider: 'openai',
       model: 'gpt-test',
       maxTokens: 2048,
@@ -102,7 +111,7 @@ describe('executeRun', () => {
       expect.objectContaining({
         body: JSON.stringify({
           provider: 'openai',
-          prompt: 'Prompt body',
+          messages: [{ role: 'user', content: 'Prompt body' }],
           model: 'gpt-test',
           maxTokens: 2048,
           temperature: 0.5,
@@ -110,6 +119,60 @@ describe('executeRun', () => {
           topK: undefined,
           stopSequences: undefined,
         }),
+      }),
+    );
+
+    vi.unstubAllGlobals();
+  });
+
+  it('continues an existing conversation when a userMessage is supplied', async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ output: 'Follow-up reply' }), {
+          status: 200,
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const run = buildRun({
+      messages: [
+        { role: 'user', content: 'Prompt body' },
+        { role: 'assistant', content: 'First reply' },
+      ],
+    });
+    const saveRun = vi.fn(async (input: Run) => input);
+    const repository = { saveRun } as unknown as PromptTrailRepository;
+
+    await executeRun(repository, run, 'Follow-up question');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/execute',
+      expect.objectContaining({
+        body: JSON.stringify({
+          provider: 'claude',
+          messages: [
+            { role: 'user', content: 'Prompt body' },
+            { role: 'assistant', content: 'First reply' },
+            { role: 'user', content: 'Follow-up question' },
+          ],
+          model: undefined,
+          maxTokens: undefined,
+          temperature: undefined,
+          topP: undefined,
+          topK: undefined,
+          stopSequences: undefined,
+        }),
+      }),
+    );
+    expect(saveRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messages: [
+          { role: 'user', content: 'Prompt body' },
+          { role: 'assistant', content: 'First reply' },
+          { role: 'user', content: 'Follow-up question' },
+          { role: 'assistant', content: 'Follow-up reply' },
+        ],
+        output: 'Follow-up reply',
       }),
     );
 

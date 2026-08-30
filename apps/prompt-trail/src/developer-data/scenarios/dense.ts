@@ -83,6 +83,7 @@ const runsAndTrails = statuses.map((status, index) => {
     evaluation: status === 'done' ? 'good' : null,
     improvementNote: null,
     output: null,
+    messages: [],
     createdAt: utc(
       `2026-07-22T${String(8 + index).padStart(2, '0')}:30:00.000Z`,
     ),

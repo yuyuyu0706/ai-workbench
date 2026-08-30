@@ -1,10 +1,20 @@
+export type ConversationRole = 'user' | 'assistant';
+
+export interface ConversationMessage {
+  readonly role: ConversationRole;
+  readonly content: string;
+}
+
 /**
  * Thin common interface every AI API provider implements. Deliberately kept
- * to "input prompt -> generated text" per ADR 0009 — no provider-specific or
- * PLAN-specific knowledge belongs here.
+ * to "input messages -> generated text" per ADR 0009 — no provider-specific
+ * or PLAN-specific knowledge belongs here.
  */
 export interface AiProvider {
-  generate(prompt: string, options?: AiProviderOptions): Promise<string>;
+  generate(
+    messages: readonly ConversationMessage[],
+    options?: AiProviderOptions,
+  ): Promise<string>;
 }
 
 export type AiProviderOptions = {

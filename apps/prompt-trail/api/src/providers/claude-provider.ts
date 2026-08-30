@@ -2,6 +2,7 @@ import {
   AiProviderError,
   type AiProvider,
   type AiProviderOptions,
+  type ConversationMessage,
 } from './types.js';
 
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
@@ -16,7 +17,7 @@ export class ClaudeProvider implements AiProvider {
   ) {}
 
   async generate(
-    prompt: string,
+    messages: readonly ConversationMessage[],
     options: AiProviderOptions = {},
   ): Promise<string> {
     if (!this.apiKey) {
@@ -42,7 +43,7 @@ export class ClaudeProvider implements AiProvider {
           top_p: options.topP,
           top_k: options.topK,
           stop_sequences: options.stopSequences,
-          messages: [{ role: 'user', content: prompt }],
+          messages,
         }),
       });
     } catch (cause) {

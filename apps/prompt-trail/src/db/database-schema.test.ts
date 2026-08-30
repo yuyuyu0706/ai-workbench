@@ -92,7 +92,7 @@ describe('PromptTrailDatabase schema v3', () => {
     );
 
     expect(database.verno).toBe(PROMPT_TRAIL_SCHEMA_VERSION);
-    expect(PROMPT_TRAIL_SCHEMA_VERSION).toBe(8);
+    expect(PROMPT_TRAIL_SCHEMA_VERSION).toBe(9);
   });
 
   it('registers the eight metadata store names only', () => {

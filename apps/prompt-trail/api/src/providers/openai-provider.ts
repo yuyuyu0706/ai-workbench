@@ -2,6 +2,7 @@ import {
   AiProviderError,
   type AiProvider,
   type AiProviderOptions,
+  type ConversationMessage,
 } from './types.js';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
@@ -15,7 +16,7 @@ export class OpenAIProvider implements AiProvider {
   ) {}
 
   async generate(
-    prompt: string,
+    messages: readonly ConversationMessage[],
     options: AiProviderOptions = {},
   ): Promise<string> {
     if (!this.apiKey) {
@@ -34,7 +35,7 @@ export class OpenAIProvider implements AiProvider {
           model: options.model ?? DEFAULT_MODEL,
           max_tokens: options.maxTokens ?? DEFAULT_MAX_TOKENS,
           temperature: options.temperature,
-          messages: [{ role: 'user', content: prompt }],
+          messages,
         }),
       });
     } catch (cause) {

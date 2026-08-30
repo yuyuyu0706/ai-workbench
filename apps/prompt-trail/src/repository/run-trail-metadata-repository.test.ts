@@ -60,6 +60,7 @@ async function prepare() {
     evaluation: null,
     improvementNote: null,
     output: null,
+    messages: [],
   };
   await repository.createDirectRunBundle({ project, prompt, trail, run });
   return { database, repository, run, trail };

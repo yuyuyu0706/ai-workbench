@@ -1734,6 +1734,7 @@ function createRun(
     evaluation: null,
     improvementNote: null,
     output: null,
+    messages: [],
     createdAt: timestamp,
     updatedAt: timestamp,
     deletedAt: null,

@@ -33,6 +33,7 @@ import { migrateToV5 } from './migrations/v4-to-v5';
 import { migrateToV7 } from './migrations/v6-to-v7';
 // v7-to-v8 is a schema-only change (adds the runs.promptSnapshot.promptId
 // index); see ./migrations/v7-to-v8.ts for why no data migration is needed.
+import { migrateToV9 } from './migrations/v8-to-v9';
 
 const schemaV0 = {
   projects: 'id, updatedAt, archivedAt, deletedAt',
@@ -58,6 +59,8 @@ const schemaV8 = {
   ...schemaV6,
   runs: 'id, projectId, recipeId, trailId, promptSnapshot.promptId, status, updatedAt, archivedAt, deletedAt',
 } satisfies Record<PromptTrailStoreName, string>;
+
+const schemaV9 = schemaV8;
 
 export class PromptTrailDatabase extends Dexie {
   workspaces!: Table<Workspace, WorkspaceId>;
@@ -96,7 +99,10 @@ export class PromptTrailDatabase extends Dexie {
     this.version(7)
       .stores(schemaV6)
       .upgrade((transaction) => migrateToV7(transaction));
-    this.version(PROMPT_TRAIL_SCHEMA_VERSION).stores(schemaV8);
+    this.version(8).stores(schemaV8);
+    this.version(PROMPT_TRAIL_SCHEMA_VERSION)
+      .stores(schemaV9)
+      .upgrade((transaction) => migrateToV9(transaction));
   }
 }
 

@@ -487,18 +487,22 @@ function ExecuteSection() {
     setIsExecuting(true);
     setResult(null);
     try {
-      const output = await callGatewayExecute(prompt, provider, {
-        model: model.trim() === '' ? undefined : model.trim(),
-        maxTokens: maxTokens.trim() === '' ? undefined : Number(maxTokens),
-        temperature:
-          temperature.trim() === '' ? undefined : Number(temperature),
-        topP: isClaude && topP.trim() !== '' ? Number(topP) : undefined,
-        topK: isClaude && topK.trim() !== '' ? Number(topK) : undefined,
-        stopSequences:
-          isClaude && stopSequences.trim() !== ''
-            ? stopSequences.split('\n').filter((line) => line.trim() !== '')
-            : undefined,
-      });
+      const output = await callGatewayExecute(
+        [{ role: 'user', content: prompt }],
+        provider,
+        {
+          model: model.trim() === '' ? undefined : model.trim(),
+          maxTokens: maxTokens.trim() === '' ? undefined : Number(maxTokens),
+          temperature:
+            temperature.trim() === '' ? undefined : Number(temperature),
+          topP: isClaude && topP.trim() !== '' ? Number(topP) : undefined,
+          topK: isClaude && topK.trim() !== '' ? Number(topK) : undefined,
+          stopSequences:
+            isClaude && stopSequences.trim() !== ''
+              ? stopSequences.split('\n').filter((line) => line.trim() !== '')
+              : undefined,
+        },
+      );
       setResult({ kind: 'success', output });
     } catch (error) {
       setResult({

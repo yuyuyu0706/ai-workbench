@@ -9,11 +9,13 @@ import {
   AiProviderError,
   isAiProviderId,
   resolveAiProvider,
+  type ConversationMessage,
 } from '../providers/index.js';
 
 type ExecuteRequestBody = {
   readonly provider?: unknown;
   readonly prompt?: unknown;
+  readonly messages?: unknown;
   readonly model?: unknown;
   readonly maxTokens?: unknown;
   readonly temperature?: unknown;
@@ -39,8 +41,20 @@ export async function execute(
     return badRequest('Request body must be valid JSON');
   }
 
-  if (typeof body.prompt !== 'string' || body.prompt.trim() === '') {
-    return badRequest('prompt is required and must be a non-empty string');
+  const messages = parseMessages(body.messages);
+  if (messages === undefined) {
+    return badRequest(
+      'messages must be a non-empty array of { role, content } entries when provided',
+    );
+  }
+
+  if (
+    messages === null &&
+    (typeof body.prompt !== 'string' || body.prompt.trim() === '')
+  ) {
+    return badRequest(
+      'either prompt or messages is required (prompt must be a non-empty string)',
+    );
   }
 
   if (!isAiProviderId(body.provider)) {
@@ -80,9 +94,12 @@ export async function execute(
   }
 
   const aiProvider = resolveAiProvider(body.provider);
+  const resolvedMessages: readonly ConversationMessage[] = messages ?? [
+    { role: 'user', content: body.prompt as string },
+  ];
 
   try {
-    const output = await aiProvider.generate(body.prompt, {
+    const output = await aiProvider.generate(resolvedMessages, {
       model: body.model,
       maxTokens: body.maxTokens,
       temperature: body.temperature,
@@ -102,6 +119,41 @@ export async function execute(
       jsonBody: { error: 'Unexpected error while executing the prompt' },
     };
   }
+}
+
+/**
+ * Parses the optional `messages` request field.
+ *
+ * Returns `null` when `messages` was not supplied (caller falls back to
+ * `prompt`), the parsed array when it is valid, or `undefined` when it was
+ * supplied but malformed (caller returns a bad request).
+ */
+function parseMessages(
+  value: unknown,
+): readonly ConversationMessage[] | null | undefined {
+  if (value === undefined) {
+    return null;
+  }
+
+  if (!Array.isArray(value) || value.length === 0) {
+    return undefined;
+  }
+
+  const messages: ConversationMessage[] = [];
+  for (const entry of value as readonly unknown[]) {
+    const candidate = entry as { role?: unknown; content?: unknown };
+    if (
+      typeof candidate !== 'object' ||
+      candidate === null ||
+      (candidate.role !== 'user' && candidate.role !== 'assistant') ||
+      typeof candidate.content !== 'string'
+    ) {
+      return undefined;
+    }
+    messages.push({ role: candidate.role, content: candidate.content });
+  }
+
+  return messages;
 }
 
 function badRequest(message: string): HttpResponseInit {

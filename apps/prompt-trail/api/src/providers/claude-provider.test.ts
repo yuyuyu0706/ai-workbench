@@ -11,7 +11,9 @@ describe('ClaudeProvider', () => {
   it('throws when ANTHROPIC_API_KEY is not configured', async () => {
     const provider = new ClaudeProvider(undefined);
 
-    await expect(provider.generate('Hello')).rejects.toThrow(AiProviderError);
+    await expect(
+      provider.generate([{ role: 'user', content: 'Hello' }]),
+    ).rejects.toThrow(AiProviderError);
   });
 
   it('returns the generated text on success', async () => {
@@ -29,7 +31,9 @@ describe('ClaudeProvider', () => {
     );
 
     const provider = new ClaudeProvider('test-key');
-    const output = await provider.generate('Hello');
+    const output = await provider.generate([
+      { role: 'user', content: 'Hello' },
+    ]);
 
     expect(output).toBe('Generated text');
   });
@@ -42,7 +46,9 @@ describe('ClaudeProvider', () => {
 
     const provider = new ClaudeProvider('test-key');
 
-    await expect(provider.generate('Hello')).rejects.toThrow(AiProviderError);
+    await expect(
+      provider.generate([{ role: 'user', content: 'Hello' }]),
+    ).rejects.toThrow(AiProviderError);
   });
 
   it('throws AiProviderError when the network call itself fails', async () => {
@@ -55,7 +61,34 @@ describe('ClaudeProvider', () => {
 
     const provider = new ClaudeProvider('test-key');
 
-    await expect(provider.generate('Hello')).rejects.toThrow(AiProviderError);
+    await expect(
+      provider.generate([{ role: 'user', content: 'Hello' }]),
+    ).rejects.toThrow(AiProviderError);
+  });
+
+  it('sends the full conversation history to the Claude API as-is', async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            content: [{ type: 'text', text: 'Reply' }],
+          }),
+          { status: 200 },
+        ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const provider = new ClaudeProvider('test-key');
+    const messages = [
+      { role: 'user' as const, content: 'First turn' },
+      { role: 'assistant' as const, content: 'First reply' },
+      { role: 'user' as const, content: 'Second turn' },
+    ];
+    await provider.generate(messages);
+
+    const [, requestInit] = fetchMock.mock.calls[0];
+    const requestBody = JSON.parse(requestInit.body as string);
+    expect(requestBody.messages).toEqual(messages);
   });
 
   it('throws AiProviderError when the response has no text content', async () => {
@@ -69,6 +102,8 @@ describe('ClaudeProvider', () => {
 
     const provider = new ClaudeProvider('test-key');
 
-    await expect(provider.generate('Hello')).rejects.toThrow(AiProviderError);
+    await expect(
+      provider.generate([{ role: 'user', content: 'Hello' }]),
+    ).rejects.toThrow(AiProviderError);
   });
 });

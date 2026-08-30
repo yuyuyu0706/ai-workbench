@@ -77,6 +77,7 @@ export async function createTrailFromPrompt(
     evaluation: null,
     improvementNote: null,
     output: null,
+    messages: [],
   };
   try {
     await repository.createDirectRunFromPrompt({

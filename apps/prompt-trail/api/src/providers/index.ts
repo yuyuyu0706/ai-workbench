@@ -9,6 +9,8 @@ export {
   type AiProvider,
   type AiProviderId,
   type AiProviderOptions,
+  type ConversationMessage,
+  type ConversationRole,
 } from './types.js';
 export { ClaudeProvider } from './claude-provider.js';
 export { OpenAIProvider } from './openai-provider.js';

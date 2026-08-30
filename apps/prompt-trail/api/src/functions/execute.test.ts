@@ -23,7 +23,7 @@ describe('execute', () => {
     });
   });
 
-  it('returns 400 when prompt is missing', async () => {
+  it('returns 400 when neither prompt nor messages is provided', async () => {
     const response = await execute(
       fakeRequest({ provider: 'claude' }),
       {} as InvocationContext,
@@ -33,6 +33,29 @@ describe('execute', () => {
     expect(response.jsonBody).toMatchObject({
       error: expect.stringContaining('prompt'),
     });
+  });
+
+  it('returns 400 when messages is present but malformed', async () => {
+    const notAnArray = await execute(
+      fakeRequest({ provider: 'claude', messages: 'not an array' }),
+      {} as InvocationContext,
+    );
+    expect(notAnArray.status).toBe(400);
+
+    const emptyArray = await execute(
+      fakeRequest({ provider: 'claude', messages: [] }),
+      {} as InvocationContext,
+    );
+    expect(emptyArray.status).toBe(400);
+
+    const badEntry = await execute(
+      fakeRequest({
+        provider: 'claude',
+        messages: [{ role: 'system', content: 'Hello' }],
+      }),
+      {} as InvocationContext,
+    );
+    expect(badEntry.status).toBe(400);
   });
 
   it('returns 400 when prompt is an empty string', async () => {
@@ -108,6 +131,41 @@ describe('execute', () => {
 
       expect(response.status).toBe(200);
       expect(response.jsonBody).toEqual({ output: 'Generated text' });
+    } finally {
+      globalThis.fetch = originalFetch;
+      process.env.ANTHROPIC_API_KEY = originalKey;
+    }
+  });
+
+  it('returns 200 and forwards a messages array as-is to the provider', async () => {
+    const originalFetch = globalThis.fetch;
+    let requestBody: { messages?: unknown } = {};
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      requestBody = JSON.parse((init as RequestInit).body as string);
+      return new Response(
+        JSON.stringify({
+          content: [{ type: 'text', text: 'Generated text' }],
+        }),
+        { status: 200 },
+      );
+    }) as unknown as typeof fetch;
+    const originalKey = process.env.ANTHROPIC_API_KEY;
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+
+    const messages = [
+      { role: 'user', content: 'First turn' },
+      { role: 'assistant', content: 'First reply' },
+      { role: 'user', content: 'Second turn' },
+    ];
+
+    try {
+      const response = await execute(
+        fakeRequest({ provider: 'claude', messages }),
+        {} as InvocationContext,
+      );
+
+      expect(response.status).toBe(200);
+      expect(requestBody.messages).toEqual(messages);
     } finally {
       globalThis.fetch = originalFetch;
       process.env.ANTHROPIC_API_KEY = originalKey;

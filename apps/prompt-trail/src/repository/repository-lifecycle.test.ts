@@ -203,6 +203,7 @@ function buildRun(overrides: Partial<Run> = {}): Run {
     evaluation: 'good',
     improvementNote: 'Snapshot is reproducible.',
     output: null,
+    messages: [],
     ...overrides,
   };
 }
