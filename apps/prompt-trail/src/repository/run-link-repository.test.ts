@@ -181,6 +181,7 @@ function buildRun(overrides: Partial<Run> = {}): Run {
     evaluation: 'good',
     improvementNote: 'Keep it',
     output: null,
+    messages: [],
     ...overrides,
   };
 }

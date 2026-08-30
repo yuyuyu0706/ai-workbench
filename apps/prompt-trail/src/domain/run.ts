@@ -22,6 +22,14 @@ export const RUN_EVALUATIONS = ['good', 'needs-improvement', 'failed'] as const;
 
 export type RunEvaluation = (typeof RUN_EVALUATIONS)[number];
 
+export type ConversationRole = 'user' | 'assistant';
+
+/** A single turn in a Run's conversation history sent to the AI Execution Gateway. */
+export interface ConversationMessage {
+  readonly role: ConversationRole;
+  readonly content: string;
+}
+
 export type JsonPrimitive = string | number | boolean | null;
 
 export type JsonValue =
@@ -64,4 +72,6 @@ export interface Run extends BaseEntity<'run'>, ArchivableEntity {
   readonly improvementNote: string | null;
   /** Generated output text from an AI Execution Gateway call (e.g. PLAN generation). */
   readonly output: string | null;
+  /** Conversation history sent to/received from the AI Execution Gateway, oldest first. */
+  readonly messages: readonly ConversationMessage[];
 }

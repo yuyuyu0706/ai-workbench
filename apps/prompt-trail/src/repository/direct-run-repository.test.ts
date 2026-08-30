@@ -75,6 +75,7 @@ function buildRun(
     evaluation: null,
     improvementNote: null,
     output: null,
+    messages: [],
     ...overrides,
   };
 }

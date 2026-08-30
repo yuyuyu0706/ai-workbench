@@ -16,7 +16,10 @@ describe('callGatewayExecute', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    const output = await callGatewayExecute('Hello', 'claude');
+    const output = await callGatewayExecute(
+      [{ role: 'user', content: 'Hello' }],
+      'claude',
+    );
 
     expect(output).toBe('Generated text');
     expect(fetchMock).toHaveBeenCalledWith(
@@ -25,7 +28,7 @@ describe('callGatewayExecute', () => {
         method: 'POST',
         body: JSON.stringify({
           provider: 'claude',
-          prompt: 'Hello',
+          messages: [{ role: 'user', content: 'Hello' }],
           model: undefined,
           maxTokens: undefined,
           temperature: undefined,
@@ -45,12 +48,12 @@ describe('callGatewayExecute', () => {
       ),
     );
 
-    await expect(callGatewayExecute('Hello', 'claude')).rejects.toThrow(
-      GatewayExecuteError,
-    );
-    await expect(callGatewayExecute('Hello', 'claude')).rejects.toThrow(
-      'provider unavailable',
-    );
+    await expect(
+      callGatewayExecute([{ role: 'user', content: 'Hello' }], 'claude'),
+    ).rejects.toThrow(GatewayExecuteError);
+    await expect(
+      callGatewayExecute([{ role: 'user', content: 'Hello' }], 'claude'),
+    ).rejects.toThrow('provider unavailable');
   });
 
   it('throws GatewayExecuteError when the network call itself fails', async () => {
@@ -61,9 +64,9 @@ describe('callGatewayExecute', () => {
       }),
     );
 
-    await expect(callGatewayExecute('Hello', 'claude')).rejects.toThrow(
-      GatewayExecuteError,
-    );
+    await expect(
+      callGatewayExecute([{ role: 'user', content: 'Hello' }], 'claude'),
+    ).rejects.toThrow(GatewayExecuteError);
   });
 
   it('throws GatewayExecuteError when the response has no output field', async () => {
@@ -72,8 +75,8 @@ describe('callGatewayExecute', () => {
       vi.fn(async () => new Response(JSON.stringify({}), { status: 200 })),
     );
 
-    await expect(callGatewayExecute('Hello', 'claude')).rejects.toThrow(
-      GatewayExecuteError,
-    );
+    await expect(
+      callGatewayExecute([{ role: 'user', content: 'Hello' }], 'claude'),
+    ).rejects.toThrow(GatewayExecuteError);
   });
 });

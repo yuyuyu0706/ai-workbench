@@ -151,7 +151,7 @@ function asMigratedRun<
   const clone: Record<string, unknown> = { ...run };
   delete clone.trailTitle;
   delete clone.trailKind;
-  return { ...clone, trailId: `trail-${run.id}`, output: null };
+  return { ...clone, trailId: `trail-${run.id}`, output: null, messages: [] };
 }
 
 function expectedTrailFor(
@@ -280,7 +280,7 @@ describe('schema v1 to v2 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(8);
+    expect(database.verno).toBe(9);
     for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
       (storeName) =>
         storeName !== 'runs' &&
@@ -386,7 +386,7 @@ describe('schema v2 to v3 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(8);
+    expect(database.verno).toBe(9);
     for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
       (storeName) =>
         storeName !== 'prompts' &&
@@ -484,7 +484,7 @@ describe('schema v3 to v4 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(8);
+    expect(database.verno).toBe(9);
     for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
       (storeName) =>
         storeName !== 'prompts' &&
@@ -568,8 +568,8 @@ describe('schema v4 to v5 migration', () => {
       expectedTrailFor(runB, now),
     ]);
     expect(runs).toEqual([
-      { ...asMigratedRun(runA), output: undefined },
-      { ...asMigratedRun(runB), output: undefined },
+      { ...asMigratedRun(runA), output: undefined, messages: undefined },
+      { ...asMigratedRun(runB), output: undefined, messages: undefined },
     ]);
   });
 
@@ -582,7 +582,7 @@ describe('schema v4 to v5 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(8);
+    expect(database.verno).toBe(9);
     expect(migrated.workspaces).toHaveLength(1);
     expect(migrated.trails).toHaveLength(1);
     expect(migrated.trails[0]).toMatchObject({
@@ -659,7 +659,7 @@ describe('schema v5 to v6 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(8);
+    expect(database.verno).toBe(9);
     for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
       (storeName) => storeName !== 'runs',
     )) {
@@ -669,6 +669,7 @@ describe('schema v5 to v6 migration', () => {
       before.runs.map((run: object) => ({
         ...run,
         output: null,
+        messages: [],
       })),
     );
     database.close();
@@ -733,7 +734,7 @@ describe('schema v6 to v7 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(8);
+    expect(database.verno).toBe(9);
     for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
       (storeName) => storeName !== 'runs',
     )) {
@@ -743,6 +744,7 @@ describe('schema v6 to v7 migration', () => {
       before.runs.map((run: object) => ({
         ...run,
         output: null,
+        messages: [],
       })),
     );
     database.close();
@@ -879,16 +881,213 @@ describe('schema v7 to v8 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(8);
-    for (const storeName of PROMPT_TRAIL_STORE_NAMES) {
+    expect(database.verno).toBe(9);
+    for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
+      (storeName) => storeName !== 'runs',
+    )) {
       expect(migrated[storeName]).toEqual(before[storeName]);
     }
+    expect(migrated.runs).toEqual(
+      before.runs.map((run: object) => ({
+        ...run,
+        messages: [],
+      })),
+    );
     database.close();
 
     const reopened = createPromptTrailDatabase(name);
     await reopened.open();
     expect(await readAllStores(reopened)).toEqual(migrated);
     reopened.close();
+  });
+});
+
+describe('schema v8 to v9 migration', () => {
+  it('backfills messages: [] for every existing Run without changing other fields', async () => {
+    const name = `prompt-trail-migration-v9-${crypto.randomUUID()}`;
+    const runs = [
+      {
+        ...legacyRun('active-direct', 'Active'),
+        trailId: 'trail-1',
+        output: null,
+      },
+      {
+        ...legacyRun('archived-direct', 'Archived'),
+        trailId: 'trail-1',
+        output: 'Previously generated output',
+        archivedAt: '2026-01-05T00:00:00.000Z',
+      },
+    ];
+    const before = {
+      ...legacyDataset(runs),
+      workspaces: [
+        {
+          id: 'prompt-trail-default-workspace',
+          name: 'Default Workspace',
+          createdAt,
+          updatedAt,
+          deletedAt: null,
+        },
+      ],
+      trails: [
+        {
+          id: 'trail-1',
+          createdAt,
+          updatedAt,
+          deletedAt: null,
+          archivedAt: null,
+          projectId: 'project-1',
+          title: 'Active',
+          kind: 'other',
+        },
+      ],
+    };
+    const schemaV8ForTest = {
+      ...schemaV5ForTest,
+      runs: 'id, projectId, recipeId, trailId, promptSnapshot.promptId, status, updatedAt, archivedAt, deletedAt',
+    };
+    const legacyV8 = new Dexie(name);
+    databaseNames.add(name);
+    legacyV8.version(1).stores(schemaV1);
+    legacyV8.version(2).stores(schemaV1);
+    legacyV8.version(3).stores(schemaV1);
+    legacyV8.version(4).stores(schemaV1);
+    legacyV8.version(5).stores(schemaV5ForTest);
+    legacyV8.version(6).stores({
+      ...schemaV5ForTest,
+      runs: 'id, projectId, recipeId, trailId, status, updatedAt, archivedAt, deletedAt',
+    });
+    legacyV8.version(7).stores({
+      ...schemaV5ForTest,
+      runs: 'id, projectId, recipeId, trailId, status, updatedAt, archivedAt, deletedAt',
+    });
+    legacyV8.version(8).stores(schemaV8ForTest);
+    await legacyV8.open();
+    await legacyV8.transaction('rw', legacyV8.tables, async () =>
+      Promise.all(
+        PROMPT_TRAIL_STORE_NAMES.map((storeName) =>
+          legacyV8.table(storeName).bulkAdd(before[storeName]),
+        ),
+      ),
+    );
+    legacyV8.close();
+
+    const database = createPromptTrailDatabase(name);
+    await database.open();
+    const migrated = await readAllStores(database);
+    expect(database.verno).toBe(9);
+    for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
+      (storeName) => storeName !== 'runs',
+    )) {
+      expect(migrated[storeName]).toEqual(before[storeName]);
+    }
+    expect(migrated.runs).toEqual(
+      before.runs.map((run: object) => ({
+        ...run,
+        messages: [],
+      })),
+    );
+    database.close();
+
+    const reopened = createPromptTrailDatabase(name);
+    await reopened.open();
+    expect(await readAllStores(reopened)).toEqual(migrated);
+    reopened.close();
+  });
+
+  it('does not delete or reset the database when the upgrade transaction fails', async () => {
+    const name = `prompt-trail-migration-v9-rollback-${crypto.randomUUID()}`;
+    const runs = [
+      { ...legacyRun('run-1', 'Run one'), trailId: 'trail-1', output: null },
+    ];
+    const before = {
+      ...legacyDataset(runs),
+      workspaces: [
+        {
+          id: 'prompt-trail-default-workspace',
+          name: 'Default Workspace',
+          createdAt,
+          updatedAt,
+          deletedAt: null,
+        },
+      ],
+      trails: [
+        {
+          id: 'trail-1',
+          createdAt,
+          updatedAt,
+          deletedAt: null,
+          archivedAt: null,
+          projectId: 'project-1',
+          title: 'Run one',
+          kind: 'other',
+        },
+      ],
+    };
+    const schemaV8ForTest = {
+      ...schemaV5ForTest,
+      runs: 'id, projectId, recipeId, trailId, promptSnapshot.promptId, status, updatedAt, archivedAt, deletedAt',
+    };
+    const failingSeed = new Dexie(name);
+    databaseNames.add(name);
+    failingSeed.version(1).stores(schemaV1);
+    failingSeed.version(2).stores(schemaV1);
+    failingSeed.version(3).stores(schemaV1);
+    failingSeed.version(4).stores(schemaV1);
+    failingSeed.version(5).stores(schemaV5ForTest);
+    failingSeed.version(6).stores({
+      ...schemaV5ForTest,
+      runs: 'id, projectId, recipeId, trailId, status, updatedAt, archivedAt, deletedAt',
+    });
+    failingSeed.version(7).stores({
+      ...schemaV5ForTest,
+      runs: 'id, projectId, recipeId, trailId, status, updatedAt, archivedAt, deletedAt',
+    });
+    failingSeed.version(8).stores(schemaV8ForTest);
+    await failingSeed.open();
+    await failingSeed.transaction('rw', failingSeed.tables, async () =>
+      Promise.all(
+        PROMPT_TRAIL_STORE_NAMES.map((storeName) =>
+          failingSeed.table(storeName).bulkAdd(before[storeName]),
+        ),
+      ),
+    );
+    failingSeed.close();
+
+    const failingUpgrade = new Dexie(name);
+    failingUpgrade.version(1).stores(schemaV1);
+    failingUpgrade.version(2).stores(schemaV1);
+    failingUpgrade.version(3).stores(schemaV1);
+    failingUpgrade.version(4).stores(schemaV1);
+    failingUpgrade.version(5).stores(schemaV5ForTest);
+    failingUpgrade.version(6).stores({
+      ...schemaV5ForTest,
+      runs: 'id, projectId, recipeId, trailId, status, updatedAt, archivedAt, deletedAt',
+    });
+    failingUpgrade.version(7).stores({
+      ...schemaV5ForTest,
+      runs: 'id, projectId, recipeId, trailId, status, updatedAt, archivedAt, deletedAt',
+    });
+    failingUpgrade.version(8).stores(schemaV8ForTest);
+    failingUpgrade
+      .version(9)
+      .stores(schemaV8ForTest)
+      .upgrade(async () => {
+        throw new Error('simulated upgrade failure');
+      });
+
+    await expect(failingUpgrade.open()).rejects.toThrow(
+      'simulated upgrade failure',
+    );
+    failingUpgrade.close();
+
+    const legacy = new Dexie(name);
+    legacy.version(1).stores(schemaV1);
+    await legacy.open();
+    expect(await readAllStores(legacy, LEGACY_STORE_NAMES)).toEqual(
+      legacyDataset(before.runs),
+    );
+    legacy.close();
   });
 });
 

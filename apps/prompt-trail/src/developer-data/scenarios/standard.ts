@@ -48,6 +48,7 @@ const run: Run = {
   evaluation: null,
   improvementNote: null,
   output: null,
+  messages: [],
   createdAt: utc('2026-07-20T09:10:00.000Z'),
   updatedAt: utc('2026-07-20T09:10:00.000Z'),
   deletedAt: null,

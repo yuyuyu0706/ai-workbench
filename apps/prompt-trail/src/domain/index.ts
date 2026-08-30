@@ -38,6 +38,8 @@ export { TRAIL_KINDS } from './trail';
 
 export type {
   ContextSnapshot,
+  ConversationMessage,
+  ConversationRole,
   JsonPrimitive,
   JsonValue,
   PromptSnapshot,

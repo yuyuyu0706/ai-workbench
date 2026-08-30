@@ -1,3 +1,5 @@
+import type { ConversationMessage } from '../domain';
+
 /** AI API providers the AI Execution Gateway can dispatch to. Mirrors api/src/providers. */
 export const GATEWAY_PROVIDERS = ['claude', 'openai'] as const;
 
@@ -26,10 +28,10 @@ export class GatewayExecuteError extends Error {
 /**
  * Calls the generic `POST /api/execute` AI Execution Gateway endpoint and
  * returns the generated output text. Holds no knowledge of any specific
- * caller — the prompt is passed through as-is (see ADR 0009).
+ * caller — the conversation history is passed through as-is (see ADR 0009).
  */
 export async function callGatewayExecute(
-  prompt: string,
+  messages: readonly ConversationMessage[],
   provider: GatewayProvider,
   options: CallGatewayExecuteOptions = {},
 ): Promise<string> {
@@ -40,7 +42,7 @@ export async function callGatewayExecute(
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         provider,
-        prompt,
+        messages,
         model: options.model,
         maxTokens: options.maxTokens,
         temperature: options.temperature,
