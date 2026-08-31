@@ -568,11 +568,12 @@
 .pt-run-conversation-form textarea {
   flex: 1;
   min-height: 2.25rem;
-  max-height: 2.25rem;
+  max-height: 12rem;
   padding: var(--pt-space-2);
   border: 1px solid var(--pt-color-border);
   border-radius: var(--pt-radius-sm);
   resize: none;
+  overflow-y: auto;
   font: inherit;
 }
 

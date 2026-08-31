@@ -245,6 +245,14 @@ export function RunStepSection({
   const [sendStatus, setSendStatus] = useState<'idle' | 'sending' | 'failure'>(
     'idle',
   );
+  const messageTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = messageTextareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [messageDraft]);
 
   const formOverride = selectActiveDeveloperUiState(
     uiStateSnapshot,
@@ -752,7 +760,9 @@ export function RunStepSection({
                                 メッセージ
                               </label>
                               <textarea
+                                ref={messageTextareaRef}
                                 id={`run-message-${run.id}`}
+                                rows={1}
                                 value={messageDraft}
                                 onChange={(e) => {
                                   setMessageDraft(e.target.value);
