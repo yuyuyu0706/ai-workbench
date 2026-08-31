@@ -351,7 +351,7 @@
    so it gets extra width instead of sharing the 22rem base width used by
    Prompt Snapshot and Related Links. */
 .pt-run-popover--wide {
-  width: min(28rem, calc(100vw - 2rem));
+  width: min(32rem, calc(100vw - 2rem));
 }
 
 /* The 実行結果 popover keeps its header and message form always visible
@@ -363,6 +363,7 @@
 .pt-run-popover--wide .pt-run-popover__scroll {
   display: flex;
   flex-direction: column;
+  max-height: none;
   overflow: hidden;
 }
 
@@ -375,6 +376,7 @@
 .pt-run-conversation-scroll {
   flex: 1;
   min-height: 0;
+  max-height: min(28rem, 60vh);
   overflow-y: auto;
 }
 
@@ -557,24 +559,55 @@
   border-top: 1px solid var(--pt-color-border);
 }
 
-.pt-run-conversation-form__label {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--pt-color-text-muted);
+.pt-run-conversation-form__row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--pt-space-2);
 }
 
 .pt-run-conversation-form textarea {
-  min-height: 4rem;
+  flex: 1;
+  min-height: 2.25rem;
+  max-height: 2.25rem;
   padding: var(--pt-space-2);
   border: 1px solid var(--pt-color-border);
   border-radius: var(--pt-radius-sm);
-  resize: vertical;
+  resize: none;
   font: inherit;
 }
 
-.pt-run-conversation-form button {
-  width: auto;
-  justify-self: start;
+.pt-run-conversation-form__send {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--pt-radius-sm);
+  color: #fff;
+  background: var(--pt-color-accent);
+  cursor: pointer;
+}
+
+.pt-run-conversation-form__send:hover:not(:disabled) {
+  background: var(--pt-color-accent-strong);
+}
+
+.pt-run-conversation-form__send:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.pt-run-conversation-form__send svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 
 @media (max-width: 44rem) {

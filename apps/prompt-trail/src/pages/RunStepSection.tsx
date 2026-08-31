@@ -744,37 +744,47 @@ export function RunStepSection({
                             className="pt-run-conversation-form"
                             onSubmit={(event) => void handleSendMessage(event)}
                           >
-                            <label
-                              htmlFor={`run-message-${run.id}`}
-                              className="pt-run-conversation-form__label"
-                            >
-                              メッセージ
-                            </label>
-                            <textarea
-                              id={`run-message-${run.id}`}
-                              value={messageDraft}
-                              onChange={(e) => {
-                                setMessageDraft(e.target.value);
-                                if (sendStatus === 'failure')
-                                  setSendStatus('idle');
-                              }}
-                              disabled={sendStatus === 'sending'}
-                            />
+                            <div className="pt-run-conversation-form__row">
+                              <label
+                                htmlFor={`run-message-${run.id}`}
+                                className="pt-sr-only"
+                              >
+                                メッセージ
+                              </label>
+                              <textarea
+                                id={`run-message-${run.id}`}
+                                value={messageDraft}
+                                onChange={(e) => {
+                                  setMessageDraft(e.target.value);
+                                  if (sendStatus === 'failure')
+                                    setSendStatus('idle');
+                                }}
+                                disabled={sendStatus === 'sending'}
+                              />
+                              <button
+                                className="pt-run-conversation-form__send ti-arrow-up"
+                                type="submit"
+                                aria-label="送信"
+                                disabled={
+                                  sendStatus === 'sending' ||
+                                  messageDraft.trim().length === 0
+                                }
+                              >
+                                {sendStatus === 'sending' ? (
+                                  <span
+                                    className="pt-run-actions__spinner"
+                                    aria-hidden="true"
+                                  />
+                                ) : (
+                                  <ArrowUpIcon />
+                                )}
+                              </button>
+                            </div>
                             {sendStatus === 'failure' ? (
                               <p className="pt-form__error" role="alert">
                                 送信できませんでした。もう一度お試しください。
                               </p>
                             ) : null}
-                            <button
-                              className="pt-button pt-button--primary"
-                              type="submit"
-                              disabled={
-                                sendStatus === 'sending' ||
-                                messageDraft.trim().length === 0
-                              }
-                            >
-                              {sendStatus === 'sending' ? '送信中...' : '送信'}
-                            </button>
                           </form>
                         </RunPopover>
                       ) : null}
@@ -1078,6 +1088,14 @@ function RefreshIcon() {
     <svg aria-hidden="true" viewBox="0 0 24 24">
       <path d="M6.5 6.5A8 8 0 1 1 4 12" />
       <path d="M4 5.5v4.5h4.5" />
+    </svg>
+  );
+}
+
+function ArrowUpIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M12 19V6M6 11l6-6 6 6" />
     </svg>
   );
 }
