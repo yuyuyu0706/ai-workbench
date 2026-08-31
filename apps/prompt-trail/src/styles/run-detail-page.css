@@ -469,6 +469,92 @@
   color: var(--pt-color-text-muted);
 }
 
+.pt-run-execute-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.pt-run-execute-confirmation {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + var(--pt-space-2));
+  left: 0;
+  width: max-content;
+  max-width: min(18rem, calc(100vw - 2rem));
+  padding: var(--pt-space-3);
+  border: 1px solid var(--pt-color-border);
+  border-radius: var(--pt-radius-sm);
+  box-shadow: var(--pt-shadow-card);
+  color: var(--pt-color-text);
+  background: var(--pt-color-surface);
+  text-align: left;
+}
+
+.pt-run-execute-confirmation p {
+  margin-block: 0 var(--pt-space-3);
+  overflow-wrap: anywhere;
+}
+
+.pt-run-execute-confirmation__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pt-space-2);
+}
+
+.pt-run-conversation {
+  display: grid;
+  gap: var(--pt-space-2);
+  margin-block-end: var(--pt-space-3);
+}
+
+.pt-run-conversation__message {
+  max-width: 85%;
+  margin: 0;
+  padding: var(--pt-space-2) var(--pt-space-3);
+  border-radius: var(--pt-radius-md);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.pt-run-conversation__message--user {
+  justify-self: end;
+  color: #fff;
+  background: var(--pt-color-accent);
+}
+
+.pt-run-conversation__message--assistant {
+  justify-self: start;
+  color: var(--pt-color-text);
+  background: var(--pt-color-surface-subtle);
+}
+
+.pt-run-conversation-form {
+  display: grid;
+  gap: var(--pt-space-2);
+  padding-block-start: var(--pt-space-3);
+  border-top: 1px solid var(--pt-color-border);
+}
+
+.pt-run-conversation-form__label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--pt-color-text-muted);
+}
+
+.pt-run-conversation-form textarea {
+  min-height: 4rem;
+  padding: var(--pt-space-2);
+  border: 1px solid var(--pt-color-border);
+  border-radius: var(--pt-radius-sm);
+  resize: vertical;
+  font: inherit;
+}
+
+.pt-run-conversation-form button {
+  width: auto;
+  justify-self: start;
+}
+
 @media (max-width: 44rem) {
   .pt-run-table,
   .pt-run-table tbody,
