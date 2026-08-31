@@ -354,6 +354,30 @@
   width: min(28rem, calc(100vw - 2rem));
 }
 
+/* The 実行結果 popover keeps its header and message form always visible
+   (they're outside the scrolling region) while only the conversation
+   list scrolls internally, so a long conversation never hides the input.
+   This overrides the base .pt-run-popover__scroll's own overflow/scroll
+   behavior with a fixed-height flex column; see .pt-run-conversation-scroll
+   below for the actual scrolling region. */
+.pt-run-popover--wide .pt-run-popover__scroll {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pt-run-popover--wide .pt-run-popover__header,
+.pt-run-popover--wide .pt-run-popover__scroll > .pt-form__error,
+.pt-run-popover--wide .pt-run-conversation-form {
+  flex-shrink: 0;
+}
+
+.pt-run-conversation-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 /* The Related Links popover stacks a 3-field form plus the existing link
    list, which tends to exceed the default scroll max-height. It now shares
    the base .pt-run-popover width (which is wider than this popover's old

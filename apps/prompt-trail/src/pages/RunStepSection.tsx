@@ -70,19 +70,28 @@ function runPopoverRightStartTop(m: PopoverMeasurements) {
   return Math.max(m.margin, Math.min(desiredTop, maxTop));
 }
 
-const RUN_POPOVER_PLACEMENTS: readonly PopoverPlacementOption<RunPopoverPlacement>[] =
-  [
+// The result popover (`pt-run-popover--wide`) uses a larger horizontal
+// offset than the default so its wider body opens mostly to the left of
+// the trigger icon instead of extending far to the right of it. The
+// arrow's horizontal position is derived from `triggerCenterX - left` (see
+// buildPopoverArrowStyle), so it keeps pointing at whichever icon was
+// clicked regardless of this offset.
+const RUN_POPOVER_WIDE_HORIZONTAL_OFFSET_PX = 72;
+
+function buildRunPopoverPlacements(
+  horizontalOffsetPx: number,
+): readonly PopoverPlacementOption<RunPopoverPlacement>[] {
+  return [
     {
       id: 'right-start',
-      // The popover's left edge sits at triggerRect.left - OFFSET_PX (see
+      // The popover's left edge sits at triggerRect.left - offsetPx (see
       // place() below), so the room needed to its right is measured from
       // that same anchor rather than from triggerRect.right.
       fits: (m) =>
-        m.viewportWidth -
-          (m.triggerRect.left - RUN_POPOVER_HORIZONTAL_OFFSET_PX) >=
+        m.viewportWidth - (m.triggerRect.left - horizontalOffsetPx) >=
         m.panelWidth + m.gap,
       place: (m) => ({
-        left: m.triggerRect.left - RUN_POPOVER_HORIZONTAL_OFFSET_PX,
+        left: m.triggerRect.left - horizontalOffsetPx,
         top: runPopoverRightStartTop(m),
       }),
     },
@@ -111,6 +120,7 @@ const RUN_POPOVER_PLACEMENTS: readonly PopoverPlacementOption<RunPopoverPlacemen
       },
     },
   ];
+}
 
 const RUN_POPOVER_GAP_PX = 8;
 const RUN_POPOVER_ARROW_SIZE_PX = 12;
@@ -122,18 +132,24 @@ const RUN_POPOVER_ARROW_SAFE_MARGIN_PX = 16;
 function RunPopover({
   triggerRef,
   className,
+  horizontalOffsetPx = RUN_POPOVER_HORIZONTAL_OFFSET_PX,
   children,
 }: {
   triggerRef: RefObject<HTMLElement | null>;
   className?: string;
+  horizontalOffsetPx?: number;
   children: React.ReactNode;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const placements = useMemo(
+    () => buildRunPopoverPlacements(horizontalOffsetPx),
+    [horizontalOffsetPx],
+  );
   const { position } = usePopoverPosition({
     triggerRef,
     panelRef,
     open: true,
-    placements: RUN_POPOVER_PLACEMENTS,
+    placements,
     gap: RUN_POPOVER_GAP_PX,
   });
   const style = useMemo<CSSProperties>(() => {
@@ -682,6 +698,9 @@ export function RunStepSection({
                         <RunPopover
                           triggerRef={resultButtonRef}
                           className="pt-run-popover--wide"
+                          horizontalOffsetPx={
+                            RUN_POPOVER_WIDE_HORIZONTAL_OFFSET_PX
+                          }
                         >
                           <div className="pt-run-popover__header">
                             <h3>実行結果</h3>
@@ -699,26 +718,28 @@ export function RunStepSection({
                               実行に失敗しました。もう一度お試しください。
                             </p>
                           ) : null}
-                          {run.messages.length === 0 ? (
-                            <p className="pt-run-popover__empty">
-                              まだ実行されていません
-                            </p>
-                          ) : (
-                            <div className="pt-run-conversation">
-                              {run.messages.map((message, index) => (
-                                <p
-                                  key={index}
-                                  className={
-                                    message.role === 'user'
-                                      ? 'pt-run-conversation__message pt-run-conversation__message--user'
-                                      : 'pt-run-conversation__message pt-run-conversation__message--assistant'
-                                  }
-                                >
-                                  {message.content}
-                                </p>
-                              ))}
-                            </div>
-                          )}
+                          <div className="pt-run-conversation-scroll">
+                            {run.messages.length === 0 ? (
+                              <p className="pt-run-popover__empty">
+                                まだ実行されていません
+                              </p>
+                            ) : (
+                              <div className="pt-run-conversation">
+                                {run.messages.map((message, index) => (
+                                  <p
+                                    key={index}
+                                    className={
+                                      message.role === 'user'
+                                        ? 'pt-run-conversation__message pt-run-conversation__message--user'
+                                        : 'pt-run-conversation__message pt-run-conversation__message--assistant'
+                                    }
+                                  >
+                                    {message.content}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                           <form
                             className="pt-run-conversation-form"
                             onSubmit={(event) => void handleSendMessage(event)}
