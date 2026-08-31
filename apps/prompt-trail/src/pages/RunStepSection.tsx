@@ -544,13 +544,13 @@ export function RunStepSection({
                 <td className="pt-run-table__actions" ref={actionsCellRef}>
                   <span className="pt-run-table__mobile-label">アクション</span>
                   <div className="pt-run-actions">
-                    <span className="pt-run-execute-wrapper">
+                    <span className="pt-run-action">
                       <button
                         ref={executeButtonRef}
                         type="button"
                         className={
                           run.messages.length > 0
-                            ? 'pt-run-actions__execute ti-refresh'
+                            ? 'pt-run-actions__execute pt-run-actions__execute--icon-stroke ti-rotate'
                             : 'pt-run-actions__execute ti-player-play'
                         }
                         aria-label={
@@ -571,11 +571,10 @@ export function RunStepSection({
                         )}
                       </button>
                       {resetStatus !== 'idle' ? (
-                        <div
-                          className="pt-run-execute-confirmation"
-                          role="dialog"
-                        >
-                          <p>会話をリセットして最初から実行しますか？</p>
+                        <RunPopover triggerRef={executeButtonRef}>
+                          <p className="pt-run-popover__confirm-message">
+                            会話をリセットして最初から実行しますか？
+                          </p>
                           {resetStatus === 'failure' ? (
                             <p className="pt-form__error" role="alert">
                               実行をやり直せませんでした。もう一度お試しください。
@@ -601,7 +600,7 @@ export function RunStepSection({
                               キャンセル
                             </button>
                           </div>
-                        </div>
+                        </RunPopover>
                       ) : null}
                     </span>
                     <span
@@ -680,7 +679,10 @@ export function RunStepSection({
                         ) : null}
                       </button>
                       {activePopover === 'result' ? (
-                        <RunPopover triggerRef={resultButtonRef}>
+                        <RunPopover
+                          triggerRef={resultButtonRef}
+                          className="pt-run-popover--wide"
+                        >
                           <div className="pt-run-popover__header">
                             <h3>実行結果</h3>
                             <button
@@ -1053,8 +1055,8 @@ function PlayIcon() {
 function RefreshIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M4.5 12a7.5 7.5 0 0 1 12.6-5.5M19.5 12a7.5 7.5 0 0 1-12.6 5.5" />
-      <path d="M16 5.5h1.5V4M8 18.5H6.5V20" />
+      <path d="M6.5 6.5A8 8 0 1 1 4 12" />
+      <path d="M4 5.5v4.5h4.5" />
     </svg>
   );
 }

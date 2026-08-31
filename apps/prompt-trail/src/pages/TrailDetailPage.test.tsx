@@ -1345,7 +1345,7 @@ describe('TrailDetailPage Run actions popovers', () => {
       ...resetRun,
       output: 'Fresh answer',
       messages: [
-        { role: 'user', content: direct.finalPrompt ?? '' },
+        { role: 'user', content: 'Re-run prompt' },
         { role: 'assistant', content: 'Fresh answer' },
       ],
     };

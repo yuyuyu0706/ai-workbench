@@ -229,6 +229,18 @@
   stroke: none;
 }
 
+/* The "やり直す" (retry) icon is a line drawing rather than a filled
+   shape, so it needs stroke-based rendering (and a thinner stroke than
+   the outlined icon buttons) instead of the solid-fill Play icon's rule
+   above. */
+.pt-run-actions__execute--icon-stroke svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .pt-run-actions__spinner {
   width: 1.1rem;
   height: 1.1rem;
@@ -333,6 +345,13 @@
   max-height: min(24rem, 50vh);
   overflow-y: auto;
   padding: var(--pt-space-3) var(--pt-space-4);
+}
+
+/* The 実行結果 popover holds a scrollable conversation plus a reply form,
+   so it gets extra width instead of sharing the 22rem base width used by
+   Prompt Snapshot and Related Links. */
+.pt-run-popover--wide {
+  width: min(28rem, calc(100vw - 2rem));
 }
 
 /* The Related Links popover stacks a 3-field form plus the existing link
@@ -469,28 +488,7 @@
   color: var(--pt-color-text-muted);
 }
 
-.pt-run-execute-wrapper {
-  position: relative;
-  display: inline-flex;
-}
-
-.pt-run-execute-confirmation {
-  position: absolute;
-  z-index: 10;
-  top: calc(100% + var(--pt-space-2));
-  left: 0;
-  width: max-content;
-  max-width: min(18rem, calc(100vw - 2rem));
-  padding: var(--pt-space-3);
-  border: 1px solid var(--pt-color-border);
-  border-radius: var(--pt-radius-sm);
-  box-shadow: var(--pt-shadow-card);
-  color: var(--pt-color-text);
-  background: var(--pt-color-surface);
-  text-align: left;
-}
-
-.pt-run-execute-confirmation p {
+.pt-run-popover__confirm-message {
   margin-block: 0 var(--pt-space-3);
   overflow-wrap: anywhere;
 }
