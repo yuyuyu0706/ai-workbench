@@ -78,9 +78,25 @@ function runPopoverRightStartTop(m: PopoverMeasurements) {
 // clicked regardless of this offset.
 const RUN_POPOVER_WIDE_HORIZONTAL_OFFSET_PX = 72;
 
+// On a narrow viewport the popover's actual rendered width can be far
+// smaller than `horizontalOffsetPx` (e.g. the ~288px panel forced by
+// `calc(100vw - 2rem)` at a 320px viewport vs. the 72px wide-popover
+// offset), which pushes the arrow's "true" target position outside
+// clampPopoverArrowOffset's safe range and forces it to the wrong corner.
+// Scaling the offset down for narrow panels keeps it a no-op at normal
+// desktop widths (where panelWidth * 0.25 comfortably exceeds the fixed
+// offsets used here) while avoiding that mis-pointing at 320px.
+const RUN_POPOVER_OFFSET_PANEL_WIDTH_RATIO = 0.25;
+
 function buildRunPopoverPlacements(
   horizontalOffsetPx: number,
 ): readonly PopoverPlacementOption<RunPopoverPlacement>[] {
+  function effectiveOffset(panelWidth: number) {
+    return Math.min(
+      horizontalOffsetPx,
+      panelWidth * RUN_POPOVER_OFFSET_PANEL_WIDTH_RATIO,
+    );
+  }
   return [
     {
       id: 'right-start',
@@ -88,10 +104,11 @@ function buildRunPopoverPlacements(
       // place() below), so the room needed to its right is measured from
       // that same anchor rather than from triggerRect.right.
       fits: (m) =>
-        m.viewportWidth - (m.triggerRect.left - horizontalOffsetPx) >=
+        m.viewportWidth -
+          (m.triggerRect.left - effectiveOffset(m.panelWidth)) >=
         m.panelWidth + m.gap,
       place: (m) => ({
-        left: m.triggerRect.left - horizontalOffsetPx,
+        left: m.triggerRect.left - effectiveOffset(m.panelWidth),
         top: runPopoverRightStartTop(m),
       }),
     },

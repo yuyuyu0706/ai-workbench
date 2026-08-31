@@ -27,6 +27,22 @@ export function clampPopoverArrowOffset(
  * resolved `usePopoverPosition` result. `varPrefix` should include the
  * leading `--` (e.g. `--pt-prompt-body-arrow` or `--pt-run-popover-arrow`).
  */
+// A fixed safeMarginPx (keeping the arrow clear of the popover's rounded
+// corners) can exceed a narrow panel's own width/height once the panel is
+// forced down to something like `calc(100vw - 2rem)` on a 320px viewport.
+// When that happens, clampPopoverArrowOffset's safe range no longer
+// contains the arrow's "true" target position, so it gets forced to
+// whichever end is closest instead of tracking the trigger. Scaling the
+// margin down per axis, relative to that axis's own panel dimension, keeps
+// it a no-op at normal desktop sizes (where the panel is comfortably wider
+// than safeMarginPx / ARROW_SAFE_MARGIN_PANEL_RATIO) while letting the
+// arrow sit closer to the corner rather than mis-point at narrow widths.
+const ARROW_SAFE_MARGIN_PANEL_RATIO = 0.08;
+
+function effectiveSafeMargin(safeMarginPx: number, panelDimension: number) {
+  return Math.min(safeMarginPx, panelDimension * ARROW_SAFE_MARGIN_PANEL_RATIO);
+}
+
 export function buildPopoverArrowStyle<TId extends string>(
   position: PopoverPositionResult<TId>,
   {
@@ -42,12 +58,12 @@ export function buildPopoverArrowStyle<TId extends string>(
     [`${varPrefix}-x`]: `${clampPopoverArrowOffset(
       triggerCenterX - left,
       panelWidth,
-      safeMarginPx,
+      effectiveSafeMargin(safeMarginPx, panelWidth),
     )}px`,
     [`${varPrefix}-y`]: `${clampPopoverArrowOffset(
       triggerCenterY - top,
       panelHeight,
-      safeMarginPx,
+      effectiveSafeMargin(safeMarginPx, panelHeight),
     )}px`,
     [`${varPrefix}-offset`]: `${arrowSizePx / 2}px`,
   } as CSSProperties;
