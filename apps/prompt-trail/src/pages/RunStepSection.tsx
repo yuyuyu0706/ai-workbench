@@ -70,19 +70,28 @@ function runPopoverRightStartTop(m: PopoverMeasurements) {
   return Math.max(m.margin, Math.min(desiredTop, maxTop));
 }
 
-const RUN_POPOVER_PLACEMENTS: readonly PopoverPlacementOption<RunPopoverPlacement>[] =
-  [
+// The result popover (`pt-run-popover--wide`) uses a larger horizontal
+// offset than the default so its wider body opens mostly to the left of
+// the trigger icon instead of extending far to the right of it. The
+// arrow's horizontal position is derived from `triggerCenterX - left` (see
+// buildPopoverArrowStyle), so it keeps pointing at whichever icon was
+// clicked regardless of this offset.
+const RUN_POPOVER_WIDE_HORIZONTAL_OFFSET_PX = 72;
+
+function buildRunPopoverPlacements(
+  horizontalOffsetPx: number,
+): readonly PopoverPlacementOption<RunPopoverPlacement>[] {
+  return [
     {
       id: 'right-start',
-      // The popover's left edge sits at triggerRect.left - OFFSET_PX (see
+      // The popover's left edge sits at triggerRect.left - offsetPx (see
       // place() below), so the room needed to its right is measured from
       // that same anchor rather than from triggerRect.right.
       fits: (m) =>
-        m.viewportWidth -
-          (m.triggerRect.left - RUN_POPOVER_HORIZONTAL_OFFSET_PX) >=
+        m.viewportWidth - (m.triggerRect.left - horizontalOffsetPx) >=
         m.panelWidth + m.gap,
       place: (m) => ({
-        left: m.triggerRect.left - RUN_POPOVER_HORIZONTAL_OFFSET_PX,
+        left: m.triggerRect.left - horizontalOffsetPx,
         top: runPopoverRightStartTop(m),
       }),
     },
@@ -111,6 +120,7 @@ const RUN_POPOVER_PLACEMENTS: readonly PopoverPlacementOption<RunPopoverPlacemen
       },
     },
   ];
+}
 
 const RUN_POPOVER_GAP_PX = 8;
 const RUN_POPOVER_ARROW_SIZE_PX = 12;
@@ -122,18 +132,24 @@ const RUN_POPOVER_ARROW_SAFE_MARGIN_PX = 16;
 function RunPopover({
   triggerRef,
   className,
+  horizontalOffsetPx = RUN_POPOVER_HORIZONTAL_OFFSET_PX,
   children,
 }: {
   triggerRef: RefObject<HTMLElement | null>;
   className?: string;
+  horizontalOffsetPx?: number;
   children: React.ReactNode;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const placements = useMemo(
+    () => buildRunPopoverPlacements(horizontalOffsetPx),
+    [horizontalOffsetPx],
+  );
   const { position } = usePopoverPosition({
     triggerRef,
     panelRef,
     open: true,
-    placements: RUN_POPOVER_PLACEMENTS,
+    placements,
     gap: RUN_POPOVER_GAP_PX,
   });
   const style = useMemo<CSSProperties>(() => {
@@ -221,6 +237,22 @@ export function RunStepSection({
     'idle' | 'running' | 'failure'
   >('idle');
   const [hasNewResult, setHasNewResult] = useState(false);
+  const executeButtonRef = useRef<HTMLButtonElement>(null);
+  const [resetStatus, setResetStatus] = useState<
+    'idle' | 'confirming' | 'resetting' | 'failure'
+  >('idle');
+  const [messageDraft, setMessageDraft] = useState('');
+  const [sendStatus, setSendStatus] = useState<'idle' | 'sending' | 'failure'>(
+    'idle',
+  );
+  const messageTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = messageTextareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [messageDraft]);
 
   const formOverride = selectActiveDeveloperUiState(
     uiStateSnapshot,
@@ -310,6 +342,17 @@ export function RunStepSection({
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [activePopover, isLinkInformationOpen, deleteSnapshot.linkId]);
+
+  useEffect(() => {
+    if (resetStatus === 'idle' || resetStatus === 'resetting') return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      setResetStatus('idle');
+      requestAnimationFrame(() => executeButtonRef.current?.focus());
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [resetStatus]);
 
   function togglePopover(popover: Exclude<ActivePopover, null>) {
     setActivePopover((current) => (current === popover ? null : popover));
@@ -432,6 +475,57 @@ export function RunStepSection({
     }
   }
 
+  function handleExecuteButtonClick() {
+    if (run.messages.length === 0) {
+      void handleExecute();
+      return;
+    }
+    setResetStatus('confirming');
+  }
+
+  function cancelReset() {
+    setResetStatus('idle');
+    requestAnimationFrame(() => executeButtonRef.current?.focus());
+  }
+
+  async function confirmReset() {
+    if (resetStatus === 'resetting' || executeStatus === 'running') return;
+    setResetStatus('resetting');
+    setExecuteStatus('running');
+    try {
+      const resetRun = await repository.saveRun({
+        ...run,
+        messages: [],
+        output: null,
+      });
+      await executeRun(repository, resetRun);
+      setResetStatus('idle');
+      setExecuteStatus('idle');
+      setHasNewResult(true);
+      onRunChanged();
+    } catch {
+      setResetStatus('failure');
+      setExecuteStatus('failure');
+    }
+  }
+
+  async function handleSendMessage(event: React.FormEvent) {
+    event.preventDefault();
+    if (sendStatus === 'sending') return;
+    const text = messageDraft.trim();
+    if (text.length === 0) return;
+    setSendStatus('sending');
+    try {
+      await executeRun(repository, run, text);
+      setMessageDraft('');
+      setSendStatus('idle');
+      setHasNewResult(true);
+      onRunChanged();
+    } catch {
+      setSendStatus('failure');
+    }
+  }
+
   return (
     <>
       <PageSection title="実行サマリ">
@@ -474,22 +568,65 @@ export function RunStepSection({
                 <td className="pt-run-table__actions" ref={actionsCellRef}>
                   <span className="pt-run-table__mobile-label">アクション</span>
                   <div className="pt-run-actions">
-                    <button
-                      type="button"
-                      className="pt-run-actions__execute"
-                      aria-label="実行する"
-                      disabled={executeStatus === 'running'}
-                      onClick={() => void handleExecute()}
-                    >
-                      {executeStatus === 'running' ? (
-                        <span
-                          className="pt-run-actions__spinner"
-                          aria-hidden="true"
-                        />
-                      ) : (
-                        <PlayIcon />
-                      )}
-                    </button>
+                    <span className="pt-run-action">
+                      <button
+                        ref={executeButtonRef}
+                        type="button"
+                        className={
+                          run.messages.length > 0
+                            ? 'pt-run-actions__execute pt-run-actions__execute--icon-stroke ti-rotate'
+                            : 'pt-run-actions__execute ti-player-play'
+                        }
+                        aria-label={
+                          run.messages.length > 0 ? 'やり直す' : '実行する'
+                        }
+                        disabled={executeStatus === 'running'}
+                        onClick={handleExecuteButtonClick}
+                      >
+                        {executeStatus === 'running' ? (
+                          <span
+                            className="pt-run-actions__spinner"
+                            aria-hidden="true"
+                          />
+                        ) : run.messages.length > 0 ? (
+                          <RefreshIcon />
+                        ) : (
+                          <PlayIcon />
+                        )}
+                      </button>
+                      {resetStatus !== 'idle' ? (
+                        <RunPopover triggerRef={executeButtonRef}>
+                          <p className="pt-run-popover__confirm-message">
+                            会話をリセットして最初から実行しますか？
+                          </p>
+                          {resetStatus === 'failure' ? (
+                            <p className="pt-form__error" role="alert">
+                              実行をやり直せませんでした。もう一度お試しください。
+                            </p>
+                          ) : null}
+                          <div className="pt-run-execute-confirmation__actions">
+                            <button
+                              className="pt-button pt-button--primary"
+                              type="button"
+                              disabled={resetStatus === 'resetting'}
+                              onClick={() => void confirmReset()}
+                            >
+                              {resetStatus === 'resetting'
+                                ? '実行中...'
+                                : '実行する'}
+                            </button>
+                            <button
+                              className="pt-button pt-button--secondary"
+                              type="button"
+                              disabled={resetStatus === 'resetting'}
+                              onClick={cancelReset}
+                            >
+                              キャンセル
+                            </button>
+                          </div>
+                        </RunPopover>
+                      ) : null}
+                    </span>
                     <span
                       className="pt-run-actions__divider"
                       aria-hidden="true"
@@ -566,7 +703,13 @@ export function RunStepSection({
                         ) : null}
                       </button>
                       {activePopover === 'result' ? (
-                        <RunPopover triggerRef={resultButtonRef}>
+                        <RunPopover
+                          triggerRef={resultButtonRef}
+                          className="pt-run-popover--wide"
+                          horizontalOffsetPx={
+                            RUN_POPOVER_WIDE_HORIZONTAL_OFFSET_PX
+                          }
+                        >
                           <div className="pt-run-popover__header">
                             <h3>実行結果</h3>
                             <button
@@ -583,13 +726,76 @@ export function RunStepSection({
                               実行に失敗しました。もう一度お試しください。
                             </p>
                           ) : null}
-                          {run.output === null ? (
-                            <p className="pt-run-popover__empty">
-                              まだ実行されていません
-                            </p>
-                          ) : (
-                            <pre className="pt-snapshot">{run.output}</pre>
-                          )}
+                          <div className="pt-run-conversation-scroll">
+                            {run.messages.length === 0 ? (
+                              <p className="pt-run-popover__empty">
+                                まだ実行されていません
+                              </p>
+                            ) : (
+                              <div className="pt-run-conversation">
+                                {run.messages.map((message, index) => (
+                                  <p
+                                    key={index}
+                                    className={
+                                      message.role === 'user'
+                                        ? 'pt-run-conversation__message pt-run-conversation__message--user'
+                                        : 'pt-run-conversation__message pt-run-conversation__message--assistant'
+                                    }
+                                  >
+                                    {message.content}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <form
+                            className="pt-run-conversation-form"
+                            onSubmit={(event) => void handleSendMessage(event)}
+                          >
+                            <div className="pt-run-conversation-form__row">
+                              <label
+                                htmlFor={`run-message-${run.id}`}
+                                className="pt-sr-only"
+                              >
+                                メッセージ
+                              </label>
+                              <textarea
+                                ref={messageTextareaRef}
+                                id={`run-message-${run.id}`}
+                                rows={1}
+                                value={messageDraft}
+                                onChange={(e) => {
+                                  setMessageDraft(e.target.value);
+                                  if (sendStatus === 'failure')
+                                    setSendStatus('idle');
+                                }}
+                                disabled={sendStatus === 'sending'}
+                              />
+                              <button
+                                className="pt-run-conversation-form__send ti-arrow-up"
+                                type="submit"
+                                aria-label="送信"
+                                disabled={
+                                  sendStatus === 'sending' ||
+                                  messageDraft.trim().length === 0
+                                }
+                              >
+                                {sendStatus === 'sending' ? (
+                                  <span
+                                    className="pt-run-actions__spinner"
+                                    aria-hidden="true"
+                                  />
+                                ) : (
+                                  <ArrowUpIcon />
+                                )}
+                              </button>
+                            </div>
+                            {sendStatus === 'failure' ? (
+                              <p className="pt-form__error" role="alert">
+                                送信できませんでした。もう一度お試しください。
+                              </p>
+                            ) : null}
+                          </form>
                         </RunPopover>
                       ) : null}
                     </span>
@@ -883,6 +1089,23 @@ function PlayIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
       <path d="M7 5.5v13l11-6.5-11-6.5Z" />
+    </svg>
+  );
+}
+
+function RefreshIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M6.5 6.5A8 8 0 1 1 4 12" />
+      <path d="M4 5.5v4.5h4.5" />
+    </svg>
+  );
+}
+
+function ArrowUpIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M12 19V6M6 11l6-6 6 6" />
     </svg>
   );
 }

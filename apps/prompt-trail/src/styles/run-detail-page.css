@@ -229,6 +229,18 @@
   stroke: none;
 }
 
+/* The "やり直す" (retry) icon is a line drawing rather than a filled
+   shape, so it needs stroke-based rendering (and a thinner stroke than
+   the outlined icon buttons) instead of the solid-fill Play icon's rule
+   above. */
+.pt-run-actions__execute--icon-stroke svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .pt-run-actions__spinner {
   width: 1.1rem;
   height: 1.1rem;
@@ -333,6 +345,39 @@
   max-height: min(24rem, 50vh);
   overflow-y: auto;
   padding: var(--pt-space-3) var(--pt-space-4);
+}
+
+/* The 実行結果 popover holds a scrollable conversation plus a reply form,
+   so it gets extra width instead of sharing the 22rem base width used by
+   Prompt Snapshot and Related Links. */
+.pt-run-popover--wide {
+  width: min(32rem, calc(100vw - 2rem));
+}
+
+/* The 実行結果 popover keeps its header and message form always visible
+   (they're outside the scrolling region) while only the conversation
+   list scrolls internally, so a long conversation never hides the input.
+   This overrides the base .pt-run-popover__scroll's own overflow/scroll
+   behavior with a fixed-height flex column; see .pt-run-conversation-scroll
+   below for the actual scrolling region. */
+.pt-run-popover--wide .pt-run-popover__scroll {
+  display: flex;
+  flex-direction: column;
+  max-height: none;
+  overflow: hidden;
+}
+
+.pt-run-popover--wide .pt-run-popover__header,
+.pt-run-popover--wide .pt-run-popover__scroll > .pt-form__error,
+.pt-run-popover--wide .pt-run-conversation-form {
+  flex-shrink: 0;
+}
+
+.pt-run-conversation-scroll {
+  flex: 1;
+  min-height: 0;
+  max-height: min(28rem, 60vh);
+  overflow-y: auto;
 }
 
 /* The Related Links popover stacks a 3-field form plus the existing link
@@ -467,6 +512,103 @@
 .pt-run-popover__empty {
   margin: 0;
   color: var(--pt-color-text-muted);
+}
+
+.pt-run-popover__confirm-message {
+  margin-block: 0 var(--pt-space-3);
+  overflow-wrap: anywhere;
+}
+
+.pt-run-execute-confirmation__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pt-space-2);
+}
+
+.pt-run-conversation {
+  display: grid;
+  gap: var(--pt-space-2);
+  margin-block-end: var(--pt-space-3);
+}
+
+.pt-run-conversation__message {
+  max-width: 85%;
+  margin: 0;
+  padding: var(--pt-space-2) var(--pt-space-3);
+  border-radius: var(--pt-radius-md);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.pt-run-conversation__message--user {
+  justify-self: end;
+  color: #fff;
+  background: var(--pt-color-accent);
+}
+
+.pt-run-conversation__message--assistant {
+  justify-self: start;
+  color: var(--pt-color-text);
+  background: var(--pt-color-surface-subtle);
+}
+
+.pt-run-conversation-form {
+  display: grid;
+  gap: var(--pt-space-2);
+  padding-block-start: var(--pt-space-3);
+  border-top: 1px solid var(--pt-color-border);
+}
+
+.pt-run-conversation-form__row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--pt-space-2);
+}
+
+.pt-run-conversation-form textarea {
+  flex: 1;
+  min-height: 2.25rem;
+  max-height: 12rem;
+  padding: var(--pt-space-2);
+  border: 1px solid var(--pt-color-border);
+  border-radius: var(--pt-radius-sm);
+  resize: none;
+  overflow-y: auto;
+  font: inherit;
+}
+
+.pt-run-conversation-form__send {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--pt-radius-sm);
+  color: #fff;
+  background: var(--pt-color-accent);
+  cursor: pointer;
+}
+
+.pt-run-conversation-form__send:hover:not(:disabled) {
+  background: var(--pt-color-accent-strong);
+}
+
+.pt-run-conversation-form__send:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.pt-run-conversation-form__send svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 
 @media (max-width: 44rem) {

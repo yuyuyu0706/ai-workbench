@@ -1164,8 +1164,15 @@ describe('TrailDetailPage Run actions popovers', () => {
     expect(await screen.findByText('まだ実行されていません')).toBeVisible();
   });
 
-  it('shows the Run output inside the result popover once executed', async () => {
-    const executedRun = { ...direct, output: 'Generated output text' };
+  it('shows the Run conversation inside the result popover once executed', async () => {
+    const executedRun = {
+      ...direct,
+      output: 'Generated output text',
+      messages: [
+        { role: 'user', content: 'Please generate a plan' },
+        { role: 'assistant', content: 'Generated output text' },
+      ],
+    };
     const repository = {
       getRun: vi.fn(async () => executedRun),
       getProject: vi.fn(async () => ({ name: 'Project' })),
@@ -1175,7 +1182,8 @@ describe('TrailDetailPage Run actions popovers', () => {
     } as any;
     renderPage(repository);
     await openResultPopover();
-    expect(await screen.findByText('Generated output text')).toBeVisible();
+    expect(await screen.findByText('Please generate a plan')).toBeVisible();
+    expect(screen.getByText('Generated output text')).toBeVisible();
   });
 
   it('executes a Run, shows a loading state, and surfaces the new result', async () => {
@@ -1243,6 +1251,147 @@ describe('TrailDetailPage Run actions popovers', () => {
       await screen.findByText('実行に失敗しました。もう一度お試しください。'),
     ).toBeVisible();
 
+    vi.unstubAllGlobals();
+  });
+
+  it('continues the conversation by sending a follow-up message', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const runWithHistory = {
+      ...direct,
+      output: 'First answer',
+      messages: [
+        { role: 'user', content: 'Hello' },
+        { role: 'assistant', content: 'First answer' },
+      ],
+    };
+    const continuedRun = {
+      ...runWithHistory,
+      output: 'Second answer',
+      messages: [
+        ...runWithHistory.messages,
+        { role: 'user', content: 'Follow up' },
+        { role: 'assistant', content: 'Second answer' },
+      ],
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ output: 'Second answer' }), {
+            status: 200,
+          }),
+      ),
+    );
+    const repository = {
+      getRun: vi.fn(async () => runWithHistory),
+      getProject: vi.fn(async () => ({ name: 'Project' })),
+      getTrail: vi.fn(async () => trail),
+      listRunsByTrail: vi.fn(async () => [runWithHistory]),
+      listActiveLinks: vi.fn(async () => []),
+      saveRun: vi.fn(async () => continuedRun),
+    } as any;
+    renderPage(repository);
+    await openResultPopover();
+    expect(await screen.findByText('Hello')).toBeVisible();
+
+    const input = screen.getByLabelText('メッセージ');
+    await user.type(input, 'Follow up');
+    await user.click(screen.getByRole('button', { name: '送信' }));
+
+    await waitFor(() => expect(repository.saveRun).toHaveBeenCalledOnce());
+    expect(input).toHaveValue('');
+    vi.unstubAllGlobals();
+  });
+
+  it('keeps the outer button as 実行する while messages are empty, and switches to やり直す once a conversation exists', async () => {
+    renderPage(createDetailRepository([]));
+    await screen.findByText('Prompt A');
+    expect(
+      screen.getByRole('button', { name: '実行する' }),
+    ).toBeInTheDocument();
+
+    const runWithHistory = {
+      ...direct,
+      messages: [
+        { role: 'user', content: 'Hello' },
+        { role: 'assistant', content: 'Hi' },
+      ],
+    };
+    const repository = {
+      getRun: vi.fn(async () => runWithHistory),
+      getProject: vi.fn(async () => ({ name: 'Project' })),
+      getTrail: vi.fn(async () => trail),
+      listRunsByTrail: vi.fn(async () => [runWithHistory]),
+      listActiveLinks: vi.fn(async () => []),
+    } as any;
+    renderPage(repository);
+    expect(
+      await screen.findByRole('button', { name: 'やり直す' }),
+    ).toBeInTheDocument();
+  });
+
+  it('resets the conversation and re-executes only after confirming やり直す', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const runWithHistory = {
+      ...direct,
+      output: 'First answer',
+      messages: [
+        { role: 'user', content: 'Hello' },
+        { role: 'assistant', content: 'First answer' },
+      ],
+    };
+    const resetRun = { ...runWithHistory, messages: [], output: null };
+    const reExecutedRun = {
+      ...resetRun,
+      output: 'Fresh answer',
+      messages: [
+        { role: 'user', content: 'Re-run prompt' },
+        { role: 'assistant', content: 'Fresh answer' },
+      ],
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ output: 'Fresh answer' }), {
+            status: 200,
+          }),
+      ),
+    );
+    const repository = {
+      getRun: vi.fn(async () => runWithHistory),
+      getProject: vi.fn(async () => ({ name: 'Project' })),
+      getTrail: vi.fn(async () => trail),
+      listRunsByTrail: vi.fn(async () => [runWithHistory]),
+      listActiveLinks: vi.fn(async () => []),
+      saveRun: vi
+        .fn()
+        .mockResolvedValueOnce(resetRun)
+        .mockResolvedValueOnce(reExecutedRun),
+    } as any;
+    renderPage(repository);
+    const restartButton = await screen.findByRole('button', {
+      name: 'やり直す',
+    });
+    await user.click(restartButton);
+    expect(
+      screen.getByText('会話をリセットして最初から実行しますか？'),
+    ).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'キャンセル' }));
+    expect(
+      screen.queryByText('会話をリセットして最初から実行しますか？'),
+    ).toBeNull();
+    expect(repository.saveRun).not.toHaveBeenCalled();
+
+    await user.click(restartButton);
+    await user.click(screen.getByRole('button', { name: '実行する' }));
+
+    await waitFor(() =>
+      expect(repository.saveRun).toHaveBeenCalledWith(
+        expect.objectContaining({ messages: [], output: null }),
+      ),
+    );
     vi.unstubAllGlobals();
   });
 });
