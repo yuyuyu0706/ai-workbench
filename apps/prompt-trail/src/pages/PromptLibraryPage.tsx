@@ -5,10 +5,8 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type MouseEvent,
 } from 'react';
-import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import {
@@ -25,11 +23,10 @@ import {
   routePaths,
 } from '../app/routes';
 import { PageSection, StateMessage } from '../components/ui';
-import { buildPopoverArrowStyle } from '../components/popoverArrow';
-import {
-  usePopoverPosition,
-  type PopoverMeasurements,
-  type PopoverPlacementOption,
+import { ResponsivePopover } from '../components/ResponsivePopover';
+import type {
+  PopoverMeasurements,
+  PopoverPlacementOption,
 } from '../components/usePopoverPosition';
 import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
 import { selectActiveDeveloperUiState } from '../developer-ui-state';
@@ -126,27 +123,6 @@ const PROMPT_BODY_POPOVER_PLACEMENTS: readonly PopoverPlacementOption<PromptBody
     },
   ];
 
-function buildPromptBodyPopoverStyle(
-  position: ReturnType<
-    typeof usePopoverPosition<PromptBodyPopoverPlacement>
-  >['position'],
-): { placement: PromptBodyPopoverPlacement; style: CSSProperties } | undefined {
-  if (position === null) return undefined;
-  const { left, top, placement } = position;
-  return {
-    placement,
-    style: {
-      left,
-      top,
-      ...buildPopoverArrowStyle(position, {
-        varPrefix: '--pt-prompt-body-arrow',
-        arrowSizePx: PROMPT_BODY_POPOVER_ARROW_SIZE_PX,
-        safeMarginPx: PROMPT_BODY_POPOVER_ARROW_SAFE_MARGIN_PX,
-      }),
-    } as CSSProperties,
-  };
-}
-
 type TrailSearchPopoverPlacement =
   'right-start' | 'left-start' | 'bottom-start';
 
@@ -198,28 +174,6 @@ const TRAIL_SEARCH_POPOVER_PLACEMENTS: readonly PopoverPlacementOption<TrailSear
       },
     },
   ];
-
-function buildTrailSearchPopoverStyle(
-  position: ReturnType<
-    typeof usePopoverPosition<TrailSearchPopoverPlacement>
-  >['position'],
-):
-  { placement: TrailSearchPopoverPlacement; style: CSSProperties } | undefined {
-  if (position === null) return undefined;
-  const { left, top, placement } = position;
-  return {
-    placement,
-    style: {
-      left,
-      top,
-      ...buildPopoverArrowStyle(position, {
-        varPrefix: '--pt-prompt-body-arrow',
-        arrowSizePx: TRAIL_SEARCH_POPOVER_ARROW_SIZE_PX,
-        safeMarginPx: TRAIL_SEARCH_POPOVER_ARROW_SAFE_MARGIN_PX,
-      }),
-    } as CSSProperties,
-  };
-}
 
 export function PromptLibraryPage() {
   const repository = usePromptTrailRepository();
@@ -736,16 +690,10 @@ function TrailSearchPopover({ prompt }: { prompt: PromptLibraryItem }) {
   const trailsLoading = trailsKey !== null && trailsResult?.key !== trailsKey;
   const trailsItems = trailsResult?.key === trailsKey ? trailsResult.items : [];
 
-  const { position: rawPosition, scheduleUpdate: schedulePositionUpdate } =
-    usePopoverPosition({
-      triggerRef,
-      panelRef,
-      open,
-      placements: TRAIL_SEARCH_POPOVER_PLACEMENTS,
-    });
-  const position = useMemo(
-    () => buildTrailSearchPopoverStyle(rawPosition),
-    [rawPosition],
+  const scheduleUpdateRef = useRef<(() => void) | null>(null);
+  const schedulePositionUpdate = useCallback(
+    () => scheduleUpdateRef.current?.(),
+    [],
   );
 
   useEffect(() => {
@@ -814,80 +762,76 @@ function TrailSearchPopover({ prompt }: { prompt: PromptLibraryItem }) {
       >
         紐づくTrailを検索
       </span>
-      {open
-        ? createPortal(
-            <div
-              ref={panelRef}
-              className="pt-prompt-body-popover pt-trail-search-popover"
-              data-placement={position?.placement}
-              id={panelId}
-              role="dialog"
-              aria-label={`「${prompt.title}」から作成されたTrail`}
-              style={
-                position?.style ?? { left: 0, top: 0, visibility: 'hidden' }
-              }
+      <ResponsivePopover
+        triggerRef={triggerRef}
+        panelRef={panelRef}
+        open={open}
+        placements={TRAIL_SEARCH_POPOVER_PLACEMENTS}
+        arrow={{
+          varPrefix: '--pt-prompt-body-arrow',
+          sizePx: TRAIL_SEARCH_POPOVER_ARROW_SIZE_PX,
+          safeMarginPx: TRAIL_SEARCH_POPOVER_ARROW_SAFE_MARGIN_PX,
+          className: 'pt-prompt-body-popover__arrow',
+        }}
+        panelClassName="pt-prompt-body-popover pt-trail-search-popover"
+        panelId={panelId}
+        ariaLabel={`「${prompt.title}」から作成されたTrail`}
+        title="紐づくTrail"
+        sheetHeader={false}
+        onClose={() => {
+          setOpen(false);
+          triggerRef.current?.focus({ preventScroll: true });
+        }}
+        scheduleUpdateRef={scheduleUpdateRef}
+      >
+        <header className="pt-prompt-body-popover__header">
+          <h3>紐づくTrail</h3>
+          <span className="pt-prompt-body-popover__close-wrap">
+            <button
+              aria-label="閉じる"
+              className="pt-prompt-body-popover__close"
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                triggerRef.current?.focus({ preventScroll: true });
+              }}
             >
-              <span
-                aria-hidden="true"
-                className="pt-prompt-body-popover__arrow"
-              />
-              <header className="pt-prompt-body-popover__header">
-                <h3>紐づくTrail</h3>
-                <span className="pt-prompt-body-popover__close-wrap">
-                  <button
-                    aria-label="閉じる"
-                    className="pt-prompt-body-popover__close"
-                    type="button"
-                    onClick={() => {
-                      setOpen(false);
-                      triggerRef.current?.focus({ preventScroll: true });
-                    }}
+              <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+                <path d="M6 6l12 12M18 6 6 18" />
+              </svg>
+            </button>
+          </span>
+        </header>
+        <div className="pt-prompt-body-popover__content">
+          {trailsLoading ? (
+            <p className="pt-trail-search-popover__empty">読み込み中...</p>
+          ) : trailsItems.length === 0 ? (
+            <p className="pt-trail-search-popover__empty">
+              まだ紐づくTrailはありません
+            </p>
+          ) : (
+            <ul className="pt-trail-search-popover__list">
+              {trailsItems.map((item) => (
+                <li key={item.trail.id}>
+                  <Link
+                    to={buildTrailDetailPath(item.trail.id)}
+                    onClick={() => setOpen(false)}
                   >
-                    <svg
-                      aria-hidden="true"
-                      focusable="false"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M6 6l12 12M18 6 6 18" />
-                    </svg>
-                  </button>
-                </span>
-              </header>
-              <div className="pt-prompt-body-popover__content">
-                {trailsLoading ? (
-                  <p className="pt-trail-search-popover__empty">
-                    読み込み中...
-                  </p>
-                ) : trailsItems.length === 0 ? (
-                  <p className="pt-trail-search-popover__empty">
-                    まだ紐づくTrailはありません
-                  </p>
-                ) : (
-                  <ul className="pt-trail-search-popover__list">
-                    {trailsItems.map((item) => (
-                      <li key={item.trail.id}>
-                        <Link
-                          to={buildTrailDetailPath(item.trail.id)}
-                          onClick={() => setOpen(false)}
-                        >
-                          {item.title}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <Link
-                  className="pt-trail-search-popover__see-all"
-                  to={buildTrailListByPromptPath(prompt.id)}
-                  onClick={() => setOpen(false)}
-                >
-                  すべて見る
-                </Link>
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
+                    {item.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link
+            className="pt-trail-search-popover__see-all"
+            to={buildTrailListByPromptPath(prompt.id)}
+            onClick={() => setOpen(false)}
+          >
+            すべて見る
+          </Link>
+        </div>
+      </ResponsivePopover>
     </span>
   );
 }
@@ -959,16 +903,10 @@ function PromptBodyPopover({
   const [recoveryStatus, setRecoveryStatus] =
     useState<PromptBodyRecoveryStatus>(null);
 
-  const { position: rawPosition, scheduleUpdate: schedulePositionUpdate } =
-    usePopoverPosition({
-      triggerRef,
-      panelRef,
-      open,
-      placements: PROMPT_BODY_POPOVER_PLACEMENTS,
-    });
-  const position = useMemo(
-    () => buildPromptBodyPopoverStyle(rawPosition),
-    [rawPosition],
+  const scheduleUpdateRef = useRef<(() => void) | null>(null);
+  const schedulePositionUpdate = useCallback(
+    () => scheduleUpdateRef.current?.(),
+    [],
   );
 
   useEffect(() => {
@@ -1509,27 +1447,26 @@ function PromptBodyPopover({
           Prompt本文を表示
         </span>
       </span>
-      {open
-        ? createPortal(
-            <div
-              ref={panelRef}
-              className="pt-prompt-body-popover"
-              data-placement={position?.placement}
-              id={panelId}
-              role="dialog"
-              aria-label="Prompt本文"
-              style={
-                position?.style ?? {
-                  left: 0,
-                  top: 0,
-                  visibility: 'hidden',
-                }
-              }
-            >
-              <span
-                aria-hidden="true"
-                className="pt-prompt-body-popover__arrow"
-              />
+      <ResponsivePopover
+        triggerRef={triggerRef}
+        panelRef={panelRef}
+        open={open}
+        placements={PROMPT_BODY_POPOVER_PLACEMENTS}
+        arrow={{
+          varPrefix: '--pt-prompt-body-arrow',
+          sizePx: PROMPT_BODY_POPOVER_ARROW_SIZE_PX,
+          safeMarginPx: PROMPT_BODY_POPOVER_ARROW_SAFE_MARGIN_PX,
+          className: 'pt-prompt-body-popover__arrow',
+        }}
+        panelClassName="pt-prompt-body-popover"
+        panelId={panelId}
+        ariaLabel="Prompt本文"
+        title="Prompt本文"
+        sheetHeader={false}
+        onClose={handleCloseButton}
+        scheduleUpdateRef={scheduleUpdateRef}
+      >
+        <>
               <header className="pt-prompt-body-popover__header">
                 <h3>Prompt本文</h3>
                 <div className="pt-prompt-body-popover__header-actions">
@@ -1800,10 +1737,8 @@ function PromptBodyPopover({
                   <p>{prompt.body}</p>
                 </div>
               )}
-            </div>,
-            document.body,
-          )
-        : null}
+        </>
+      </ResponsivePopover>
     </>
   );
 }

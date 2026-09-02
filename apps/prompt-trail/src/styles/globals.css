@@ -37,3 +37,72 @@ h3,
 p {
   margin-top: 0;
 }
+
+/* Narrow-viewport (<480px) bottom sheet used by ResponsivePopover in place
+   of an arrow-anchored popover. Shared by Trail Detail's RunPopover and
+   Prompt Library's PromptBodyPopover / TrailSearchPopover; each caller's
+   own panel classes still apply alongside `.pt-responsive-popover--sheet`
+   for their content styling. */
+.pt-responsive-popover__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgb(23 32 51 / 45%);
+}
+
+.pt-responsive-popover--sheet {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 61;
+  display: flex;
+  flex-direction: column;
+  max-height: min(85vh, 42rem);
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-top: 1px solid var(--pt-color-border);
+  border-radius: var(--pt-radius-md) var(--pt-radius-md) 0 0;
+  box-shadow: var(--pt-shadow-hero);
+  color: var(--pt-color-text);
+  background: var(--pt-color-surface);
+  text-align: left;
+  overflow: hidden;
+}
+
+.pt-responsive-popover__header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pt-space-3);
+  padding: var(--pt-space-4);
+  border-bottom: 1px solid var(--pt-color-border);
+}
+
+.pt-responsive-popover__header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.pt-responsive-popover__close {
+  padding: var(--pt-space-1) var(--pt-space-2);
+  border: none;
+  border-radius: var(--pt-radius-sm);
+  color: var(--pt-color-text-muted);
+  background: transparent;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pt-responsive-popover__close:hover {
+  color: var(--pt-color-text-strong);
+  background: var(--pt-color-surface-subtle);
+}
+
+.pt-responsive-popover__body {
+  flex: 1;
+  min-height: 0;
+  padding: var(--pt-space-4);
+  overflow-y: auto;
+}
