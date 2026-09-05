@@ -4,19 +4,16 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type RefObject,
 } from 'react';
-import { createPortal } from 'react-dom';
 import { Link as RouterLink } from 'react-router-dom';
 import { buildNewTrailReusePath } from '../app/routes';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageSection } from '../components/ui';
-import { buildPopoverArrowStyle } from '../components/popoverArrow';
-import {
-  usePopoverPosition,
-  type PopoverMeasurements,
-  type PopoverPlacementOption,
+import { ResponsivePopover } from '../components/ResponsivePopover';
+import type {
+  PopoverMeasurements,
+  PopoverPlacementOption,
 } from '../components/usePopoverPosition';
 import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
 import { selectActiveDeveloperUiState } from '../developer-ui-state';
@@ -133,11 +130,22 @@ function RunPopover({
   triggerRef,
   className,
   horizontalOffsetPx = RUN_POPOVER_HORIZONTAL_OFFSET_PX,
+  title,
+  onClose,
+  sheetHeader = true,
   children,
 }: {
   triggerRef: RefObject<HTMLElement | null>;
   className?: string;
   horizontalOffsetPx?: number;
+  /** Heading shown in the narrow-viewport bottom sheet, for context. */
+  title: string;
+  onClose: () => void;
+  /**
+   * Set to `false` when `children` already render their own header/close
+   * button, so the narrow-viewport sheet doesn't show a duplicate one.
+   */
+  sheetHeader?: boolean;
   children: React.ReactNode;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -145,43 +153,29 @@ function RunPopover({
     () => buildRunPopoverPlacements(horizontalOffsetPx),
     [horizontalOffsetPx],
   );
-  const { position } = usePopoverPosition({
-    triggerRef,
-    panelRef,
-    open: true,
-    placements,
-    gap: RUN_POPOVER_GAP_PX,
-  });
-  const style = useMemo<CSSProperties>(() => {
-    if (position === null) return { left: 0, top: 0, visibility: 'hidden' };
-    // 'right-start' keeps a fixed bottom-edge arrow position (see
-    // run-detail-page.css) but still needs the dynamically computed
-    // horizontal (--pt-run-popover-arrow-x) offset so the arrow tracks
-    // whichever trigger was actually clicked; 'left-start'/'bottom-start'
-    // use both axes from this same helper.
-    const arrowStyle = buildPopoverArrowStyle(position, {
-      varPrefix: '--pt-run-popover-arrow',
-      arrowSizePx: RUN_POPOVER_ARROW_SIZE_PX,
-      safeMarginPx: RUN_POPOVER_ARROW_SAFE_MARGIN_PX,
-    });
-    return {
-      left: position.left,
-      top: position.top,
-      ...arrowStyle,
-    } as CSSProperties;
-  }, [position]);
-  return createPortal(
-    <div
-      className={className ? `pt-run-popover ${className}` : 'pt-run-popover'}
-      data-placement={position?.placement}
-      ref={panelRef}
-      role="dialog"
-      style={style}
+  return (
+    <ResponsivePopover
+      triggerRef={triggerRef}
+      panelRef={panelRef}
+      open={true}
+      placements={placements}
+      gap={RUN_POPOVER_GAP_PX}
+      arrow={{
+        varPrefix: '--pt-run-popover-arrow',
+        sizePx: RUN_POPOVER_ARROW_SIZE_PX,
+        safeMarginPx: RUN_POPOVER_ARROW_SAFE_MARGIN_PX,
+        className: 'pt-run-popover__arrow',
+      }}
+      panelClassName={
+        className ? `pt-run-popover ${className}` : 'pt-run-popover'
+      }
+      scrollClassName="pt-run-popover__scroll"
+      title={title}
+      sheetHeader={sheetHeader}
+      onClose={onClose}
     >
-      <span aria-hidden="true" className="pt-run-popover__arrow" />
-      <div className="pt-run-popover__scroll">{children}</div>
-    </div>,
-    document.body,
+      {children}
+    </ResponsivePopover>
   );
 }
 
@@ -595,7 +589,11 @@ export function RunStepSection({
                         )}
                       </button>
                       {resetStatus !== 'idle' ? (
-                        <RunPopover triggerRef={executeButtonRef}>
+                        <RunPopover
+                          triggerRef={executeButtonRef}
+                          title="実行を確認"
+                          onClose={cancelReset}
+                        >
                           <p className="pt-run-popover__confirm-message">
                             会話をリセットして最初から実行しますか？
                           </p>
@@ -643,7 +641,12 @@ export function RunStepSection({
                         <FileTextIcon />
                       </button>
                       {activePopover === 'prompt' ? (
-                        <RunPopover triggerRef={promptButtonRef}>
+                        <RunPopover
+                          triggerRef={promptButtonRef}
+                          title="Prompt Snapshot"
+                          sheetHeader={false}
+                          onClose={() => setActivePopover(null)}
+                        >
                           <div className="pt-run-popover__header">
                             <div className="pt-run-popover__header-title">
                               <h3>Prompt Snapshot</h3>
@@ -709,6 +712,9 @@ export function RunStepSection({
                           horizontalOffsetPx={
                             RUN_POPOVER_WIDE_HORIZONTAL_OFFSET_PX
                           }
+                          title="実行結果"
+                          sheetHeader={false}
+                          onClose={() => setActivePopover(null)}
                         >
                           <div className="pt-run-popover__header">
                             <h3>実行結果</h3>
@@ -819,6 +825,9 @@ export function RunStepSection({
                         <RunPopover
                           triggerRef={linksButtonRef}
                           className="pt-run-popover--links"
+                          title="関連リンク"
+                          sheetHeader={false}
+                          onClose={() => setActivePopover(null)}
                         >
                           <div className="pt-run-popover__header">
                             <div className="pt-run-popover__header-title">
