@@ -8,7 +8,10 @@ import { useSyncExternalStore } from 'react';
 const NARROW_VIEWPORT_QUERY = '(max-width: 479px)';
 
 function subscribeToNarrowViewport(onChange: () => void): () => void {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+  if (
+    typeof window === 'undefined' ||
+    typeof window.matchMedia !== 'function'
+  ) {
     return () => {};
   }
   const mediaQueryList = window.matchMedia(NARROW_VIEWPORT_QUERY);
@@ -22,7 +25,10 @@ function subscribeToNarrowViewport(onChange: () => void): () => void {
 }
 
 function getNarrowViewportSnapshot(): boolean {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+  if (
+    typeof window === 'undefined' ||
+    typeof window.matchMedia !== 'function'
+  ) {
     return false;
   }
   return window.matchMedia(NARROW_VIEWPORT_QUERY).matches;

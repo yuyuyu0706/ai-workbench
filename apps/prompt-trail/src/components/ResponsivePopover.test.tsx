@@ -29,10 +29,7 @@ function mockMatchMedia(matches: boolean) {
     removeListener: () => {},
     dispatchEvent: () => true,
   } as unknown as MediaQueryList;
-  vi.stubGlobal(
-    'matchMedia',
-    vi.fn().mockReturnValue(mql),
-  );
+  vi.stubGlobal('matchMedia', vi.fn().mockReturnValue(mql));
 }
 
 function TestHarness({ onClose }: { onClose: () => void }) {
@@ -78,9 +75,7 @@ describe('ResponsivePopover', () => {
     expect(dialog).toHaveClass('pt-test-popover');
     expect(dialog.querySelector('.pt-test-popover__arrow')).not.toBeNull();
     expect(document.querySelector('.pt-responsive-popover__scrim')).toBeNull();
-    expect(
-      document.querySelector('.pt-responsive-popover--sheet'),
-    ).toBeNull();
+    expect(document.querySelector('.pt-responsive-popover--sheet')).toBeNull();
   });
 
   it('renders a bottom sheet with a scrim and no arrow on narrow viewports', () => {
