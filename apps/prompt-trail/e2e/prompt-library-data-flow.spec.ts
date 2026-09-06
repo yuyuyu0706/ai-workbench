@@ -373,6 +373,9 @@ test.describe('Prompt Library data flow', () => {
     await expect(page).toHaveURL(/\/prompts\/prompt-library-e2e\/edit$/);
     await page.goBack();
     await expect(promptTable).toBeVisible();
+    // Navigating back can leave the previous row's popover open; on narrow
+    // viewports its scrim then covers the table and blocks the next click.
+    await page.keyboard.press('Escape');
     await globalTrigger.click();
     await expect(popover).toContainText('Global Promptの本文');
     const popoverContent = popover.locator('.pt-prompt-body-popover__content');
