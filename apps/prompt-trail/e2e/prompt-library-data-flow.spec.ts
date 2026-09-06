@@ -426,9 +426,21 @@ test.describe('Prompt Library data flow', () => {
       .getByRole('heading', { level: 1, name: 'Prompt Library' })
       .hover();
     await globalTrigger.click();
-    await page
-      .getByRole('heading', { level: 1, name: 'Prompt Library' })
-      .click();
+    // On narrow viewports the popover renders as a modal bottom sheet with a
+    // full-screen scrim, so background content (like this heading) can't be
+    // clicked directly — clicking the scrim itself is the outside-click
+    // equivalent there.
+    if (testInfo.project.name === 'chromium-mobile') {
+      // The sheet covers most of the viewport height, so click a corner of
+      // the scrim that's guaranteed not to be under it.
+      await page
+        .locator('.pt-responsive-popover__scrim')
+        .click({ position: { x: 5, y: 5 } });
+    } else {
+      await page
+        .getByRole('heading', { level: 1, name: 'Prompt Library' })
+        .click();
+    }
     await expect(page.getByRole('dialog', { name: 'Prompt本文' })).toHaveCount(
       0,
     );
@@ -1011,7 +1023,7 @@ test.describe('Prompt Library data flow', () => {
     await page.getByRole('button', { name: 'Prompt Snapshotを表示' }).click();
     await expect(
       page
-        .locator('.pt-run-popover')
+        .locator('.pt-responsive-popover')
         .getByText('変更内容を確認して実装してください。'),
     ).toBeVisible();
 
@@ -1067,7 +1079,7 @@ test.describe('Prompt Library data flow', () => {
     await page.getByRole('button', { name: 'Prompt Snapshotを表示' }).click();
     await expect(
       page
-        .locator('.pt-run-popover')
+        .locator('.pt-responsive-popover')
         .getByText('変更内容を確認して実装してください。'),
     ).toBeVisible();
     await page.getByRole('button', { name: '閉じる' }).click();
@@ -1111,7 +1123,9 @@ test.describe('Prompt Library data flow', () => {
       .getByRole('button', { name: 'Prompt Snapshotを表示' })
       .click();
     await expect(
-      stalePage.locator('.pt-run-popover').getByText('編集後のPrompt本文'),
+      stalePage
+        .locator('.pt-responsive-popover')
+        .getByText('編集後のPrompt本文'),
     ).toBeVisible();
 
     await editorPage.goto('/prompts/prompt-library-e2e/edit');
@@ -1121,7 +1135,7 @@ test.describe('Prompt Library data flow', () => {
     await page.getByRole('button', { name: 'Prompt Snapshotを表示' }).click();
     await expect(
       page
-        .locator('.pt-run-popover')
+        .locator('.pt-responsive-popover')
         .getByText('変更内容を確認して実装してください。'),
     ).toBeVisible();
     await page.goto('/trails/new?sourcePromptId=prompt-library-e2e');

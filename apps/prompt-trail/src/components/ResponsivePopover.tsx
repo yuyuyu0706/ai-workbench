@@ -37,9 +37,10 @@ export type ResponsivePopoverProps<TId extends string> = {
   readonly scrollClassName?: string;
   readonly panelId?: string;
   /**
-   * Accessible name for the wide-mode dialog. Pass `undefined` to leave the
-   * wide-mode panel exactly as it is today (no `aria-label`); the narrow
-   * (sheet) dialog always uses `title` as its accessible name.
+   * Accessible name for the dialog. Pass `undefined` to leave the wide-mode
+   * panel exactly as it is today (no `aria-label`). The narrow (sheet)
+   * dialog uses this when provided, falling back to `title` otherwise, so
+   * the accessible name stays consistent across both modes.
    */
   readonly ariaLabel?: string;
   /** Heading shown in the narrow bottom-sheet header, for context. */
@@ -52,11 +53,21 @@ export type ResponsivePopoverProps<TId extends string> = {
    */
   readonly sheetHeader?: boolean;
   /**
-   * Closes the popover. Wired to the sheet's close button, scrim click, and
-   * Escape key in narrow mode. Wide mode keeps relying on each caller's
-   * existing outside-click/Escape handling, unchanged.
+   * Closes the popover. Always wired to the sheet's close button and scrim
+   * click in narrow mode. Also wired to Escape in narrow mode, unless
+   * `closeOnEscape` is `false` because the caller already implements its own
+   * Escape handling (e.g. to guard a nested popover's state). Wide mode
+   * keeps relying on each caller's existing outside-click/Escape handling,
+   * unchanged.
    */
   readonly onClose: () => void;
+  /**
+   * Set to `false` when the caller already closes the popover on Escape
+   * itself (typically with extra logic, such as not closing while a nested
+   * popover is open) so ResponsivePopover doesn't also close it. Defaults to
+   * `true`.
+   */
+  readonly closeOnEscape?: boolean;
   /**
    * Exposes the underlying `usePopoverPosition` `scheduleUpdate` so callers
    * that need to force a reposition after a content change (e.g. an inline
@@ -94,6 +105,7 @@ export function ResponsivePopover<TId extends string>({
   title,
   sheetHeader = true,
   onClose,
+  closeOnEscape = true,
   scheduleUpdateRef,
   children,
 }: ResponsivePopoverProps<TId>) {
@@ -114,13 +126,13 @@ export function ResponsivePopover<TId extends string>({
   }, [scheduleUpdate, scheduleUpdateRef]);
 
   useEffect(() => {
-    if (!open || !isNarrow) return;
+    if (!open || !isNarrow || !closeOnEscape) return;
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') onClose();
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [open, isNarrow, onClose]);
+  }, [open, isNarrow, closeOnEscape, onClose]);
 
   if (!open) return null;
 
@@ -137,7 +149,7 @@ export function ResponsivePopover<TId extends string>({
           id={panelId}
           ref={panelRef}
           role="dialog"
-          aria-label={title}
+          aria-label={ariaLabel ?? title}
         >
           {sheetHeader ? (
             <header className="pt-responsive-popover__header">
@@ -175,7 +187,7 @@ export function ResponsivePopover<TId extends string>({
   return createPortal(
     <div
       ref={panelRef}
-      className={panelClassName}
+      className={`${panelClassName} pt-responsive-popover`}
       data-placement={position?.placement}
       id={panelId}
       role="dialog"

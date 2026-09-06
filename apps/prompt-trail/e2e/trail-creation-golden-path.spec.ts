@@ -18,13 +18,13 @@ async function closeOpenPopover(page: Page): Promise<void> {
 async function openPromptPopover(page: Page): Promise<Locator> {
   await closeOpenPopover(page);
   await page.getByRole('button', { name: 'Prompt Snapshotを表示' }).click();
-  return page.locator('.pt-run-popover');
+  return page.locator('.pt-responsive-popover');
 }
 
 async function openLinksPopover(page: Page): Promise<Locator> {
   await closeOpenPopover(page);
   await page.getByRole('button', { name: '関連リンクを表示' }).click();
-  return page.locator('.pt-run-popover');
+  return page.locator('.pt-responsive-popover');
 }
 
 async function expectCreatedTrail(page: Page) {
@@ -186,14 +186,14 @@ test.describe('first Trail creation acceptance', () => {
         .filter({ hasText: '関連リンクを削除しました。' }),
     ).toBeVisible();
     await expect(
-      page.locator('.pt-run-popover').getByRole('listitem'),
+      page.locator('.pt-responsive-popover').getByRole('listitem'),
     ).toHaveCount(0);
     await expectNoHorizontalOverflow(page);
 
     await page.reload();
     await openLinksPopover(page);
     await expect(
-      page.locator('.pt-run-popover').getByRole('listitem'),
+      page.locator('.pt-responsive-popover').getByRole('listitem'),
     ).toHaveCount(0);
 
     await closeOpenPopover(page);
@@ -208,7 +208,7 @@ test.describe('first Trail creation acceptance', () => {
     await expect(page).toHaveURL(runDetailUrl);
     await openLinksPopover(page);
     await expect(
-      page.locator('.pt-run-popover').getByRole('listitem'),
+      page.locator('.pt-responsive-popover').getByRole('listitem'),
     ).toHaveCount(0);
   });
 

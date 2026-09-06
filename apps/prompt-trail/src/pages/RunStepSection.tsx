@@ -173,6 +173,7 @@ function RunPopover({
       title={title}
       sheetHeader={sheetHeader}
       onClose={onClose}
+      closeOnEscape={false}
     >
       {children}
     </ResponsivePopover>
@@ -315,7 +316,7 @@ export function RunStepSection({
       const target = event.target as Node;
       const isInsideActionsCell = actionsCellRef.current?.contains(target);
       const isInsidePortaledPopover =
-        target instanceof Element && target.closest('.pt-run-popover');
+        target instanceof Element && target.closest('.pt-responsive-popover');
       if (!isInsideActionsCell && !isInsidePortaledPopover) {
         setActivePopover(null);
       }
