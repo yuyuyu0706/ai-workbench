@@ -5,10 +5,8 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type MouseEvent,
 } from 'react';
-import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import {
@@ -25,11 +23,10 @@ import {
   routePaths,
 } from '../app/routes';
 import { PageSection, StateMessage } from '../components/ui';
-import { buildPopoverArrowStyle } from '../components/popoverArrow';
-import {
-  usePopoverPosition,
-  type PopoverMeasurements,
-  type PopoverPlacementOption,
+import { ResponsivePopover } from '../components/ResponsivePopover';
+import type {
+  PopoverMeasurements,
+  PopoverPlacementOption,
 } from '../components/usePopoverPosition';
 import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
 import { selectActiveDeveloperUiState } from '../developer-ui-state';
@@ -126,27 +123,6 @@ const PROMPT_BODY_POPOVER_PLACEMENTS: readonly PopoverPlacementOption<PromptBody
     },
   ];
 
-function buildPromptBodyPopoverStyle(
-  position: ReturnType<
-    typeof usePopoverPosition<PromptBodyPopoverPlacement>
-  >['position'],
-): { placement: PromptBodyPopoverPlacement; style: CSSProperties } | undefined {
-  if (position === null) return undefined;
-  const { left, top, placement } = position;
-  return {
-    placement,
-    style: {
-      left,
-      top,
-      ...buildPopoverArrowStyle(position, {
-        varPrefix: '--pt-prompt-body-arrow',
-        arrowSizePx: PROMPT_BODY_POPOVER_ARROW_SIZE_PX,
-        safeMarginPx: PROMPT_BODY_POPOVER_ARROW_SAFE_MARGIN_PX,
-      }),
-    } as CSSProperties,
-  };
-}
-
 type TrailSearchPopoverPlacement =
   'right-start' | 'left-start' | 'bottom-start';
 
@@ -198,28 +174,6 @@ const TRAIL_SEARCH_POPOVER_PLACEMENTS: readonly PopoverPlacementOption<TrailSear
       },
     },
   ];
-
-function buildTrailSearchPopoverStyle(
-  position: ReturnType<
-    typeof usePopoverPosition<TrailSearchPopoverPlacement>
-  >['position'],
-):
-  { placement: TrailSearchPopoverPlacement; style: CSSProperties } | undefined {
-  if (position === null) return undefined;
-  const { left, top, placement } = position;
-  return {
-    placement,
-    style: {
-      left,
-      top,
-      ...buildPopoverArrowStyle(position, {
-        varPrefix: '--pt-prompt-body-arrow',
-        arrowSizePx: TRAIL_SEARCH_POPOVER_ARROW_SIZE_PX,
-        safeMarginPx: TRAIL_SEARCH_POPOVER_ARROW_SAFE_MARGIN_PX,
-      }),
-    } as CSSProperties,
-  };
-}
 
 export function PromptLibraryPage() {
   const repository = usePromptTrailRepository();
@@ -736,16 +690,10 @@ function TrailSearchPopover({ prompt }: { prompt: PromptLibraryItem }) {
   const trailsLoading = trailsKey !== null && trailsResult?.key !== trailsKey;
   const trailsItems = trailsResult?.key === trailsKey ? trailsResult.items : [];
 
-  const { position: rawPosition, scheduleUpdate: schedulePositionUpdate } =
-    usePopoverPosition({
-      triggerRef,
-      panelRef,
-      open,
-      placements: TRAIL_SEARCH_POPOVER_PLACEMENTS,
-    });
-  const position = useMemo(
-    () => buildTrailSearchPopoverStyle(rawPosition),
-    [rawPosition],
+  const scheduleUpdateRef = useRef<(() => void) | null>(null);
+  const schedulePositionUpdate = useCallback(
+    () => scheduleUpdateRef.current?.(),
+    [],
   );
 
   useEffect(() => {
@@ -814,80 +762,76 @@ function TrailSearchPopover({ prompt }: { prompt: PromptLibraryItem }) {
       >
         紐づくTrailを検索
       </span>
-      {open
-        ? createPortal(
-            <div
-              ref={panelRef}
-              className="pt-prompt-body-popover pt-trail-search-popover"
-              data-placement={position?.placement}
-              id={panelId}
-              role="dialog"
-              aria-label={`「${prompt.title}」から作成されたTrail`}
-              style={
-                position?.style ?? { left: 0, top: 0, visibility: 'hidden' }
-              }
+      <ResponsivePopover
+        triggerRef={triggerRef}
+        panelRef={panelRef}
+        open={open}
+        placements={TRAIL_SEARCH_POPOVER_PLACEMENTS}
+        arrow={{
+          varPrefix: '--pt-prompt-body-arrow',
+          sizePx: TRAIL_SEARCH_POPOVER_ARROW_SIZE_PX,
+          safeMarginPx: TRAIL_SEARCH_POPOVER_ARROW_SAFE_MARGIN_PX,
+          className: 'pt-prompt-body-popover__arrow',
+        }}
+        panelClassName="pt-prompt-body-popover pt-trail-search-popover"
+        panelId={panelId}
+        ariaLabel={`「${prompt.title}」から作成されたTrail`}
+        title="紐づくTrail"
+        sheetHeader={false}
+        onClose={() => {
+          setOpen(false);
+          triggerRef.current?.focus({ preventScroll: true });
+        }}
+        scheduleUpdateRef={scheduleUpdateRef}
+      >
+        <header className="pt-prompt-body-popover__header">
+          <h3>紐づくTrail</h3>
+          <span className="pt-prompt-body-popover__close-wrap">
+            <button
+              aria-label="閉じる"
+              className="pt-prompt-body-popover__close"
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                triggerRef.current?.focus({ preventScroll: true });
+              }}
             >
-              <span
-                aria-hidden="true"
-                className="pt-prompt-body-popover__arrow"
-              />
-              <header className="pt-prompt-body-popover__header">
-                <h3>紐づくTrail</h3>
-                <span className="pt-prompt-body-popover__close-wrap">
-                  <button
-                    aria-label="閉じる"
-                    className="pt-prompt-body-popover__close"
-                    type="button"
-                    onClick={() => {
-                      setOpen(false);
-                      triggerRef.current?.focus({ preventScroll: true });
-                    }}
+              <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+                <path d="M6 6l12 12M18 6 6 18" />
+              </svg>
+            </button>
+          </span>
+        </header>
+        <div className="pt-prompt-body-popover__content">
+          {trailsLoading ? (
+            <p className="pt-trail-search-popover__empty">読み込み中...</p>
+          ) : trailsItems.length === 0 ? (
+            <p className="pt-trail-search-popover__empty">
+              まだ紐づくTrailはありません
+            </p>
+          ) : (
+            <ul className="pt-trail-search-popover__list">
+              {trailsItems.map((item) => (
+                <li key={item.trail.id}>
+                  <Link
+                    to={buildTrailDetailPath(item.trail.id)}
+                    onClick={() => setOpen(false)}
                   >
-                    <svg
-                      aria-hidden="true"
-                      focusable="false"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M6 6l12 12M18 6 6 18" />
-                    </svg>
-                  </button>
-                </span>
-              </header>
-              <div className="pt-prompt-body-popover__content">
-                {trailsLoading ? (
-                  <p className="pt-trail-search-popover__empty">
-                    読み込み中...
-                  </p>
-                ) : trailsItems.length === 0 ? (
-                  <p className="pt-trail-search-popover__empty">
-                    まだ紐づくTrailはありません
-                  </p>
-                ) : (
-                  <ul className="pt-trail-search-popover__list">
-                    {trailsItems.map((item) => (
-                      <li key={item.trail.id}>
-                        <Link
-                          to={buildTrailDetailPath(item.trail.id)}
-                          onClick={() => setOpen(false)}
-                        >
-                          {item.title}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <Link
-                  className="pt-trail-search-popover__see-all"
-                  to={buildTrailListByPromptPath(prompt.id)}
-                  onClick={() => setOpen(false)}
-                >
-                  すべて見る
-                </Link>
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
+                    {item.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link
+            className="pt-trail-search-popover__see-all"
+            to={buildTrailListByPromptPath(prompt.id)}
+            onClick={() => setOpen(false)}
+          >
+            すべて見る
+          </Link>
+        </div>
+      </ResponsivePopover>
     </span>
   );
 }
@@ -959,16 +903,10 @@ function PromptBodyPopover({
   const [recoveryStatus, setRecoveryStatus] =
     useState<PromptBodyRecoveryStatus>(null);
 
-  const { position: rawPosition, scheduleUpdate: schedulePositionUpdate } =
-    usePopoverPosition({
-      triggerRef,
-      panelRef,
-      open,
-      placements: PROMPT_BODY_POPOVER_PLACEMENTS,
-    });
-  const position = useMemo(
-    () => buildPromptBodyPopoverStyle(rawPosition),
-    [rawPosition],
+  const scheduleUpdateRef = useRef<(() => void) | null>(null);
+  const schedulePositionUpdate = useCallback(
+    () => scheduleUpdateRef.current?.(),
+    [],
   );
 
   useEffect(() => {
@@ -1509,301 +1447,287 @@ function PromptBodyPopover({
           Prompt本文を表示
         </span>
       </span>
-      {open
-        ? createPortal(
-            <div
-              ref={panelRef}
-              className="pt-prompt-body-popover"
-              data-placement={position?.placement}
-              id={panelId}
-              role="dialog"
-              aria-label="Prompt本文"
-              style={
-                position?.style ?? {
-                  left: 0,
-                  top: 0,
-                  visibility: 'hidden',
-                }
-              }
-            >
-              <span
-                aria-hidden="true"
-                className="pt-prompt-body-popover__arrow"
-              />
-              <header className="pt-prompt-body-popover__header">
-                <h3>Prompt本文</h3>
-                <div className="pt-prompt-body-popover__header-actions">
-                  {mode === 'view' ? (
-                    <span className="pt-prompt-body-popover__edit-wrap">
-                      <button
-                        ref={editButtonRef}
-                        aria-label={`「${prompt.title}」のPrompt本文を編集`}
-                        className="pt-prompt-body-popover__edit"
-                        type="button"
-                        disabled={saving}
-                        onClick={() => {
-                          setCopyState(null);
-                          setError(null);
-                          setMessageKind(null);
-                          setDiscardConfirmVisible(false);
-                          setDraft(prompt.body);
-                          setBaseline({
-                            body: prompt.body,
-                            variableValues: prompt.variableValues,
-                            updatedAt: prompt.updatedAt,
-                          });
-                          setMode('edit');
-                          resetVarPanel();
-                          schedulePositionUpdate();
-                        }}
-                      >
-                        <svg
-                          aria-hidden="true"
-                          focusable="false"
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="m4 20 4.25-1 10.5-10.5a2.12 2.12 0 0 0-3-3L5.25 16Z" />
-                          <path d="m14.5 6.75 3 3M4 20h6" />
-                        </svg>
-                      </button>
-                      <span
-                        className="pt-prompt-body-popover__edit-tooltip"
-                        role="tooltip"
-                      >
-                        Prompt本文を編集
-                      </span>
-                    </span>
-                  ) : null}
-                  <span className="pt-prompt-body-popover__edit-wrap">
-                    <Link
-                      aria-label={`「${prompt.title}」を編集`}
-                      aria-disabled={saving}
-                      className="pt-prompt-body-popover__edit"
-                      onClick={(event) => {
-                        if (savingRef.current) {
-                          event.preventDefault();
-                          return;
-                        }
-                        if (!isDirty) return;
-                        event.preventDefault();
-                        requestDiscard(() =>
-                          navigate(buildPromptEditPath(prompt.id)),
-                        );
-                      }}
-                      to={buildPromptEditPath(prompt.id)}
+      <ResponsivePopover
+        triggerRef={triggerRef}
+        panelRef={panelRef}
+        open={open}
+        placements={PROMPT_BODY_POPOVER_PLACEMENTS}
+        arrow={{
+          varPrefix: '--pt-prompt-body-arrow',
+          sizePx: PROMPT_BODY_POPOVER_ARROW_SIZE_PX,
+          safeMarginPx: PROMPT_BODY_POPOVER_ARROW_SAFE_MARGIN_PX,
+          className: 'pt-prompt-body-popover__arrow',
+        }}
+        panelClassName="pt-prompt-body-popover"
+        panelId={panelId}
+        ariaLabel="Prompt本文"
+        title="Prompt本文"
+        sheetHeader={false}
+        onClose={handleCloseButton}
+        scheduleUpdateRef={scheduleUpdateRef}
+      >
+        <>
+          <header className="pt-prompt-body-popover__header">
+            <h3>Prompt本文</h3>
+            <div className="pt-prompt-body-popover__header-actions">
+              {mode === 'view' ? (
+                <span className="pt-prompt-body-popover__edit-wrap">
+                  <button
+                    ref={editButtonRef}
+                    aria-label={`「${prompt.title}」のPrompt本文を編集`}
+                    className="pt-prompt-body-popover__edit"
+                    type="button"
+                    disabled={saving}
+                    onClick={() => {
+                      setCopyState(null);
+                      setError(null);
+                      setMessageKind(null);
+                      setDiscardConfirmVisible(false);
+                      setDraft(prompt.body);
+                      setBaseline({
+                        body: prompt.body,
+                        variableValues: prompt.variableValues,
+                        updatedAt: prompt.updatedAt,
+                      });
+                      setMode('edit');
+                      resetVarPanel();
+                      schedulePositionUpdate();
+                    }}
+                  >
+                    <svg
+                      aria-hidden="true"
+                      focusable="false"
+                      viewBox="0 0 24 24"
                     >
-                      <svg
-                        aria-hidden="true"
-                        focusable="false"
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M5 5h14M5 12h14M5 19h14" />
-                      </svg>
-                    </Link>
-                    <span
-                      className="pt-prompt-body-popover__edit-tooltip"
-                      role="tooltip"
-                    >
-                      Promptを編集する
-                    </span>
+                      <path d="m4 20 4.25-1 10.5-10.5a2.12 2.12 0 0 0-3-3L5.25 16Z" />
+                      <path d="m14.5 6.75 3 3M4 20h6" />
+                    </svg>
+                  </button>
+                  <span
+                    className="pt-prompt-body-popover__edit-tooltip"
+                    role="tooltip"
+                  >
+                    Prompt本文を編集
                   </span>
-                  {mode === 'view' ? (
-                    <span className="pt-prompt-body-popover__copy-wrap">
-                      <button
-                        ref={copyButtonRef}
-                        aria-label={`「${prompt.title}」のPrompt本文をコピー`}
-                        aria-expanded={
-                          detectedVars.length > 0
-                            ? effectiveVarPanelOpen
-                            : undefined
-                        }
-                        className="pt-prompt-body-popover__copy"
-                        data-copied={copyState === 'success'}
-                        type="button"
-                        onClick={handleCopy}
-                      >
-                        <svg
-                          aria-hidden="true"
-                          className="pt-prompt-body-popover__copy-icon"
-                          focusable="false"
-                          viewBox="0 0 24 24"
-                        >
-                          <rect x="8" y="8" width="11" height="11" rx="2" />
-                          <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
-                        </svg>
-                        <svg
-                          aria-hidden="true"
-                          className="pt-prompt-body-popover__copy-check"
-                          focusable="false"
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M5 12l5 5L20 7" />
-                        </svg>
-                      </button>
-                      <span
-                        className="pt-prompt-body-popover__copy-tooltip"
-                        role="tooltip"
-                      >
-                        Prompt本文をコピー
-                      </span>
-                    </span>
-                  ) : null}
-                  <span className="pt-prompt-body-popover__close-wrap">
-                    <button
-                      aria-label="Prompt本文を閉じる"
-                      className="pt-prompt-body-popover__close"
-                      type="button"
-                      disabled={saving}
-                      onClick={handleCloseButton}
-                    >
-                      <svg
-                        aria-hidden="true"
-                        focusable="false"
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M6 6l12 12M18 6 6 18" />
-                      </svg>
-                    </button>
-                    <span
-                      className="pt-prompt-body-popover__close-tooltip"
-                      role="tooltip"
-                    >
-                      閉じる
-                    </span>
-                  </span>
-                </div>
-              </header>
-              <span
-                aria-live="polite"
-                className="pt-prompt-body-popover__copy-status"
-              >
-                {copyState === 'success'
-                  ? 'コピーしました'
-                  : copyState === 'error'
-                    ? 'コピーできませんでした'
-                    : null}
-              </span>
-              {error !== null ? (
-                <div
-                  className="pt-prompt-body-popover__error"
-                  id={`${panelId}-error`}
-                  role="alert"
+                </span>
+              ) : null}
+              <span className="pt-prompt-body-popover__edit-wrap">
+                <Link
+                  aria-label={`「${prompt.title}」を編集`}
+                  aria-disabled={saving}
+                  className="pt-prompt-body-popover__edit"
+                  onClick={(event) => {
+                    if (savingRef.current) {
+                      event.preventDefault();
+                      return;
+                    }
+                    if (!isDirty) return;
+                    event.preventDefault();
+                    requestDiscard(() =>
+                      navigate(buildPromptEditPath(prompt.id)),
+                    );
+                  }}
+                  to={buildPromptEditPath(prompt.id)}
                 >
-                  <p>{error}</p>
-                  {recoveryStatus === 'stale' ? (
-                    <div className="pt-prompt-body-popover__actions">
-                      <button type="button" onClick={handleLoadLatestBody}>
-                        最新の本文を読み込む
-                      </button>
-                    </div>
-                  ) : null}
-                  {discardConfirmVisible ? (
-                    <div className="pt-prompt-body-popover__actions">
-                      <button
-                        ref={continueEditingRef}
-                        type="button"
-                        onClick={continueEditing}
-                      >
-                        編集を続ける
-                      </button>
-                      <button type="button" onClick={confirmDiscard}>
-                        破棄する
-                      </button>
-                    </div>
-                  ) : null}
+                  <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+                    <path d="M5 5h14M5 12h14M5 19h14" />
+                  </svg>
+                </Link>
+                <span
+                  className="pt-prompt-body-popover__edit-tooltip"
+                  role="tooltip"
+                >
+                  Promptを編集する
+                </span>
+              </span>
+              {mode === 'view' ? (
+                <span className="pt-prompt-body-popover__copy-wrap">
+                  <button
+                    ref={copyButtonRef}
+                    aria-label={`「${prompt.title}」のPrompt本文をコピー`}
+                    aria-expanded={
+                      detectedVars.length > 0
+                        ? effectiveVarPanelOpen
+                        : undefined
+                    }
+                    className="pt-prompt-body-popover__copy"
+                    data-copied={copyState === 'success'}
+                    type="button"
+                    onClick={handleCopy}
+                  >
+                    <svg
+                      aria-hidden="true"
+                      className="pt-prompt-body-popover__copy-icon"
+                      focusable="false"
+                      viewBox="0 0 24 24"
+                    >
+                      <rect x="8" y="8" width="11" height="11" rx="2" />
+                      <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+                    </svg>
+                    <svg
+                      aria-hidden="true"
+                      className="pt-prompt-body-popover__copy-check"
+                      focusable="false"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M5 12l5 5L20 7" />
+                    </svg>
+                  </button>
+                  <span
+                    className="pt-prompt-body-popover__copy-tooltip"
+                    role="tooltip"
+                  >
+                    Prompt本文をコピー
+                  </span>
+                </span>
+              ) : null}
+              <span className="pt-prompt-body-popover__close-wrap">
+                <button
+                  aria-label="Prompt本文を閉じる"
+                  className="pt-prompt-body-popover__close"
+                  type="button"
+                  disabled={saving}
+                  onClick={handleCloseButton}
+                >
+                  <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+                    <path d="M6 6l12 12M18 6 6 18" />
+                  </svg>
+                </button>
+                <span
+                  className="pt-prompt-body-popover__close-tooltip"
+                  role="tooltip"
+                >
+                  閉じる
+                </span>
+              </span>
+            </div>
+          </header>
+          <span
+            aria-live="polite"
+            className="pt-prompt-body-popover__copy-status"
+          >
+            {copyState === 'success'
+              ? 'コピーしました'
+              : copyState === 'error'
+                ? 'コピーできませんでした'
+                : null}
+          </span>
+          {error !== null ? (
+            <div
+              className="pt-prompt-body-popover__error"
+              id={`${panelId}-error`}
+              role="alert"
+            >
+              <p>{error}</p>
+              {recoveryStatus === 'stale' ? (
+                <div className="pt-prompt-body-popover__actions">
+                  <button type="button" onClick={handleLoadLatestBody}>
+                    最新の本文を読み込む
+                  </button>
                 </div>
               ) : null}
-              {mode === 'edit' ? (
-                <div className="pt-prompt-body-popover__editor">
-                  <label htmlFor={`${panelId}-textarea`}>Prompt本文</label>
-                  <textarea
-                    ref={textareaRef}
-                    id={`${panelId}-textarea`}
-                    value={draft}
-                    disabled={saving}
-                    aria-invalid={messageKind === 'validation'}
-                    aria-describedby={
-                      error !== null ? `${panelId}-error` : undefined
-                    }
-                    onChange={(event) => setDraft(event.target.value)}
-                  />
-                  <div className="pt-prompt-body-popover__actions">
-                    <button
-                      type="button"
-                      disabled={saving || recoveryStatus !== null}
-                      onClick={handleSave}
-                    >
-                      {saving ? '保存中...' : '保存'}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={saving}
-                      onClick={handleCancelEdit}
-                    >
-                      キャンセル
-                    </button>
+              {discardConfirmVisible ? (
+                <div className="pt-prompt-body-popover__actions">
+                  <button
+                    ref={continueEditingRef}
+                    type="button"
+                    onClick={continueEditing}
+                  >
+                    編集を続ける
+                  </button>
+                  <button type="button" onClick={confirmDiscard}>
+                    破棄する
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          {mode === 'edit' ? (
+            <div className="pt-prompt-body-popover__editor">
+              <label htmlFor={`${panelId}-textarea`}>Prompt本文</label>
+              <textarea
+                ref={textareaRef}
+                id={`${panelId}-textarea`}
+                value={draft}
+                disabled={saving}
+                aria-invalid={messageKind === 'validation'}
+                aria-describedby={
+                  error !== null ? `${panelId}-error` : undefined
+                }
+                onChange={(event) => setDraft(event.target.value)}
+              />
+              <div className="pt-prompt-body-popover__actions">
+                <button
+                  type="button"
+                  disabled={saving || recoveryStatus !== null}
+                  onClick={handleSave}
+                >
+                  {saving ? '保存中...' : '保存'}
+                </button>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={handleCancelEdit}
+                >
+                  キャンセル
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="pt-prompt-body-popover__content">
+              {effectiveVarPanelOpen ? (
+                <div
+                  ref={varPanelRef}
+                  className="pt-prompt-body-popover__var-panel"
+                  role="dialog"
+                  aria-label="変数に値を入力してコピー"
+                >
+                  <div className="pt-prompt-body-popover__var-panel-fields">
+                    {detectedVars.map((v) => (
+                      <div
+                        key={v}
+                        className="pt-prompt-body-popover__var-panel-field"
+                      >
+                        <label
+                          className="pt-prompt-body-popover__var-badge"
+                          htmlFor={`${panelId}-var-${v}`}
+                        >{`\${${v}}`}</label>
+                        <input
+                          id={`${panelId}-var-${v}`}
+                          type="text"
+                          value={varValues[v] ?? ''}
+                          onChange={(e) =>
+                            setVarValues((prev) => ({
+                              ...prev,
+                              [v]: e.target.value,
+                            }))
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') e.preventDefault();
+                          }}
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ) : (
-                <div className="pt-prompt-body-popover__content">
-                  {effectiveVarPanelOpen ? (
-                    <div
-                      ref={varPanelRef}
-                      className="pt-prompt-body-popover__var-panel"
-                      role="dialog"
-                      aria-label="変数に値を入力してコピー"
+              ) : null}
+              {prompt.tags.length > 0 ? (
+                <div className="pt-prompt-body-popover__tags" aria-label="タグ">
+                  {prompt.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="pt-prompt-body-popover__tag-chip"
                     >
-                      <div className="pt-prompt-body-popover__var-panel-fields">
-                        {detectedVars.map((v) => (
-                          <div
-                            key={v}
-                            className="pt-prompt-body-popover__var-panel-field"
-                          >
-                            <label
-                              className="pt-prompt-body-popover__var-badge"
-                              htmlFor={`${panelId}-var-${v}`}
-                            >{`\${${v}}`}</label>
-                            <input
-                              id={`${panelId}-var-${v}`}
-                              type="text"
-                              value={varValues[v] ?? ''}
-                              onChange={(e) =>
-                                setVarValues((prev) => ({
-                                  ...prev,
-                                  [v]: e.target.value,
-                                }))
-                              }
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') e.preventDefault();
-                              }}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                  {prompt.tags.length > 0 ? (
-                    <div
-                      className="pt-prompt-body-popover__tags"
-                      aria-label="タグ"
-                    >
-                      {prompt.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="pt-prompt-body-popover__tag-chip"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-                  <p>{prompt.body}</p>
+                      {tag}
+                    </span>
+                  ))}
                 </div>
-              )}
-            </div>,
-            document.body,
-          )
-        : null}
+              ) : null}
+              <p>{prompt.body}</p>
+            </div>
+          )}
+        </>
+      </ResponsivePopover>
     </>
   );
 }
