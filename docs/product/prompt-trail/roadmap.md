@@ -134,6 +134,20 @@ P3-4のLv3-1（[#305](https://github.com/yuyuyu0706/ai-workbench/issues/305)）�
 間接参照の扱い、対話型実行のDomain拡張方針について合意した。詳細は
 [Lv3-1設計合意文書](lv3-1-prompt-execution-design-agreement.md)を参照。
 
+### P3-5：エージェント実行基盤の設計合意
+
+P3-5のLv3-1（[#324](https://github.com/yuyuyu0706/ai-workbench/issues/324)）で、エージェント
+実行基盤の技術構成について合意した。実行環境はGitHub Actions＋公式Claude Code Actionとし、
+トリガーは`repository_dispatch`を主経路・`workflow_dispatch`を手動フォールバックとする。
+権限モデルはSTEP別に`GITHUB_TOKEN`＋`permissions:`を最小権限で宣言し、権限の弱い順
+（STEP4：`contents: read`→STEP5/9/10：`issues: write`→STEP7：`pull-requests: write`→
+STEP6：`contents: write`）に実装する。実行結果はGitHub Source of Truthを基本にPromptTrailが
+Actions APIをPull型で取得し、Push型は採用しない（Local-first、ADR 0002）。STEP8（マージ）は
+エージェント実行の対象外とし、人間承認ゲートとして定義する。ADR 0009の`GITHUB_PAT`は
+Gateway用として存続させ、エージェント実行では`GITHUB_TOKEN`を使う。詳細は
+[Lv3-1設計合意文書](lv3-1-agent-execution-design-agreement.md)、および
+[ADR 0010](../../adr/0010-agent-execution-shape.md)を参照。
+
 ### P3-3：Guided Executionの7ステップモデルとスコープ判断
 
 P3-1（Execution Domain再設計）の完了を受け、P3-3（GitHub / AI Execution Gateway）の
@@ -169,8 +183,11 @@ P3-1（Execution Domain再設計）の完了を受け、P3-3（GitHub / AI Execu
 Evidence Backlogに記録）。
 
 Gatewayの技術構成は、Managed FunctionからAI API・GitHub APIを直接呼ぶ軽量な構成とし、
-workflow_dispatch／GitHub Actions連携はステップ3着手時まで見送ります（詳細は
-[ADR 0008](../../adr/0008-gateway-implementation-shape.md)を参照）。
+P3-3時点ではworkflow_dispatch／GitHub Actions連携を見送りました（詳細は
+[ADR 0008](../../adr/0008-gateway-implementation-shape.md)を参照）。その後、案B（Issue作成の
+外部エージェントへの委譲）採用によりステップ2（ISSUE作成）が軽量側から重量側へ移動し、
+workflow_dispatch／GitHub Actions連携はP3-5（エージェント実行基盤）で着手済みです（詳細は
+[ADR 0010](../../adr/0010-agent-execution-shape.md)を参照）。
 
 ### Phase 3 Investment Hypotheses（P2-6 で証拠と突き合わせ済み）
 

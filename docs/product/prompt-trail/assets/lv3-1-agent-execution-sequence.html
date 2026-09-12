@@ -1,0 +1,88 @@
+<h2 class="sr-only">
+  エージェント実行（STEPワークフロー）のトリガーから結果受領までのシーケンス図
+</h2>
+<div id="seq"></div>
+<script type="module">
+  import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  await document.fonts.ready;
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'base',
+    fontFamily: '"anthropic-sans", sans-serif',
+    themeVariables: {
+      darkMode: dark,
+      fontSize: '13px',
+      fontFamily: '"anthropic-sans", sans-serif',
+      lineColor: dark ? '#9c9a92' : '#73726c',
+      textColor: dark ? '#c2c0b6' : '#3d3d3a',
+      actorBkg: dark ? '#444441' : '#F1EFE8',
+      actorBorder: dark ? '#B4B2A9' : '#5F5E5A',
+      actorTextColor: dark ? '#c2c0b6' : '#3d3d3a',
+      signalColor: dark ? '#9c9a92' : '#73726c',
+      signalTextColor: dark ? '#c2c0b6' : '#3d3d3a',
+      activationBkgColor: dark ? '#5F5E5A' : '#D3D1C7',
+      activationBorderColor: dark ? '#B4B2A9' : '#5F5E5A',
+    },
+  });
+  const src = `sequenceDiagram
+    actor User as 利用者
+    participant PT as [画面]<br/>PromptTrail
+    participant MF as [部品]<br/>ManagedFunction<br/>(新規エンドポイント)
+    participant GH as [外部]<br/>GitHubAPI<br/>repository_dispatch
+    participant WF as [外部]<br/>GitHubActions<br/>Workflow
+    participant Repo as [DB]<br/>Run.output/Link
+
+    User->>PT: STEP実行を指示
+    activate PT
+    PT->>MF: POST /api/agent-dispatch
+    activate MF
+    MF->>GH: repository_dispatch(client_payload)
+    activate GH
+    GH-->>MF: 202 Accepted
+    deactivate GH
+    MF-->>PT: dispatch受理
+    deactivate MF
+    GH->>WF: STEPワークフロー起動
+    activate WF
+    Note over WF: checkout（GITHUB_TOKEN）<br/>permissions: STEP別最小権限
+    WF->>WF: Claude Code Action実行
+    WF->>WF: 成果物をartifact／job summaryへ出力
+    deactivate WF
+    loop Pull型ポーリング
+      PT->>GH: GET Actions API（run status）
+      activate GH
+      GH-->>PT: 進行状況・成果物参照
+      deactivate GH
+    end
+    PT->>Repo: Run.output・Linkを保存
+    activate Repo
+    Repo-->>PT: 保存済みRun
+    deactivate Repo
+    PT-->>User: 結果を表示
+    deactivate PT
+
+    Note right of WF: 停止手段：timeout-minutes宣言／<br/>Actions UIからのcancel／<br/>ワークフロー無効化`;
+  const { svg } = await mermaid.render('seq-svg', src);
+  document.getElementById('seq').innerHTML = svg;
+
+  const extFill = dark ? '#712B13' : '#FAECE7';
+  const extStroke = dark ? '#F0997B' : '#993C1D';
+  document.querySelectorAll('#seq text').forEach((t) => {
+    if (
+      t.textContent &&
+      (t.textContent.includes('GitHubAPI') ||
+        t.textContent.includes('GitHubActions'))
+    ) {
+      const group = t.closest('g');
+      const rect = group ? group.querySelector('rect') : null;
+      if (rect) {
+        rect.setAttribute('fill', extFill);
+        rect.setAttribute('stroke', extStroke);
+        rect.setAttribute('stroke-width', '1.5');
+        rect.setAttribute('stroke-dasharray', '5 3');
+      }
+      t.setAttribute('fill', extStroke);
+    }
+  });
+</script>

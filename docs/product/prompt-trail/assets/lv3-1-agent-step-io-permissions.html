@@ -1,0 +1,130 @@
+<h2 class="sr-only">
+  STEP4〜10の入力・処理・出力の置き場所・permissions宣言マッピング表
+</h2>
+<style>
+  #step-io-permissions {
+    --border: #5f5e5a;
+    --text: #3d3d3a;
+    --head-bg: #f1efe8;
+    --row-alt: #f7f5ef;
+    --human-bg: #faece7;
+    --human-border: #993c1d;
+    font-family: 'anthropic-sans', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    overflow-x: auto;
+  }
+  @media (prefers-color-scheme: dark) {
+    #step-io-permissions {
+      --border: #b4b2a9;
+      --text: #c2c0b6;
+      --head-bg: #444441;
+      --row-alt: #3a3a37;
+      --human-bg: #712b13;
+      --human-border: #f0997b;
+    }
+  }
+  #step-io-permissions table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 640px;
+  }
+  #step-io-permissions caption {
+    text-align: left;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+  #step-io-permissions th,
+  #step-io-permissions td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+    color: var(--text);
+  }
+  #step-io-permissions thead th {
+    background: var(--head-bg);
+    font-weight: 600;
+  }
+  #step-io-permissions tbody tr:nth-child(even) {
+    background: var(--row-alt);
+  }
+  #step-io-permissions tbody tr.human td {
+    background: var(--human-bg);
+    border-color: var(--human-border);
+  }
+  #step-io-permissions code {
+    font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+    font-size: 12px;
+  }
+</style>
+<div id="step-io-permissions">
+  <table>
+    <caption>
+      STEP間入出力・権限マッピング（権限の弱い順）
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col">STEP</th>
+        <th scope="col">入力</th>
+        <th scope="col">処理</th>
+        <th scope="col">出力の置き場所</th>
+        <th scope="col"><code>permissions:</code>宣言</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>STEP4<br />実装方針生成</td>
+        <td>親Lv1 issue番号</td>
+        <td>Claude Code Actionが親issueを参照し実装方針.mdを生成</td>
+        <td>Actions artifact ＋ job summary（→ <code>Run.output</code>）</td>
+        <td><code>contents: read</code></td>
+      </tr>
+      <tr>
+        <td>STEP5<br />子issue作成</td>
+        <td>実装方針.md本文（<code>client_payload</code>）</td>
+        <td>実装方針.mdを構造化し子issueを作成</td>
+        <td>GitHub Issue（→ <code>Link</code>）</td>
+        <td><code>contents: read</code> / <code>issues: write</code></td>
+      </tr>
+      <tr>
+        <td>STEP6<br />実装・PR作成</td>
+        <td>子issue番号</td>
+        <td>Claude Code Actionが実装しブランチをpush、PRを作成</td>
+        <td>GitHub PR（→ <code>Link</code>）</td>
+        <td>
+          <code>contents: write</code> / <code>pull-requests: write</code>
+        </td>
+      </tr>
+      <tr>
+        <td>STEP7<br />PRレビュー</td>
+        <td>PR番号</td>
+        <td>diffを評価しレビューコメントを投稿</td>
+        <td>PRコメント（→ <code>Link</code>）</td>
+        <td><code>contents: read</code> / <code>pull-requests: write</code></td>
+      </tr>
+      <tr class="human">
+        <td>STEP8<br />マージ</td>
+        <td>レビュー結果</td>
+        <td>人間が承認・マージを操作（エージェント実行しない）</td>
+        <td>マージ済みPR（結果のみ記録）</td>
+        <td>（人間承認ゲート。permissions宣言なし）</td>
+      </tr>
+      <tr>
+        <td>STEP9<br />子issue更新</td>
+        <td>マージ済みPR番号</td>
+        <td>マージ結果を子issueへ反映</td>
+        <td>更新済み子issue（GitHub Issue）</td>
+        <td><code>contents: read</code> / <code>issues: write</code></td>
+      </tr>
+      <tr>
+        <td>STEP10<br />親issue引継ぎ</td>
+        <td>子issue番号</td>
+        <td>親issueを更新し子issueをクローズ</td>
+        <td>更新済み親issue・クローズ済み子issue（GitHub Issue）</td>
+        <td><code>contents: read</code> / <code>issues: write</code></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
