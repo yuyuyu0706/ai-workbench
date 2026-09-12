@@ -42,7 +42,7 @@
 4. 各inputを入力する。
    - `step`：実行するSTEP種別。Lv4-1時点では`dummy`のみ選択できる。
    - `issueNumber`：対象Issue番号。任意項目で、Lv4-1では記録のみに使う。
-   - `promptTrailRunId`：呼び出し元のRun IDを表す任意の文字列。必須。artifact名・job summary・`concurrency`のグループ分けに使われる。
+   - `promptTrailRunId`：呼び出し元のRun IDを表す文字列。必須。英数字と`.` `_` `-`のみ使用できる（artifact名に使われるため）。artifact名・job summary・`concurrency`のグループ分けに使われる。
    - `forceFailure`：`false`（既定）で正常終了、`true`で最後のステップを意図的に失敗させる。
 5. 「Run workflow」を実行し、run一覧に新しいrunが現れることを確認する。
 
@@ -57,5 +57,9 @@
 ### 失敗時（`forceFailure: true`）
 
 1. runが赤色の「Failure」で完了することを確認する。
-2. それでも「Artifacts」欄に`agent-output-<promptTrailRunId>`が残っていることを確認する（artifactアップロードは`if: always()`のため、失敗時も実行される）。
+2. それでも「Artifacts」欄に`agent-output-<promptTrailRunId>`が残っていることを確認する（`output.md`が生成済みであれば、artifactアップロードは`if: always()`のため失敗時も実行される）。
 3. job summaryにも入力値が反映されていることを確認する（失敗ステップはjob summary出力より後に実行されるため）。
+
+### `promptTrailRunId`の形式エラーで失敗した場合
+
+- run詳細画面の`Validate promptTrailRunId`ステップに`::error::`注釈が表示されていれば、原因は入力値の形式エラーである（英数字と`.` `_` `-`以外の文字を含んでいる）。この場合`output.md`は生成されず、Upload artifactもスキップされる。
