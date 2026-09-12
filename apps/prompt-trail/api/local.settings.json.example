@@ -4,6 +4,11 @@
     "AzureWebJobsStorage": "",
     "FUNCTIONS_WORKER_RUNTIME": "node",
     "ANTHROPIC_API_KEY": "",
-    "OPENAI_API_KEY": ""
+    "OPENAI_API_KEY": "",
+    "GITHUB_DISPATCH_PAT": "",
+    "GITHUB_OWNER": "",
+    "GITHUB_REPO": "",
+    "AGENT_WORKFLOW_FILE": "",
+    "AGENT_WORKFLOW_REF": ""
   }
 }

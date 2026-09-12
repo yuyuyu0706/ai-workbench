@@ -7,13 +7,13 @@
 
 ## 停止手段の一覧
 
-| 手段                               | 内容                                                                                                                                                    |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `timeout-minutes`                  | ジョブが10分を超えると自動的に停止する。ダミー処理は数秒で終わるため、ハングした場合の上限として機能する。                                              |
-| Actions UIからのcancel             | 実行中のrunをActions画面から即時停止できる。手動介入による緊急停止手段。                                                                                |
-| ワークフローの無効化               | `workflow_dispatch`による新規起動のみを止める手段。実行中のrunは止まらないため、実行中のrunを止めたい場合は別途cancelが必要。                           |
-| `concurrency`による多重起動抑止    | 同一`promptTrailRunId`の重複起動はキューイングされ、実行中のジョブが強制停止されることはない（`cancel-in-progress: false`）。                           |
-| 起動用PATの失効（Lv4-2で追加予定） | PromptTrail側からの起動経路を遮断する手段。Lv4-1時点ではPromptTrailからの起動用PATが未導入のため、項目のみ記載する。具体的な失効手順はLv4-2で追記する。 |
+| 手段                            | 内容                                                                                                                                                                                                           |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `timeout-minutes`               | ジョブが10分を超えると自動的に停止する。ダミー処理は数秒で終わるため、ハングした場合の上限として機能する。                                                                                                     |
+| Actions UIからのcancel          | 実行中のrunをActions画面から即時停止できる。手動介入による緊急停止手段。                                                                                                                                       |
+| ワークフローの無効化            | `workflow_dispatch`による新規起動のみを止める手段。実行中のrunは止まらないため、実行中のrunを止めたい場合は別途cancelが必要。                                                                                  |
+| `concurrency`による多重起動抑止 | 同一`promptTrailRunId`の重複起動はキューイングされ、実行中のジョブが強制停止されることはない（`cancel-in-progress: false`）。                                                                                  |
+| 起動用PATの失効                 | PromptTrail側（`/api/agent-dispatch`・`/api/agent-status`）からの起動・状態取得経路を遮断する手段。対象リポジトリの`Actions: write`のみを持つFine-grained PAT（`GITHUB_DISPATCH_PAT`）をGitHub側でrevokeする。 |
 
 ## 緊急停止の手順
 
@@ -31,6 +31,23 @@
 2. 画面右上の「...」（その他のオプション）から「Disable workflow」を選択する。
 3. ワークフロー名の横に「This workflow is disabled.」と表示され、`workflow_dispatch`からの新規起動ができなくなることを確認する。
 4. 再開する場合は同じメニューから「Enable workflow」を選択する。
+
+### 起動用PATを失効する
+
+PromptTrail（Managed Function）からの起動・状態取得経路そのものを遮断したい場合（PATの漏洩が疑われる場合など）は、ワークフローの無効化ではなく、起動用PATを直接revokeする。
+
+1. GitHubの自分のアカウント設定から「Developer settings」を開く（`https://github.com/settings/apps` 左メニュー最下部、または `https://github.com/settings/tokens?type=beta`）。
+2. 「Personal access tokens」→「Fine-grained tokens」を選択する。
+3. `GITHUB_DISPATCH_PAT`として発行したトークン（対象リポジトリの`Actions: write`のみを付与したもの）を一覧から特定する。
+4. トークンを開き、「Delete」（または「Revoke」）を選択して失効させる。
+5. 失効後は、`/api/agent-dispatch`・`/api/agent-status`のいずれもGitHub APIから401/403を受け取り、Managed Function側は502（`GitHubApiError`）を返すようになることを確認する。
+6. 起動経路を復旧する場合は、新しいFine-grained PATを発行し（スコープは`Actions: write`のみ、`Metadata: read`はGitHubが自動付与）、Azure側のApplication Settings（`GITHUB_DISPATCH_PAT`）を更新する。
+
+### 起動用PATの有効期限・更新
+
+- Fine-grained PATは発行時に有効期限（最大1年）を必ず設定する。無期限のトークンは発行しない。
+- 有効期限が切れると、失効時と同様に`/api/agent-dispatch`・`/api/agent-status`が502を返すようになる。事前に気づけるよう、有効期限が近づいたら（目安：期限の2週間前）新しいトークンを発行し、Azure側のApplication Settingsを更新してから、古いトークンをrevokeする（無停止で切り替える）。
+- 新規発行・更新のいずれも、スコープは対象リポジトリの`Actions: write`のみとする。他のスコープ（`Contents`・`Issues`等）は付与しない。ADR 0009の`GITHUB_PAT`（Gateway用・`Issues: write`）とは別トークンとして管理し、混同しない。
 
 ## 起動方法
 
