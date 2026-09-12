@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted（P3-3限定）／Partially superseded by [ADR 0010](0010-agent-execution-shape.md)
 
 ## Context
 

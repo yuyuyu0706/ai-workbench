@@ -1,0 +1,51 @@
+<h2 class="sr-only">
+  サイクル順序（STEP4〜10）と実装順序（Lv3-3〜Lv3-6・権限の弱い順）の対比図
+</h2>
+<div id="order"></div>
+<script type="module">
+  import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  await document.fonts.ready;
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'base',
+    fontFamily: '"anthropic-sans", sans-serif',
+    themeVariables: {
+      darkMode: dark,
+      fontSize: '13px',
+      fontFamily: '"anthropic-sans", sans-serif',
+      lineColor: dark ? '#9c9a92' : '#73726c',
+      textColor: dark ? '#c2c0b6' : '#3d3d3a',
+      primaryColor: dark ? '#444441' : '#F1EFE8',
+      primaryBorderColor: dark ? '#B4B2A9' : '#5F5E5A',
+      primaryTextColor: dark ? '#c2c0b6' : '#3d3d3a',
+    },
+  });
+  const src = `flowchart TB
+    subgraph CYCLE["サイクル順序（アプリ開発Trailの実行順。STEP10→STEP4は環として描かない）"]
+      direction LR
+      S4["STEP4<br/>実装方針生成"] --> S5["STEP5<br/>子issue作成"]
+      S5 --> S6["STEP6<br/>実装・PR作成"]
+      S6 --> S7["STEP7<br/>PRレビュー"]
+      S7 --> S8["STEP8<br/>マージ<br/>（人間判断）"]
+      S8 --> S9["STEP9<br/>子issue更新"]
+      S9 --> S10["STEP10<br/>親issue引継ぎ"]
+    end
+    subgraph IMPL["実装順序（Lv3-3〜Lv3-6。権限の弱い順に基盤を実証する）"]
+      direction LR
+      L2["Lv3-2<br/>実行基盤<br/>（4つ全ての土台）"]
+      L3["Lv3-3<br/>STEP4<br/>contents:read"] --> L4["Lv3-4<br/>STEP5/9/10<br/>issues:write"]
+      L4 --> L5["Lv3-5<br/>STEP7<br/>pull-requests:write"]
+      L5 --> L6["Lv3-6<br/>STEP6<br/>contents:write"]
+      L2 -.支える.-> L3
+      L2 -.支える.-> L4
+      L2 -.支える.-> L5
+      L2 -.支える.-> L6
+    end
+    CYCLE ~~~ IMPL
+
+    classDef human fill:${dark ? '#712B13' : '#FAECE7'},stroke:${dark ? '#F0997B' : '#993C1D'},stroke-width:1.5px,stroke-dasharray:5 3;
+    class S8 human`;
+  const { svg } = await mermaid.render('order-svg', src);
+  document.getElementById('order').innerHTML = svg;
+</script>

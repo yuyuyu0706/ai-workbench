@@ -134,6 +134,20 @@ P3-4のLv3-1（[#305](https://github.com/yuyuyu0706/ai-workbench/issues/305)）�
 間接参照の扱い、対話型実行のDomain拡張方針について合意した。詳細は
 [Lv3-1設計合意文書](lv3-1-prompt-execution-design-agreement.md)を参照。
 
+### P3-5：エージェント実行基盤の設計合意
+
+P3-5のLv3-1（[#324](https://github.com/yuyuyu0706/ai-workbench/issues/324)）で、エージェント
+実行基盤の技術構成について合意した。実行環境はGitHub Actions＋公式Claude Code Actionとし、
+トリガーは`repository_dispatch`を主経路・`workflow_dispatch`を手動フォールバックとする。
+権限モデルはSTEP別に`GITHUB_TOKEN`＋`permissions:`を最小権限で宣言し、権限の弱い順
+（STEP4：`contents: read`→STEP5/9/10：`issues: write`→STEP7：`pull-requests: write`→
+STEP6：`contents: write`）に実装する。実行結果はGitHub Source of Truthを基本にPromptTrailが
+Actions APIをPull型で取得し、Push型は採用しない（Local-first、ADR 0002）。STEP8（マージ）は
+エージェント実行の対象外とし、人間承認ゲートとして定義する。ADR 0009の`GITHUB_PAT`は
+Gateway用として存続させ、エージェント実行では`GITHUB_TOKEN`を使う。詳細は
+[Lv3-1設計合意文書](lv3-1-agent-execution-design-agreement.md)、および
+[ADR 0010](../../adr/0010-agent-execution-shape.md)を参照。
+
 ### P3-3：Guided Executionの7ステップモデルとスコープ判断
 
 P3-1（Execution Domain再設計）の完了を受け、P3-3（GitHub / AI Execution Gateway）の
@@ -153,6 +167,8 @@ P3-1（Execution Domain再設計）の完了を受け、P3-3（GitHub / AI Execu
 | 6   | マージ済みPR→issue単純アップデート      | AI呼び出し＋GitHub API               |
 | 7   | 更新issue→親issueへの引継ぎアップデート | AI呼び出し＋GitHub API               |
 
+※ステップ2はP3-3時点の分類。案B採用後は重量側へ移動（下記参照）。
+
 この7ステップ全体が1つの**Trail**、各ステップが個別実行可能な**Prompt**、各実行結果が
 **Run/Step**として履歴管理される、という関係モデルとして整理しました。
 
@@ -161,16 +177,20 @@ P3-1（Execution Domain再設計）の完了を受け、P3-3（GitHub / AI Execu
 定義することは妨げず、実行過程に承認アシスト機能（実行前の承認催促、承認要件の定義、
 レビュー結果の最終チェック取り込み等）を将来組み込める余地を残します。
 
-7ステップを技術的難易度で見ると、大きな段差があります。ステップ1・2・4・6・7は単発の
-リクエスト/レスポンス処理で完結しますが、ステップ3のみリポジトリのcheckout、AIコーディング
+7ステップを技術的難易度で見ると、大きな段差があります（この分類はP3-3時点のものです。
+案B採用後はステップ2が重量側へ移動しており、詳細は下記を参照してください）。ステップ1・4・6・7は
+単発のリクエスト/レスポンス処理で完結しますが、ステップ3のみリポジトリのcheckout、AIコーディング
 エージェントの実行、テスト、PR作成という、CI環境そのものを要する非同期・長時間処理です。
 この段差を踏まえ、**P3-3はステップ1・2（PLAN＋ISSUE）の基盤に限定**し、ステップ3以降は
 規模が質的に異なるため別テーマとして切り出します（Phase 3後半、またはPhase 4候補として
 Evidence Backlogに記録）。
 
 Gatewayの技術構成は、Managed FunctionからAI API・GitHub APIを直接呼ぶ軽量な構成とし、
-workflow_dispatch／GitHub Actions連携はステップ3着手時まで見送ります（詳細は
-[ADR 0008](../../adr/0008-gateway-implementation-shape.md)を参照）。
+P3-3時点ではworkflow_dispatch／GitHub Actions連携を見送りました（詳細は
+[ADR 0008](../../adr/0008-gateway-implementation-shape.md)を参照）。その後、案B（Issue作成の
+外部エージェントへの委譲）採用によりステップ2（ISSUE作成）が軽量側から重量側へ移動しました。
+workflow_dispatch／GitHub Actions連携は、P3-5（エージェント実行基盤）で設計合意済みです
+（実装はLv3-2以降で着手、詳細は[ADR 0010](../../adr/0010-agent-execution-shape.md)を参照）。
 
 ### Phase 3 Investment Hypotheses（P2-6 で証拠と突き合わせ済み）
 
