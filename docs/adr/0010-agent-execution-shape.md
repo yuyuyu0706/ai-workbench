@@ -75,7 +75,7 @@ Executionの7ステップモデルのうちステップ2（ISSUE作成）も、M
   Truth」と整合する。
 - 実行の成否・進行状況は、PromptTrailがGitHub Actions APIを参照して取得する（Pull型）。
 - Push型（エージェントがPromptTrailのAPIへ完了通知をPOSTする方式）は採用しない。PromptTrailは
-  Local-first（[ADR 0002](0002-local-first-architecture.md)）でサーバ側DBを持たず、ブラウザが
+  Local-first（[ADR 0002](0002-prompt-trail-local-first.md)）でサーバ側DBを持たず、ブラウザが
   閉じている間に届いた通知を保存する場所が存在しないためである。
 - Pull型の実装範囲（ポーリング間隔、どの画面から取得するか等）はLv3-2で設計する。
 
@@ -100,9 +100,10 @@ Executionの7ステップモデルのうちステップ2（ISSUE作成）も、M
 - STEP8（マージ）はエージェント実行の対象に含めない。技術的な制約ではなく、「承認」という
   人間の判断ポイントを必ず設けるという設計原則として扱う。マージ判断はy.k.が握る唯一の
   関所である。
-- STEP8完了からSTEP9/10への接続は、P3-5では手動トリガーを既定とする。`pull_request: types:
-[closed]`による自動起動は設計の選択肢として記録するが、P3-5では実装しない。「P3-5は各STEPが
-  個別に動作するところまで、UIからの連結はP3-6」という境界と整合させるためである。
+- STEP8完了からSTEP9/10への接続は、P3-5では手動トリガーを既定とする。
+  `pull_request: types: [closed]`による自動起動は設計の選択肢として記録するが、
+  P3-5では実装しない。「P3-5は各STEPが個別に動作するところまで、UIからの連結はP3-6」
+  という境界と整合させるためである。
 
 ### P3-4 Gateway実行との併存
 
