@@ -1,0 +1,76 @@
+<h2 class="sr-only">
+  v9からv10へのschema migrationにより、既存RunからTrailStepをbackfillする手順図
+</h2>
+<div id="mig"></div>
+<script type="module">
+  import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  await document.fonts.ready;
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'base',
+    fontFamily: '"anthropic-sans", sans-serif',
+    themeVariables: {
+      darkMode: dark,
+      fontSize: '13px',
+      fontFamily: '"anthropic-sans", sans-serif',
+      lineColor: dark ? '#9c9a92' : '#73726c',
+      textColor: dark ? '#c2c0b6' : '#3d3d3a',
+      primaryColor: dark ? '#444441' : '#F1EFE8',
+      primaryBorderColor: dark ? '#B4B2A9' : '#5F5E5A',
+      primaryTextColor: dark ? '#c2c0b6' : '#3d3d3a',
+      lineColor2: dark ? '#9c9a92' : '#73726c',
+    },
+  });
+  const src = `flowchart TB
+    subgraph v9["v9の状態"]
+      direction LR
+      R9["Run<br/>trailId"]
+    end
+
+    subgraph steps["migrateToV10（単一トランザクション）"]
+      direction TB
+      S1["① metadata.tsを更新<br/>PROMPT_TRAIL_SCHEMA_VERSION → 10<br/>PromptTrailStoreNameへtrailSteps追加"]
+      S2["② schemaV10を定義<br/>trailSteps: id, trailId, promptId, updatedAt, deletedAt<br/>runsへtrailStepIdのindexを追加"]
+      S3["③ version(10).stores(schemaV10).upgrade(migrateToV10)を登録"]
+      S4["④ backfill本体：<br/>既存RunをtrailIdでグループ化<br/>グループ内でcreatedAt昇順にorderを1から採番<br/>Run 1件につきTrailStep 1件（step-${'$'}{run.id}）を作成<br/>run.trailStepIdを設定"]
+      S1 --> S2 --> S3 --> S4
+    end
+
+    subgraph v10["v10の状態"]
+      direction LR
+      TS10["TrailStep<br/>trailId／order／kind='prompt'<br/>title／promptId"]
+      R10["Run<br/>trailStepId"]
+      TS10 -->|"backfillで生成"| R10
+    end
+
+    v9 --> steps --> v10
+
+    note1["同一trailIdに複数Runがある場合も、<br/>createdAt昇順でorder 1,2,3…と連番採番する"]
+    note2["④まで含め単一トランザクション内で実行。<br/>失敗時は全体がロールバックされ、<br/>DBは削除・リセットされない（v4-to-v5.tsと同方針）"]
+    S4 -.-> note1
+    steps -.-> note2`;
+  const { svg } = await mermaid.render('mig-svg', src);
+  document.getElementById('mig').innerHTML = svg;
+
+  document
+    .querySelectorAll('#mig .node rect, #mig .node polygon')
+    .forEach((shape) => {
+      shape.setAttribute('rx', '6');
+      shape.setAttribute('ry', '6');
+    });
+
+  const noteFill = dark ? '#444441' : '#F1EFE8';
+  const noteStroke = dark ? '#B4B2A9' : '#5F5E5A';
+  document.querySelectorAll('#mig .node').forEach((node) => {
+    const text = node.textContent || '';
+    if (text.includes('連番採番') || text.includes('ロールバック')) {
+      const shape = node.querySelector('rect, polygon');
+      if (shape) {
+        shape.setAttribute('fill', noteFill);
+        shape.setAttribute('stroke', noteStroke);
+        shape.setAttribute('stroke-dasharray', '4 3');
+      }
+    }
+  });
+</script>

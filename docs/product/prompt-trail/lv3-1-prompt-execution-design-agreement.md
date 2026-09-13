@@ -26,8 +26,8 @@
 
 - Prompt:Run（`promptSnapshot.promptId`経由）・Trail:Run（`trailId`経由）は既に実装済み。
 - Trail:Promptは直接の関係を持たず、Runを介して間接的にしか辿れない。**この間接参照は
-  P3-6以降も無くならない**（実行時点の記録として残り続ける）。
-- P3-6で直接管理化（TrailがPromptの一覧を直接保持する）を追加すると、「まだ実行していない、
+  P3-6（現P3-7）以降も無くならない**（実行時点の記録として残り続ける）。
+- P3-6（現P3-7）で直接管理化（TrailがPromptの一覧を直接保持する）を追加すると、「まだ実行していない、
   計画段階のPrompt」もTrailへ表示できるようになる。これは間接参照の置き換えではなく、
   間接参照でできなかったことを可能にする追加の関係である。
 
@@ -35,7 +35,7 @@
 
 - 現段階のTrail Detailは単一Run表示のまま変更しない。
 - 「Trail Detailを開くとPromptが順番に一覧で並び、1ボタンでRun化できる」という体験は、
-  P3-6（1 Trail : 複数Prompt/Run/Step対応）のスコープとする。#270へ、**早い段階での着手を
+  P3-6（現P3-7）（1 Trail : 複数Prompt/Run/Step対応）のスコープとする。#270へ、**早い段階での着手を
   希望する優先申し送り**として記録する（本Issueでは #270 自体の更新は行わず、申し送り内容の
   記録のみを本文書に残す）。
 
@@ -52,7 +52,7 @@
    Promptから紐づくTrailを検索し、Trail Detailへ遷移するまでの流れを示す。
 3. **ER図**（[lv3-1-trail-prompt-run-step-erd.html](assets/lv3-1-trail-prompt-run-step-erd.html)）：
    Project／Trail／Prompt／Run／Stepの関係性を示す。実装済みの関係（Trail:Run、Prompt:Run）と、
-   P3-4 Lv3-3で追加予定の関係（Run:Step）、P3-6で検討する関係（Trail:Prompt間接参照→直接管理の
+   P3-4 Lv3-3で追加予定の関係（Run:Step）、P3-6（現P3-7）で検討する関係（Trail:Prompt間接参照→直接管理の
    追加）を区別して示す。
 
 ## 実装への申し送り（Lv3-2・Lv3-3向け）
@@ -100,12 +100,12 @@
 ## 非対象
 
 - 実装コード全般（Lv3-2・Lv3-3で実施）。
-- Trail:Promptの直接管理化、Trail Detailの複数Prompt一覧化（P3-6。優先申し送り）。
+- Trail:Promptの直接管理化、Trail Detailの複数Prompt一覧化（P3-6（現P3-7）。優先申し送り）。
 - 文脈取得能力（親Issue等の自動参照。#270に未割当の論点として記録済み）。
 
 ## 受入条件
 
 - [x] 本設計合意文書・シーケンス図2点・ER図がマージされている。
-- [ ] #270へ、Trail Detailの複数Prompt一覧化（P3-6）の優先申し送りが記録されている
+- [ ] #270へ、Trail Detailの複数Prompt一覧化（P3-6（現P3-7））の優先申し送りが記録されている
       （本文書に記録済み。#270自体への反映は別途実施）。
 - [x] Lv3-2・Lv3-3が、本文書の申し送り内容に沿って着手可能な状態になっている。
