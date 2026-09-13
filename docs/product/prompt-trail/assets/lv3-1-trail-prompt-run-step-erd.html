@@ -1,5 +1,5 @@
 <h2 class="sr-only">
-  Trail・Prompt・Run・Messageの関係性を示すER図。実装済みとP3-6（現P3-7）予定を区別する。
+  Trail・Prompt・Run・Messageの関係性を示すER図。実装済みと未実装を区別する。
 </h2>
 <div id="erd"></div>
 <script type="module">
@@ -26,7 +26,7 @@
     TRAIL ||--o{ RUN : "束ねる（実装済み・P3-1）"
     PROMPT ||--o{ RUN : "生成元（実装済み・promptSnapshot.promptId）"
     RUN ||--o{ MESSAGE : "往復（P3-4 Lv3-3で追加予定）"
-    TRAIL }o..o{ PROMPT : "間接参照・Run経由（P3-6（現P3-7）で直接管理を検討）"
+    TRAIL }o..o{ PROMPT : "間接参照・Run経由（現P3-6・#331で直接管理を実施）"
 
     PROJECT {
         string title
