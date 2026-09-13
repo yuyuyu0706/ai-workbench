@@ -6,6 +6,7 @@ import type {
   Recipe,
   Run,
   Trail,
+  TrailStep,
   Workspace,
 } from '../../domain';
 import { DEFAULT_WORKSPACE_ID, createDefaultWorkspace } from '../../domain';
@@ -18,6 +19,7 @@ import {
   recipeId,
   runId,
   trailId,
+  trailStepId,
   utc,
 } from './helpers';
 
@@ -82,10 +84,23 @@ const trail: Trail = {
   deletedAt: null,
   archivedAt: null,
 };
+const trailStep: TrailStep = {
+  id: trailStepId('legacy-compatible-step-recipe'),
+  createdAt: utc('2026-07-23T11:10:00.000Z'),
+  updatedAt: utc('2026-07-23T11:10:00.000Z'),
+  deletedAt: null,
+  trailId: trail.id,
+  order: 1,
+  kind: 'prompt',
+  title: prompt.title,
+  promptId: prompt.id,
+  note: null,
+};
 const run: Run = {
   id: runId('legacy-compatible-run-recipe'),
   projectId: project.id,
   trailId: trail.id,
+  trailStepId: trailStep.id,
   recipeId: recipe.id,
   promptSnapshot: {
     promptId: prompt.id,
@@ -133,6 +148,7 @@ export const legacyCompatibleScenario: DeveloperDataScenario = {
     contexts: [context],
     recipes: [recipe],
     trails: [trail],
+    trailSteps: [trailStep],
     runs: [run],
     links: [link],
   },
@@ -143,6 +159,7 @@ export const legacyCompatibleScenario: DeveloperDataScenario = {
     contexts: 1,
     recipes: 1,
     trails: 1,
+    trailSteps: 1,
     runs: 1,
     links: 1,
   },

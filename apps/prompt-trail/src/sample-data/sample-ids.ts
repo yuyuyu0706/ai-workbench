@@ -6,6 +6,7 @@ import type {
   RecipeId,
   RunId,
   TrailId,
+  TrailStepId,
 } from '../domain';
 
 export const SAMPLE_IDS = {
@@ -14,6 +15,7 @@ export const SAMPLE_IDS = {
   context: 'sample-context-ai-driven-development' as ContextId,
   recipe: 'sample-recipe-codex-development-request' as RecipeId,
   trail: 'sample-trail-roadmap-resync' as TrailId,
+  trailStep: 'trail-step-sample-roadmap-resync' as TrailStepId,
   run: 'sample-run-roadmap-resync' as RunId,
   links: {
     chat: 'sample-link-chat' as LinkId,
@@ -28,6 +30,7 @@ export const SAMPLE_ID_SET = new Set<string>([
   SAMPLE_IDS.context,
   SAMPLE_IDS.recipe,
   SAMPLE_IDS.trail,
+  SAMPLE_IDS.trailStep,
   SAMPLE_IDS.run,
   SAMPLE_IDS.links.chat,
   SAMPLE_IDS.links.issue100,

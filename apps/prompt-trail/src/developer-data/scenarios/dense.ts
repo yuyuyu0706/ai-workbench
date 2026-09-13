@@ -5,11 +5,20 @@ import type {
   Run,
   RunStatus,
   Trail,
+  TrailStep,
   Workspace,
 } from '../../domain';
 import { DEFAULT_WORKSPACE_ID, createDefaultWorkspace } from '../../domain';
 import type { DeveloperDataScenario } from '../developer-data-scenario';
-import { linkId, projectId, promptId, runId, trailId, utc } from './helpers';
+import {
+  linkId,
+  projectId,
+  promptId,
+  runId,
+  trailId,
+  trailStepId,
+  utc,
+} from './helpers';
 
 const workspace: Workspace = createDefaultWorkspace(
   utc('2026-07-22T08:00:00.000Z'),
@@ -66,10 +75,23 @@ const runsAndTrails = statuses.map((status, index) => {
     deletedAt: null,
     archivedAt: null,
   };
+  const trailStep: TrailStep = {
+    id: trailStepId(`dense-step-${ordinal}`),
+    createdAt: trail.createdAt,
+    updatedAt: trail.createdAt,
+    deletedAt: null,
+    trailId: trail.id,
+    order: 1,
+    kind: 'prompt',
+    title: prompt.title,
+    promptId: prompt.id,
+    note: null,
+  };
   const run: Run = {
     id: runId(`dense-run-${ordinal}`),
     projectId: project.id,
     trailId: trail.id,
+    trailStepId: trailStep.id,
     recipeId: null,
     promptSnapshot: {
       promptId: prompt.id,
@@ -91,10 +113,13 @@ const runsAndTrails = statuses.map((status, index) => {
     deletedAt: null,
     archivedAt: null,
   };
-  return { run, trail };
+  return { run, trail, trailStep };
 });
 const runs: readonly Run[] = runsAndTrails.map(({ run }) => run);
 const trails: readonly Trail[] = runsAndTrails.map(({ trail }) => trail);
+const trailSteps: readonly TrailStep[] = runsAndTrails.map(
+  ({ trailStep }) => trailStep,
+);
 const links: readonly Link[] = [
   {
     id: linkId('dense-link-run-2-single'),
@@ -166,6 +191,7 @@ export const denseScenario: DeveloperDataScenario = {
     contexts: [],
     recipes: [],
     trails,
+    trailSteps,
     runs,
     links,
   },
@@ -176,6 +202,7 @@ export const denseScenario: DeveloperDataScenario = {
     contexts: 0,
     recipes: 0,
     trails: 7,
+    trailSteps: 7,
     runs: 7,
     links: 4,
   },

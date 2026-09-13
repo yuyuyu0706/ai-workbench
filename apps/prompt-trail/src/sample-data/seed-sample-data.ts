@@ -6,6 +6,7 @@ import type {
   Recipe,
   Run,
   Trail,
+  TrailStep,
 } from '../domain';
 import type { PromptTrailRepository, TrailBundle } from '../repository';
 
@@ -21,7 +22,7 @@ export type SeedSampleDataResult =
     };
 
 type SampleRecord =
-  Project | Prompt | Context | Recipe | Trail | Run | Link | null;
+  Project | Prompt | Context | Recipe | Trail | TrailStep | Run | Link | null;
 
 type SamplePreflight = {
   readonly project: Project | null;
@@ -29,6 +30,7 @@ type SamplePreflight = {
   readonly context: Context | null;
   readonly recipe: Recipe | null;
   readonly trail: Trail | null;
+  readonly trailStep: TrailStep | null;
   readonly run: Run | null;
   readonly links: readonly (Link | null)[];
 };
@@ -39,6 +41,7 @@ const sampleIds = [
   sampleDataset.ids.context,
   sampleDataset.ids.recipe,
   sampleDataset.ids.trail,
+  sampleDataset.ids.trailStep,
   sampleDataset.ids.run,
   sampleDataset.ids.links.chat,
   sampleDataset.ids.links.issue100,
@@ -82,6 +85,7 @@ async function getSamplePreflight(
     context,
     recipe,
     trail,
+    trailStep,
     run,
     chatLink,
     issueLink,
@@ -92,6 +96,7 @@ async function getSamplePreflight(
     repository.getContext(sampleDataset.ids.context),
     repository.getRecipe(sampleDataset.ids.recipe),
     repository.getTrail(sampleDataset.ids.trail),
+    repository.getTrailStep(sampleDataset.ids.trailStep),
     repository.getRun(sampleDataset.ids.run),
     repository.getLink(sampleDataset.ids.links.chat),
     repository.getLink(sampleDataset.ids.links.issue100),
@@ -104,6 +109,7 @@ async function getSamplePreflight(
     context,
     recipe,
     trail,
+    trailStep,
     run,
     links: [chatLink, issueLink, prLink],
   };
@@ -118,13 +124,15 @@ function getPreflightRecords(
     preflight.context,
     preflight.recipe,
     preflight.trail,
+    preflight.trailStep,
     preflight.run,
     ...preflight.links,
   ];
 }
 
 function isCompleteSample(preflight: SamplePreflight): boolean {
-  const { project, prompt, context, recipe, trail, run, links } = preflight;
+  const { project, prompt, context, recipe, trail, trailStep, run, links } =
+    preflight;
 
   if (
     project === null ||
@@ -132,6 +140,7 @@ function isCompleteSample(preflight: SamplePreflight): boolean {
     context === null ||
     recipe === null ||
     trail === null ||
+    trailStep === null ||
     run === null ||
     links.some((link) => link === null)
   ) {
@@ -157,10 +166,15 @@ function isCompleteSample(preflight: SamplePreflight): boolean {
     trail.deletedAt === null &&
     trail.archivedAt === null &&
     trail.projectId === project.id &&
+    trailStep.deletedAt === null &&
+    trailStep.trailId === trail.id &&
+    trailStep.kind === 'prompt' &&
+    trailStep.promptId === prompt.id &&
     run.deletedAt === null &&
     run.archivedAt === null &&
     run.projectId === project.id &&
     run.trailId === trail.id &&
+    run.trailStepId === trailStep.id &&
     run.recipeId === recipe.id &&
     run.promptSnapshot.promptId === prompt.id &&
     run.contextSnapshots.length === 1 &&
@@ -179,6 +193,7 @@ function getSampleTrailBundle(): TrailBundle {
     context: sampleDataset.context,
     recipe: sampleDataset.recipe,
     trail: sampleDataset.trail,
+    trailStep: sampleDataset.trailStep,
     run: sampleDataset.run,
     links: sampleDataset.links,
   };

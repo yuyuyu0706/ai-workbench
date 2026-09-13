@@ -27,6 +27,7 @@ const emptyCounts: DeveloperRecordCounts = {
   contexts: 0,
   recipes: 0,
   trails: 0,
+  trailSteps: 0,
   runs: 0,
   links: 0,
 };
@@ -37,6 +38,7 @@ const standardCounts: DeveloperRecordCounts = {
   contexts: 0,
   recipes: 0,
   trails: 1,
+  trailSteps: 1,
   runs: 1,
   links: 1,
 };

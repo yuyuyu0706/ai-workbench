@@ -19,6 +19,7 @@ const emptyCounts = {
   contexts: 0,
   recipes: 0,
   trails: 0,
+  trailSteps: 0,
   runs: 0,
   links: 0,
 };
@@ -167,6 +168,7 @@ async function readAllStores(database: PromptTrailDatabase) {
     contexts: await database.contexts.toArray(),
     recipes: await database.recipes.toArray(),
     trails: await database.trails.toArray(),
+    trailSteps: await database.trailSteps.toArray(),
     runs: await database.runs.toArray(),
     links: await database.links.toArray(),
   }));

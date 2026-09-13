@@ -106,6 +106,7 @@ export class DeveloperDataService {
       contexts,
       recipes,
       trails,
+      trailSteps,
       runs,
       links,
     ] = await Promise.all([
@@ -115,6 +116,7 @@ export class DeveloperDataService {
       this.database.contexts.count(),
       this.database.recipes.count(),
       this.database.trails.count(),
+      this.database.trailSteps.count(),
       this.database.runs.count(),
       this.database.links.count(),
     ]);
@@ -125,6 +127,7 @@ export class DeveloperDataService {
       contexts,
       recipes,
       trails,
+      trailSteps,
       runs,
       links,
     };
@@ -133,6 +136,7 @@ export class DeveloperDataService {
   private async clearAllStores(): Promise<void> {
     await this.database.links.clear();
     await this.database.runs.clear();
+    await this.database.trailSteps.clear();
     await this.database.trails.clear();
     await this.database.recipes.clear();
     await this.database.contexts.clear();
@@ -150,6 +154,7 @@ export class DeveloperDataService {
     await bulkAddWhenPopulated(this.database.contexts, dataset.contexts);
     await bulkAddWhenPopulated(this.database.recipes, dataset.recipes);
     await bulkAddWhenPopulated(this.database.trails, dataset.trails);
+    await bulkAddWhenPopulated(this.database.trailSteps, dataset.trailSteps);
     await bulkAddWhenPopulated(this.database.runs, dataset.runs);
     await bulkAddWhenPopulated(this.database.links, dataset.links);
   }
@@ -172,6 +177,7 @@ const EMPTY_COUNTS: DeveloperScenarioExpectedCounts = {
   contexts: 0,
   recipes: 0,
   trails: 0,
+  trailSteps: 0,
   runs: 0,
   links: 0,
 };

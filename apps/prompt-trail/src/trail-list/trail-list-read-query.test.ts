@@ -47,6 +47,7 @@ describe('loadTrailListReadModel', () => {
       context: { ...sampleDataset.context },
       recipe: { ...sampleDataset.recipe },
       trail: { ...sampleDataset.trail },
+      trailStep: { ...sampleDataset.trailStep },
       run: cloneSampleRun({ status: 'prepared' }),
       links: [],
     });
@@ -86,6 +87,7 @@ describe('loadTrailListReadModel', () => {
       context: { ...sampleDataset.context },
       recipe: { ...sampleDataset.recipe },
       trail: { ...sampleDataset.trail },
+      trailStep: { ...sampleDataset.trailStep },
       run: cloneSampleRun({ status: 'draft' }),
       links: [],
     });
@@ -115,6 +117,7 @@ describe('loadTrailListReadModel', () => {
         ...sampleDataset.trail,
         updatedAt: utc('2026-07-12T00:00:00.000Z'),
       },
+      trailStep: { ...sampleDataset.trailStep },
       run: cloneSampleRun(),
       links: [],
     });
@@ -123,12 +126,19 @@ describe('loadTrailListReadModel', () => {
       id: 'trail-list-second' as (typeof sampleDataset.trail)['id'],
       updatedAt: utc('2026-07-13T00:00:00.000Z'),
     };
+    const secondTrailStep = {
+      ...sampleDataset.trailStep,
+      id: 'trail-step-list-second' as (typeof sampleDataset.trailStep)['id'],
+      trailId: secondTrail.id,
+    };
     const secondRun = cloneSampleRun({
       id: runId('run-list-second'),
       trailId: secondTrail.id,
+      trailStepId: secondTrailStep.id,
       updatedAt: utc('2026-07-13T00:00:00.000Z'),
     });
     await repository.saveTrail(secondTrail);
+    await database.trailSteps.put(secondTrailStep);
     await repository.saveRun(secondRun);
 
     const model = await loadTrailListReadModel(repository);
@@ -148,6 +158,7 @@ describe('loadTrailListReadModel', () => {
       context: { ...sampleDataset.context },
       recipe: { ...sampleDataset.recipe },
       trail: { ...sampleDataset.trail },
+      trailStep: { ...sampleDataset.trailStep },
       run: cloneSampleRun(),
       links: [...sampleDataset.links],
     });
@@ -182,6 +193,7 @@ describe('loadTrailListReadModel', () => {
         ...sampleDataset.trail,
         updatedAt: utc('2026-07-12T00:00:00.000Z'),
       },
+      trailStep: { ...sampleDataset.trailStep },
       run: cloneSampleRun(),
       links: [],
     });
@@ -190,12 +202,19 @@ describe('loadTrailListReadModel', () => {
       id: 'trail-list-limit-second' as (typeof sampleDataset.trail)['id'],
       updatedAt: utc('2026-07-13T00:00:00.000Z'),
     };
+    const secondTrailStep = {
+      ...sampleDataset.trailStep,
+      id: 'trail-step-list-limit-second' as (typeof sampleDataset.trailStep)['id'],
+      trailId: secondTrail.id,
+    };
     const secondRun = cloneSampleRun({
       id: runId('run-list-limit-second'),
       trailId: secondTrail.id,
+      trailStepId: secondTrailStep.id,
       updatedAt: utc('2026-07-13T00:00:00.000Z'),
     });
     await repository.saveTrail(secondTrail);
+    await database.trailSteps.put(secondTrailStep);
     await repository.saveRun(secondRun);
 
     const model = await loadTrailListReadModel(repository, { limit: 1 });
@@ -223,6 +242,7 @@ describe('listTrailsByPromptId', () => {
       context: { ...sampleDataset.context },
       recipe: { ...sampleDataset.recipe },
       trail: { ...sampleDataset.trail },
+      trailStep: { ...sampleDataset.trailStep },
       run: cloneSampleRun(),
       links: [],
     });
@@ -244,6 +264,7 @@ describe('listTrailsByPromptId', () => {
       context: { ...sampleDataset.context },
       recipe: { ...sampleDataset.recipe },
       trail: { ...sampleDataset.trail },
+      trailStep: { ...sampleDataset.trailStep },
       run: cloneSampleRun(),
       links: [],
     });
@@ -267,6 +288,7 @@ describe('listTrailsByPromptId', () => {
       context: { ...sampleDataset.context },
       recipe: { ...sampleDataset.recipe },
       trail: { ...sampleDataset.trail },
+      trailStep: { ...sampleDataset.trailStep },
       run: cloneSampleRun(),
       links: [],
     });
@@ -297,6 +319,7 @@ describe('listTrailsByPromptId', () => {
         ...sampleDataset.trail,
         updatedAt: utc('2026-07-12T00:00:00.000Z'),
       },
+      trailStep: { ...sampleDataset.trailStep },
       run: cloneSampleRun(),
       links: [],
     });
@@ -305,11 +328,18 @@ describe('listTrailsByPromptId', () => {
       id: 'trail-list-by-prompt-second' as (typeof sampleDataset.trail)['id'],
       updatedAt: utc('2026-07-13T00:00:00.000Z'),
     };
+    const secondTrailStep = {
+      ...sampleDataset.trailStep,
+      id: 'trail-step-list-by-prompt-second' as (typeof sampleDataset.trailStep)['id'],
+      trailId: secondTrail.id,
+    };
     await repository.saveTrail(secondTrail);
+    await database.trailSteps.put(secondTrailStep);
     await repository.saveRun(
       cloneSampleRun({
         id: runId('run-list-by-prompt-second'),
         trailId: secondTrail.id,
+        trailStepId: secondTrailStep.id,
         updatedAt: utc('2026-07-13T00:00:00.000Z'),
       }),
     );

@@ -44,6 +44,7 @@ describe('loadTrailDetailReadModel', () => {
       context: { ...sampleDataset.context },
       recipe: { ...sampleDataset.recipe },
       trail: { ...sampleDataset.trail },
+      trailStep: { ...sampleDataset.trailStep },
       run: cloneSampleRun(),
       links: sampleDataset.links.map((link) => ({ ...link })),
     });
@@ -72,6 +73,7 @@ describe('loadTrailDetailReadModel', () => {
       context: { ...sampleDataset.context },
       recipe: { ...sampleDataset.recipe },
       trail: { ...sampleDataset.trail },
+      trailStep: { ...sampleDataset.trailStep },
       run: cloneSampleRun({
         deletedAt: utc('2026-07-13T00:00:00.000Z'),
       }),
@@ -92,6 +94,7 @@ describe('loadTrailDetailReadModel', () => {
       context: { ...sampleDataset.context },
       recipe: { ...sampleDataset.recipe },
       trail: { ...sampleDataset.trail },
+      trailStep: { ...sampleDataset.trailStep },
       run: cloneSampleRun(),
       links: [],
     });
@@ -109,10 +112,16 @@ describe('loadTrailDetailReadModel', () => {
       ...sampleDataset.trail,
       id: 'trail-detail-direct' as TrailId,
     };
+    const directTrailStep = {
+      ...sampleDataset.trailStep,
+      id: 'trail-step-detail-direct' as (typeof sampleDataset.trailStep)['id'],
+      trailId: directTrail.id,
+    };
     const directRun: Run & { recipeId: null } = {
       ...sampleDataset.run,
       id: runId('run-detail-direct'),
       trailId: directTrail.id,
+      trailStepId: directTrailStep.id,
       recipeId: null,
       contextSnapshots: [],
       inputValues: {},
@@ -127,6 +136,7 @@ describe('loadTrailDetailReadModel', () => {
       project: { ...sampleDataset.project },
       prompt: { ...sampleDataset.prompt, id: sampleDataset.prompt.id },
       trail: directTrail,
+      trailStep: directTrailStep,
       run: directRun,
     });
 

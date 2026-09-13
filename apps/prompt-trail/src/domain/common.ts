@@ -15,6 +15,7 @@ export const PROMPT_TRAIL_ENTITY_KINDS = [
   'run',
   'link',
   'trail',
+  'trail-step',
 ] as const;
 
 export type PromptTrailEntityKind = (typeof PROMPT_TRAIL_ENTITY_KINDS)[number];
@@ -38,6 +39,7 @@ export type RecipeId = EntityId<'recipe'>;
 export type RunId = EntityId<'run'>;
 export type LinkId = EntityId<'link'>;
 export type TrailId = EntityId<'trail'>;
+export type TrailStepId = EntityId<'trail-step'>;
 
 /** ISO 8601 UTC timestamp string, for example 2026-07-04T00:00:00.000Z. */
 export type UtcDateTimeString = string & {

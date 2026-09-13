@@ -16,6 +16,8 @@ import type {
   RunId,
   Trail,
   TrailId,
+  TrailStep,
+  TrailStepId,
   Workspace,
   WorkspaceId,
 } from '../domain';
@@ -38,6 +40,7 @@ const expectedIndexes = {
     'projectId',
     'recipeId',
     'trailId',
+    'trailStepId',
     'promptSnapshot.promptId',
     'status',
     'updatedAt',
@@ -47,6 +50,7 @@ const expectedIndexes = {
   links: ['runId', 'createdAt', 'deletedAt'],
   workspaces: ['updatedAt', 'deletedAt'],
   trails: ['projectId', 'updatedAt', 'deletedAt'],
+  trailSteps: ['trailId', 'promptId', 'updatedAt', 'deletedAt'],
 } satisfies Record<PromptTrailStoreName, string[]>;
 
 type PromptTrailTables = {
@@ -58,6 +62,7 @@ type PromptTrailTables = {
   links: Table<Link, LinkId>;
   workspaces: Table<Workspace, WorkspaceId>;
   trails: Table<Trail, TrailId>;
+  trailSteps: Table<TrailStep, TrailStepId>;
 };
 
 function expectTypedTables(database: PromptTrailDatabase): PromptTrailTables {
@@ -70,6 +75,7 @@ function expectTypedTables(database: PromptTrailDatabase): PromptTrailTables {
     links: database.links,
     workspaces: database.workspaces,
     trails: database.trails,
+    trailSteps: database.trailSteps,
   };
 }
 
@@ -92,10 +98,10 @@ describe('PromptTrailDatabase schema v3', () => {
     );
 
     expect(database.verno).toBe(PROMPT_TRAIL_SCHEMA_VERSION);
-    expect(PROMPT_TRAIL_SCHEMA_VERSION).toBe(9);
+    expect(PROMPT_TRAIL_SCHEMA_VERSION).toBe(10);
   });
 
-  it('registers the eight metadata store names only', () => {
+  it('registers the nine metadata store names only', () => {
     const database = createPromptTrailDatabase('prompt-trail-store-name-test');
 
     expect(database.tables.map((table) => table.name)).toEqual(

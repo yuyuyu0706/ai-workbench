@@ -8,6 +8,7 @@ import type {
   Run,
   RunId,
   Trail,
+  TrailStep,
   Workspace,
 } from '../domain';
 import type { DeveloperDataScenarioId } from './scenario-ids';
@@ -19,6 +20,7 @@ export type DeveloperScenarioDataset = {
   readonly contexts: readonly Context[];
   readonly recipes: readonly Recipe[];
   readonly trails: readonly Trail[];
+  readonly trailSteps: readonly TrailStep[];
   readonly runs: readonly Run[];
   readonly links: readonly Link[];
 };
@@ -31,6 +33,7 @@ export type DeveloperScenarioExpectedCounts = {
   readonly contexts: number;
   readonly recipes: number;
   readonly trails: number;
+  readonly trailSteps: number;
   readonly runs: number;
   readonly links: number;
 };

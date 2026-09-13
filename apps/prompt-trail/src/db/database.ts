@@ -15,6 +15,8 @@ import type {
   RunId,
   Trail,
   TrailId,
+  TrailStep,
+  TrailStepId,
   Workspace,
   WorkspaceId,
 } from '../domain';
@@ -34,6 +36,7 @@ import { migrateToV7 } from './migrations/v6-to-v7';
 // v7-to-v8 is a schema-only change (adds the runs.promptSnapshot.promptId
 // index); see ./migrations/v7-to-v8.ts for why no data migration is needed.
 import { migrateToV9 } from './migrations/v8-to-v9';
+import { migrateToV10 } from './migrations/v9-to-v10';
 
 const schemaV0 = {
   projects: 'id, updatedAt, archivedAt, deletedAt',
@@ -48,19 +51,25 @@ const schemaV5 = {
   ...schemaV0,
   workspaces: 'id, updatedAt, deletedAt',
   trails: 'id, projectId, updatedAt, deletedAt',
-} satisfies Record<PromptTrailStoreName, string>;
+} satisfies Record<Exclude<PromptTrailStoreName, 'trailSteps'>, string>;
 
 const schemaV6 = {
   ...schemaV5,
   runs: 'id, projectId, recipeId, trailId, status, updatedAt, archivedAt, deletedAt',
-} satisfies Record<PromptTrailStoreName, string>;
+} satisfies Record<Exclude<PromptTrailStoreName, 'trailSteps'>, string>;
 
 const schemaV8 = {
   ...schemaV6,
   runs: 'id, projectId, recipeId, trailId, promptSnapshot.promptId, status, updatedAt, archivedAt, deletedAt',
-} satisfies Record<PromptTrailStoreName, string>;
+} satisfies Record<Exclude<PromptTrailStoreName, 'trailSteps'>, string>;
 
 const schemaV9 = schemaV8;
+
+const schemaV10 = {
+  ...schemaV9,
+  runs: 'id, projectId, recipeId, trailId, trailStepId, promptSnapshot.promptId, status, updatedAt, archivedAt, deletedAt',
+  trailSteps: 'id, trailId, promptId, updatedAt, deletedAt',
+} satisfies Record<PromptTrailStoreName, string>;
 
 export class PromptTrailDatabase extends Dexie {
   workspaces!: Table<Workspace, WorkspaceId>;
@@ -71,6 +80,7 @@ export class PromptTrailDatabase extends Dexie {
   runs!: Table<Run, RunId>;
   links!: Table<Link, LinkId>;
   trails!: Table<Trail, TrailId>;
+  trailSteps!: Table<TrailStep, TrailStepId>;
 
   constructor(name = PROMPT_TRAIL_DB_NAME) {
     super(name);
@@ -100,9 +110,12 @@ export class PromptTrailDatabase extends Dexie {
       .stores(schemaV6)
       .upgrade((transaction) => migrateToV7(transaction));
     this.version(8).stores(schemaV8);
-    this.version(PROMPT_TRAIL_SCHEMA_VERSION)
+    this.version(9)
       .stores(schemaV9)
       .upgrade((transaction) => migrateToV9(transaction));
+    this.version(PROMPT_TRAIL_SCHEMA_VERSION)
+      .stores(schemaV10)
+      .upgrade((transaction) => migrateToV10(transaction));
   }
 }
 

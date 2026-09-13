@@ -15,6 +15,8 @@ import type {
   RunId,
   Trail,
   TrailId,
+  TrailStep,
+  TrailStepId,
   UtcDateTimeString,
 } from '../domain';
 import { DEFAULT_WORKSPACE_ID } from '../domain';
@@ -44,6 +46,7 @@ interface RepresentativeTrail {
   readonly projectContext: Context;
   readonly recipe: Recipe;
   readonly trail: Trail;
+  readonly trailStep: TrailStep;
   readonly run: Run;
   readonly link: Link;
 }
@@ -74,6 +77,10 @@ function runId(value: string): RunId {
 
 function trailId(value: string): TrailId {
   return value as TrailId;
+}
+
+function trailStepId(value: string): TrailStepId {
+  return value as TrailStepId;
 }
 
 function linkId(value: string): LinkId {
@@ -169,6 +176,22 @@ function buildTrail(overrides: Partial<Trail> = {}): Trail {
   };
 }
 
+function buildTrailStep(overrides: Partial<TrailStep> = {}): TrailStep {
+  return {
+    id: trailStepId('trail-step-lifecycle'),
+    createdAt: T2,
+    updatedAt: T2,
+    deletedAt: null,
+    trailId: trailId('trail-lifecycle'),
+    order: 1,
+    kind: 'prompt',
+    title: 'Initial prompt title',
+    promptId: promptId('prompt-lifecycle'),
+    note: null,
+    ...overrides,
+  };
+}
+
 function buildRun(overrides: Partial<Run> = {}): Run {
   return {
     id: runId('run-lifecycle'),
@@ -178,6 +201,7 @@ function buildRun(overrides: Partial<Run> = {}): Run {
     archivedAt: null,
     projectId: projectId('project-lifecycle'),
     trailId: trailId('trail-lifecycle'),
+    trailStepId: trailStepId('trail-step-lifecycle'),
     recipeId: recipeId('recipe-lifecycle'),
     promptSnapshot: {
       promptId: promptId('prompt-lifecycle'),
@@ -245,6 +269,7 @@ async function saveRepresentativeTrail(
   const projectContext = buildContext();
   const recipe = buildRecipe();
   const trail = buildTrail();
+  const trailStep = buildTrailStep();
   const run = buildRun();
   const link = buildLink();
 
@@ -254,6 +279,11 @@ async function saveRepresentativeTrail(
   await repository.saveContext(projectContext);
   await repository.saveRecipe(recipe);
   await repository.saveTrail(trail);
+  await repository.addTrailStep({
+    trailStep,
+    expectedUpdatedAt: trail.updatedAt,
+    updatedAt: trail.updatedAt,
+  });
   await repository.saveRun(run);
   await repository.saveLink(link);
 
@@ -264,10 +294,63 @@ async function saveRepresentativeTrail(
     projectContext,
     recipe,
     trail,
+    trailStep,
     run,
     link,
   };
 }
+
+describe('insertTrailBundle', () => {
+  it('rejects a Run whose trailStepId does not match the bundle Trail Step', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    const project = buildProject();
+    const prompt = buildPrompt();
+    const globalContext = {
+      id: contextId('context-global'),
+      createdAt: T0,
+      updatedAt: T0,
+      deletedAt: null,
+      scope: 'global',
+      title: 'Initial global context title',
+      body: 'Initial global context body',
+      kind: 'project-overview',
+      status: 'enabled',
+      tags: ['context'],
+    } as Context;
+    const recipe = buildRecipe({
+      contextIds: [contextId('context-global')],
+    });
+    const trail = buildTrail();
+    const trailStep = buildTrailStep();
+    const run = buildRun({
+      trailStepId: trailStepId('mismatched-trail-step'),
+      contextSnapshots: [
+        {
+          contextId: contextId('context-global'),
+          title: 'Initial global context title',
+          body: 'Initial global context body',
+        },
+      ],
+    });
+
+    await expect(
+      repository.insertTrailBundle({
+        project,
+        prompt,
+        context: globalContext,
+        recipe,
+        trail,
+        trailStep,
+        run,
+        links: [],
+      }),
+    ).rejects.toMatchObject({ code: 'project-mismatch' });
+
+    await expect(database.runs.count()).resolves.toBe(0);
+    await expect(database.trailSteps.count()).resolves.toBe(0);
+  });
+});
 
 describe('PromptTrailRepository cross-store lifecycle integration', () => {
   it('preserves representative Trail history and immutable Run snapshots after later lifecycle changes', async () => {
