@@ -164,17 +164,17 @@ deletedAt'`を追加、`runs`に`trailStepId`のindexを追加する。
 
 ## 実装への申し送り（Lv3-2以降向け）
 
-| 宛先              | 申し送り内容                                                                                                                                                                  |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Lv3-2             | Runを作るすべての経路（`createDirectRunFromPrompt`を含む）を洗い出し、Stepも併せて用意するよう改める。ADR 0005でDirect RunがTrailを作るようにしたのと同じ構図                 |
-| Lv3-2             | `metadata.ts`の`PROMPT_TRAIL_SCHEMA_VERSION`と`PromptTrailStoreName`、`common.ts`の`PROMPT_TRAIL_ENTITY_KINDS`の3箇所を同時に更新する必要がある                               |
-| Lv3-2             | migrationは`v4-to-v5.ts`と同じ粒度でコメントを残す。スキーマのみの変更ではないため、テストは`database-migration.test.ts`に追加する                                            |
-| Lv3-2             | `src/developer-data/scenarios/`のシナリオデータがStepを含むよう更新が必要。Lv4-3の検証導線でも既存Runを使うため、Step付きのRunが用意できていないと後続が詰まる                |
-| Lv3-3・Lv3-4      | 並び替えはTrail配下のStepを単一トランザクションで再採番する。楽観ロックは`updateTrailMetadata`の`expectedUpdatedAt`パターンに合わせる                                         |
-| Lv3-5             | ERDの`TRAIL }o..o{ PROMPT : "間接参照・Run経由（P3-6（現P3-7）で直接管理を検討）"`を、`TRAIL                                                                                  |     | --o{ TRAIL_STEP`と`TRAIL_STEP }o--o | PROMPT`の実装済みの関係へ書き換える |
-| Lv3-5             | `functional-requirements.md`に反映が必要かを判断する                                                                                                                          |
-| P3-5 Lv3-3〜Lv3-6 | 「Stepの種別としてSTEP4を定義し、それを実行できるようにする」という形へissue本文を書き換えてから着手する。`TrailStepKind`へエージェント実行の種別を追加するのはこのタイミング |
-| P3-5 Lv4-3        | 本Lv2完了後に再開する。保存先は`Run`と`Link`（`Run.trailStepId`経由でStepに紐付く）となる                                                                                     |
+| 宛先              | 申し送り内容                                                                                                                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lv3-2             | Runを作るすべての経路（`createDirectRunFromPrompt`を含む）を洗い出し、Stepも併せて用意するよう改める。ADR 0005でDirect RunがTrailを作るようにしたのと同じ構図                               |
+| Lv3-2             | `metadata.ts`の`PROMPT_TRAIL_SCHEMA_VERSION`と`PromptTrailStoreName`、`common.ts`の`PROMPT_TRAIL_ENTITY_KINDS`の3箇所を同時に更新する必要がある                                             |
+| Lv3-2             | migrationは`v4-to-v5.ts`と同じ粒度でコメントを残す。スキーマのみの変更ではないため、テストは`database-migration.test.ts`に追加する                                                          |
+| Lv3-2             | `src/developer-data/scenarios/`のシナリオデータがStepを含むよう更新が必要。Lv4-3の検証導線でも既存Runを使うため、Step付きのRunが用意できていないと後続が詰まる                              |
+| Lv3-3・Lv3-4      | 並び替えはTrail配下のStepを単一トランザクションで再採番する。楽観ロックは`updateTrailMetadata`の`expectedUpdatedAt`パターンに合わせる                                                       |
+| Lv3-5             | ERDの`TRAIL }o..o{ PROMPT`（間接参照・Run経由、P3-6（現P3-7）で直接管理を検討）を、`TRAIL_STEP`経由の実装済みの関係（`TRAIL \|\|--o{ TRAIL_STEP`／`TRAIL_STEP }o--o\| PROMPT`）へ書き換える |
+| Lv3-5             | `functional-requirements.md`に反映が必要かを判断する                                                                                                                                        |
+| P3-5 Lv3-3〜Lv3-6 | 「Stepの種別としてSTEP4を定義し、それを実行できるようにする」という形へissue本文を書き換えてから着手する。`TrailStepKind`へエージェント実行の種別を追加するのはこのタイミング               |
+| P3-5 Lv4-3        | 本Lv2完了後に再開する。保存先は`Run`と`Link`（`Run.trailStepId`経由でStepに紐付く）となる                                                                                                   |
 
 ## #270・#323・#326関連の申し送り事項（記録のみ）
 
