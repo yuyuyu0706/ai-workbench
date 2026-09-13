@@ -1,5 +1,7 @@
 name: PromptTrail Agent Step
 
+run-name: 'Agent step: ${{ inputs.step }} [${{ github.event.inputs.promptTrailRunId }}]'
+
 on:
   workflow_dispatch:
     inputs:

@@ -15,7 +15,8 @@
     "node": "20.x"
   },
   "dependencies": {
-    "@azure/functions": "^4.5.1"
+    "@azure/functions": "^4.5.1",
+    "fflate": "^0.8.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",

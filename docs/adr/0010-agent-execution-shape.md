@@ -25,6 +25,13 @@ Executionの7ステップモデルのうちステップ2（ISSUE作成）も、M
 エージェント実行は、Gatewayとは別の実行主体・別の認証方式を必要とするため、ADR 0009のPAT運用
 方針との関係を明確にする必要がある。
 
+Lv4-2（Managed Function 2本の実装）着手時、以下2点が判明し、本ADRの当初決定を是正する必要が
+生じた。第一に、GitHub Actionsのworkflow runs一覧APIのレスポンスには`workflow_dispatch`の
+inputsが含まれない。当初想定していた「inputsへ埋め込んだ識別子とrunを突き合わせる」方式は
+成立しない。第二に、`repository_dispatch`をFine-grained PATから呼ぶには`Contents: write`権限
+が必要である。起動用PATに`Actions: write`のみを持たせる方針と相容れない。この2点により、
+トリガー方式・権限モデルの記述を以下のとおり是正する。
+
 ## Decision
 
 ### エージェント実行環境：GitHub Actions ＋ Claude Code Action
@@ -37,16 +44,20 @@ Executionの7ステップモデルのうちステップ2（ISSUE作成）も、M
 - `ANTHROPIC_API_KEY`はGitHub ActionsのSecretsへ保管する。SWA Application Settings側の既存キー
   （Gateway用）とは別管理とする。用途（Gateway／エージェント）が異なるためである。
 
-### トリガー方式：`repository_dispatch`を主経路、`workflow_dispatch`を手動フォールバック
+### トリガー方式：`workflow_dispatch`を唯一の経路とする
 
-- プログラムからの起動は`repository_dispatch`を用いる。STEP起動にはissue番号・STEP種別・
-  前STEPの成果物といった構造化payloadが必要であり、任意JSONを`client_payload`へ載せられるため。
-- `workflow_dispatch`のinputsは文字列10個までの制約があり、実装方針.md本文のような長文の
-  受け渡しに向かない。そのため主経路には採用しない。
-- 手動起動・再実行用に`workflow_dispatch`も併設する。PromptTrail側が動作しない状況でも
-  Actions UIから起動でき、障害時の回避手段になる。
-- ADR 0008は`workflow_dispatch`のみに言及していたが、本ADRで`repository_dispatch`を主経路と
-  する判断へ更新する。
+- プログラムからの起動・手動起動のいずれも`workflow_dispatch`を用いる。`repository_dispatch`
+  は採用しない。Fine-grained PATから`repository_dispatch`を呼ぶには`Contents: write`が必要で
+  あり、起動用PAT（`GITHUB_DISPATCH_PAT`）に`Actions: write`のみを持たせる方針と両立しない。
+- `workflow_dispatch`のinputsは文字列10個までの制約があるため、STEP間では長文payloadを渡さない。
+  後続STEPへは前STEPの run id のみを渡し、後続STEP（またはそれを起動するManaged Function）が
+  Actions APIでartifactを取得しに行く。
+- dispatch APIはrun idを返さないため、run名（`run-name:`に埋め込んだ識別子）で突き合わせる。
+  詳細はLv4-2（`docs/product/prompt-trail/agent-execution-operations.md`）を参照。
+- Actions UIからの手動起動・再実行にも同じ`workflow_dispatch`を用いる。PromptTrail側が動作
+  しない状況でも起動でき、障害時の回避手段になる。
+- ADR 0008は`workflow_dispatch`のみに言及していた。本ADRは当初`repository_dispatch`を主経路と
+  する判断へ更新していたが、Lv4-2での是正により`workflow_dispatch`のみの記述へ戻す。
 
 ### 権限モデル：`GITHUB_TOKEN` ＋ ワークフロー単位の`permissions:`（STEP別・弱い順）
 
@@ -67,6 +78,11 @@ Executionの7ステップモデルのうちステップ2（ISSUE作成）も、M
   漏洩時の影響範囲も大きい。
 - ADR 0009の`GITHUB_PAT`はGateway（Managed Function）用として存続させ、エージェント実行では
   使わない。用途による意図的な分離である。
+- 加えて、ワークフローを起動する側（Managed Function）は、対象リポジトリの`Actions: write`
+  のみを持つ専用のFine-grained PAT（`GITHUB_DISPATCH_PAT`）を用いる。ワークフロー内部で使う
+  `GITHUB_TOKEN`、およびADR 0009の`GITHUB_PAT`（Gateway用・`Issues: write`）とは別のトークン
+  である。`repository_dispatch`は`Contents: write`を要求するため、起動経路として採らない
+  （前述のトリガー方式を参照）。
 
 ### 実行結果の受領：GitHub Source of Truthを基本、Actions APIのPullを最小限併用
 
@@ -81,15 +97,15 @@ Executionの7ステップモデルのうちステップ2（ISSUE作成）も、M
 
 ### STEP間の入出力契約
 
-| STEP   | 入力                       | 出力                                 | 出力の置き場所                                    |
-| ------ | -------------------------- | ------------------------------------ | ------------------------------------------------- |
-| STEP4  | 親Lv1 issue番号            | 実装方針.md                          | Actions artifact ＋ job summary（→ `Run.output`） |
-| STEP5  | 実装方針.md本文（payload） | 子issue                              | GitHub Issue（→ `Link`）                          |
-| STEP6  | 子issue番号                | 開発ブランチ・PR                     | GitHub PR（→ `Link`）                             |
-| STEP7  | PR番号                     | レビューコメント                     | PRコメント（→ `Link`）                            |
-| STEP8  | レビュー結果               | マージ済みPR                         | 人間が操作。結果のみ記録                          |
-| STEP9  | マージ済みPR番号           | 更新済み子issue                      | GitHub Issue                                      |
-| STEP10 | 子issue番号                | 更新済み親issue・クローズ済み子issue | GitHub Issue                                      |
+| STEP   | 入力             | 出力                                 | 出力の置き場所                                    |
+| ------ | ---------------- | ------------------------------------ | ------------------------------------------------- |
+| STEP4  | 親Lv1 issue番号  | 実装方針.md                          | Actions artifact ＋ job summary（→ `Run.output`） |
+| STEP5  | 前STEPのrun ID   | 子issue                              | GitHub Issue（→ `Link`）                          |
+| STEP6  | 子issue番号      | 開発ブランチ・PR                     | GitHub PR（→ `Link`）                             |
+| STEP7  | PR番号           | レビューコメント                     | PRコメント（→ `Link`）                            |
+| STEP8  | レビュー結果     | マージ済みPR                         | 人間が操作。結果のみ記録                          |
+| STEP9  | マージ済みPR番号 | 更新済み子issue                      | GitHub Issue                                      |
+| STEP10 | 子issue番号      | 更新済み親issue・クローズ済み子issue | GitHub Issue                                      |
 
 - STEP4の成果物はActions artifactおよびjob summaryへ出力する。親issueへのコメント投稿
   （`issues: write`）やリポジトリへのコミット（`contents: write`）を選ぶと、STEP4が
@@ -129,3 +145,9 @@ Executionの7ステップモデルのうちステップ2（ISSUE作成）も、M
 - P3-3のGateway実行経路とP3-5のエージェント実行経路が併存することで、実装・運用の複雑さは
   一時的に増すが、STEP4の一本化判断をLv3-7まで遅らせることで、拙速な統合による手戻りを
   避けられる。
+- 起動用PAT（`GITHUB_DISPATCH_PAT`）の有効期限管理が新たな運用項目になる。Fine-grained PAT
+  は有効期限を必ず持つため、失効前の更新手順（`docs/product/prompt-trail/agent-execution-operations.md`
+  参照）を運用側で維持する必要がある。
+- `GITHUB_DISPATCH_PAT`は、ADR 0009で採用済みの`GITHUB_PAT`（Gateway用・未実装）とは別の
+  トークンである。スコープ（`Actions: write` vs `Issues: write`）・用途（起動 vs Gateway実行）
+  のいずれも異なるため、混同しないよう管理する。

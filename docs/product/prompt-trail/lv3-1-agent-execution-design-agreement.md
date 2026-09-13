@@ -19,16 +19,18 @@
 - `ANTHROPIC_API_KEY`はGitHub ActionsのSecretsへ保管する（SWA Application Settings側の既存キー
   とは別管理。Gateway用とエージェント用で用途が異なるため）。
 
-### トリガー方式：`repository_dispatch`を主経路、`workflow_dispatch`をフォールバック
+### トリガー方式：`workflow_dispatch`を唯一の経路とする
 
-- プログラムからの起動は`repository_dispatch`を用いる。STEP起動にはissue番号・STEP種別・
-  前STEPの成果物といった構造化payloadが必要であり、任意JSONを`client_payload`へ載せられる
-  ため。
-- 手動起動・再実行用に`workflow_dispatch`も併設する。PromptTrail側が動作しない状況でも
-  Actions UIから起動でき、障害時の回避手段になる。`workflow_dispatch`のinputsは文字列10個
-  までの制約があり、md本文の受け渡しには向かないため主経路にはしない。
-- ADR 0008は`workflow_dispatch`のみに言及していたが、本Lv3-1で`repository_dispatch`を主経路と
-  する判断へ更新する。
+- プログラムからの起動・手動起動のいずれも`workflow_dispatch`を用いる。`repository_dispatch`
+  は採用しない。Fine-grained PATから`repository_dispatch`を呼ぶには`Contents: write`が必要で
+  あり、起動用PAT（`GITHUB_DISPATCH_PAT`）に`Actions: write`のみを持たせる方針と両立しない
+  ことがLv4-2で判明したための是正である。
+- `workflow_dispatch`のinputsは文字列10個までの制約があるため、STEP間では長文payloadを渡さず、
+  後続STEPへは前STEPのrun idのみを渡し、Actions APIでartifactを取得しに行く。
+- dispatch APIはrun idを返さないため、run名（`run-name:`に埋め込んだ識別子）で突き合わせる。
+- ADR 0008は`workflow_dispatch`のみに言及していた。本文書は当初`repository_dispatch`を主経路と
+  する判断へ更新していたが、Lv4-2での是正によりADR 0010と同じく`workflow_dispatch`のみの
+  記述へ戻す。
 
 ### 権限モデル：STEP別`permissions:`（弱い順）
 
@@ -56,19 +58,20 @@
 
 ### STEP間の入出力契約
 
-| STEP   | 入力                       | 出力                                 | 出力の置き場所                                    |
-| ------ | -------------------------- | ------------------------------------ | ------------------------------------------------- |
-| STEP4  | 親Lv1 issue番号            | 実装方針.md                          | Actions artifact ＋ job summary（→ `Run.output`） |
-| STEP5  | 実装方針.md本文（payload） | 子issue                              | GitHub Issue（→ `Link`）                          |
-| STEP6  | 子issue番号                | 開発ブランチ・PR                     | GitHub PR（→ `Link`）                             |
-| STEP7  | PR番号                     | レビューコメント                     | PRコメント（→ `Link`）                            |
-| STEP8  | レビュー結果               | マージ済みPR                         | 人間が操作。結果のみ記録                          |
-| STEP9  | マージ済みPR番号           | 更新済み子issue                      | GitHub Issue                                      |
-| STEP10 | 子issue番号                | 更新済み親issue・クローズ済み子issue | GitHub Issue                                      |
+| STEP   | 入力             | 出力                                 | 出力の置き場所                                    |
+| ------ | ---------------- | ------------------------------------ | ------------------------------------------------- |
+| STEP4  | 親Lv1 issue番号  | 実装方針.md                          | Actions artifact ＋ job summary（→ `Run.output`） |
+| STEP5  | 前STEPのrun ID   | 子issue                              | GitHub Issue（→ `Link`）                          |
+| STEP6  | 子issue番号      | 開発ブランチ・PR                     | GitHub PR（→ `Link`）                             |
+| STEP7  | PR番号           | レビューコメント                     | PRコメント（→ `Link`）                            |
+| STEP8  | レビュー結果     | マージ済みPR                         | 人間が操作。結果のみ記録                          |
+| STEP9  | マージ済みPR番号 | 更新済み子issue                      | GitHub Issue                                      |
+| STEP10 | 子issue番号      | 更新済み親issue・クローズ済み子issue | GitHub Issue                                      |
 
 - STEP4の成果物はActions artifactおよびjob summaryへ出力する。親issueへのコメント投稿や
   リポジトリへのコミットを選ぶと、STEP4がread-onlyでなくなり、権限階段の出発点が消えるため。
-- STEP5の起動時は、`repository_dispatch`の`client_payload`へ実装方針.mdの本文を載せて渡す。
+- STEP5の起動時は、`workflow_dispatch`のinputsへ前STEPのrun idのみを渡す。STEP5（を起動する
+  Managed Function）が、そのrun idを使ってActions APIから実装方針.mdの本文を取得する。
 
 ### STEP8：人間承認ゲート、STEP9/10への接続は手動
 
@@ -94,6 +97,10 @@
 - ADR 0009で採用済みの`GITHUB_PAT`（Fine-grained PAT）はGateway（Managed Function）用として
   存続させ、エージェント実行では使わない。有効期限管理・漏洩時の影響範囲の観点からも用途を
   分離する。
+- ワークフローを起動する側（Managed Function）は、対象リポジトリの`Actions: write`のみを持つ
+  専用のFine-grained PAT（`GITHUB_DISPATCH_PAT`）を用いる。ワークフロー内の`GITHUB_TOKEN`、
+  ADR 0009の`GITHUB_PAT`（Gateway用）のいずれとも別のトークンである。`repository_dispatch`が
+  `Contents: write`を要求するため起動経路として採らないことは、上記トリガー方式のとおり。
 - 既知の制約：`GITHUB_TOKEN`で作成したPR・pushは他のワークフロー（`ci.yml`）をトリガーしない。
   STEP6で作成したPRにCIを走らせる必要がある場合のみ、PATまたはGitHub Appを例外として検討する。
   **この判断はLv3-6へ申し送る（本Lv3-1では方針のみ記録し、決定しない）**。
