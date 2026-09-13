@@ -1,5 +1,5 @@
 <h2 class="sr-only">
-  Trail・Prompt・Run・Messageの関係性を示すER図。実装済みと未実装を区別する。
+  Trail・TrailStep・Prompt・Run・Linkの関係性を示すDomainモデル図。新規・変更箇所と既存を区別する。
 </h2>
 <div id="erd"></div>
 <script type="module">
@@ -23,10 +23,10 @@
   });
   const src = `erDiagram
     PROJECT ||--o{ TRAIL : "束ねる（実装済み）"
-    TRAIL ||--o{ RUN : "束ねる（実装済み・P3-1）"
-    PROMPT ||--o{ RUN : "生成元（実装済み・promptSnapshot.promptId）"
-    RUN ||--o{ MESSAGE : "往復（P3-4 Lv3-3で追加予定）"
-    TRAIL }o..o{ PROMPT : "間接参照・Run経由（現P3-6・#331で直接管理を実施）"
+    TRAIL ||--o{ TRAIL_STEP : "束ねる・順序を持つ（新規）"
+    TRAIL_STEP ||--o{ RUN : "実行する（新規・間接参照を置き換え）"
+    TRAIL_STEP }o--o| PROMPT : "参照する。0または1（新規）"
+    RUN ||--o{ LINK : "外部成果物を保持（実装済み）"
 
     PROJECT {
         string title
@@ -36,20 +36,28 @@
         string title
         string kind
     }
+    TRAIL_STEP {
+        number order
+        string kind
+        string title
+        string promptId FK "nullable"
+        string note "nullable"
+    }
     PROMPT {
         string title
         string body
         string tags
     }
     RUN {
-        string trailId FK
+        string trailStepId FK
         string promptSnapshot
         string output
         string status
     }
-    MESSAGE {
+    LINK {
+        string runId FK
+        string type
         string role
-        string content
     }`;
   const { svg } = await mermaid.render('erd-svg', src);
   document.getElementById('erd').innerHTML = svg;
@@ -62,5 +70,25 @@
     .querySelectorAll('#erd .er.attributeBoxOdd, #erd .er.attributeBoxEven')
     .forEach((row) => {
       row.setAttribute('stroke', 'none');
+    });
+
+  // 新規・変更箇所（TRAIL_STEPを含む関係・エンティティ）を既存と色で区別する。
+  const newFill = dark ? '#2E4F3B' : '#EAF3EC';
+  const newStroke = dark ? '#8FCB9F' : '#2E7D4F';
+  document.querySelectorAll('#erd .er.entityLabel').forEach((label) => {
+    if (label.textContent && label.textContent.includes('TRAIL_STEP')) {
+      const box = label.closest('g')?.querySelector('.er.entityBox');
+      if (box) {
+        box.setAttribute('fill', newFill);
+        box.setAttribute('stroke', newStroke);
+      }
+    }
+  });
+  document
+    .querySelectorAll('#erd .relationshipLabel, #erd .relationshipLabelBox')
+    .forEach((el) => {
+      if (el.textContent && el.textContent.includes('新規')) {
+        el.setAttribute('fill', newStroke);
+      }
     });
 </script>

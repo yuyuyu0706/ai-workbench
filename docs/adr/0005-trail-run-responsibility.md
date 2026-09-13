@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted（P3-1時点）／Partially superseded by [ADR 0011](0011-trail-as-prompt-flow.md)
 
 ## Context
 
