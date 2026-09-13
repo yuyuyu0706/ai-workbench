@@ -129,14 +129,14 @@
 
 ### 繰り下げは、過去の記録と現行の決定で書き分ける
 
-| 対象                                                                    | 性質             | 対応                                                                                                            |
-| ----------------------------------------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------- |
-| `docs/adr/0010-agent-execution-shape.md`                                | 現在有効な決定   | `P3-6`を`P3-7`へ単純に直す（1箇所）                                                                             |
-| `docs/product/prompt-trail/lv3-1-agent-execution-design-agreement.md`   | 過去の合意の記録 | 「P3-6（現P3-7）」の形で併記する                                                                                |
-| `docs/product/prompt-trail/lv3-1-prompt-execution-design-agreement.md`  | 過去の合意の記録 | 同上                                                                                                            |
-| `docs/product/prompt-trail/assets/lv3-1-trail-prompt-run-step-erd.html` | 現況を示す図     | `P3-6`は「P3-6（現P3-7）」へ。`STEP`エンティティは`MESSAGE`へ改名。`TRAIL }o..o{ PROMPT`の関係更新はLv3-5で行う |
-| GitHub Issue #270                                                       | 現行のツリー     | Lv2ツリーに本Lv2を追加し、旧P3-6をP3-7へ繰り下げる（本Issueでは記録のみ。反映は別途）                           |
-| GitHub Issue #323・#326                                                 | 現行の管理Issue  | 「UI導線はP3-6」等をP3-7へ直す（本Issueでは記録のみ。反映は別途）                                               |
+| 対象                                                                    | 性質             | 対応                                                                                                                                                                      |
+| ----------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/adr/0010-agent-execution-shape.md`                                | 現在有効な決定   | `P3-6`を`P3-7`へ単純に直す（1箇所）                                                                                                                                       |
+| `docs/product/prompt-trail/lv3-1-agent-execution-design-agreement.md`   | 過去の合意の記録 | 「P3-6（現P3-7）」の形で併記する                                                                                                                                          |
+| `docs/product/prompt-trail/lv3-1-prompt-execution-design-agreement.md`  | 過去の合意の記録 | 同上                                                                                                                                                                      |
+| `docs/product/prompt-trail/assets/lv3-1-trail-prompt-run-step-erd.html` | 現況を示す図     | `TRAIL–PROMPT`の注記は、直接管理の担当が新P3-6（#331）であることが読み取れる表記にする。`STEP`エンティティは`MESSAGE`へ改名。`TRAIL }o..o{ PROMPT`の関係更新はLv3-5で行う |
+| GitHub Issue #270                                                       | 現行のツリー     | Lv2ツリーに本Lv2を追加し、旧P3-6をP3-7へ繰り下げる（本Issueでは記録のみ。反映は別途）                                                                                     |
+| GitHub Issue #323・#326                                                 | 現行の管理Issue  | 「UI導線はP3-6」等をP3-7へ直す（本Issueでは記録のみ。反映は別途）                                                                                                         |
 
 - 理由：`lv3-1-*.md`は当時の合意の記録なので、記述を消さずに現在地も分かる形にする。ADR 0010
   は過去の記録ではなく現在有効な決定なので、直接直す。
@@ -165,17 +165,17 @@
 
 ## 実装への申し送り（Lv3-2以降向け）
 
-| 宛先              | 申し送り内容                                                                                                                                                                                |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Lv3-2             | Runを作るすべての経路（`createDirectRunFromPrompt`を含む）を洗い出し、Stepも併せて用意するよう改める。ADR 0005でDirect RunがTrailを作るようにしたのと同じ構図                               |
-| Lv3-2             | `metadata.ts`の`PROMPT_TRAIL_SCHEMA_VERSION`と`PromptTrailStoreName`、`common.ts`の`PROMPT_TRAIL_ENTITY_KINDS`の3箇所を同時に更新する必要がある                                             |
-| Lv3-2             | migrationは`v4-to-v5.ts`と同じ粒度でコメントを残す。スキーマのみの変更ではないため、テストは`database-migration.test.ts`に追加する                                                          |
-| Lv3-2             | `src/developer-data/scenarios/`のシナリオデータがStepを含むよう更新が必要。Lv4-3の検証導線でも既存Runを使うため、Step付きのRunが用意できていないと後続が詰まる                              |
-| Lv3-3・Lv3-4      | 並び替えはTrail配下のStepを単一トランザクションで再採番する。楽観ロックは`updateTrailMetadata`の`expectedUpdatedAt`パターンに合わせる                                                       |
-| Lv3-5             | ERDの`TRAIL }o..o{ PROMPT`（間接参照・Run経由、P3-6（現P3-7）で直接管理を検討）を、`TRAIL_STEP`経由の実装済みの関係（`TRAIL \|\|--o{ TRAIL_STEP`／`TRAIL_STEP }o--o\| PROMPT`）へ書き換える |
-| Lv3-5             | `functional-requirements.md`に反映が必要かを判断する                                                                                                                                        |
-| P3-5 Lv3-3〜Lv3-6 | 「Stepの種別としてSTEP4を定義し、それを実行できるようにする」という形へissue本文を書き換えてから着手する。`TrailStepKind`へエージェント実行の種別を追加するのはこのタイミング               |
-| P3-5 Lv4-3        | 本Lv2完了後に再開する。保存先は`Run`と`Link`（`Run.trailStepId`経由でStepに紐付く）となる                                                                                                   |
+| 宛先              | 申し送り内容                                                                                                                                                                              |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lv3-2             | Runを作るすべての経路（`createDirectRunFromPrompt`を含む）を洗い出し、Stepも併せて用意するよう改める。ADR 0005でDirect RunがTrailを作るようにしたのと同じ構図                             |
+| Lv3-2             | `metadata.ts`の`PROMPT_TRAIL_SCHEMA_VERSION`と`PromptTrailStoreName`、`common.ts`の`PROMPT_TRAIL_ENTITY_KINDS`の3箇所を同時に更新する必要がある                                           |
+| Lv3-2             | migrationは`v4-to-v5.ts`と同じ粒度でコメントを残す。スキーマのみの変更ではないため、テストは`database-migration.test.ts`に追加する                                                        |
+| Lv3-2             | `src/developer-data/scenarios/`のシナリオデータがStepを含むよう更新が必要。Lv4-3の検証導線でも既存Runを使うため、Step付きのRunが用意できていないと後続が詰まる                            |
+| Lv3-3・Lv3-4      | 並び替えはTrail配下のStepを単一トランザクションで再採番する。楽観ロックは`updateTrailMetadata`の`expectedUpdatedAt`パターンに合わせる                                                     |
+| Lv3-5             | ERDの`TRAIL }o..o{ PROMPT`（間接参照・Run経由、現P3-6・#331で直接管理を実施）を、`TRAIL_STEP`経由の実装済みの関係（`TRAIL \|\|--o{ TRAIL_STEP`／`TRAIL_STEP }o--o\| PROMPT`）へ書き換える |
+| Lv3-5             | `functional-requirements.md`に反映が必要かを判断する                                                                                                                                      |
+| P3-5 Lv3-3〜Lv3-6 | 「Stepの種別としてSTEP4を定義し、それを実行できるようにする」という形へissue本文を書き換えてから着手する。`TrailStepKind`へエージェント実行の種別を追加するのはこのタイミング             |
+| P3-5 Lv4-3        | 本Lv2完了後に再開する。保存先は`Run`と`Link`（`Run.trailStepId`経由でStepに紐付く）となる                                                                                                 |
 
 ## #270・#323・#326関連の申し送り事項（記録のみ）
 
@@ -206,6 +206,7 @@
 - [x] ADR 0011が起票され、決定内容が記録されている。
 - [x] ADR 0005のStatusが更新され、本文は書き換えられていない。
 - [x] ADR 0010の`P3-6`が`P3-7`へ直っている。
-- [x] 設計合意文書2本とERDで、`P3-6`が「P3-6（現P3-7）」の形で併記されている。
+- [x] 設計合意文書2本で`P3-6`が「P3-6（現P3-7）」の形で併記され、ERDは直接管理の担当が
+      新P3-6（#331）であることが正しく読める表記になっている。
 - [ ] #270・#323・#326が更新されている（本文書に記録済み。各Issue自体への反映は別途実施）。
 - [x] Lv3-2が、本文書の申し送り内容に沿って着手可能な状態になっている。
