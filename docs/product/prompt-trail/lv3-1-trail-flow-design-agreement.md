@@ -8,6 +8,8 @@
   PR [#306](https://github.com/yuyuyu0706/ai-workbench/pull/306)）、P3-5 Lv3-1
   （[#324](https://github.com/yuyuyu0706/ai-workbench/issues/324)／
   PR [#325](https://github.com/yuyuyu0706/ai-workbench/pull/325)）と同じ形式を踏襲する。
+- 補足：本文書とその関連ファイルは、先行するPR #333（クローズ済み・未マージ）の内容を
+  引き継いで本PRとして再提出したものであり、内容に変更はない。
 
 ## 決定事項（チャットでの合意内容）
 
