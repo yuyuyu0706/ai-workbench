@@ -94,10 +94,10 @@ Runを介してしか辿れない間接参照であることを明示してい�
 3. `version(10).stores(schemaV10).upgrade(migrateToV10)`を追加する。
 4. `migrateToV10`の処理：既存Runを`trailId`でグループ化し、各グループ内で`createdAt`の
    昇順に`order`を1から採番する（ADR 0005のbackfill以降に1 Trail : 複数Runが生じている
-   可能性があるため、`order`を一律1にしない）。Run 1件につき`TrailStep` 1件を`step-${run.id}`
+   可能性があるため、`order`を一律1にしない）。Run 1件につき`TrailStep` 1件を`trail-step-${run.id}`
    で作成する。`trailId`は`run.trailId`、`kind`は`prompt`、`title`は
    `run.promptSnapshot.title`、`promptId`は`run.promptSnapshot.promptId`から埋める。
-   `run.trailStepId = 'step-' + run.id`を設定する。
+   `run.trailStepId = 'trail-step-' + run.id`を設定する。
 5. すべてを単一の`upgrade()`トランザクション内で行い、失敗時は全体がロールバックされる
    ようにする。`v4-to-v5.ts`と同じ方針・同じコメント粒度で残す。
 

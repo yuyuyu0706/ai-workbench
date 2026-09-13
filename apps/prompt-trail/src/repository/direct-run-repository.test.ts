@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { Project, Prompt, Run, Trail, UtcDateTimeString } from '../domain';
+import type {
+  Project,
+  Prompt,
+  Run,
+  Trail,
+  TrailStep,
+  UtcDateTimeString,
+} from '../domain';
 import { createDefaultProject, DEFAULT_PROJECT_ID } from '../domain';
 import { createDatabaseTestScope } from '../test/database-test-utils';
 
@@ -50,6 +57,25 @@ function buildTrail(overrides: Partial<Trail> = {}): Trail {
   };
 }
 
+function buildTrailStep(
+  prompt: Prompt,
+  overrides: Partial<TrailStep> = {},
+): TrailStep {
+  return {
+    id: 'direct-trail-step' as TrailStep['id'],
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    deletedAt: null,
+    trailId: 'direct-trail' as Trail['id'],
+    order: 1,
+    kind: 'prompt',
+    title: prompt.title,
+    promptId: prompt.id,
+    note: null,
+    ...overrides,
+  };
+}
+
 function buildRun(
   prompt: Prompt,
   overrides: Partial<Run & { recipeId: null }> = {},
@@ -62,6 +88,7 @@ function buildRun(
     archivedAt: null,
     projectId: DEFAULT_PROJECT_ID,
     trailId: 'direct-trail' as Trail['id'],
+    trailStepId: 'direct-trail-step' as TrailStep['id'],
     recipeId: null,
     promptSnapshot: {
       promptId: prompt.id,
@@ -92,12 +119,14 @@ describe('createDirectRunBundle', () => {
         project: buildProject(),
         prompt,
         trail: buildTrail(),
+        trailStep: buildTrailStep(prompt),
         run,
       }),
     ).resolves.toEqual({
       project: buildProject(),
       prompt,
       trail: buildTrail(),
+      trailStep: buildTrailStep(prompt),
       run,
     });
     await expect(repository.getRun(run.id)).resolves.toEqual(run);
@@ -105,6 +134,29 @@ describe('createDirectRunBundle', () => {
       trailId: 'direct-trail',
     });
     await expect(repository.getPrompt(prompt.id)).resolves.toEqual(prompt);
+    await expect(
+      repository.getTrailStep(buildTrailStep(prompt).id),
+    ).resolves.toEqual(buildTrailStep(prompt));
+  });
+
+  it('rejects a Run whose trailStepId does not match the bundle Trail Step', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    const prompt = buildPrompt();
+    const run = buildRun(prompt, {
+      trailStepId: 'mismatched-trail-step' as Run['trailStepId'],
+    });
+
+    await expect(
+      repository.createDirectRunBundle({
+        project: buildProject(),
+        prompt,
+        trail: buildTrail(),
+        trailStep: buildTrailStep(prompt),
+        run,
+      }),
+    ).rejects.toMatchObject({ code: 'project-mismatch' });
+    await expect(database.runs.count()).resolves.toBe(0);
   });
 
   it('rolls back all records when Direct Run invariants are invalid', async () => {
@@ -118,6 +170,7 @@ describe('createDirectRunBundle', () => {
         project: buildProject(),
         prompt,
         trail: buildTrail(),
+        trailStep: buildTrailStep(prompt),
         run,
       }),
     ).rejects.toMatchObject({ code: 'snapshot-mismatch' });
@@ -217,6 +270,7 @@ describe('createDirectRunBundle', () => {
           project: buildProject(),
           prompt,
           trail: buildTrail(),
+          trailStep: buildTrailStep(prompt),
           run,
         }),
       ).rejects.toMatchObject({ code });
@@ -248,6 +302,7 @@ describe('createDirectRunBundle', () => {
         project: buildProject(),
         prompt,
         trail: buildTrail(),
+        trailStep: buildTrailStep(prompt),
         run,
       }),
     ).rejects.toMatchObject({ code: 'snapshot-mismatch' });
@@ -266,6 +321,7 @@ describe('createDirectRunBundle', () => {
         project: buildProject(),
         prompt,
         trail: buildTrail(),
+        trailStep: buildTrailStep(prompt),
         run,
       });
       const nextPrompt = buildPrompt({
@@ -280,6 +336,7 @@ describe('createDirectRunBundle', () => {
           project: buildProject(),
           prompt: nextPrompt,
           trail: buildTrail(),
+          trailStep: buildTrailStep(prompt),
           run: nextRun,
         }),
       ).rejects.toMatchObject({ code: 'duplicate-id' });
@@ -299,6 +356,7 @@ describe('createDirectRunBundle', () => {
           project: buildProject(),
           prompt,
           trail: buildTrail(),
+          trailStep: buildTrailStep(prompt),
           run,
         }),
       ).rejects.toMatchObject({ code: 'reference-unavailable' });
@@ -329,12 +387,14 @@ describe('createDirectRunFromPrompt', () => {
       const before = structuredClone(prompt);
 
       const trail = buildTrail({ projectId: project.id });
+      const trailStep = buildTrailStep(prompt);
       await expect(
         repository.createDirectRunFromPrompt({
           project,
           promptId: prompt.id,
           expectedPromptUpdatedAt: prompt.updatedAt,
           trail,
+          trailStep,
           run,
         }),
       ).resolves.toEqual({ project, trail, run });
@@ -362,6 +422,7 @@ describe('createDirectRunFromPrompt', () => {
     await database.prompts.add(prompt);
     const run = buildRun(prompt, scenario.run);
     const trail = buildTrail({ projectId: project.id });
+    const trailStep = buildTrailStep(prompt);
 
     await expect(
       repository.createDirectRunFromPrompt({
@@ -371,6 +432,7 @@ describe('createDirectRunFromPrompt', () => {
           (scenario.expectedPromptUpdatedAt as UtcDateTimeString) ??
           prompt.updatedAt,
         trail,
+        trailStep,
         run,
       }),
     ).rejects.toMatchObject({ code });

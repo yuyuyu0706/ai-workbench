@@ -6,6 +6,7 @@ import type {
   Recipe,
   Run,
   Trail,
+  TrailStep,
   UtcDateTimeString,
 } from '../domain';
 import { DEFAULT_WORKSPACE_ID } from '../domain';
@@ -107,10 +108,24 @@ export const sampleTrail: Trail = {
   archivedAt: null,
 };
 
+export const sampleTrailStep: TrailStep = {
+  id: SAMPLE_IDS.trailStep,
+  createdAt: SAMPLE_DATASET_TIMELINE.runStartedAt,
+  updatedAt: SAMPLE_DATASET_TIMELINE.runStartedAt,
+  deletedAt: null,
+  trailId: SAMPLE_IDS.trail,
+  order: 1,
+  kind: 'prompt',
+  title: samplePrompt.title,
+  promptId: SAMPLE_IDS.prompt,
+  note: null,
+};
+
 export const sampleRun: Run = {
   id: SAMPLE_IDS.run,
   projectId: SAMPLE_IDS.project,
   trailId: SAMPLE_IDS.trail,
+  trailStepId: SAMPLE_IDS.trailStep,
   recipeId: SAMPLE_IDS.recipe,
   promptSnapshot: {
     promptId: SAMPLE_IDS.prompt,
@@ -194,6 +209,7 @@ export const sampleDataset = {
   context: sampleContext,
   recipe: sampleRecipe,
   trail: sampleTrail,
+  trailStep: sampleTrailStep,
   run: sampleRun,
   links: sampleLinks,
 } as const;

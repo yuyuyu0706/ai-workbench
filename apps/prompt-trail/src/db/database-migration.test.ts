@@ -151,7 +151,13 @@ function asMigratedRun<
   const clone: Record<string, unknown> = { ...run };
   delete clone.trailTitle;
   delete clone.trailKind;
-  return { ...clone, trailId: `trail-${run.id}`, output: null, messages: [] };
+  return {
+    ...clone,
+    trailId: `trail-${run.id}`,
+    trailStepId: `trail-step-${run.id}`,
+    output: null,
+    messages: [],
+  };
 }
 
 function expectedTrailFor(
@@ -187,6 +193,43 @@ async function readAllStores(
       ]),
     ),
   );
+}
+
+/**
+ * Verifies that v9-to-v10 backfilled exactly one TrailStep per migrated Run,
+ * grouped by trailId and ordered 1..N by createdAt ascending within each
+ * group, and that every migrated Run's trailStepId points at its Step.
+ */
+function expectTrailStepsBackfilled(
+  migrated: Record<string, Record<string, unknown>[]>,
+  expectedRuns: readonly { id: string; trailId: string; createdAt: string }[],
+) {
+  expect(migrated.trailSteps).toHaveLength(expectedRuns.length);
+
+  const runsByTrailId = new Map<string, (typeof expectedRuns)[number][]>();
+  for (const run of expectedRuns) {
+    const group = runsByTrailId.get(run.trailId);
+    if (group === undefined) runsByTrailId.set(run.trailId, [run]);
+    else group.push(run);
+  }
+
+  for (const group of runsByTrailId.values()) {
+    const ordered = [...group].sort((a, b) =>
+      a.createdAt.localeCompare(b.createdAt),
+    );
+    ordered.forEach((run, index) => {
+      const step = migrated.trailSteps.find(
+        (candidate) => candidate.id === `trail-step-${run.id}`,
+      );
+      expect(step).toMatchObject({ trailId: run.trailId, order: index + 1 });
+      const migratedRun = migrated.runs.find(
+        (candidate) => candidate.id === run.id,
+      );
+      expect(migratedRun).toMatchObject({
+        trailStepId: `trail-step-${run.id}`,
+      });
+    });
+  }
 }
 
 async function createLegacyDatabase(
@@ -235,7 +278,9 @@ async function createLegacyV5Database(
   await database.open();
   await database.transaction('rw', database.tables, async () =>
     Promise.all(
-      PROMPT_TRAIL_STORE_NAMES.map((storeName) =>
+      PROMPT_TRAIL_STORE_NAMES.filter(
+        (storeName) => storeName !== 'trailSteps',
+      ).map((storeName) =>
         database.table(storeName).bulkAdd(dataset[storeName]),
       ),
     ),
@@ -280,14 +325,15 @@ describe('schema v1 to v2 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(9);
+    expect(database.verno).toBe(10);
     for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
       (storeName) =>
         storeName !== 'runs' &&
         storeName !== 'prompts' &&
         storeName !== 'projects' &&
         storeName !== 'workspaces' &&
-        storeName !== 'trails',
+        storeName !== 'trails' &&
+        storeName !== 'trailSteps',
     )) {
       expect(migrated[storeName]).toEqual(before[storeName]);
     }
@@ -324,6 +370,14 @@ describe('schema v1 to v2 migration', () => {
       });
     }
     expect(migrated.links[0]).toMatchObject({ runId: 'active-direct' });
+    expectTrailStepsBackfilled(
+      migrated,
+      sortedRuns.map((run) => ({
+        id: run.id,
+        trailId: `trail-${run.id}`,
+        createdAt,
+      })),
+    );
     database.close();
 
     const reopened = createPromptTrailDatabase(name);
@@ -386,14 +440,15 @@ describe('schema v2 to v3 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(9);
+    expect(database.verno).toBe(10);
     for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
       (storeName) =>
         storeName !== 'prompts' &&
         storeName !== 'runs' &&
         storeName !== 'projects' &&
         storeName !== 'workspaces' &&
-        storeName !== 'trails',
+        storeName !== 'trails' &&
+        storeName !== 'trailSteps',
     )) {
       expect(migrated[storeName]).toEqual(before[storeName]);
     }
@@ -409,6 +464,9 @@ describe('schema v2 to v3 migration', () => {
         variableValues: {},
       })),
     );
+    expectTrailStepsBackfilled(migrated, [
+      { id: 'active-direct', trailId: 'trail-active-direct', createdAt },
+    ]);
     database.close();
 
     const reopened = createPromptTrailDatabase(name);
@@ -484,14 +542,15 @@ describe('schema v3 to v4 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(9);
+    expect(database.verno).toBe(10);
     for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
       (storeName) =>
         storeName !== 'prompts' &&
         storeName !== 'runs' &&
         storeName !== 'projects' &&
         storeName !== 'workspaces' &&
-        storeName !== 'trails',
+        storeName !== 'trails' &&
+        storeName !== 'trailSteps',
     )) {
       expect(migrated[storeName]).toEqual(before[storeName]);
     }
@@ -507,6 +566,9 @@ describe('schema v3 to v4 migration', () => {
         tags: [...prompt.tags, '設計レビュー'],
       })),
     );
+    expectTrailStepsBackfilled(migrated, [
+      { id: 'active-direct', trailId: 'trail-active-direct', createdAt },
+    ]);
     database.close();
 
     const reopened = createPromptTrailDatabase(name);
@@ -568,8 +630,18 @@ describe('schema v4 to v5 migration', () => {
       expectedTrailFor(runB, now),
     ]);
     expect(runs).toEqual([
-      { ...asMigratedRun(runA), output: undefined, messages: undefined },
-      { ...asMigratedRun(runB), output: undefined, messages: undefined },
+      {
+        ...asMigratedRun(runA),
+        output: undefined,
+        messages: undefined,
+        trailStepId: undefined,
+      },
+      {
+        ...asMigratedRun(runB),
+        output: undefined,
+        messages: undefined,
+        trailStepId: undefined,
+      },
     ]);
   });
 
@@ -582,7 +654,7 @@ describe('schema v4 to v5 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(9);
+    expect(database.verno).toBe(10);
     expect(migrated.workspaces).toHaveLength(1);
     expect(migrated.trails).toHaveLength(1);
     expect(migrated.trails[0]).toMatchObject({
@@ -596,6 +668,9 @@ describe('schema v4 to v5 migration', () => {
     });
     expect(migrated.runs[0]).not.toHaveProperty('trailTitle');
     expect(migrated.runs[0]).not.toHaveProperty('trailKind');
+    expectTrailStepsBackfilled(migrated, [
+      { id: 'active-direct', trailId: migrated.trails[0].id, createdAt },
+    ]);
     database.close();
 
     const reopened = createPromptTrailDatabase(name);
@@ -659,9 +734,9 @@ describe('schema v5 to v6 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(9);
+    expect(database.verno).toBe(10);
     for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
-      (storeName) => storeName !== 'runs',
+      (storeName) => storeName !== 'runs' && storeName !== 'trailSteps',
     )) {
       expect(migrated[storeName]).toEqual(before[storeName]);
     }
@@ -670,7 +745,12 @@ describe('schema v5 to v6 migration', () => {
         ...run,
         output: null,
         messages: [],
+        trailStepId: 'trail-step-active-direct',
       })),
+    );
+    expectTrailStepsBackfilled(
+      migrated,
+      runs.map((run) => ({ id: run.id, trailId: run.trailId, createdAt })),
     );
     database.close();
 
@@ -734,18 +814,23 @@ describe('schema v6 to v7 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(9);
+    expect(database.verno).toBe(10);
     for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
-      (storeName) => storeName !== 'runs',
+      (storeName) => storeName !== 'runs' && storeName !== 'trailSteps',
     )) {
       expect(migrated[storeName]).toEqual(before[storeName]);
     }
     expect(migrated.runs).toEqual(
-      before.runs.map((run: object) => ({
+      (before.runs as { id: string }[]).map((run) => ({
         ...run,
         output: null,
         messages: [],
+        trailStepId: `trail-step-${run.id}`,
       })),
+    );
+    expectTrailStepsBackfilled(
+      migrated,
+      runs.map((run) => ({ id: run.id, trailId: run.trailId, createdAt })),
     );
     database.close();
 
@@ -871,7 +956,9 @@ describe('schema v7 to v8 migration', () => {
     await legacyV7.open();
     await legacyV7.transaction('rw', legacyV7.tables, async () =>
       Promise.all(
-        PROMPT_TRAIL_STORE_NAMES.map((storeName) =>
+        PROMPT_TRAIL_STORE_NAMES.filter(
+          (storeName) => storeName !== 'trailSteps',
+        ).map((storeName) =>
           legacyV7.table(storeName).bulkAdd(before[storeName]),
         ),
       ),
@@ -881,17 +968,22 @@ describe('schema v7 to v8 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(9);
+    expect(database.verno).toBe(10);
     for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
-      (storeName) => storeName !== 'runs',
+      (storeName) => storeName !== 'runs' && storeName !== 'trailSteps',
     )) {
       expect(migrated[storeName]).toEqual(before[storeName]);
     }
     expect(migrated.runs).toEqual(
-      before.runs.map((run: object) => ({
+      (before.runs as { id: string }[]).map((run) => ({
         ...run,
         messages: [],
+        trailStepId: `trail-step-${run.id}`,
       })),
+    );
+    expectTrailStepsBackfilled(
+      migrated,
+      runs.map((run) => ({ id: run.id, trailId: run.trailId, createdAt })),
     );
     database.close();
 
@@ -965,7 +1057,9 @@ describe('schema v8 to v9 migration', () => {
     await legacyV8.open();
     await legacyV8.transaction('rw', legacyV8.tables, async () =>
       Promise.all(
-        PROMPT_TRAIL_STORE_NAMES.map((storeName) =>
+        PROMPT_TRAIL_STORE_NAMES.filter(
+          (storeName) => storeName !== 'trailSteps',
+        ).map((storeName) =>
           legacyV8.table(storeName).bulkAdd(before[storeName]),
         ),
       ),
@@ -975,17 +1069,22 @@ describe('schema v8 to v9 migration', () => {
     const database = createPromptTrailDatabase(name);
     await database.open();
     const migrated = await readAllStores(database);
-    expect(database.verno).toBe(9);
+    expect(database.verno).toBe(10);
     for (const storeName of PROMPT_TRAIL_STORE_NAMES.filter(
-      (storeName) => storeName !== 'runs',
+      (storeName) => storeName !== 'runs' && storeName !== 'trailSteps',
     )) {
       expect(migrated[storeName]).toEqual(before[storeName]);
     }
     expect(migrated.runs).toEqual(
-      before.runs.map((run: object) => ({
+      (before.runs as { id: string }[]).map((run) => ({
         ...run,
         messages: [],
+        trailStepId: `trail-step-${run.id}`,
       })),
+    );
+    expectTrailStepsBackfilled(
+      migrated,
+      runs.map((run) => ({ id: run.id, trailId: run.trailId, createdAt })),
     );
     database.close();
 
@@ -1047,7 +1146,9 @@ describe('schema v8 to v9 migration', () => {
     await failingSeed.open();
     await failingSeed.transaction('rw', failingSeed.tables, async () =>
       Promise.all(
-        PROMPT_TRAIL_STORE_NAMES.map((storeName) =>
+        PROMPT_TRAIL_STORE_NAMES.filter(
+          (storeName) => storeName !== 'trailSteps',
+        ).map((storeName) =>
           failingSeed.table(storeName).bulkAdd(before[storeName]),
         ),
       ),

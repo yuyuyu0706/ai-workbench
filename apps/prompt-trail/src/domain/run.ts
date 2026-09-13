@@ -6,6 +6,7 @@ import type {
   PromptId,
   RecipeId,
   TrailId,
+  TrailStepId,
 } from './common';
 
 export const RUN_STATUSES = [
@@ -59,6 +60,8 @@ export interface Run extends BaseEntity<'run'>, ArchivableEntity {
   readonly projectId: ProjectId;
   /** Trail that groups this Run. Title/kind now live on the Trail. */
   readonly trailId: TrailId;
+  /** The TrailStep this Run is one execution of. */
+  readonly trailStepId: TrailStepId;
   /** null identifies a Direct Run created from a project-scoped Prompt. */
   readonly recipeId: RecipeId | null;
   readonly promptSnapshot: PromptSnapshot;

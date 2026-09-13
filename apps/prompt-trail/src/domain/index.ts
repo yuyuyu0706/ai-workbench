@@ -13,6 +13,7 @@ export type {
   RecipeId,
   RunId,
   TrailId,
+  TrailStepId,
   UtcDateTimeString,
   WorkspaceId,
 } from './common';
@@ -35,6 +36,9 @@ export type { Recipe } from './recipe';
 
 export type { Trail, TrailKind } from './trail';
 export { TRAIL_KINDS } from './trail';
+
+export type { TrailStep, TrailStepKind } from './trail-step';
+export { TRAIL_STEP_KINDS } from './trail-step';
 
 export type {
   ContextSnapshot,

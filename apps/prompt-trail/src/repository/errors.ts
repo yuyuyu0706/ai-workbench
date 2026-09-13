@@ -8,6 +8,7 @@ export const PROMPT_TRAIL_REPOSITORY_ERROR_CODES = [
   'project-mismatch',
   'snapshot-mismatch',
   'duplicate-id',
+  'duplicate-step-order',
 ] as const;
 
 export type PromptTrailRepositoryErrorCode =

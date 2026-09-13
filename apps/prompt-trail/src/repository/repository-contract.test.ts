@@ -22,6 +22,7 @@ const expectedErrorCodes = [
   'project-mismatch',
   'snapshot-mismatch',
   'duplicate-id',
+  'duplicate-step-order',
 ] as const satisfies readonly PromptTrailRepositoryErrorCode[];
 
 afterEach(async () => {

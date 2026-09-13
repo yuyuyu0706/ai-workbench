@@ -1725,6 +1725,7 @@ function createRun(
     id: id as Run['id'],
     projectId: 'project-default' as Run['projectId'],
     trailId,
+    trailStepId: `trail-step-${id}` as Run['trailStepId'],
     recipeId: null,
     promptSnapshot: { promptId, title: '', body: '' },
     contextSnapshots: [],

@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import type { Prompt, Run, Trail, UtcDateTimeString } from '../domain';
+import type {
+  Prompt,
+  Run,
+  Trail,
+  TrailStep,
+  UtcDateTimeString,
+} from '../domain';
 import { createDefaultProject, DEFAULT_PROJECT_ID } from '../domain';
 import { createDatabaseTestScope } from '../test/database-test-utils';
 import { PromptTrailRepository } from './index';
@@ -16,6 +22,7 @@ async function prepare() {
   const promptId = 'prompt-1' as Prompt['id'];
   const runId = 'run-1' as Run['id'];
   const trailId = 'trail-1' as Trail['id'];
+  const trailStepId = 'trail-step-1' as TrailStep['id'];
   const prompt: Prompt = {
     id: promptId,
     createdAt: oldTime,
@@ -39,6 +46,18 @@ async function prepare() {
     title: 'Old',
     kind: 'other',
   };
+  const trailStep: TrailStep = {
+    id: trailStepId,
+    createdAt: oldTime,
+    updatedAt: oldTime,
+    deletedAt: null,
+    trailId,
+    order: 1,
+    kind: 'prompt',
+    title: prompt.title,
+    promptId: prompt.id,
+    note: null,
+  };
   const run: Run & { readonly recipeId: null } = {
     id: runId,
     createdAt: oldTime,
@@ -47,6 +66,7 @@ async function prepare() {
     archivedAt: null,
     projectId: DEFAULT_PROJECT_ID,
     trailId,
+    trailStepId,
     recipeId: null,
     promptSnapshot: {
       promptId: prompt.id,
@@ -62,7 +82,13 @@ async function prepare() {
     output: null,
     messages: [],
   };
-  await repository.createDirectRunBundle({ project, prompt, trail, run });
+  await repository.createDirectRunBundle({
+    project,
+    prompt,
+    trail,
+    trailStep,
+    run,
+  });
   return { database, repository, run, trail };
 }
 

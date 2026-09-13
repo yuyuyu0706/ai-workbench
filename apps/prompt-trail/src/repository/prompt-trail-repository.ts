@@ -18,6 +18,9 @@ import type {
   Trail,
   TrailId,
   TrailKind,
+  TrailStep,
+  TrailStepId,
+  TrailStepKind,
   UtcDateTimeString,
   Workspace,
   WorkspaceId,
@@ -31,6 +34,7 @@ export type TrailBundle = {
   readonly context: Context;
   readonly recipe: Recipe;
   readonly trail: Trail;
+  readonly trailStep: TrailStep;
   readonly run: Run;
   readonly links: readonly Link[];
 };
@@ -40,6 +44,7 @@ export type DirectRunBundle = {
   readonly project: Project;
   readonly prompt: Prompt;
   readonly trail: Trail;
+  readonly trailStep: TrailStep;
   readonly run: Run & { readonly recipeId: null };
 };
 
@@ -48,6 +53,7 @@ export type DirectRunFromPromptCreation = {
   readonly promptId: PromptId;
   readonly expectedPromptUpdatedAt: UtcDateTimeString;
   readonly trail: Trail;
+  readonly trailStep: TrailStep;
   readonly run: Run & { readonly recipeId: null };
 };
 
@@ -73,6 +79,37 @@ export type TrailMetadataUpdate = {
   readonly updatedAt: UtcDateTimeString;
 };
 
+export type AddTrailStepInput = {
+  readonly trailStep: Omit<TrailStep, 'order'>;
+  readonly expectedUpdatedAt: UtcDateTimeString;
+  readonly updatedAt: UtcDateTimeString;
+};
+
+export type UpdateTrailStepInput = {
+  readonly trailStepId: TrailStepId;
+  readonly expectedUpdatedAt: UtcDateTimeString;
+  readonly title: string;
+  readonly kind: TrailStepKind;
+  readonly promptId: PromptId | null;
+  readonly note: string | null;
+  readonly updatedAt: UtcDateTimeString;
+};
+
+export type ReorderTrailStepsInput = {
+  readonly trailId: TrailId;
+  readonly orderedStepIds: readonly TrailStepId[];
+  readonly expectedUpdatedAt: UtcDateTimeString;
+  readonly updatedAt: UtcDateTimeString;
+};
+
+export type SoftDeleteTrailStepInput = {
+  readonly trailId: TrailId;
+  readonly trailStepId: TrailStepId;
+  readonly deletedAt: UtcDateTimeString;
+  readonly expectedUpdatedAt: UtcDateTimeString;
+  readonly updatedAt: UtcDateTimeString;
+};
+
 export class PromptTrailRepository {
   private readonly database: PromptTrailDatabase;
 
@@ -90,6 +127,7 @@ export class PromptTrailRepository {
         this.database.contexts,
         this.database.recipes,
         this.database.trails,
+        this.database.trailSteps,
         this.database.runs,
         this.database.links,
       ],
@@ -113,6 +151,9 @@ export class PromptTrailRepository {
 
         this.ensureTrailMatchesProject(trailBundle.trail, trailBundle.project);
         await this.database.trails.add(trailBundle.trail);
+
+        await this.ensureTrailStepReferencesAvailable(trailBundle.trailStep);
+        await this.database.trailSteps.add(trailBundle.trailStep);
 
         await this.ensureRunReferencesAvailable(
           trailBundle.run,
@@ -142,6 +183,7 @@ export class PromptTrailRepository {
         this.database.projects,
         this.database.prompts,
         this.database.trails,
+        this.database.trailSteps,
         this.database.runs,
       ],
       async () => {
@@ -159,6 +201,10 @@ export class PromptTrailRepository {
         await this.ensureDirectRunIdsAbsent(directRunBundle);
         await this.database.prompts.add(directRunBundle.prompt);
         await this.database.trails.add(directRunBundle.trail);
+        await this.ensureTrailStepReferencesAvailable(
+          directRunBundle.trailStep,
+        );
+        await this.database.trailSteps.add(directRunBundle.trailStep);
         await this.ensureDirectRunReferencesAvailable(
           directRunBundle.run,
           directRunBundle.trail,
@@ -181,6 +227,7 @@ export class PromptTrailRepository {
         this.database.projects,
         this.database.prompts,
         this.database.trails,
+        this.database.trailSteps,
         this.database.runs,
       ],
       async () => {
@@ -237,6 +284,13 @@ export class PromptTrailRepository {
             'Trail ID already exists',
           );
         await this.database.trails.add(creation.trail);
+        if (await this.database.trailSteps.get(creation.trailStep.id))
+          throw new PromptTrailRepositoryError(
+            'duplicate-id',
+            'Trail Step ID already exists',
+          );
+        await this.ensureTrailStepReferencesAvailable(creation.trailStep);
+        await this.database.trailSteps.add(creation.trailStep);
         await this.ensureDirectRunReferencesAvailable(
           creation.run,
           creation.trail,
@@ -361,6 +415,203 @@ export class PromptTrailRepository {
       await this.database.trails.put(updated);
       return updated;
     });
+  }
+
+  async listStepsByTrail(trailId: TrailId): Promise<readonly TrailStep[]> {
+    const trailSteps = await this.database.trailSteps
+      .where('trailId')
+      .equals(trailId)
+      .toArray();
+
+    return trailSteps
+      .filter((trailStep) => trailStep.deletedAt === null)
+      .sort((a, b) => a.order - b.order);
+  }
+
+  async getTrailStep(trailStepId: TrailStepId): Promise<TrailStep | null> {
+    return (await this.database.trailSteps.get(trailStepId)) ?? null;
+  }
+
+  async addTrailStep(input: AddTrailStepInput): Promise<TrailStep> {
+    return this.database.transaction(
+      'rw',
+      this.database.trails,
+      this.database.prompts,
+      this.database.trailSteps,
+      async () => {
+        const trail = await this.ensureTrailVersionCurrent(
+          input.trailStep.trailId,
+          input.expectedUpdatedAt,
+        );
+
+        await this.ensureTrailStepReferencesAvailable(input.trailStep);
+
+        const siblingSteps = await this.database.trailSteps
+          .where('trailId')
+          .equals(input.trailStep.trailId)
+          .toArray();
+        const activeSiblingOrders = siblingSteps
+          .filter((step) => step.deletedAt === null)
+          .map((step) => step.order);
+        const nextOrder =
+          activeSiblingOrders.length === 0
+            ? 1
+            : Math.max(...activeSiblingOrders) + 1;
+
+        const trailStep: TrailStep = { ...input.trailStep, order: nextOrder };
+        await this.database.trailSteps.add(trailStep);
+
+        await this.database.trails.put({
+          ...trail,
+          updatedAt: input.updatedAt,
+        });
+
+        return trailStep;
+      },
+    );
+  }
+
+  async updateTrailStep(input: UpdateTrailStepInput): Promise<TrailStep> {
+    return this.database.transaction(
+      'rw',
+      this.database.trails,
+      this.database.prompts,
+      this.database.trailSteps,
+      async () => {
+        const current = await this.database.trailSteps.get(input.trailStepId);
+        if (current === undefined) {
+          throw new PromptTrailRepositoryError(
+            'reference-not-found',
+            `Trail Step not found: ${input.trailStepId}`,
+          );
+        }
+
+        const trail = await this.ensureTrailVersionCurrent(
+          current.trailId,
+          input.expectedUpdatedAt,
+        );
+
+        const updated: TrailStep = {
+          ...current,
+          title: input.title,
+          kind: input.kind,
+          promptId: input.promptId,
+          note: input.note,
+          updatedAt: input.updatedAt,
+        };
+        await this.ensureTrailStepReferencesAvailable(updated);
+        await this.database.trailSteps.put(updated);
+
+        await this.database.trails.put({
+          ...trail,
+          updatedAt: input.updatedAt,
+        });
+
+        return updated;
+      },
+    );
+  }
+
+  async reorderTrailSteps(
+    input: ReorderTrailStepsInput,
+  ): Promise<readonly TrailStep[]> {
+    return this.database.transaction(
+      'rw',
+      this.database.trails,
+      this.database.trailSteps,
+      async () => {
+        const trail = await this.ensureTrailVersionCurrent(
+          input.trailId,
+          input.expectedUpdatedAt,
+        );
+
+        const currentSteps = (
+          await this.database.trailSteps
+            .where('trailId')
+            .equals(input.trailId)
+            .toArray()
+        ).filter((step) => step.deletedAt === null);
+
+        this.ensureStepIdSetMatches(currentSteps, input.orderedStepIds);
+
+        const stepsById = new Map(currentSteps.map((step) => [step.id, step]));
+        const reordered = input.orderedStepIds.map((stepId, index) => ({
+          ...(stepsById.get(stepId) as TrailStep),
+          order: index + 1,
+          updatedAt: input.updatedAt,
+        }));
+
+        this.ensureUniqueStepOrders(reordered);
+        for (const step of reordered) {
+          await this.database.trailSteps.put(step);
+        }
+
+        await this.database.trails.put({
+          ...trail,
+          updatedAt: input.updatedAt,
+        });
+
+        return reordered;
+      },
+    );
+  }
+
+  async softDeleteTrailStep(
+    input: SoftDeleteTrailStepInput,
+  ): Promise<TrailStep> {
+    return this.database.transaction(
+      'rw',
+      this.database.trails,
+      this.database.trailSteps,
+      async () => {
+        const trail = await this.ensureTrailVersionCurrent(
+          input.trailId,
+          input.expectedUpdatedAt,
+        );
+
+        const target = await this.database.trailSteps.get(input.trailStepId);
+        if (target === undefined || target.trailId !== input.trailId) {
+          throw new PromptTrailRepositoryError(
+            'reference-not-found',
+            `Trail Step not found for Trail: ${input.trailId}/${input.trailStepId}`,
+          );
+        }
+
+        const deletedStep: TrailStep = {
+          ...target,
+          deletedAt: input.deletedAt,
+          updatedAt: input.updatedAt,
+        };
+        await this.database.trailSteps.put(deletedStep);
+
+        const remainingSteps = (
+          await this.database.trailSteps
+            .where('trailId')
+            .equals(input.trailId)
+            .toArray()
+        )
+          .filter((step) => step.deletedAt === null && step.id !== target.id)
+          .sort((a, b) => a.order - b.order);
+
+        for (const [index, step] of remainingSteps.entries()) {
+          const renumbered = index + 1;
+          if (step.order !== renumbered) {
+            await this.database.trailSteps.put({
+              ...step,
+              order: renumbered,
+              updatedAt: input.updatedAt,
+            });
+          }
+        }
+
+        await this.database.trails.put({
+          ...trail,
+          updatedAt: input.updatedAt,
+        });
+
+        return deletedStep;
+      },
+    );
   }
 
   async saveProject(project: Project): Promise<Project> {
@@ -575,11 +826,14 @@ export class PromptTrailRepository {
   async saveRun(run: Run): Promise<Run> {
     await this.database.transaction(
       'rw',
-      this.database.projects,
-      this.database.prompts,
-      this.database.recipes,
-      this.database.trails,
-      this.database.runs,
+      [
+        this.database.projects,
+        this.database.prompts,
+        this.database.recipes,
+        this.database.trails,
+        this.database.trailSteps,
+        this.database.runs,
+      ],
       async () => {
         const trail = await this.database.trails.get(run.trailId);
         if (trail === undefined) {
@@ -588,6 +842,14 @@ export class PromptTrailRepository {
             `Trail not found: ${run.trailId}`,
           );
         }
+        const trailStep = await this.database.trailSteps.get(run.trailStepId);
+        if (trailStep === undefined) {
+          throw new PromptTrailRepositoryError(
+            'reference-not-found',
+            `Trail Step not found: ${run.trailStepId}`,
+          );
+        }
+        this.ensureRunStepConsistent(run, trailStep);
         await this.ensureRunReferencesAvailable(run, trail);
         await this.database.runs.put(run);
       },
@@ -693,6 +955,7 @@ export class PromptTrailRepository {
       this.database.contexts.get(trailBundle.context.id),
       this.database.recipes.get(trailBundle.recipe.id),
       this.database.trails.get(trailBundle.trail.id),
+      this.database.trailSteps.get(trailBundle.trailStep.id),
       this.database.runs.get(trailBundle.run.id),
       ...trailBundle.links.map((link) => this.database.links.get(link.id)),
     ]);
@@ -708,13 +971,19 @@ export class PromptTrailRepository {
   private async ensureDirectRunIdsAbsent(
     directRunBundle: DirectRunBundle,
   ): Promise<void> {
-    const [prompt, trail, run] = await Promise.all([
+    const [prompt, trail, trailStep, run] = await Promise.all([
       this.database.prompts.get(directRunBundle.prompt.id),
       this.database.trails.get(directRunBundle.trail.id),
+      this.database.trailSteps.get(directRunBundle.trailStep.id),
       this.database.runs.get(directRunBundle.run.id),
     ]);
 
-    if (prompt !== undefined || trail !== undefined || run !== undefined) {
+    if (
+      prompt !== undefined ||
+      trail !== undefined ||
+      trailStep !== undefined ||
+      run !== undefined
+    ) {
       throw new PromptTrailRepositoryError(
         'duplicate-id',
         'Direct Run bundle contains an ID that already exists',
@@ -725,7 +994,7 @@ export class PromptTrailRepository {
   private ensureDirectRunBundleRelationships(
     directRunBundle: DirectRunBundle,
   ): void {
-    const { project, prompt, trail, run } = directRunBundle;
+    const { project, prompt, trail, trailStep, run } = directRunBundle;
 
     if (prompt.scope !== 'project' || prompt.projectId !== project.id) {
       throw new PromptTrailRepositoryError(
@@ -755,6 +1024,149 @@ export class PromptTrailRepository {
         'snapshot-mismatch',
         'Direct Run Prompt Snapshot must reference the bundle Prompt',
       );
+    }
+
+    if (trailStep.trailId !== trail.id) {
+      throw new PromptTrailRepositoryError(
+        'project-mismatch',
+        'Direct Run Trail Step must belong to the bundle Trail',
+      );
+    }
+
+    if (run.trailStepId !== trailStep.id) {
+      throw new PromptTrailRepositoryError(
+        'project-mismatch',
+        'Direct Run must reference the bundle Trail Step',
+      );
+    }
+  }
+
+  private async ensureTrailVersionCurrent(
+    trailId: TrailId,
+    expectedUpdatedAt: UtcDateTimeString,
+  ): Promise<Trail> {
+    const trail = await this.database.trails.get(trailId);
+    if (trail === undefined) {
+      throw new PromptTrailRepositoryError(
+        'reference-not-found',
+        `Trail not found: ${trailId}`,
+      );
+    }
+    if (trail.deletedAt !== null) {
+      throw new PromptTrailRepositoryError(
+        'reference-unavailable',
+        `Trail is unavailable: ${trailId}`,
+      );
+    }
+    if (trail.updatedAt !== expectedUpdatedAt) {
+      throw new PromptTrailRepositoryError(
+        'stale-write',
+        `Trail was updated: ${trailId}`,
+      );
+    }
+    return trail;
+  }
+
+  private async ensureTrailStepReferencesAvailable(
+    trailStep: Pick<TrailStep, 'trailId' | 'kind' | 'promptId'>,
+  ): Promise<void> {
+    const trail = await this.database.trails.get(trailStep.trailId);
+
+    if (trail === undefined) {
+      throw new PromptTrailRepositoryError(
+        'reference-not-found',
+        `Trail not found: ${trailStep.trailId}`,
+      );
+    }
+
+    if (trail.deletedAt !== null) {
+      throw new PromptTrailRepositoryError(
+        'reference-unavailable',
+        `Trail is unavailable: ${trailStep.trailId}`,
+      );
+    }
+
+    if (trailStep.kind === 'manual') {
+      if (trailStep.promptId !== null) {
+        throw new PromptTrailRepositoryError(
+          'snapshot-mismatch',
+          'Manual Trail Step must not reference a Prompt',
+        );
+      }
+      return;
+    }
+
+    if (trailStep.promptId === null) {
+      throw new PromptTrailRepositoryError(
+        'snapshot-mismatch',
+        'Prompt Trail Step must reference a Prompt',
+      );
+    }
+
+    const prompt = await this.database.prompts.get(trailStep.promptId);
+
+    if (prompt === undefined) {
+      throw new PromptTrailRepositoryError(
+        'reference-not-found',
+        `Prompt not found: ${trailStep.promptId}`,
+      );
+    }
+
+    if (prompt.deletedAt !== null || prompt.status !== 'active') {
+      throw new PromptTrailRepositoryError(
+        'reference-unavailable',
+        `Prompt is unavailable: ${trailStep.promptId}`,
+      );
+    }
+  }
+
+  private ensureRunStepConsistent(run: Run, trailStep: TrailStep): void {
+    if (trailStep.trailId !== run.trailId) {
+      throw new PromptTrailRepositoryError(
+        'project-mismatch',
+        `Run does not belong to the referenced Trail Step: ${run.id}`,
+      );
+    }
+
+    if (trailStep.deletedAt !== null) {
+      throw new PromptTrailRepositoryError(
+        'reference-unavailable',
+        `Trail Step is unavailable: ${trailStep.id}`,
+      );
+    }
+  }
+
+  private ensureStepIdSetMatches(
+    currentSteps: readonly TrailStep[],
+    orderedStepIds: readonly TrailStepId[],
+  ): void {
+    const currentIds = new Set(currentSteps.map((step) => step.id));
+    const orderedIds = new Set(orderedStepIds);
+
+    if (
+      currentIds.size !== orderedStepIds.length ||
+      orderedIds.size !== orderedStepIds.length ||
+      [...currentIds].some((id) => !orderedIds.has(id))
+    ) {
+      throw new PromptTrailRepositoryError(
+        'reference-not-found',
+        'Reordered Trail Step IDs do not match the Trail’s current Steps',
+      );
+    }
+  }
+
+  private ensureUniqueStepOrders(steps: readonly TrailStep[]): void {
+    const uniqueOrders = new Set<number>();
+
+    for (const step of steps) {
+      if (uniqueOrders.has(step.order)) {
+        throw new PromptTrailRepositoryError(
+          'duplicate-step-order',
+          `Duplicate Trail Step order: ${step.order}`,
+        );
+      }
+
+      uniqueOrders.add(step.order);
     }
   }
 

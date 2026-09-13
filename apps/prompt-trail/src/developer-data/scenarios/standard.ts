@@ -1,11 +1,11 @@
-import type { Link, Prompt, Run, Trail } from '../../domain';
+import type { Link, Prompt, Run, Trail, TrailStep } from '../../domain';
 import {
   createDefaultProject,
   createDefaultWorkspace,
   DEFAULT_PROJECT_ID,
 } from '../../domain';
 import type { DeveloperDataScenario } from '../developer-data-scenario';
-import { linkId, promptId, runId, trailId, utc } from './helpers';
+import { linkId, promptId, runId, trailId, trailStepId, utc } from './helpers';
 
 const createdAt = utc('2026-07-20T09:00:00.000Z');
 const prompt: Prompt = {
@@ -31,10 +31,52 @@ const trail: Trail = {
   deletedAt: null,
   archivedAt: null,
 };
+const trailStepReview: TrailStep = {
+  id: trailStepId('standard-step-1-review'),
+  createdAt: utc('2026-07-20T09:10:00.000Z'),
+  updatedAt: utc('2026-07-20T09:10:00.000Z'),
+  deletedAt: null,
+  trailId: trail.id,
+  order: 1,
+  kind: 'prompt',
+  title: prompt.title,
+  promptId: prompt.id,
+  note: null,
+};
+const trailStepApproval: TrailStep = {
+  id: trailStepId('standard-step-2-approval'),
+  createdAt: utc('2026-07-20T09:11:00.000Z'),
+  updatedAt: utc('2026-07-20T09:11:00.000Z'),
+  deletedAt: null,
+  trailId: trail.id,
+  order: 2,
+  kind: 'manual',
+  title: 'Get reviewer approval',
+  promptId: null,
+  note: 'Wait for a human reviewer to approve the plan before merging.',
+};
+const trailStepFollowUp: TrailStep = {
+  id: trailStepId('standard-step-3-follow-up-prompt'),
+  createdAt: utc('2026-07-20T09:12:00.000Z'),
+  updatedAt: utc('2026-07-20T09:12:00.000Z'),
+  deletedAt: null,
+  trailId: trail.id,
+  order: 3,
+  kind: 'prompt',
+  title: 'Draft the follow-up summary',
+  promptId: prompt.id,
+  note: null,
+};
+const trailSteps: readonly TrailStep[] = [
+  trailStepReview,
+  trailStepApproval,
+  trailStepFollowUp,
+];
 const run: Run = {
   id: runId('standard-run-direct-review'),
   projectId: DEFAULT_PROJECT_ID,
   trailId: trail.id,
+  trailStepId: trailStepReview.id,
   recipeId: null,
   promptSnapshot: {
     promptId: prompt.id,
@@ -79,6 +121,7 @@ export const standardScenario: DeveloperDataScenario = {
     contexts: [],
     recipes: [],
     trails: [trail],
+    trailSteps,
     runs: [run],
     links: [link],
   },
@@ -89,6 +132,7 @@ export const standardScenario: DeveloperDataScenario = {
     contexts: 0,
     recipes: 0,
     trails: 1,
+    trailSteps: 3,
     runs: 1,
     links: 1,
   },

@@ -15,6 +15,8 @@ import type {
   RunId,
   Trail,
   TrailId,
+  TrailStep,
+  TrailStepId,
   UtcDateTimeString,
 } from '../domain';
 import { DEFAULT_WORKSPACE_ID } from '../domain';
@@ -54,6 +56,10 @@ function runId(value: string): RunId {
 
 function trailId(value: string): TrailId {
   return value as TrailId;
+}
+
+function trailStepId(value: string): TrailStepId {
+  return value as TrailStepId;
 }
 
 function linkId(value: string): LinkId {
@@ -147,8 +153,26 @@ function buildTrail(overrides: Partial<Trail> = {}): Trail {
   };
 }
 
+function buildTrailStep(overrides: Partial<TrailStep> = {}): TrailStep {
+  const trailIdValue = overrides.trailId ?? trailId('trail-project-1');
+  return {
+    id: trailStepId(`trail-step-${trailIdValue}`),
+    createdAt: utc('2026-07-06T00:30:00.000Z'),
+    updatedAt: utc('2026-07-06T00:30:00.000Z'),
+    deletedAt: null,
+    trailId: trailIdValue,
+    order: 1,
+    kind: 'prompt',
+    title: 'Snapshot prompt',
+    promptId: promptId('prompt-1'),
+    note: null,
+    ...overrides,
+  };
+}
+
 function buildRun(overrides: Partial<Run> = {}): Run {
   const projectIdValue = overrides.projectId ?? projectId('project-1');
+  const trailIdValue = overrides.trailId ?? trailId(`trail-${projectIdValue}`);
   return {
     id: runId('run-1'),
     createdAt: utc('2026-07-06T01:00:00.000Z'),
@@ -156,7 +180,8 @@ function buildRun(overrides: Partial<Run> = {}): Run {
     deletedAt: null,
     archivedAt: null,
     projectId: projectIdValue,
-    trailId: trailId(`trail-${projectIdValue}`),
+    trailId: trailIdValue,
+    trailStepId: trailStepId(`trail-step-${trailIdValue}`),
     recipeId: recipeId('recipe-1'),
     promptSnapshot: {
       promptId: promptId('prompt-1'),
@@ -212,13 +237,16 @@ async function seedProjectRecipe(
 
   await repository.saveProject(project);
   await database.recipes.put(recipe);
-  await database.trails.put(buildTrail());
+  const trail = buildTrail();
+  await database.trails.put(trail);
+  await database.trailSteps.put(buildTrailStep({ trailId: trail.id }));
 
   return { project, recipe };
 }
 
 async function seedProjectRecipeViaRepository(
   repository: PromptTrailRepository,
+  database: PromptTrailDatabase,
 ) {
   const project = buildProject();
   const prompt = buildPrompt({
@@ -241,7 +269,9 @@ async function seedProjectRecipeViaRepository(
   await repository.saveContext(firstContext);
   await repository.saveContext(secondContext);
   await repository.saveRecipe(recipe);
-  await repository.saveTrail(buildTrail());
+  const trail = buildTrail();
+  await repository.saveTrail(trail);
+  await database.trailSteps.put(buildTrailStep({ trailId: trail.id }));
 
   return { project, prompt, firstContext, secondContext, recipe };
 }
@@ -274,11 +304,49 @@ describe('PromptTrailRepository run persistence', () => {
     await expect(repository.listActiveRuns(run.projectId)).resolves.toEqual([]);
   });
 
+  it('rejects a Run whose Trail Step belongs to another Trail', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    await seedProjectRecipe(repository, database);
+    const otherTrail = buildTrail({
+      id: trailId('trail-other'),
+      projectId: projectId('project-1'),
+    });
+    await database.trails.put(otherTrail);
+    const otherTrailStep = buildTrailStep({ trailId: otherTrail.id });
+    await database.trailSteps.put(otherTrailStep);
+    const run = buildRun({ trailStepId: otherTrailStep.id });
+
+    await expect(repository.saveRun(run)).rejects.toMatchObject(
+      expectedRepositoryError('project-mismatch'),
+    );
+    await expect(repository.getRun(run.id)).resolves.toBeNull();
+  });
+
+  it('saves a Run after its Trail Step promptId has been changed, since Step and Run snapshot are independent', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    await seedProjectRecipe(repository, database);
+    const run = buildRun();
+    await repository.saveRun(run);
+
+    const step = await repository.getTrailStep(run.trailStepId);
+    await database.trailSteps.put({
+      ...step!,
+      promptId: promptId('other-prompt'),
+      updatedAt: utc('2026-07-06T02:30:00.000Z'),
+    });
+
+    await expect(
+      repository.saveRun({ ...run, status: 'in-progress' }),
+    ).resolves.toMatchObject({ status: 'in-progress' });
+  });
+
   it('keeps run snapshots independent after source assets and parents change through repository APIs', async () => {
     const database = databaseScope.createDatabase();
     const repository = new PromptTrailRepository(database);
     const { project, prompt, firstContext, secondContext, recipe } =
-      await seedProjectRecipeViaRepository(repository);
+      await seedProjectRecipeViaRepository(repository, database);
     const run = buildRun({
       inputValues: { feature: 'snapshot-independence', nested: { count: 2 } },
       finalPrompt: 'Frozen final prompt with original prompt and contexts',
@@ -408,8 +476,12 @@ describe('PromptTrailRepository run persistence', () => {
     await repository.saveProject(
       buildProject({ id: projectId('other-project') }),
     );
-    await database.trails.put(
-      buildTrail({ projectId: projectId('other-project') }),
+    const otherProjectTrail = buildTrail({
+      projectId: projectId('other-project'),
+    });
+    await database.trails.put(otherProjectTrail);
+    await database.trailSteps.put(
+      buildTrailStep({ trailId: otherProjectTrail.id }),
     );
     const projectMismatchRun = buildRun({
       id: runId('run-project-mismatch'),
@@ -506,8 +578,10 @@ describe('PromptTrailRepository run persistence', () => {
         projectId: projectId('project-2'),
       }),
     ]);
-    await database.trails.put(
-      buildTrail({ projectId: projectId('project-2') }),
+    const project2Trail = buildTrail({ projectId: projectId('project-2') });
+    await database.trails.put(project2Trail);
+    await database.trailSteps.put(
+      buildTrailStep({ trailId: project2Trail.id }),
     );
     const olderDraft = buildRun({
       id: runId('older-draft'),

@@ -1,6 +1,6 @@
 export const PROMPT_TRAIL_DB_NAME = 'prompt-trail';
 
-export const PROMPT_TRAIL_SCHEMA_VERSION = 9;
+export const PROMPT_TRAIL_SCHEMA_VERSION = 10;
 
 export const PROMPT_TRAIL_STORE_NAMES = [
   'projects',
@@ -11,6 +11,7 @@ export const PROMPT_TRAIL_STORE_NAMES = [
   'links',
   'workspaces',
   'trails',
+  'trailSteps',
 ] as const;
 
 export type PromptTrailStoreName = (typeof PROMPT_TRAIL_STORE_NAMES)[number];

@@ -4,11 +4,20 @@ import type {
   Prompt,
   Run,
   Trail,
+  TrailStep,
   Workspace,
 } from '../../domain';
 import { DEFAULT_WORKSPACE_ID, createDefaultWorkspace } from '../../domain';
 import type { DeveloperDataScenario } from '../developer-data-scenario';
-import { linkId, projectId, promptId, runId, trailId, utc } from './helpers';
+import {
+  linkId,
+  projectId,
+  promptId,
+  runId,
+  trailId,
+  trailStepId,
+  utc,
+} from './helpers';
 
 const time = utc('2026-07-21T10:00:00.000Z');
 const workspace: Workspace = createDefaultWorkspace(time);
@@ -47,10 +56,23 @@ const trail: Trail = {
   deletedAt: null,
   archivedAt: null,
 };
+const trailStep: TrailStep = {
+  id: trailStepId('reuse-ready-step-completed-source'),
+  createdAt: utc('2026-07-21T10:10:00.000Z'),
+  updatedAt: utc('2026-07-21T10:10:00.000Z'),
+  deletedAt: null,
+  trailId: trail.id,
+  order: 1,
+  kind: 'prompt',
+  title: prompt.title,
+  promptId: prompt.id,
+  note: null,
+};
 const run: Run = {
   id: runId('reuse-ready-run-completed-source'),
   projectId: project.id,
   trailId: trail.id,
+  trailStepId: trailStep.id,
   recipeId: null,
   promptSnapshot: {
     promptId: prompt.id,
@@ -96,6 +118,7 @@ export const reuseReadyScenario: DeveloperDataScenario = {
     contexts: [],
     recipes: [],
     trails: [trail],
+    trailSteps: [trailStep],
     runs: [run],
     links: [link],
   },
@@ -106,6 +129,7 @@ export const reuseReadyScenario: DeveloperDataScenario = {
     contexts: 0,
     recipes: 0,
     trails: 1,
+    trailSteps: 1,
     runs: 1,
     links: 1,
   },

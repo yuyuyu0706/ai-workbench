@@ -4,6 +4,7 @@ import {
   type Run,
   type Trail,
   type TrailKind,
+  type TrailStep,
   type UtcDateTimeString,
 } from '../domain';
 import {
@@ -29,7 +30,7 @@ export type CreateTrailFromPromptResult =
     }
   | { readonly status: 'not-found' | 'unavailable' | 'stale' };
 export type CreateTrailFromPromptDependencies = {
-  readonly createId?: (kind: 'run' | 'trail') => string;
+  readonly createId?: (kind: 'run' | 'trail' | 'trail-step') => string;
   readonly now?: () => UtcDateTimeString;
 };
 
@@ -56,6 +57,18 @@ export async function createTrailFromPrompt(
     title: normalizeTrailTitle(input.trailTitle),
     kind: input.trailKind as TrailKind,
   };
+  const trailStep: TrailStep = {
+    id: createId('trail-step') as TrailStep['id'],
+    createdAt,
+    updatedAt: createdAt,
+    deletedAt: null,
+    trailId: trail.id,
+    order: 1,
+    kind: 'prompt',
+    title: input.sourcePrompt.title,
+    promptId: input.sourcePrompt.id,
+    note: null,
+  };
   const run: Run & { readonly recipeId: null } = {
     id: createId('run') as Run['id'],
     createdAt,
@@ -64,6 +77,7 @@ export async function createTrailFromPrompt(
     archivedAt: null,
     projectId: project.id,
     trailId: trail.id,
+    trailStepId: trailStep.id,
     recipeId: null,
     promptSnapshot: {
       promptId: input.sourcePrompt.id,
@@ -85,6 +99,7 @@ export async function createTrailFromPrompt(
       promptId: input.sourcePrompt.id,
       expectedPromptUpdatedAt: input.sourcePrompt.updatedAt,
       trail,
+      trailStep,
       run,
     });
     return { status: 'created', run };
