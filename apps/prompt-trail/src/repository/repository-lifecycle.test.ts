@@ -300,6 +300,58 @@ async function saveRepresentativeTrail(
   };
 }
 
+describe('insertTrailBundle', () => {
+  it('rejects a Run whose trailStepId does not match the bundle Trail Step', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    const project = buildProject();
+    const prompt = buildPrompt();
+    const globalContext = {
+      id: contextId('context-global'),
+      createdAt: T0,
+      updatedAt: T0,
+      deletedAt: null,
+      scope: 'global',
+      title: 'Initial global context title',
+      body: 'Initial global context body',
+      kind: 'project-overview',
+      status: 'enabled',
+      tags: ['context'],
+    } as Context;
+    const recipe = buildRecipe({
+      contextIds: [contextId('context-global')],
+    });
+    const trail = buildTrail();
+    const trailStep = buildTrailStep();
+    const run = buildRun({
+      trailStepId: trailStepId('mismatched-trail-step'),
+      contextSnapshots: [
+        {
+          contextId: contextId('context-global'),
+          title: 'Initial global context title',
+          body: 'Initial global context body',
+        },
+      ],
+    });
+
+    await expect(
+      repository.insertTrailBundle({
+        project,
+        prompt,
+        context: globalContext,
+        recipe,
+        trail,
+        trailStep,
+        run,
+        links: [],
+      }),
+    ).rejects.toMatchObject({ code: 'project-mismatch' });
+
+    await expect(database.runs.count()).resolves.toBe(0);
+    await expect(database.trailSteps.count()).resolves.toBe(0);
+  });
+});
+
 describe('PromptTrailRepository cross-store lifecycle integration', () => {
   it('preserves representative Trail history and immutable Run snapshots after later lifecycle changes', async () => {
     const database = databaseScope.createDatabase();

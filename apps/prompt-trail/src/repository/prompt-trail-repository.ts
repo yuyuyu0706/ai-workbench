@@ -154,6 +154,7 @@ export class PromptTrailRepository {
 
         await this.ensureTrailStepReferencesAvailable(trailBundle.trailStep);
         await this.database.trailSteps.add(trailBundle.trailStep);
+        this.ensureRunStepConsistent(trailBundle.run, trailBundle.trailStep);
 
         await this.ensureRunReferencesAvailable(
           trailBundle.run,
@@ -291,6 +292,7 @@ export class PromptTrailRepository {
           );
         await this.ensureTrailStepReferencesAvailable(creation.trailStep);
         await this.database.trailSteps.add(creation.trailStep);
+        this.ensureRunStepConsistent(creation.run, creation.trailStep);
         await this.ensureDirectRunReferencesAvailable(
           creation.run,
           creation.trail,
@@ -423,9 +425,13 @@ export class PromptTrailRepository {
       .equals(trailId)
       .toArray();
 
-    return trailSteps
+    const activeSteps = trailSteps
       .filter((trailStep) => trailStep.deletedAt === null)
       .sort((a, b) => a.order - b.order);
+
+    this.ensureUniqueStepOrders(activeSteps);
+
+    return activeSteps;
   }
 
   async getTrailStep(trailStepId: TrailStepId): Promise<TrailStep | null> {
@@ -457,6 +463,13 @@ export class PromptTrailRepository {
           activeSiblingOrders.length === 0
             ? 1
             : Math.max(...activeSiblingOrders) + 1;
+
+        if (await this.database.trailSteps.get(input.trailStep.id)) {
+          throw new PromptTrailRepositoryError(
+            'duplicate-id',
+            `Trail Step ID already exists: ${input.trailStep.id}`,
+          );
+        }
 
         const trailStep: TrailStep = { ...input.trailStep, order: nextOrder };
         await this.database.trailSteps.add(trailStep);
@@ -1121,6 +1134,13 @@ export class PromptTrailRepository {
   }
 
   private ensureRunStepConsistent(run: Run, trailStep: TrailStep): void {
+    if (run.trailStepId !== trailStep.id) {
+      throw new PromptTrailRepositoryError(
+        'project-mismatch',
+        `Run does not reference the provided Trail Step: ${run.id}`,
+      );
+    }
+
     if (trailStep.trailId !== run.trailId) {
       throw new PromptTrailRepositoryError(
         'project-mismatch',

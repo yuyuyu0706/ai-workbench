@@ -438,4 +438,31 @@ describe('createDirectRunFromPrompt', () => {
     ).rejects.toMatchObject({ code });
     await expect(database.runs.count()).resolves.toBe(0);
   });
+
+  it('rejects a Run whose trailStepId does not match the bundle Trail Step', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    const project = buildProject();
+    await repository.saveProject(project);
+    const prompt = buildPrompt();
+    await database.prompts.add(prompt);
+    const run = buildRun(prompt, {
+      trailStepId: 'mismatched-trail-step' as Run['trailStepId'],
+    });
+    const trail = buildTrail({ projectId: project.id });
+    const trailStep = buildTrailStep(prompt);
+
+    await expect(
+      repository.createDirectRunFromPrompt({
+        project,
+        promptId: prompt.id,
+        expectedPromptUpdatedAt: prompt.updatedAt,
+        trail,
+        trailStep,
+        run,
+      }),
+    ).rejects.toMatchObject({ code: 'project-mismatch' });
+    await expect(database.runs.count()).resolves.toBe(0);
+    await expect(database.trailSteps.count()).resolves.toBe(0);
+  });
 });

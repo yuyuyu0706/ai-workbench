@@ -130,6 +130,29 @@ describe('addTrailStep', () => {
       }),
     ).rejects.toMatchObject({ code: 'snapshot-mismatch' });
   });
+
+  it('rejects a duplicate Trail Step ID with the repository duplicate-id error', async () => {
+    const { repository, trail } = await prepare();
+
+    const first = await repository.addTrailStep({
+      trailStep: buildStepInput(trail, {
+        id: 'trail-step-duplicate' as TrailStep['id'],
+      }),
+      expectedUpdatedAt: oldTime,
+      updatedAt: newTime,
+    });
+
+    await expect(
+      repository.addTrailStep({
+        trailStep: buildStepInput(trail, { id: first.id }),
+        expectedUpdatedAt: newTime,
+        updatedAt: newTime,
+      }),
+    ).rejects.toMatchObject({ code: 'duplicate-id' });
+    await expect(repository.listStepsByTrail(trail.id)).resolves.toEqual([
+      first,
+    ]);
+  });
 });
 
 describe('updateTrailStep', () => {
@@ -263,5 +286,35 @@ describe('softDeleteTrailStep', () => {
       [second.id, 1],
       [third.id, 2],
     ]);
+  });
+});
+
+describe('listStepsByTrail', () => {
+  it('rejects reading active Steps with a duplicate order', async () => {
+    const { database, repository, trail } = await prepare();
+
+    await repository.addTrailStep({
+      trailStep: buildStepInput(trail, {
+        id: 'trail-step-1' as TrailStep['id'],
+      }),
+      expectedUpdatedAt: oldTime,
+      updatedAt: oldTime,
+    });
+    await repository.addTrailStep({
+      trailStep: buildStepInput(trail, {
+        id: 'trail-step-2' as TrailStep['id'],
+      }),
+      expectedUpdatedAt: oldTime,
+      updatedAt: oldTime,
+    });
+
+    // Simulate corrupted data that bypassed the repository's write path.
+    await database.trailSteps.update('trail-step-2' as TrailStep['id'], {
+      order: 1,
+    });
+
+    await expect(repository.listStepsByTrail(trail.id)).rejects.toMatchObject({
+      code: 'duplicate-step-order',
+    });
   });
 });
