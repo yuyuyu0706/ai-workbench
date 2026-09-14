@@ -19,7 +19,7 @@ import {
   TRAIL_TITLE_MAX_LENGTH,
   validateTrailMetadata,
 } from '../trail-metadata';
-import { RunStepSection } from './RunStepSection';
+import { TrailStepTable } from './TrailStepTable';
 export function TrailDetailPage() {
   const repository = usePromptTrailRepository();
   const { trailId = '' } = useParams();
@@ -302,22 +302,13 @@ export function TrailDetailPage() {
         description="ページを再読み込みするか、Dashboardへ戻ってください。"
       />
     );
-  const { trail, runs } = displayedState.data;
-  const firstRun = runs[0];
-  if (firstRun === undefined)
-    return (
-      <DetailMessage
-        variant="empty"
-        title="指定されたRunが見つかりません。"
-        description="Dashboardから別のRunを選択してください。"
-      />
-    );
+  const { trail, project, steps } = displayedState.data;
   return (
     <section className="prompt-trail-page">
       <PageHeader
         eyebrow="Trail Detail"
         title="Trail Detail"
-        description={`${firstRun.project.name} のTrail: ${trail.title}`}
+        description={`${project.name} のTrail: ${trail.title}`}
       />
       <div className="prompt-trail-page__sections">
         {createdNoticeRunId === trailId ? (
@@ -328,7 +319,7 @@ export function TrailDetailPage() {
         <PageSection
           title="Trail情報"
           actions={
-            firstRun.run.deletedAt === null &&
+            trail.deletedAt === null &&
             displayedMetadataStatus === 'view' ? (
               <button
                 ref={metadataEditButtonRef}
@@ -346,7 +337,7 @@ export function TrailDetailPage() {
               <dl className="pt-detail-list">
                 <div>
                   <dt>Project</dt>
-                  <dd>{firstRun.project.name}</dd>
+                  <dd>{project.name}</dd>
                 </div>
                 <div>
                   <dt>Trail名</dt>
@@ -481,13 +472,18 @@ export function TrailDetailPage() {
             </form>
           )}
         </PageSection>
-        {runs.map((runItem) => (
-          <RunStepSection
-            key={runItem.run.id}
-            run={runItem}
-            onRunChanged={() => void reloadLatestMetadata()}
+        {steps.length === 0 ? (
+          <StateMessage
+            variant="empty"
+            title="Stepがまだありません"
+            description="StepはこのTrailにまだ登録されていません。"
           />
-        ))}
+        ) : (
+          <TrailStepTable
+            steps={steps}
+            onChanged={() => void reloadLatestMetadata()}
+          />
+        )}
       </div>
       <div className="prompt-trail-page__actions">
         <Link
