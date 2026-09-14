@@ -80,7 +80,9 @@ export function RunResultPanel({
             className="pt-run-conversation-form__send ti-arrow-up"
             type="submit"
             aria-label="送信"
-            disabled={sendStatus === 'sending' || messageDraft.trim().length === 0}
+            disabled={
+              sendStatus === 'sending' || messageDraft.trim().length === 0
+            }
           >
             {sendStatus === 'sending' ? (
               <span className="pt-run-actions__spinner" aria-hidden="true" />

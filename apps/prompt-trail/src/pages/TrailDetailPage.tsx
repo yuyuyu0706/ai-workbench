@@ -319,8 +319,7 @@ export function TrailDetailPage() {
         <PageSection
           title="Trail情報"
           actions={
-            trail.deletedAt === null &&
-            displayedMetadataStatus === 'view' ? (
+            trail.deletedAt === null && displayedMetadataStatus === 'view' ? (
               <button
                 ref={metadataEditButtonRef}
                 className="pt-button pt-button--secondary"

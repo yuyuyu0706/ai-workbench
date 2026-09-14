@@ -74,10 +74,7 @@ export function RunLinksPanel({
   formSnapshot: RunLinkFormSnapshot;
   displayedFormStatus: 'idle' | 'submitting' | 'failure';
   formOverride: 'submitting' | 'save-failure' | null;
-  onFormFieldChange: (
-    field: 'title' | 'url' | 'type',
-    value: string,
-  ) => void;
+  onFormFieldChange: (field: 'title' | 'url' | 'type', value: string) => void;
   onSaveLink: (event: React.FormEvent) => void;
   deleteButtonRefs: RefObject<Map<LinkId, HTMLButtonElement>>;
   deleteSnapshot: RunLinkDeleteSnapshot;
@@ -179,7 +176,9 @@ export function RunLinksPanel({
           className="pt-button pt-button--primary pt-run-link-submit"
           disabled={displayedFormStatus === 'submitting'}
         >
-          {displayedFormStatus === 'submitting' ? '保存中...' : '関連リンクを登録'}
+          {displayedFormStatus === 'submitting'
+            ? '保存中...'
+            : '関連リンクを登録'}
         </button>
       </form>
       {links.length > 0 ? (
@@ -220,7 +219,8 @@ export function RunLinksPanel({
                   aria-label={`${label}を削除`}
                   onClick={() => onStartDelete(link.id)}
                   disabled={
-                    deleteOverride !== null || displayedDeleteStatus === 'deleting'
+                    deleteOverride !== null ||
+                    displayedDeleteStatus === 'deleting'
                   }
                 >
                   削除

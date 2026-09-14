@@ -154,7 +154,10 @@ describe('loadTrailDetailReadModel', () => {
   it('resolves prompt to null for a manual Step', async () => {
     const database = databaseScope.createDatabase();
     const repository = new PromptTrailRepository(database);
-    const manualTrail = { ...sampleDataset.trail, id: 'trail-manual' as TrailId };
+    const manualTrail = {
+      ...sampleDataset.trail,
+      id: 'trail-manual' as TrailId,
+    };
     await repository.saveProject({ ...sampleDataset.project });
     await repository.saveTrail(manualTrail);
     const manualStep = await repository.addTrailStep({
@@ -236,7 +239,9 @@ describe('loadTrailDetailReadModel', () => {
     const database = databaseScope.createDatabase();
     const repository = new PromptTrailRepository(database);
     await insertBaseTrail(repository);
-    await database.prompts.delete(sampleDataset.prompt.id as unknown as PromptId);
+    await database.prompts.delete(
+      sampleDataset.prompt.id as unknown as PromptId,
+    );
 
     const model = await loadTrailDetailReadModel(
       repository,
@@ -271,7 +276,13 @@ describe('loadTrailDetailReadModel', () => {
     ).resolves.toEqual({
       trail: sampleDataset.trail,
       project: sampleDataset.project,
-      steps: [{ step: sampleDataset.trailStep, prompt: sampleDataset.prompt, runs: [] }],
+      steps: [
+        {
+          step: sampleDataset.trailStep,
+          prompt: sampleDataset.prompt,
+          runs: [],
+        },
+      ],
     });
   });
 

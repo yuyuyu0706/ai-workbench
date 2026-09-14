@@ -11,7 +11,10 @@ import {
 } from '../trail-creation/create-run-link';
 import type { TrailDetailStepItem } from '../trail-detail/trail-detail-read-query';
 import { formatDateTime } from './date-time';
-import { RunPopover, RUN_POPOVER_WIDE_HORIZONTAL_OFFSET_PX } from './RunPopover';
+import {
+  RunPopover,
+  RUN_POPOVER_WIDE_HORIZONTAL_OFFSET_PX,
+} from './RunPopover';
 import { PromptPanel } from './run-panels/PromptPanel';
 import { RunResultPanel } from './run-panels/RunResultPanel';
 import { RunLinksPanel } from './run-panels/RunLinksPanel';
@@ -441,12 +444,17 @@ export function TrailStepRow({
                       ? 'pt-run-actions__execute pt-run-actions__execute--icon-stroke ti-rotate'
                       : 'pt-run-actions__execute ti-player-play'
                   }
-                  aria-label={run.run.messages.length > 0 ? 'やり直す' : '実行する'}
+                  aria-label={
+                    run.run.messages.length > 0 ? 'やり直す' : '実行する'
+                  }
                   disabled={executeStatus === 'running'}
                   onClick={handleExecuteButtonClick}
                 >
                   {executeStatus === 'running' ? (
-                    <span className="pt-run-actions__spinner" aria-hidden="true" />
+                    <span
+                      className="pt-run-actions__spinner"
+                      aria-hidden="true"
+                    />
                   ) : run.run.messages.length > 0 ? (
                     <RefreshIcon />
                   ) : (
