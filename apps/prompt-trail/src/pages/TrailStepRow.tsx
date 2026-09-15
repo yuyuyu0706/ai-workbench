@@ -391,20 +391,6 @@ export function TrailStepRow({
 
   return (
     <>
-      {run !== null && run.run.contextSnapshots.length > 0 ? (
-        <tr className="pt-run-table__row pt-run-table__row--context">
-          <td colSpan={4}>
-            <div className="pt-run-context-snapshots">
-              {run.run.contextSnapshots.map((context) => (
-                <article key={context.contextId}>
-                  <h3>{context.title}</h3>
-                  <pre className="pt-snapshot">{context.body}</pre>
-                </article>
-              ))}
-            </div>
-          </td>
-        </tr>
-      ) : null}
       <tr className="pt-run-table__row">
         <td className="pt-run-table__prompt">
           <span className="pt-run-table__mobile-label">Step</span>
@@ -661,6 +647,20 @@ export function TrailStepRow({
           ) : null}
         </td>
       </tr>
+      {run !== null && run.run.contextSnapshots.length > 0 ? (
+        <tr className="pt-run-table__row pt-run-table__row--context">
+          <td colSpan={4}>
+            <div className="pt-run-context-snapshots">
+              {run.run.contextSnapshots.map((context) => (
+                <article key={context.contextId}>
+                  <h3>{context.title}</h3>
+                  <pre className="pt-snapshot">{context.body}</pre>
+                </article>
+              ))}
+            </div>
+          </td>
+        </tr>
+      ) : null}
     </>
   );
 }
