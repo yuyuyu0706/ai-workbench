@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { Run, RunId, TrailId, UtcDateTimeString } from '../domain';
+import type {
+  PromptId,
+  Run,
+  RunId,
+  TrailId,
+  TrailStepId,
+  UtcDateTimeString,
+} from '../domain';
 import { sampleDataset } from '../sample-data';
 import { createDatabaseTestScope } from '../test/database-test-utils';
 import { PromptTrailRepository } from '../repository';
@@ -25,6 +32,25 @@ function cloneSampleRun(overrides: Partial<Run> = {}): Run {
   return { ...sampleDataset.run, ...overrides };
 }
 
+async function insertBaseTrail(
+  repository: PromptTrailRepository,
+  run: Run = cloneSampleRun(),
+  links: typeof sampleDataset.links = run.id === sampleDataset.run.id
+    ? sampleDataset.links.map((link) => ({ ...link }))
+    : [],
+) {
+  await repository.insertTrailBundle({
+    project: { ...sampleDataset.project },
+    prompt: { ...sampleDataset.prompt },
+    context: { ...sampleDataset.context },
+    recipe: { ...sampleDataset.recipe },
+    trail: { ...sampleDataset.trail },
+    trailStep: { ...sampleDataset.trailStep },
+    run,
+    links,
+  });
+}
+
 describe('loadTrailDetailReadModel', () => {
   it('returns null when the Trail does not exist', async () => {
     const database = databaseScope.createDatabase();
@@ -35,74 +61,229 @@ describe('loadTrailDetailReadModel', () => {
     ).resolves.toBeNull();
   });
 
-  it('loads the Trail with its Run, Project, Recipe, and active Links', async () => {
+  it('loads the Trail with its Project and one Step carrying its Run, Prompt, and active Links', async () => {
     const database = databaseScope.createDatabase();
     const repository = new PromptTrailRepository(database);
-    await repository.insertTrailBundle({
-      project: { ...sampleDataset.project },
-      prompt: { ...sampleDataset.prompt },
-      context: { ...sampleDataset.context },
-      recipe: { ...sampleDataset.recipe },
-      trail: { ...sampleDataset.trail },
-      trailStep: { ...sampleDataset.trailStep },
-      run: cloneSampleRun(),
-      links: sampleDataset.links.map((link) => ({ ...link })),
-    });
+    await insertBaseTrail(repository);
 
     await expect(
       loadTrailDetailReadModel(repository, sampleDataset.trail.id),
     ).resolves.toEqual({
       trail: sampleDataset.trail,
-      runs: [
+      project: sampleDataset.project,
+      steps: [
         {
-          run: sampleDataset.run,
-          project: sampleDataset.project,
-          recipe: sampleDataset.recipe,
-          links: sampleDataset.links,
+          step: sampleDataset.trailStep,
+          prompt: sampleDataset.prompt,
+          runs: [
+            {
+              run: sampleDataset.run,
+              recipe: sampleDataset.recipe,
+              links: sampleDataset.links,
+            },
+          ],
         },
       ],
     });
   });
 
-  it('excludes deleted Runs from the run list', async () => {
+  it('returns Steps in order ascending, each carrying its own Runs', async () => {
     const database = databaseScope.createDatabase();
     const repository = new PromptTrailRepository(database);
-    await repository.insertTrailBundle({
-      project: { ...sampleDataset.project },
-      prompt: { ...sampleDataset.prompt },
-      context: { ...sampleDataset.context },
-      recipe: { ...sampleDataset.recipe },
-      trail: { ...sampleDataset.trail },
-      trailStep: { ...sampleDataset.trailStep },
-      run: cloneSampleRun({
-        deletedAt: utc('2026-07-13T00:00:00.000Z'),
-      }),
-      links: [],
+    await insertBaseTrail(repository);
+
+    const secondStep = await repository.addTrailStep({
+      trailStep: {
+        id: 'trail-step-second' as TrailStepId,
+        createdAt: utc('2026-08-01T00:00:00.000Z'),
+        updatedAt: utc('2026-08-01T00:00:00.000Z'),
+        deletedAt: null,
+        trailId: sampleDataset.trail.id,
+        kind: 'manual',
+        title: 'Manual review',
+        promptId: null,
+        note: null,
+      },
+      expectedUpdatedAt: sampleDataset.trail.updatedAt,
+      updatedAt: utc('2026-08-01T00:00:00.000Z'),
     });
 
+    const model = await loadTrailDetailReadModel(
+      repository,
+      sampleDataset.trail.id,
+    );
+
+    expect(model?.steps.map((item) => item.step.id)).toEqual([
+      sampleDataset.trailStep.id,
+      secondStep.id,
+    ]);
+    expect(model?.steps[1]).toMatchObject({
+      step: secondStep,
+      prompt: null,
+      runs: [],
+    });
+  });
+
+  it('groups Runs by trailStepId, most recently updated first', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    await insertBaseTrail(
+      repository,
+      cloneSampleRun({
+        id: runId('run-older'),
+        updatedAt: utc('2026-07-13T00:00:00.000Z'),
+      }),
+    );
+    const newerRun = cloneSampleRun({
+      id: runId('run-newer'),
+      updatedAt: utc('2026-07-14T00:00:00.000Z'),
+    });
+    await repository.saveRun(newerRun);
+
+    const model = await loadTrailDetailReadModel(
+      repository,
+      sampleDataset.trail.id,
+    );
+
+    expect(model?.steps[0]?.runs.map((item) => item.run.id)).toEqual([
+      'run-newer',
+      'run-older',
+    ]);
+  });
+
+  it('resolves prompt to null for a manual Step', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    const manualTrail = {
+      ...sampleDataset.trail,
+      id: 'trail-manual' as TrailId,
+    };
+    await repository.saveProject({ ...sampleDataset.project });
+    await repository.saveTrail(manualTrail);
+    const manualStep = await repository.addTrailStep({
+      trailStep: {
+        id: 'trail-step-manual' as TrailStepId,
+        createdAt: utc('2026-08-01T00:00:00.000Z'),
+        updatedAt: utc('2026-08-01T00:00:00.000Z'),
+        deletedAt: null,
+        trailId: manualTrail.id,
+        kind: 'manual',
+        title: 'Manual work',
+        promptId: null,
+        note: null,
+      },
+      expectedUpdatedAt: manualTrail.updatedAt,
+      updatedAt: utc('2026-08-01T00:00:00.000Z'),
+    });
+
+    const model = await loadTrailDetailReadModel(repository, manualTrail.id);
+
+    expect(model?.steps).toEqual([
+      { step: manualStep, prompt: null, runs: [] },
+    ]);
+  });
+
+  it('returns a read model for a Trail with zero Runs', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    const trail = { ...sampleDataset.trail, id: 'trail-no-runs' as TrailId };
+    await repository.saveProject({ ...sampleDataset.project });
+    await repository.savePrompt({ ...sampleDataset.prompt });
+    await repository.saveTrail(trail);
+    const step = await repository.addTrailStep({
+      trailStep: {
+        id: 'trail-step-no-runs' as TrailStepId,
+        createdAt: utc('2026-08-01T00:00:00.000Z'),
+        updatedAt: utc('2026-08-01T00:00:00.000Z'),
+        deletedAt: null,
+        trailId: trail.id,
+        kind: 'prompt',
+        title: 'Planned step',
+        promptId: sampleDataset.prompt.id,
+        note: null,
+      },
+      expectedUpdatedAt: trail.updatedAt,
+      updatedAt: utc('2026-08-01T00:00:00.000Z'),
+    });
+
+    const expectedTrail = await repository.getTrail(trail.id);
+
     await expect(
-      loadTrailDetailReadModel(repository, sampleDataset.trail.id),
-    ).resolves.toEqual({ trail: sampleDataset.trail, runs: [] });
+      loadTrailDetailReadModel(repository, trail.id),
+    ).resolves.toEqual({
+      trail: expectedTrail,
+      project: sampleDataset.project,
+      steps: [{ step, prompt: sampleDataset.prompt, runs: [] }],
+    });
+  });
+
+  it('does not throw when the referenced Prompt is soft-deleted', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    await insertBaseTrail(repository);
+    await repository.softDeletePrompt(
+      sampleDataset.prompt.id,
+      utc('2026-07-15T00:00:00.000Z'),
+    );
+
+    const model = await loadTrailDetailReadModel(
+      repository,
+      sampleDataset.trail.id,
+    );
+
+    expect(model?.steps[0]?.prompt?.id).toBe(sampleDataset.prompt.id);
+    expect(model?.steps[0]?.prompt?.deletedAt).not.toBeNull();
+  });
+
+  it('does not throw when the referenced Prompt no longer exists', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    await insertBaseTrail(repository);
+    await database.prompts.delete(
+      sampleDataset.prompt.id as unknown as PromptId,
+    );
+
+    const model = await loadTrailDetailReadModel(
+      repository,
+      sampleDataset.trail.id,
+    );
+
+    expect(model?.steps[0]?.prompt).toBeNull();
   });
 
   it('throws when an active Run references a missing Recipe', async () => {
     const database = databaseScope.createDatabase();
     const repository = new PromptTrailRepository(database);
-    await repository.insertTrailBundle({
-      project: { ...sampleDataset.project },
-      prompt: { ...sampleDataset.prompt },
-      context: { ...sampleDataset.context },
-      recipe: { ...sampleDataset.recipe },
-      trail: { ...sampleDataset.trail },
-      trailStep: { ...sampleDataset.trailStep },
-      run: cloneSampleRun(),
-      links: [],
-    });
+    await insertBaseTrail(repository);
     await database.recipes.delete(sampleDataset.recipe.id);
 
     await expect(
       loadTrailDetailReadModel(repository, sampleDataset.trail.id),
     ).rejects.toThrow('Run data is inconsistent.');
+  });
+
+  it('excludes deleted Runs from a Step', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    await insertBaseTrail(
+      repository,
+      cloneSampleRun({ deletedAt: utc('2026-07-13T00:00:00.000Z') }),
+      [],
+    );
+
+    await expect(
+      loadTrailDetailReadModel(repository, sampleDataset.trail.id),
+    ).resolves.toEqual({
+      trail: sampleDataset.trail,
+      project: sampleDataset.project,
+      steps: [
+        {
+          step: sampleDataset.trailStep,
+          prompt: sampleDataset.prompt,
+          runs: [],
+        },
+      ],
+    });
   });
 
   it('does not resolve a Recipe for a Direct Run', async () => {
@@ -142,6 +323,9 @@ describe('loadTrailDetailReadModel', () => {
 
     const model = await loadTrailDetailReadModel(repository, directTrail.id);
 
-    expect(model?.runs[0]).toMatchObject({ run: directRun, recipe: null });
+    expect(model?.steps[0]?.runs[0]).toMatchObject({
+      run: directRun,
+      recipe: null,
+    });
   });
 });

@@ -1,16 +1,35 @@
-import type { Link, Project, Recipe, Run, Trail, TrailId } from '../domain';
+import type {
+  Link,
+  Project,
+  Prompt,
+  Recipe,
+  Run,
+  Trail,
+  TrailId,
+  TrailStep,
+  TrailStepId,
+} from '../domain';
 import type { PromptTrailRepository } from '../repository';
 
 export type TrailDetailRunItem = {
   readonly run: Run;
-  readonly project: Project;
   readonly recipe: Recipe | null;
   readonly links: readonly Link[];
 };
 
+export type TrailDetailStepItem = {
+  readonly step: TrailStep;
+  /** null when the Step is `kind: 'manual'`, or the referenced Prompt cannot be resolved. */
+  readonly prompt: Prompt | null;
+  /** Runs for this Step, `updatedAt` descending. */
+  readonly runs: readonly TrailDetailRunItem[];
+};
+
 export type TrailDetailReadModel = {
   readonly trail: Trail;
-  readonly runs: readonly TrailDetailRunItem[];
+  readonly project: Project;
+  /** Steps, `order` ascending. */
+  readonly steps: readonly TrailDetailStepItem[];
 };
 
 export async function loadTrailDetailReadModel(
@@ -20,24 +39,54 @@ export async function loadTrailDetailReadModel(
   const trail = await repository.getTrail(trailId);
   if (trail === null) return null;
 
-  const runs = await repository.listRunsByTrail(trailId);
+  const project = await repository.getProject(trail.projectId);
+  if (project === null) throw new Error('Trail data is inconsistent.');
 
-  const runItems = await Promise.all(
-    runs.map(async (run) => {
-      const [project, recipe, links] = await Promise.all([
-        repository.getProject(run.projectId),
-        run.recipeId === null
+  const [steps, runs] = await Promise.all([
+    repository.listStepsByTrail(trailId),
+    repository.listRunsByTrail(trailId),
+  ]);
+
+  const runsByStepId = new Map<TrailStepId, Run[]>();
+  for (const run of runs) {
+    const existing = runsByStepId.get(run.trailStepId);
+    if (existing) {
+      existing.push(run);
+    } else {
+      runsByStepId.set(run.trailStepId, [run]);
+    }
+  }
+
+  const stepItems = await Promise.all(
+    steps.map(async (step) => {
+      const stepRuns = [...(runsByStepId.get(step.id) ?? [])].sort((a, b) =>
+        b.updatedAt.localeCompare(a.updatedAt),
+      );
+
+      const [prompt, runItems] = await Promise.all([
+        step.kind === 'manual' || step.promptId === null
           ? Promise.resolve(null)
-          : repository.getRecipe(run.recipeId),
-        repository.listActiveLinks(run.id),
+          : repository.getPrompt(step.promptId),
+        Promise.all(
+          stepRuns.map(async (run) => {
+            const [recipe, links] = await Promise.all([
+              run.recipeId === null
+                ? Promise.resolve(null)
+                : repository.getRecipe(run.recipeId),
+              repository.listActiveLinks(run.id),
+            ]);
+
+            if (run.recipeId !== null && recipe === null)
+              throw new Error('Run data is inconsistent.');
+
+            return { run, recipe, links } satisfies TrailDetailRunItem;
+          }),
+        ),
       ]);
 
-      if (project === null || (run.recipeId !== null && recipe === null))
-        throw new Error('Run data is inconsistent.');
-
-      return { run, project, recipe, links } satisfies TrailDetailRunItem;
+      return { step, prompt, runs: runItems } satisfies TrailDetailStepItem;
     }),
   );
 
-  return { trail, runs: runItems };
+  return { trail, project, steps: stepItems };
 }
