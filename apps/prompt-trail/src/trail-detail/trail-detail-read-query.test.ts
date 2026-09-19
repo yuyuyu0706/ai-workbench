@@ -71,6 +71,7 @@ describe('loadTrailDetailReadModel', () => {
     ).resolves.toEqual({
       trail: sampleDataset.trail,
       project: sampleDataset.project,
+      availablePrompts: [],
       steps: [
         {
           step: sampleDataset.trailStep,
@@ -213,6 +214,7 @@ describe('loadTrailDetailReadModel', () => {
     ).resolves.toEqual({
       trail: expectedTrail,
       project: sampleDataset.project,
+      availablePrompts: [],
       steps: [{ step, prompt: sampleDataset.prompt, runs: [] }],
     });
   });
@@ -276,6 +278,7 @@ describe('loadTrailDetailReadModel', () => {
     ).resolves.toEqual({
       trail: sampleDataset.trail,
       project: sampleDataset.project,
+      availablePrompts: [],
       steps: [
         {
           step: sampleDataset.trailStep,
@@ -284,6 +287,28 @@ describe('loadTrailDetailReadModel', () => {
         },
       ],
     });
+  });
+
+  it('populates availablePrompts from listActivePrompts(DEFAULT_PROJECT_ID)', async () => {
+    const database = databaseScope.createDatabase();
+    const repository = new PromptTrailRepository(database);
+    await insertBaseTrail(repository);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { projectId: _projectId, ...promptWithoutProject } =
+      sampleDataset.prompt;
+    const globalPrompt = {
+      ...promptWithoutProject,
+      id: 'prompt-global' as PromptId,
+      scope: 'global' as const,
+    };
+    await repository.savePrompt(globalPrompt);
+
+    const model = await loadTrailDetailReadModel(
+      repository,
+      sampleDataset.trail.id,
+    );
+
+    expect(model?.availablePrompts).toEqual([globalPrompt]);
   });
 
   it('does not resolve a Recipe for a Direct Run', async () => {

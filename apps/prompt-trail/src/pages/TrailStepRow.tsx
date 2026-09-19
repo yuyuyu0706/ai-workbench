@@ -2,14 +2,22 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { useDeveloperUiStateSnapshot } from '../developer-tools/DeveloperToolsContext';
 import { selectActiveDeveloperUiState } from '../developer-ui-state';
-import type { Link, LinkId, UtcDateTimeString } from '../domain';
+import type {
+  Link,
+  LinkId,
+  Prompt,
+  PromptId,
+  UtcDateTimeString,
+} from '../domain';
 import { RunStatusPin } from '../run-status';
 import { executeRun } from '../run-execution/execute-run';
 import {
   createRunLink,
   type SelectableLinkType,
 } from '../trail-creation/create-run-link';
+import { updateTrailStep } from '../trail-detail/update-trail-step';
 import type { TrailDetailStepItem } from '../trail-detail/trail-detail-read-query';
+import { validateTrailStepMetadata } from '../trail-step-metadata';
 import { formatDateTime } from './date-time';
 import {
   RunPopover,
@@ -18,17 +26,35 @@ import {
 import { PromptPanel } from './run-panels/PromptPanel';
 import { RunResultPanel } from './run-panels/RunResultPanel';
 import { RunLinksPanel } from './run-panels/RunLinksPanel';
+import { TrailStepForm, type TrailStepFormValues } from './step-forms/TrailStepForm';
 
-type ActivePopover = 'prompt' | 'result' | 'links' | null;
+type ActivePopover = 'prompt' | 'result' | 'links' | 'edit' | null;
 
 const EMPTY_LINKS: readonly Link[] = [];
 
+type EditFormSnapshot = {
+  readonly values: TrailStepFormValues;
+  readonly initialValues: TrailStepFormValues;
+  readonly expectedUpdatedAt: UtcDateTimeString;
+  readonly loadedTitle: string;
+  readonly loadedKind: string;
+  readonly loadedPromptId: string | null;
+  readonly status: 'editing' | 'submitting' | 'failure' | 'stale';
+  readonly validationErrors: readonly string[];
+  readonly staleNotice: 'none' | 'refreshed' | 'conflicted';
+  readonly confirmingDiscard: boolean;
+};
+
 export function TrailStepRow({
   stepItem,
+  availablePrompts,
   onChanged,
+  onStepSaved,
 }: {
   stepItem: TrailDetailStepItem;
+  availablePrompts: readonly Prompt[];
   onChanged: () => void;
+  onStepSaved: () => void;
 }) {
   const repository = usePromptTrailRepository();
   const uiStateSnapshot = useDeveloperUiStateSnapshot();
@@ -77,6 +103,9 @@ export function TrailStepRow({
   const promptButtonRef = useRef<HTMLButtonElement>(null);
   const resultButtonRef = useRef<HTMLButtonElement>(null);
   const linksButtonRef = useRef<HTMLButtonElement>(null);
+  const editButtonRef = useRef<HTMLButtonElement>(null);
+  const editSubmissionRef = useRef<symbol | null>(null);
+  const [editForm, setEditForm] = useState<EditFormSnapshot | null>(null);
   const [executeStatus, setExecuteStatus] = useState<
     'idle' | 'running' | 'failure'
   >('idle');
@@ -167,7 +196,11 @@ export function TrailStepRow({
       const isInsidePortaledPopover =
         target instanceof Element && target.closest('.pt-responsive-popover');
       if (!isInsideActionsCell && !isInsidePortaledPopover) {
-        setActivePopover(null);
+        if (activePopover === 'edit') {
+          requestCloseEdit();
+        } else {
+          setActivePopover(null);
+        }
       }
     }
     function handleKeyDown(event: KeyboardEvent) {
@@ -176,7 +209,11 @@ export function TrailStepRow({
         !isLinkInformationOpen &&
         deleteSnapshot.linkId === null
       ) {
-        setActivePopover(null);
+        if (activePopover === 'edit') {
+          requestCloseEdit();
+        } else {
+          setActivePopover(null);
+        }
       }
     }
     document.addEventListener('mousedown', handlePointerDown);
@@ -185,7 +222,8 @@ export function TrailStepRow({
       document.removeEventListener('mousedown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [activePopover, isLinkInformationOpen, deleteSnapshot.linkId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePopover, isLinkInformationOpen, deleteSnapshot.linkId, editForm]);
 
   useEffect(() => {
     if (resetStatus === 'idle' || resetStatus === 'resetting') return;
@@ -201,6 +239,109 @@ export function TrailStepRow({
   function togglePopover(popover: Exclude<ActivePopover, null>) {
     setActivePopover((current) => (current === popover ? null : popover));
     if (popover === 'result') setHasNewResult(false);
+  }
+
+  function openEditForm() {
+    const values: TrailStepFormValues = {
+      title: step.title,
+      kind: step.kind,
+      promptId: step.promptId,
+    };
+    setEditForm({
+      values,
+      initialValues: values,
+      expectedUpdatedAt: step.updatedAt,
+      loadedTitle: step.title,
+      loadedKind: step.kind,
+      loadedPromptId: step.promptId,
+      status: 'editing',
+      validationErrors: [],
+      staleNotice: 'none',
+      confirmingDiscard: false,
+    });
+    setActivePopover('edit');
+  }
+
+  function editFormIsDirty() {
+    if (editForm === null) return false;
+    return (
+      editForm.values.title !== editForm.initialValues.title ||
+      editForm.values.kind !== editForm.initialValues.kind ||
+      editForm.values.promptId !== editForm.initialValues.promptId
+    );
+  }
+
+  function requestCloseEdit() {
+    if (editForm === null) return;
+    if (editForm.status === 'submitting') return;
+    if (editFormIsDirty() && !editForm.confirmingDiscard) {
+      setEditForm({ ...editForm, confirmingDiscard: true });
+      return;
+    }
+    setEditForm(null);
+    setActivePopover(null);
+    requestAnimationFrame(() => editButtonRef.current?.focus());
+  }
+
+  function cancelEditDiscard() {
+    if (editForm === null) return;
+    setEditForm({ ...editForm, confirmingDiscard: false });
+  }
+
+  function discardEdit() {
+    setEditForm(null);
+    setActivePopover(null);
+    requestAnimationFrame(() => editButtonRef.current?.focus());
+  }
+
+  async function submitEdit(event: React.FormEvent) {
+    event.preventDefault();
+    if (editForm === null || editForm.status === 'submitting') return;
+    const errors = validateTrailStepMetadata(editForm.values);
+    if (errors.length > 0) {
+      setEditForm({ ...editForm, status: 'failure', validationErrors: errors });
+      return;
+    }
+    const token = Symbol('update-trail-step');
+    editSubmissionRef.current = token;
+    setEditForm({ ...editForm, status: 'submitting', validationErrors: [] });
+    const result = await updateTrailStep(repository, {
+      trailStepId: step.id,
+      expectedUpdatedAt: editForm.expectedUpdatedAt,
+      title: editForm.values.title,
+      kind: editForm.values.kind,
+      promptId:
+        editForm.values.kind === 'prompt'
+          ? (editForm.values.promptId as PromptId | null)
+          : null,
+    });
+    if (editSubmissionRef.current !== token) return;
+    editSubmissionRef.current = null;
+    if (result.status === 'success') {
+      setEditForm(null);
+      setActivePopover(null);
+      onStepSaved();
+      requestAnimationFrame(() => editButtonRef.current?.focus());
+    } else if (result.status === 'stale') {
+      const latest = await repository.getTrailStep(step.id);
+      if (editSubmissionRef.current !== null) return;
+      setEditForm((current) => {
+        if (current === null) return current;
+        const changedElsewhere =
+          latest !== null &&
+          (latest.title !== current.loadedTitle ||
+            latest.kind !== current.loadedKind ||
+            latest.promptId !== current.loadedPromptId);
+        return {
+          ...current,
+          status: 'stale',
+          expectedUpdatedAt: latest?.updatedAt ?? current.expectedUpdatedAt,
+          staleNotice: changedElsewhere ? 'conflicted' : 'refreshed',
+        };
+      });
+    } else {
+      setEditForm({ ...editForm, status: 'failure' });
+    }
   }
 
   function cancelDelete(linkId: LinkId) {
@@ -388,6 +529,79 @@ export function TrailStepRow({
       : prompt === null || prompt.deletedAt !== null
         ? '削除済みのPrompt'
         : prompt.title;
+
+  const editingGroup = (
+    <span className="pt-run-action">
+      <button
+        ref={editButtonRef}
+        type="button"
+        className="pt-run-actions__icon-button ti-pencil"
+        aria-label="Stepを編集"
+        aria-expanded={activePopover === 'edit'}
+        onClick={openEditForm}
+      >
+        <PencilIcon />
+      </button>
+      {activePopover === 'edit' && editForm !== null ? (
+        <RunPopover
+          triggerRef={editButtonRef}
+          title="Stepを編集"
+          onClose={requestCloseEdit}
+        >
+          {editForm.confirmingDiscard ? (
+            <div>
+              <p className="pt-run-popover__confirm-message">
+                入力内容を破棄しますか？
+              </p>
+              <div className="pt-run-execute-confirmation__actions">
+                <button
+                  className="pt-button pt-button--primary"
+                  type="button"
+                  onClick={discardEdit}
+                >
+                  破棄する
+                </button>
+                <button
+                  className="pt-button pt-button--secondary"
+                  type="button"
+                  onClick={cancelEditDiscard}
+                >
+                  キャンセル
+                </button>
+              </div>
+            </div>
+          ) : (
+            <TrailStepForm
+              mode="edit"
+              values={editForm.values}
+              prompts={availablePrompts}
+              currentPrompt={prompt !== null ? { id: prompt.id, title: prompt.title } : null}
+              status={editForm.status === 'stale' ? 'stale' : editForm.status}
+              validationErrors={editForm.validationErrors}
+              staleNotice={
+                editForm.status === 'stale' ? editForm.staleNotice : 'none'
+              }
+              isDirty={editFormIsDirty()}
+              onChange={(next) =>
+                setEditForm((current) =>
+                  current === null
+                    ? current
+                    : {
+                        ...current,
+                        values: next,
+                        status: 'editing',
+                        validationErrors: [],
+                      },
+                )
+              }
+              onSubmit={(event) => void submitEdit(event)}
+              onCancel={requestCloseEdit}
+            />
+          )}
+        </RunPopover>
+      ) : null}
+    </span>
+  );
 
   return (
     <>
@@ -612,6 +826,8 @@ export function TrailStepRow({
                   </RunPopover>
                 ) : null}
               </span>
+              <span className="pt-run-actions__divider" aria-hidden="true" />
+              {editingGroup}
             </div>
           ) : step.kind === 'prompt' ? (
             <div className="pt-run-actions">
@@ -643,8 +859,12 @@ export function TrailStepRow({
                   </RunPopover>
                 ) : null}
               </span>
+              <span className="pt-run-actions__divider" aria-hidden="true" />
+              {editingGroup}
             </div>
-          ) : null}
+          ) : (
+            <div className="pt-run-actions">{editingGroup}</div>
+          )}
         </td>
       </tr>
       {run !== null && run.run.contextSnapshots.length > 0 ? (
@@ -662,6 +882,15 @@ export function TrailStepRow({
         </tr>
       ) : null}
     </>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M4 20l3.5-.8L18.5 8.2a1.7 1.7 0 0 0 0-2.4l-1.3-1.3a1.7 1.7 0 0 0-2.4 0L3.8 15.5 3 19a1 1 0 0 0 1 1Z" />
+      <path d="M13.8 6l3.2 3.2" />
+    </svg>
   );
 }
 
