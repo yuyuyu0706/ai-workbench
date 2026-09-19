@@ -136,6 +136,7 @@
 }
 
 .pt-run-table-wrapper {
+  margin-top: var(--pt-space-3);
   overflow-x: auto;
 }
 
@@ -157,7 +158,7 @@
   overflow-wrap: anywhere;
 }
 
-.pt-run-table__prompt {
+.pt-run-table td.pt-run-table__prompt {
   text-align: left;
 }
 
