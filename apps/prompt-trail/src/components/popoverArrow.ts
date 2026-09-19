@@ -4,8 +4,8 @@ import type { PopoverPositionResult } from './usePopoverPosition';
 /**
  * Shared arrow-offset math for popovers positioned by `usePopoverPosition`
  * with the `right-start` / `left-start` / `bottom-start` placement set (see
- * `PromptLibraryPage`'s `PromptBodyPopover` and `RunStepSection`'s
- * `RunPopover`). Both consumers render a real `<span>` arrow whose position
+ * `PromptLibraryPage`'s `PromptBodyPopover` and `RunPopover`).
+ * Both consumers render a real `<span>` arrow whose position
  * along the popover's edge is computed here so the arrow stays aligned with
  * the trigger's vertical (or horizontal, for `bottom-start`) center, clamped
  * away from the popover's rounded corners.

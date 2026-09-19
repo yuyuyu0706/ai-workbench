@@ -65,11 +65,11 @@ test.describe('first Trail creation acceptance', () => {
     await expect(
       page.getByRole('status').filter({ hasText: 'Trailを作成しました。' }),
     ).toBeVisible();
-    const runSummary = page.locator('section').filter({
-      has: page.getByRole('heading', { level: 2, name: '実行サマリ' }),
+    const stepList = page.locator('section').filter({
+      has: page.getByRole('heading', { level: 2, name: 'Step一覧' }),
     });
-    await expect(runSummary.locator('time')).toHaveCount(1);
-    await expect(runSummary.locator('time').first()).toHaveText(
+    await expect(stepList.locator('time')).toHaveCount(1);
+    await expect(stepList.locator('time').first()).toHaveText(
       /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/,
     );
 

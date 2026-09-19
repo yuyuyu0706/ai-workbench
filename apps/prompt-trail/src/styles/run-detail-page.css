@@ -161,6 +161,15 @@
   text-align: left;
 }
 
+/* Step name (the primary label) sits above the Prompt name, which is
+   secondary per the design decision, so it's set apart with a muted
+   color and its own line instead of running into the Step name. */
+.pt-run-table__prompt-secondary {
+  display: block;
+  color: var(--pt-color-text-muted);
+  font-size: 0.85rem;
+}
+
 .pt-run-table thead th {
   color: var(--pt-color-text-muted);
   background: var(--pt-color-surface-subtle);
@@ -672,6 +681,21 @@
     color: var(--pt-color-text-muted);
     font-size: 0.75rem;
     font-weight: 700;
+  }
+
+  /* This row holds a single colSpan={4} context-snapshot cell rather than
+     the four Step/status/last-run/actions cells .pt-run-table__row's grid
+     lays out above, so reset the grid entirely instead of letting the
+     colspan cell get squeezed into the single "prompt" grid-area slot. */
+  .pt-run-table__row--context {
+    display: block;
+    grid-template-areas: none;
+    grid-template-columns: none;
+  }
+
+  .pt-run-table__row--context > * {
+    display: block;
+    grid-area: auto;
   }
 
   .pt-run-table__status .pt-run-table__mobile-label {
