@@ -1,13 +1,13 @@
-import type {
-  Link,
-  Project,
-  Prompt,
-  Recipe,
-  Run,
-  Trail,
-  TrailId,
-  TrailStep,
-  TrailStepId,
+import {
+  type Link,
+  type Project,
+  type Prompt,
+  type Recipe,
+  type Run,
+  type Trail,
+  type TrailId,
+  type TrailStep,
+  type TrailStepId,
 } from '../domain';
 import type { PromptTrailRepository } from '../repository';
 
@@ -30,6 +30,7 @@ export type TrailDetailReadModel = {
   readonly project: Project;
   /** Steps, `order` ascending. */
   readonly steps: readonly TrailDetailStepItem[];
+  readonly availablePrompts: readonly Prompt[];
 };
 
 export async function loadTrailDetailReadModel(
@@ -42,9 +43,10 @@ export async function loadTrailDetailReadModel(
   const project = await repository.getProject(trail.projectId);
   if (project === null) throw new Error('Trail data is inconsistent.');
 
-  const [steps, runs] = await Promise.all([
+  const [steps, runs, availablePrompts] = await Promise.all([
     repository.listStepsByTrail(trailId),
     repository.listRunsByTrail(trailId),
+    repository.listActivePrompts(trail.projectId),
   ]);
 
   const runsByStepId = new Map<TrailStepId, Run[]>();
@@ -88,5 +90,5 @@ export async function loadTrailDetailReadModel(
     }),
   );
 
-  return { trail, project, steps: stepItems };
+  return { trail, project, steps: stepItems, availablePrompts };
 }

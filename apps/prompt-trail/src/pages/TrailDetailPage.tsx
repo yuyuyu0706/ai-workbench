@@ -471,18 +471,16 @@ export function TrailDetailPage() {
             </form>
           )}
         </PageSection>
-        {steps.length === 0 ? (
-          <StateMessage
-            variant="empty"
-            title="Stepがまだありません"
-            description="StepはこのTrailにまだ登録されていません。"
-          />
-        ) : (
-          <TrailStepTable
-            steps={steps}
-            onChanged={() => void reloadLatestMetadata()}
-          />
-        )}
+        <TrailStepTable
+          trail={trail}
+          steps={steps}
+          availablePrompts={displayedState.data.availablePrompts}
+          onChanged={() => void reloadLatestMetadata()}
+          onStepSaved={() => {
+            void reloadLatestMetadata();
+            notifyDataChanged();
+          }}
+        />
       </div>
       <div className="prompt-trail-page__actions">
         <Link

@@ -122,6 +122,7 @@ function baseTrailDeps(
     runs?: readonly any[];
     prompt?: any;
     links?: readonly any[];
+    availablePrompts?: readonly any[];
   } = {},
 ) {
   const resolvedTrail = overrides.trail ?? trail;
@@ -131,13 +132,19 @@ function baseTrailDeps(
   const resolvedPrompt =
     overrides.prompt === undefined ? prompt : overrides.prompt;
   const resolvedLinks = overrides.links ?? [];
+  const resolvedAvailablePrompts = overrides.availablePrompts ?? [prompt];
   return {
     getTrail: vi.fn(async () => resolvedTrail),
     getProject: vi.fn(async () => resolvedProject),
     listStepsByTrail: vi.fn(async () => resolvedSteps),
     listRunsByTrail: vi.fn(async () => resolvedRuns),
     getPrompt: vi.fn(async () => resolvedPrompt),
+    getTrailStep: vi.fn(
+      async (id: string) =>
+        resolvedSteps.find((step: any) => step.id === id) ?? null,
+    ),
     listActiveLinks: vi.fn(async () => resolvedLinks),
+    listActivePrompts: vi.fn(async () => resolvedAvailablePrompts),
   };
 }
 
@@ -412,6 +419,7 @@ describe('TrailDetailPage', () => {
       })),
       getPrompt: vi.fn(async () => prompt),
       listActiveLinks: vi.fn(async () => []),
+      listActivePrompts: vi.fn(async () => [prompt]),
       updateTrailMetadata: vi.fn(async () => {
         throw new PromptTrailRepositoryError('stale-write');
       }),
@@ -806,6 +814,10 @@ describe('TrailDetailPage', () => {
       screen.queryByText('指定されたRunが見つかりません。'),
     ).not.toBeInTheDocument();
     expect(screen.getByText('Stepがまだありません')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Stepを追加' }),
+    ).toBeInTheDocument();
   });
 
   it('shows a Trail with zero Runs (a Step with no Run yet)', async () => {
@@ -1204,6 +1216,7 @@ it('keeps Run B state when a pending Run A Link save resolves after a route chan
           resolve = done;
         }),
     ),
+    listActivePrompts: vi.fn(async () => [prompt]),
   } as any;
   render(
     <MemoryRouter initialEntries={['/trails/trail-a']}>
@@ -1490,5 +1503,250 @@ describe('TrailDetailPage Run actions popovers', () => {
       ),
     );
     vi.unstubAllGlobals();
+  });
+});
+
+describe('Step add/edit (issue #340)', () => {
+  it('shows the add button and opens the form, adding a Step at the end', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    let latestTrail = { ...trail };
+    const steps = [{ ...trailStep }];
+    const repository = {
+      ...baseTrailDeps({ steps }),
+      getTrail: vi.fn(async () => latestTrail),
+      listStepsByTrail: vi.fn(async () => steps),
+      addTrailStep: vi.fn(async ({ trailStep: newStep }) => {
+        const saved = { ...newStep, order: steps.length + 1 };
+        steps.push(saved);
+        latestTrail = {
+          ...latestTrail,
+          updatedAt: '2026-01-02T00:00:00.000Z',
+        };
+        return saved;
+      }),
+    } as any;
+    renderPage(repository);
+    await screen.findByText('Trail A');
+
+    await user.click(screen.getByRole('button', { name: 'Stepを追加' }));
+    await user.type(screen.getByLabelText('Step名'), 'New Step');
+    await user.selectOptions(screen.getByLabelText('種別'), '人手の工程');
+    await user.click(screen.getByRole('button', { name: '追加する' }));
+
+    await waitFor(() => expect(repository.addTrailStep).toHaveBeenCalled());
+    expect(await screen.findByText(/New Step/)).toBeInTheDocument();
+  });
+
+  it('closes the add form on outside click, and opening the row edit form does not leave the add form open too', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const steps = [{ ...trailStep }];
+    const repository = {
+      ...baseTrailDeps({ steps }),
+      listStepsByTrail: vi.fn(async () => steps),
+    } as any;
+    renderPage(repository);
+    await screen.findByText('Trail A');
+
+    await user.click(screen.getByRole('button', { name: 'Stepを追加' }));
+    expect(screen.getByLabelText('Step名')).toBeInTheDocument();
+
+    await user.click(screen.getByText('Trail A'));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: '追加する' }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it('opening a row edit form while the (non-dirty) add form is open closes the add form', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const steps = [{ ...trailStep }];
+    const repository = {
+      ...baseTrailDeps({ steps }),
+      listStepsByTrail: vi.fn(async () => steps),
+    } as any;
+    renderPage(repository);
+    await screen.findByText('Trail A');
+
+    await user.click(screen.getByRole('button', { name: 'Stepを追加' }));
+    expect(
+      screen.getByRole('button', { name: '追加する' }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Stepを編集' }));
+
+    expect(
+      screen.queryByRole('button', { name: '追加する' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '変更を保存' }),
+    ).toBeInTheDocument();
+  });
+
+  it('hides the add button when the Trail is deleted', async () => {
+    const repository = {
+      ...baseTrailDeps({
+        trail: { ...trail, deletedAt: '2026-01-02T00:00:00.000Z' },
+      }),
+    } as any;
+    renderPage(repository);
+    await screen.findByText('Trail A');
+    expect(
+      screen.queryByRole('button', { name: 'Stepを追加' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('opens the edit form prefilled with current values, and a title change updates the row', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const steps = [{ ...trailStep }];
+    const repository = {
+      ...baseTrailDeps({ steps }),
+      listStepsByTrail: vi.fn(async () => steps),
+      updateTrailStep: vi.fn(async (value) => {
+        const saved = {
+          ...trailStep,
+          title: value.title,
+          kind: value.kind,
+          promptId: value.promptId,
+          updatedAt: '2026-01-02T00:00:00.000Z',
+        };
+        steps[0] = saved;
+        return saved;
+      }),
+    } as any;
+    renderPage(repository);
+    await screen.findByText('Trail A');
+
+    await user.click(screen.getByRole('button', { name: 'Stepを編集' }));
+    expect(screen.getByLabelText('Step名')).toHaveValue('Step 1');
+
+    await user.clear(screen.getByLabelText('Step名'));
+    await user.type(screen.getByLabelText('Step名'), 'Renamed Step');
+    await user.click(screen.getByRole('button', { name: '変更を保存' }));
+
+    await waitFor(() =>
+      expect(repository.updateTrailStep).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Renamed Step' }),
+      ),
+    );
+    expect(await screen.findByText(/Renamed Step/)).toBeInTheDocument();
+  });
+
+  it('nulls promptId when kind is changed to manual and saves', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const repository = {
+      ...baseTrailDeps(),
+      updateTrailStep: vi.fn(async (value) => ({
+        ...trailStep,
+        title: value.title,
+        kind: value.kind,
+        promptId: value.promptId,
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      })),
+    } as any;
+    renderPage(repository);
+    await screen.findByText('Trail A');
+
+    await user.click(screen.getByRole('button', { name: 'Stepを編集' }));
+    await user.selectOptions(screen.getByLabelText('種別'), '人手の工程');
+    await user.click(screen.getByRole('button', { name: '変更を保存' }));
+
+    await waitFor(() =>
+      expect(repository.updateTrailStep).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: 'manual', promptId: null }),
+      ),
+    );
+  });
+
+  it('asks for confirmation before discarding an unsaved add-form change', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const repository = { ...baseTrailDeps() } as any;
+    renderPage(repository);
+    await screen.findByText('Trail A');
+
+    await user.click(screen.getByRole('button', { name: 'Stepを追加' }));
+    await user.type(screen.getByLabelText('Step名'), 'Draft');
+    await user.click(screen.getByRole('button', { name: 'キャンセル' }));
+
+    expect(screen.getByText('入力内容を破棄しますか？')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '破棄する' }));
+    expect(screen.queryByLabelText('Step名')).not.toBeInTheDocument();
+  });
+
+  it('resubmits after a stale-write, preserving the draft', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    let addAttempts = 0;
+    const repository = {
+      ...baseTrailDeps(),
+      addTrailStep: vi.fn(async ({ trailStep: newStep }) => {
+        addAttempts += 1;
+        if (addAttempts === 1) {
+          throw new PromptTrailRepositoryError('stale-write');
+        }
+        return { ...newStep, order: 2 };
+      }),
+    } as any;
+    renderPage(repository);
+    await screen.findByText('Trail A');
+
+    await user.click(screen.getByRole('button', { name: 'Stepを追加' }));
+    await user.type(screen.getByLabelText('Step名'), 'Second Step');
+    await user.selectOptions(screen.getByLabelText('種別'), '人手の工程');
+    await user.click(screen.getByRole('button', { name: '追加する' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/最新の状態を読み込みました/),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByLabelText('Step名')).toHaveValue('Second Step');
+
+    await user.click(screen.getByRole('button', { name: '追加する' }));
+    await waitFor(() => expect(addAttempts).toBe(2));
+  });
+
+  it('warns when the Step was changed elsewhere before a stale resubmit', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    let updateAttempts = 0;
+    const changedStep = {
+      ...trailStep,
+      title: 'Changed elsewhere',
+      updatedAt: '2026-01-03T00:00:00.000Z',
+    };
+    const repository = {
+      ...baseTrailDeps(),
+      getTrailStep: vi.fn(async () => changedStep),
+      updateTrailStep: vi.fn(async () => {
+        updateAttempts += 1;
+        throw new PromptTrailRepositoryError('stale-write');
+      }),
+    } as any;
+    renderPage(repository);
+    await screen.findByText('Trail A');
+
+    await user.click(screen.getByRole('button', { name: 'Stepを編集' }));
+    await user.clear(screen.getByLabelText('Step名'));
+    await user.type(screen.getByLabelText('Step名'), 'My edit');
+    await user.click(screen.getByRole('button', { name: '変更を保存' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/別の場所でこのStepが変更されました/),
+      ).toBeInTheDocument(),
+    );
+    expect(updateAttempts).toBe(1);
+    expect(screen.getByLabelText('Step名')).toHaveValue('My edit');
+  });
+
+  it('shows the current, now-inactive Prompt in the select on edit', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const repository = {
+      ...baseTrailDeps({ availablePrompts: [] }),
+    } as any;
+    renderPage(repository);
+    await screen.findByText('Trail A');
+
+    await user.click(screen.getByRole('button', { name: 'Stepを編集' }));
+    expect(screen.getByText('Prompt A（現在の設定）')).toBeInTheDocument();
   });
 });
