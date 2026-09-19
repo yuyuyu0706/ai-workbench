@@ -481,13 +481,6 @@ export function TrailDetailPage() {
             notifyDataChanged();
           }}
         />
-        {steps.length === 0 ? (
-          <StateMessage
-            variant="empty"
-            title="Stepがまだありません"
-            description="StepはこのTrailにまだ登録されていません。"
-          />
-        ) : null}
       </div>
       <div className="prompt-trail-page__actions">
         <Link

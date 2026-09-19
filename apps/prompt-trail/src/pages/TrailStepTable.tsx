@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
-import { PageSection } from '../components/ui';
+import { PageSection, StateMessage } from '../components/ui';
 import { addTrailStep } from '../trail-detail/add-trail-step';
 import type { TrailDetailStepItem } from '../trail-detail/trail-detail-read-query';
 import type { Prompt, PromptId, Trail } from '../domain';
 import { validateTrailStepMetadata } from '../trail-step-metadata';
 import { RunPopover } from './RunPopover';
-import { TrailStepForm, type TrailStepFormValues } from './step-forms/TrailStepForm';
+import {
+  TrailStepForm,
+  type TrailStepFormValues,
+} from './step-forms/TrailStepForm';
 import { TrailStepRow } from './TrailStepRow';
 
 type AddFormSnapshot = {
@@ -115,7 +118,8 @@ export function TrailStepTable({
           : {
               ...current,
               status: 'stale',
-              expectedUpdatedAt: latestTrail?.updatedAt ?? current.expectedUpdatedAt,
+              expectedUpdatedAt:
+                latestTrail?.updatedAt ?? current.expectedUpdatedAt,
               staleNotice: 'refreshed',
             },
       );
@@ -126,11 +130,24 @@ export function TrailStepTable({
 
   useEffect(() => {
     if (addForm === null) return;
+    function handlePointerDown(event: MouseEvent) {
+      const target = event.target as Node;
+      const isInsideButton = addButtonRef.current?.contains(target);
+      const isInsidePortaledPopover =
+        target instanceof Element && target.closest('.pt-responsive-popover');
+      if (!isInsideButton && !isInsidePortaledPopover) {
+        requestClose();
+      }
+    }
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') requestClose();
     }
+    document.addEventListener('mousedown', handlePointerDown);
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addForm]);
 
@@ -158,7 +175,9 @@ export function TrailStepTable({
                   <DiscardConfirmation
                     onDiscard={() => {
                       setAddForm(null);
-                      requestAnimationFrame(() => addButtonRef.current?.focus());
+                      requestAnimationFrame(() =>
+                        addButtonRef.current?.focus(),
+                      );
                     }}
                     onCancel={cancelDiscard}
                   />
@@ -197,29 +216,37 @@ export function TrailStepTable({
         ) : null
       }
     >
-      <div className="pt-run-table-wrapper">
-        <table className="pt-run-table">
-          <thead>
-            <tr>
-              <th scope="col">Step</th>
-              <th scope="col">ステータス</th>
-              <th scope="col">最終実行</th>
-              <th scope="col">アクション</th>
-            </tr>
-          </thead>
-          <tbody>
-            {steps.map((stepItem) => (
-              <TrailStepRow
-                key={stepItem.step.id}
-                stepItem={stepItem}
-                availablePrompts={availablePrompts}
-                onChanged={onChanged}
-                onStepSaved={onStepSaved}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {steps.length === 0 ? (
+        <StateMessage
+          variant="empty"
+          title="Stepがまだありません"
+          description="StepはこのTrailにまだ登録されていません。"
+        />
+      ) : (
+        <div className="pt-run-table-wrapper">
+          <table className="pt-run-table">
+            <thead>
+              <tr>
+                <th scope="col">Step</th>
+                <th scope="col">ステータス</th>
+                <th scope="col">最終実行</th>
+                <th scope="col">アクション</th>
+              </tr>
+            </thead>
+            <tbody>
+              {steps.map((stepItem) => (
+                <TrailStepRow
+                  key={stepItem.step.id}
+                  stepItem={stepItem}
+                  availablePrompts={availablePrompts}
+                  onChanged={onChanged}
+                  onStepSaved={onStepSaved}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </PageSection>
   );
 }

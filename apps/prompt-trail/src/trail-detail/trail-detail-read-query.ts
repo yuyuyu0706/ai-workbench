@@ -1,5 +1,4 @@
 import {
-  DEFAULT_PROJECT_ID,
   type Link,
   type Project,
   type Prompt,
@@ -47,7 +46,7 @@ export async function loadTrailDetailReadModel(
   const [steps, runs, availablePrompts] = await Promise.all([
     repository.listStepsByTrail(trailId),
     repository.listRunsByTrail(trailId),
-    repository.listActivePrompts(DEFAULT_PROJECT_ID),
+    repository.listActivePrompts(trail.projectId),
   ]);
 
   const runsByStepId = new Map<TrailStepId, Run[]>();

@@ -14,14 +14,10 @@ const input = {
 describe('addTrailStep', () => {
   it('normalizes the title, generates an id via createId, and returns the saved Step', async () => {
     const add = vi.fn(async (value) => value.trailStep);
-    const result = await addTrailStep(
-      { addTrailStep: add } as never,
-      input,
-      {
-        createId: (kind) => `${kind}-fixed`,
-        now: () => input.expectedUpdatedAt,
-      },
-    );
+    const result = await addTrailStep({ addTrailStep: add } as never, input, {
+      createId: (kind) => `${kind}-fixed`,
+      now: () => input.expectedUpdatedAt,
+    });
     expect(result).toEqual({
       status: 'success',
       trailStep: expect.objectContaining({

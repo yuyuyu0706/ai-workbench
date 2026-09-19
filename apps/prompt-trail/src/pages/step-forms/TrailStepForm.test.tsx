@@ -7,7 +7,9 @@ const prompts = [
   { id: 'prompt-2', title: 'Prompt Two' },
 ] as never;
 
-function baseProps(overrides: Partial<Parameters<typeof TrailStepForm>[0]> = {}) {
+function baseProps(
+  overrides: Partial<Parameters<typeof TrailStepForm>[0]> = {},
+) {
   const values: TrailStepFormValues = {
     title: 'Step',
     kind: 'prompt',
@@ -80,7 +82,9 @@ describe('TrailStepForm', () => {
 
   it('shows the edit submit label', () => {
     render(<TrailStepForm {...baseProps({ mode: 'edit' })} />);
-    expect(screen.getByRole('button', { name: '変更を保存' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '変更を保存' }),
+    ).toBeInTheDocument();
   });
 
   it('shows the refreshed stale notice without alarming wording', () => {
@@ -89,9 +93,7 @@ describe('TrailStepForm', () => {
         {...baseProps({ status: 'stale', staleNotice: 'refreshed' })}
       />,
     );
-    expect(
-      screen.getByText(/最新の状態を読み込みました/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/最新の状態を読み込みました/)).toBeInTheDocument();
   });
 
   it('shows the conflicted stale notice as a warning', () => {
@@ -121,5 +123,94 @@ describe('TrailStepForm', () => {
     render(<TrailStepForm {...baseProps({ status: 'submitting' })} />);
     expect(screen.getByLabelText('Step名')).toBeDisabled();
     expect(screen.getByRole('button', { name: '保存中...' })).toBeDisabled();
+  });
+
+  it('shows the title message for step-title-required', () => {
+    render(
+      <TrailStepForm
+        {...baseProps({
+          status: 'failure',
+          validationErrors: ['step-title-required'],
+        })}
+      />,
+    );
+    expect(
+      screen.getByText(
+        'Step名は必須・80文字以内で、改行を含めないでください。',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Promptを選択してください。')).toBeNull();
+  });
+
+  it('shows a Prompt-specific message for step-prompt-id-required', () => {
+    render(
+      <TrailStepForm
+        {...baseProps({
+          status: 'failure',
+          validationErrors: ['step-prompt-id-required'],
+        })}
+      />,
+    );
+    expect(screen.getByText('Promptを選択してください。')).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        'Step名は必須・80文字以内で、改行を含めないでください。',
+      ),
+    ).toBeNull();
+  });
+
+  it('shows a kind-specific message for step-kind-invalid', () => {
+    render(
+      <TrailStepForm
+        {...baseProps({
+          status: 'failure',
+          validationErrors: ['step-kind-invalid'],
+        })}
+      />,
+    );
+    expect(screen.getByText('種別を選択してください。')).toBeInTheDocument();
+  });
+
+  it('shows a manual-kind-specific message for step-prompt-id-not-allowed', () => {
+    render(
+      <TrailStepForm
+        {...baseProps({
+          status: 'failure',
+          validationErrors: ['step-prompt-id-not-allowed'],
+        })}
+      />,
+    );
+    expect(
+      screen.getByText('人手の工程ではPromptを選択できません。'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows one message per distinct error code when several are present', () => {
+    render(
+      <TrailStepForm
+        {...baseProps({
+          status: 'failure',
+          validationErrors: ['step-title-required', 'step-prompt-id-required'],
+        })}
+      />,
+    );
+    expect(
+      screen.getByText(
+        'Step名は必須・80文字以内で、改行を含めないでください。',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Promptを選択してください。')).toBeInTheDocument();
+  });
+
+  it('uses unique element ids across simultaneously mounted instances', () => {
+    render(
+      <>
+        <TrailStepForm {...baseProps({ mode: 'add' })} />
+        <TrailStepForm {...baseProps({ mode: 'edit' })} />
+      </>,
+    );
+    const titleInputs = screen.getAllByLabelText('Step名');
+    expect(titleInputs).toHaveLength(2);
+    expect(titleInputs[0].id).not.toBe(titleInputs[1].id);
   });
 });

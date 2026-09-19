@@ -67,9 +67,9 @@ describe('updateTrailStep', () => {
         throw new PromptTrailRepositoryError('stale-write');
       }),
     });
-    await expect(
-      updateTrailStep(repository as never, input),
-    ).resolves.toEqual({ status: 'stale' });
+    await expect(updateTrailStep(repository as never, input)).resolves.toEqual({
+      status: 'stale',
+    });
   });
 
   it('maps other repository errors to failure', async () => {
@@ -78,15 +78,15 @@ describe('updateTrailStep', () => {
         throw new PromptTrailRepositoryError('reference-not-found');
       }),
     });
-    await expect(
-      updateTrailStep(repository as never, input),
-    ).resolves.toEqual({ status: 'failure' });
+    await expect(updateTrailStep(repository as never, input)).resolves.toEqual({
+      status: 'failure',
+    });
   });
 
   it('returns failure when the Step no longer exists', async () => {
     const repository = repo({ getTrailStep: vi.fn(async () => null) });
-    await expect(
-      updateTrailStep(repository as never, input),
-    ).resolves.toEqual({ status: 'failure' });
+    await expect(updateTrailStep(repository as never, input)).resolves.toEqual({
+      status: 'failure',
+    });
   });
 });

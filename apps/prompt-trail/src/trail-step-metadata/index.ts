@@ -2,11 +2,10 @@ import { TRAIL_STEP_KINDS, type TrailStepKind } from '../domain';
 
 export const TRAIL_STEP_TITLE_MAX_LENGTH = 80;
 
-export const TRAIL_STEP_KIND_LABELS: Readonly<Record<TrailStepKind, string>> =
-  {
-    prompt: 'Promptを実行する工程',
-    manual: '人手の工程',
-  };
+export const TRAIL_STEP_KIND_LABELS: Readonly<Record<TrailStepKind, string>> = {
+  prompt: 'Promptを実行する工程',
+  manual: '人手の工程',
+};
 
 export type TrailStepMetadata = {
   readonly title: string;
@@ -24,8 +23,7 @@ export type TrailStepMetadataError =
 
 export function isTrailStepKind(value: unknown): value is TrailStepKind {
   return (
-    typeof value === 'string' &&
-    TRAIL_STEP_KINDS.some((kind) => kind === value)
+    typeof value === 'string' && TRAIL_STEP_KINDS.some((kind) => kind === value)
   );
 }
 

@@ -139,8 +139,9 @@ function baseTrailDeps(
     listStepsByTrail: vi.fn(async () => resolvedSteps),
     listRunsByTrail: vi.fn(async () => resolvedRuns),
     getPrompt: vi.fn(async () => resolvedPrompt),
-    getTrailStep: vi.fn(async (id: string) =>
-      resolvedSteps.find((step: any) => step.id === id) ?? null,
+    getTrailStep: vi.fn(
+      async (id: string) =>
+        resolvedSteps.find((step: any) => step.id === id) ?? null,
     ),
     listActiveLinks: vi.fn(async () => resolvedLinks),
     listActivePrompts: vi.fn(async () => resolvedAvailablePrompts),
@@ -813,6 +814,10 @@ describe('TrailDetailPage', () => {
       screen.queryByText('指定されたRunが見つかりません。'),
     ).not.toBeInTheDocument();
     expect(screen.getByText('Stepがまだありません')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Stepを追加' }),
+    ).toBeInTheDocument();
   });
 
   it('shows a Trail with zero Runs (a Step with no Run yet)', async () => {
@@ -1530,6 +1535,52 @@ describe('Step add/edit (issue #340)', () => {
 
     await waitFor(() => expect(repository.addTrailStep).toHaveBeenCalled());
     expect(await screen.findByText(/New Step/)).toBeInTheDocument();
+  });
+
+  it('closes the add form on outside click, and opening the row edit form does not leave the add form open too', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const steps = [{ ...trailStep }];
+    const repository = {
+      ...baseTrailDeps({ steps }),
+      listStepsByTrail: vi.fn(async () => steps),
+    } as any;
+    renderPage(repository);
+    await screen.findByText('Trail A');
+
+    await user.click(screen.getByRole('button', { name: 'Stepを追加' }));
+    expect(screen.getByLabelText('Step名')).toBeInTheDocument();
+
+    await user.click(screen.getByText('Trail A'));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: '追加する' }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it('opening a row edit form while the (non-dirty) add form is open closes the add form', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const steps = [{ ...trailStep }];
+    const repository = {
+      ...baseTrailDeps({ steps }),
+      listStepsByTrail: vi.fn(async () => steps),
+    } as any;
+    renderPage(repository);
+    await screen.findByText('Trail A');
+
+    await user.click(screen.getByRole('button', { name: 'Stepを追加' }));
+    expect(
+      screen.getByRole('button', { name: '追加する' }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Stepを編集' }));
+
+    expect(
+      screen.queryByRole('button', { name: '追加する' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '変更を保存' }),
+    ).toBeInTheDocument();
   });
 
   it('hides the add button when the Trail is deleted', async () => {

@@ -9,9 +9,9 @@ import {
 
 describe('trail step metadata', () => {
   it('provides a Japanese label for every TrailStepKind in domain order', () => {
-    expect(TRAIL_STEP_KINDS.map((kind) => TRAIL_STEP_KIND_LABELS[kind])).toEqual(
-      ['Promptを実行する工程', '人手の工程'],
-    );
+    expect(
+      TRAIL_STEP_KINDS.map((kind) => TRAIL_STEP_KIND_LABELS[kind]),
+    ).toEqual(['Promptを実行する工程', '人手の工程']);
     expect(isTrailStepKind('prompt')).toBe(true);
     expect(isTrailStepKind('unknown')).toBe(false);
   });

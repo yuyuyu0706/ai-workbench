@@ -26,7 +26,10 @@ import {
 import { PromptPanel } from './run-panels/PromptPanel';
 import { RunResultPanel } from './run-panels/RunResultPanel';
 import { RunLinksPanel } from './run-panels/RunLinksPanel';
-import { TrailStepForm, type TrailStepFormValues } from './step-forms/TrailStepForm';
+import {
+  TrailStepForm,
+  type TrailStepFormValues,
+} from './step-forms/TrailStepForm';
 
 type ActivePopover = 'prompt' | 'result' | 'links' | 'edit' | null;
 
@@ -575,7 +578,9 @@ export function TrailStepRow({
               mode="edit"
               values={editForm.values}
               prompts={availablePrompts}
-              currentPrompt={prompt !== null ? { id: prompt.id, title: prompt.title } : null}
+              currentPrompt={
+                prompt !== null ? { id: prompt.id, title: prompt.title } : null
+              }
               status={editForm.status === 'stale' ? 'stale' : editForm.status}
               validationErrors={editForm.validationErrors}
               staleNotice={

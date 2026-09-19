@@ -1,4 +1,9 @@
-import { TRAIL_STEP_KINDS, type Prompt, type TrailStepKind } from '../../domain';
+import { useId } from 'react';
+import {
+  TRAIL_STEP_KINDS,
+  type Prompt,
+  type TrailStepKind,
+} from '../../domain';
 import {
   TRAIL_STEP_KIND_LABELS,
   TRAIL_STEP_TITLE_MAX_LENGTH,
@@ -16,6 +21,18 @@ export type TrailStepFormValues = {
  * so no longer present in `prompts`). See issue #340 5.5.
  */
 export type TrailStepFormCurrentPrompt = Pick<Prompt, 'id' | 'title'>;
+
+const VALIDATION_ERROR_MESSAGES: Readonly<Record<string, string>> = {
+  'step-title-required':
+    'Step名は必須・80文字以内で、改行を含めないでください。',
+  'step-title-too-long':
+    'Step名は必須・80文字以内で、改行を含めないでください。',
+  'step-title-newline':
+    'Step名は必須・80文字以内で、改行を含めないでください。',
+  'step-kind-invalid': '種別を選択してください。',
+  'step-prompt-id-required': 'Promptを選択してください。',
+  'step-prompt-id-not-allowed': '人手の工程ではPromptを選択できません。',
+};
 
 export function TrailStepForm({
   mode,
@@ -47,6 +64,12 @@ export function TrailStepForm({
   const noPromptsAvailable = prompts.length === 0 && values.kind === 'prompt';
   const interactionDisabled = status === 'submitting';
   const submitDisabled = interactionDisabled || !isDirty || noPromptsAvailable;
+  const titleId = useId();
+  const kindId = useId();
+  const promptId = useId();
+  const validationMessages = Array.from(new Set(validationErrors)).map(
+    (code) => VALIDATION_ERROR_MESSAGES[code] ?? code,
+  );
 
   const showCurrentPromptOption =
     currentPrompt !== null &&
@@ -54,29 +77,26 @@ export function TrailStepForm({
 
   return (
     <form className="pt-form" onSubmit={onSubmit}>
-      <label htmlFor="trail-step-title">Step名</label>
+      <label htmlFor={titleId}>Step名</label>
       <input
         ref={titleInputRef}
-        id="trail-step-title"
+        id={titleId}
         value={values.title}
         maxLength={TRAIL_STEP_TITLE_MAX_LENGTH + 1}
         disabled={interactionDisabled}
-        onChange={(event) =>
-          onChange({ ...values, title: event.target.value })
-        }
+        onChange={(event) => onChange({ ...values, title: event.target.value })}
       />
       <span className="pt-form__hint">必須・80文字以内・改行不可</span>
-      <label htmlFor="trail-step-kind">種別</label>
+      <label htmlFor={kindId}>種別</label>
       <select
-        id="trail-step-kind"
+        id={kindId}
         value={values.kind}
         disabled={interactionDisabled}
         onChange={(event) =>
           onChange({
             ...values,
             kind: event.target.value as TrailStepKind,
-            promptId:
-              event.target.value === 'manual' ? null : values.promptId,
+            promptId: event.target.value === 'manual' ? null : values.promptId,
           })
         }
       >
@@ -88,9 +108,9 @@ export function TrailStepForm({
       </select>
       {values.kind === 'prompt' ? (
         <>
-          <label htmlFor="trail-step-prompt">Prompt</label>
+          <label htmlFor={promptId}>Prompt</label>
           <select
-            id="trail-step-prompt"
+            id={promptId}
             value={values.promptId ?? ''}
             disabled={interactionDisabled}
             onChange={(event) =>
@@ -120,11 +140,11 @@ export function TrailStepForm({
           ) : null}
         </>
       ) : null}
-      {validationErrors.length > 0 ? (
-        <p className="pt-form__error" role="alert">
-          Step名は必須・80文字以内で、改行を含めないでください。
+      {validationMessages.map((message) => (
+        <p className="pt-form__error" role="alert" key={message}>
+          {message}
         </p>
-      ) : null}
+      ))}
       {status === 'failure' && validationErrors.length === 0 ? (
         <p className="pt-form__error" role="alert">
           保存できませんでした。入力内容を保持しています。もう一度お試しください。
