@@ -133,9 +133,10 @@ export function TrailStepTable({
     function handlePointerDown(event: MouseEvent) {
       const target = event.target as Node;
       const isInsideButton = addButtonRef.current?.contains(target);
-      const isInsidePortaledPopover =
-        target instanceof Element && target.closest('.pt-responsive-popover');
-      if (!isInsideButton && !isInsidePortaledPopover) {
+      const isInsideOwnPopover =
+        target instanceof Element &&
+        target.closest('.pt-run-popover--add-step');
+      if (!isInsideButton && !isInsideOwnPopover) {
         requestClose();
       }
     }
@@ -168,6 +169,7 @@ export function TrailStepTable({
             {addForm !== null ? (
               <RunPopover
                 triggerRef={addButtonRef}
+                className="pt-run-popover--add-step"
                 title="Stepを追加"
                 onClose={requestClose}
               >
