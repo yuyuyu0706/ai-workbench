@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { Prompt, Trail, TrailStep, UtcDateTimeString } from '../domain';
+import type {
+  Prompt,
+  Run,
+  Trail,
+  TrailStep,
+  UtcDateTimeString,
+} from '../domain';
 import { createDefaultProject, DEFAULT_PROJECT_ID } from '../domain';
 import { createDatabaseTestScope } from '../test/database-test-utils';
 import { PromptTrailRepository } from './index';
@@ -286,6 +292,84 @@ describe('softDeleteTrailStep', () => {
       [second.id, 1],
       [third.id, 2],
     ]);
+  });
+
+  function buildRun(
+    trail: Trail,
+    step: TrailStep,
+    overrides: Partial<Run> = {},
+  ): Run {
+    return {
+      id: `run-${Math.random().toString(36).slice(2)}` as Run['id'],
+      createdAt: oldTime,
+      updatedAt: oldTime,
+      deletedAt: null,
+      archivedAt: null,
+      projectId: DEFAULT_PROJECT_ID,
+      trailId: trail.id,
+      trailStepId: step.id,
+      recipeId: null,
+      promptSnapshot: {
+        promptId: 'prompt-1' as Prompt['id'],
+        title: 'Prompt',
+        body: 'Body',
+      },
+      contextSnapshots: [],
+      inputValues: {},
+      finalPrompt: 'Body',
+      status: 'prepared',
+      evaluation: null,
+      improvementNote: null,
+      output: null,
+      messages: [],
+      ...overrides,
+    };
+  }
+
+  it('rejects deleting a Step referenced by a non-deleted Run', async () => {
+    const { repository, trail } = await prepare();
+    const step = await repository.addTrailStep({
+      trailStep: buildStepInput(trail, {
+        id: 'trail-step-1' as TrailStep['id'],
+      }),
+      expectedUpdatedAt: oldTime,
+      updatedAt: oldTime,
+    });
+    await repository.saveRun(buildRun(trail, step));
+
+    await expect(
+      repository.softDeleteTrailStep({
+        trailId: trail.id,
+        trailStepId: step.id,
+        deletedAt: newTime,
+        expectedUpdatedAt: oldTime,
+        updatedAt: newTime,
+      }),
+    ).rejects.toMatchObject({ code: 'reference-unavailable' });
+    await expect(repository.listStepsByTrail(trail.id)).resolves.toEqual([
+      step,
+    ]);
+  });
+
+  it('allows deleting a Step whose only Run is already soft-deleted', async () => {
+    const { repository, trail } = await prepare();
+    const step = await repository.addTrailStep({
+      trailStep: buildStepInput(trail, {
+        id: 'trail-step-1' as TrailStep['id'],
+      }),
+      expectedUpdatedAt: oldTime,
+      updatedAt: oldTime,
+    });
+    await repository.saveRun(buildRun(trail, step, { deletedAt: newTime }));
+
+    const deleted = await repository.softDeleteTrailStep({
+      trailId: trail.id,
+      trailStepId: step.id,
+      deletedAt: newTime,
+      expectedUpdatedAt: oldTime,
+      updatedAt: newTime,
+    });
+    expect(deleted.deletedAt).toBe(newTime);
   });
 });
 

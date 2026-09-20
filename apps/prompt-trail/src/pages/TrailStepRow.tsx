@@ -7,6 +7,7 @@ import type {
   LinkId,
   Prompt,
   PromptId,
+  TrailStepId,
   UtcDateTimeString,
 } from '../domain';
 import { RunStatusPin } from '../run-status';
@@ -31,7 +32,7 @@ import {
   type TrailStepFormValues,
 } from './step-forms/TrailStepForm';
 
-type ActivePopover = 'prompt' | 'result' | 'links' | 'edit' | null;
+type ActivePopover = 'prompt' | 'result' | 'links' | 'edit' | 'delete' | null;
 
 const EMPTY_LINKS: readonly Link[] = [];
 
@@ -53,11 +54,25 @@ export function TrailStepRow({
   availablePrompts,
   onChanged,
   onStepSaved,
+  isFirst,
+  isLast,
+  isReordering,
+  onMove,
+  onDelete,
+  addFormConfirmingDiscard,
+  onDiscardConfirmChange,
 }: {
   stepItem: TrailDetailStepItem;
   availablePrompts: readonly Prompt[];
   onChanged: () => void;
   onStepSaved: () => void;
+  isFirst: boolean;
+  isLast: boolean;
+  isReordering: boolean;
+  onMove: (stepId: TrailStepId, direction: 'up' | 'down') => void;
+  onDelete: (stepId: TrailStepId) => void;
+  addFormConfirmingDiscard: boolean;
+  onDiscardConfirmChange: (stepId: TrailStepId, isConfirming: boolean) => void;
 }) {
   const repository = usePromptTrailRepository();
   const uiStateSnapshot = useDeveloperUiStateSnapshot();
@@ -229,6 +244,11 @@ export function TrailStepRow({
   }, [activePopover, isLinkInformationOpen, deleteSnapshot.linkId, editForm]);
 
   useEffect(() => {
+    onDiscardConfirmChange(step.id, editForm?.confirmingDiscard ?? false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editForm?.confirmingDiscard, step.id]);
+
+  useEffect(() => {
     if (resetStatus === 'idle' || resetStatus === 'resetting') return;
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key !== 'Escape') return;
@@ -345,6 +365,19 @@ export function TrailStepRow({
     } else {
       setEditForm({ ...editForm, status: 'failure' });
     }
+  }
+
+  function openDeleteStepConfirm() {
+    setActivePopover('delete');
+  }
+
+  function cancelDeleteStep() {
+    setActivePopover(null);
+  }
+
+  function confirmDeleteStep() {
+    setActivePopover(null);
+    onDelete(step.id);
   }
 
   function cancelDelete(linkId: LinkId) {
@@ -533,18 +566,100 @@ export function TrailStepRow({
         ? '削除済みのPrompt'
         : prompt.title;
 
+  const deleteButtonRef = useRef<HTMLButtonElement>(null);
+  const moveUpButtonRef = useRef<HTMLButtonElement>(null);
+  const moveDownButtonRef = useRef<HTMLButtonElement>(null);
+
   const editingGroup = (
     <span className="pt-run-action">
       <button
         ref={editButtonRef}
         type="button"
         className="pt-run-actions__icon-button ti-pencil"
-        aria-label="Stepを編集"
+        aria-label={
+          addFormConfirmingDiscard
+            ? 'Stepを編集（Stepの追加が未確定のため操作できません）'
+            : 'Stepを編集'
+        }
+        title={
+          addFormConfirmingDiscard
+            ? 'Stepの追加が未確定のため操作できません'
+            : undefined
+        }
         aria-expanded={activePopover === 'edit'}
+        disabled={addFormConfirmingDiscard}
         onClick={openEditForm}
       >
         <PencilIcon />
       </button>
+      <button
+        ref={moveUpButtonRef}
+        type="button"
+        className="pt-run-actions__icon-button ti-arrow-up"
+        aria-label="上へ"
+        disabled={isFirst || isReordering}
+        onClick={() => onMove(step.id, 'up')}
+      >
+        <ArrowUpIcon />
+      </button>
+      <button
+        ref={moveDownButtonRef}
+        type="button"
+        className="pt-run-actions__icon-button ti-arrow-down"
+        aria-label="下へ"
+        disabled={isLast || isReordering}
+        onClick={() => onMove(step.id, 'down')}
+      >
+        <ArrowDownIcon />
+      </button>
+      <button
+        ref={deleteButtonRef}
+        type="button"
+        className="pt-run-actions__icon-button ti-trash"
+        aria-label={
+          stepItem.runs.length > 0
+            ? '削除（実行履歴があるため削除できません）'
+            : '削除'
+        }
+        title={
+          stepItem.runs.length > 0
+            ? '実行履歴があるため削除できません'
+            : undefined
+        }
+        aria-expanded={activePopover === 'delete'}
+        disabled={stepItem.runs.length > 0}
+        onClick={openDeleteStepConfirm}
+      >
+        <TrashIcon />
+      </button>
+      {activePopover === 'delete' ? (
+        <RunPopover
+          triggerRef={deleteButtonRef}
+          className="pt-run-popover--delete-step"
+          title="Stepを削除"
+          onClose={cancelDeleteStep}
+        >
+          <p className="pt-run-popover__confirm-message">
+            このStepを削除しますか？
+          </p>
+          <div className="pt-run-execute-confirmation__actions">
+            <button
+              className="pt-button pt-button--primary"
+              type="button"
+              onClick={confirmDeleteStep}
+            >
+              削除する
+            </button>
+            <button
+              className="pt-button pt-button--secondary"
+              type="button"
+              onClick={cancelDeleteStep}
+            >
+              キャンセル
+            </button>
+          </div>
+        </RunPopover>
+      ) : null}
       {activePopover === 'edit' && editForm !== null ? (
         <RunPopover
           triggerRef={editButtonRef}
@@ -930,6 +1045,34 @@ function ClockIcon() {
     <svg aria-hidden="true" viewBox="0 0 24 24">
       <circle cx="12" cy="12" r="9" />
       <path d="M12 7v5l3.5 2" />
+    </svg>
+  );
+}
+
+function ArrowUpIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M12 19V5" />
+      <path d="M6 11l6-6 6 6" />
+    </svg>
+  );
+}
+
+function ArrowDownIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M12 5v14" />
+      <path d="M18 13l-6 6-6-6" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M5 7h14" />
+      <path d="M9 7V4.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V7" />
+      <path d="M7 7l1 12.5a1 1 0 0 0 1 .9h6a1 1 0 0 0 1-.9L17 7" />
     </svg>
   );
 }
