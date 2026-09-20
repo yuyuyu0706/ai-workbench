@@ -60,8 +60,8 @@ describe('reorderTrailSteps', () => {
         throw new Error('boom');
       }),
     });
-    await expect(
-      reorderTrailSteps(repository as never, input),
-    ).rejects.toThrow('boom');
+    await expect(reorderTrailSteps(repository as never, input)).rejects.toThrow(
+      'boom',
+    );
   });
 });

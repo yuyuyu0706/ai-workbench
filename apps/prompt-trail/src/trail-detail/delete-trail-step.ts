@@ -1,4 +1,9 @@
-import type { TrailId, TrailStep, TrailStepId, UtcDateTimeString } from '../domain';
+import type {
+  TrailId,
+  TrailStep,
+  TrailStepId,
+  UtcDateTimeString,
+} from '../domain';
 import {
   PromptTrailRepositoryError,
   type PromptTrailRepository,

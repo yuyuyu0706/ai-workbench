@@ -37,9 +37,9 @@ describe('deleteTrailStep', () => {
         throw new PromptTrailRepositoryError('stale-write');
       }),
     });
-    await expect(
-      deleteTrailStep(repository as never, input),
-    ).resolves.toEqual({ status: 'stale' });
+    await expect(deleteTrailStep(repository as never, input)).resolves.toEqual({
+      status: 'stale',
+    });
   });
 
   it('maps reference-unavailable (and other errors) to failure', async () => {
@@ -48,9 +48,9 @@ describe('deleteTrailStep', () => {
         throw new PromptTrailRepositoryError('reference-unavailable');
       }),
     });
-    await expect(
-      deleteTrailStep(repository as never, input),
-    ).resolves.toEqual({ status: 'failure' });
+    await expect(deleteTrailStep(repository as never, input)).resolves.toEqual({
+      status: 'failure',
+    });
   });
 
   it('rethrows non-repository errors', async () => {
