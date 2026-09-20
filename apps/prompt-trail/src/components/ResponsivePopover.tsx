@@ -74,6 +74,13 @@ export type ResponsivePopoverProps<TId extends string> = {
    * confirmation appearing) outside of resize/scroll can call it.
    */
   readonly scheduleUpdateRef?: MutableRefObject<(() => void) | null>;
+  /**
+   * When this value changes while open, schedules a reposition. Use this
+   * when the trigger itself can move (e.g. its row is reordered) in a way
+   * that neither the panel's own ResizeObserver nor window resize/scroll
+   * listeners would catch.
+   */
+  readonly positionKey?: string | number;
   readonly children: ReactNode;
 };
 
@@ -107,6 +114,7 @@ export function ResponsivePopover<TId extends string>({
   onClose,
   closeOnEscape = true,
   scheduleUpdateRef,
+  positionKey,
   children,
 }: ResponsivePopoverProps<TId>) {
   const isNarrow = useIsNarrowPopoverViewport();
@@ -124,6 +132,14 @@ export function ResponsivePopover<TId extends string>({
   useEffect(() => {
     if (scheduleUpdateRef) scheduleUpdateRef.current = scheduleUpdate;
   }, [scheduleUpdate, scheduleUpdateRef]);
+
+  // Mirrors scheduleUpdate's own doc comment: call it after a position
+  // change that resize/scroll listeners can't catch (e.g. the trigger
+  // itself moving because its row was reordered).
+  useEffect(() => {
+    if (positionKey === undefined) return;
+    scheduleUpdate();
+  }, [positionKey, scheduleUpdate]);
 
   useEffect(() => {
     if (!open || !isNarrow || !closeOnEscape) return;

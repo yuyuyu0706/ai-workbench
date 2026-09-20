@@ -663,6 +663,7 @@ export function TrailStepRow({
           title="Stepを編集"
           sheetHeader={false}
           onClose={requestCloseEdit}
+          positionKey={step.order}
         >
           {editForm.confirmingDelete ? (
             <div>

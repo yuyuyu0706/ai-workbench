@@ -109,6 +109,7 @@ export function RunPopover({
   title,
   onClose,
   sheetHeader = true,
+  positionKey,
   children,
 }: {
   triggerRef: RefObject<HTMLElement | null>;
@@ -122,6 +123,13 @@ export function RunPopover({
    * button, so the narrow-viewport sheet doesn't show a duplicate one.
    */
   sheetHeader?: boolean;
+  /**
+   * Forwarded to `ResponsivePopover`: when this value changes while open,
+   * schedules a reposition. Pass something that changes whenever the
+   * trigger itself moves in a way resize/scroll listeners can't catch
+   * (e.g. the row's `order` after a reorder).
+   */
+  positionKey?: string | number;
   children: React.ReactNode;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -150,6 +158,7 @@ export function RunPopover({
       sheetHeader={sheetHeader}
       onClose={onClose}
       closeOnEscape={false}
+      positionKey={positionKey}
     >
       {children}
     </ResponsivePopover>
