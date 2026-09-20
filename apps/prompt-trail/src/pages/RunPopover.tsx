@@ -59,10 +59,17 @@ function buildRunPopoverPlacements(
       id: 'right-start',
       // The popover's left edge sits at triggerRect.left - offsetPx (see
       // place() below), so the room needed to its right is measured from
-      // that same anchor rather than from triggerRect.right.
+      // that same anchor rather than from triggerRect.right. Also require
+      // vertical room for runPopoverRightStartTop's desired position (the
+      // panel opening up-and-to-the-right of the trigger): without this,
+      // a tall panel above a low-enough trigger gets clamped to `margin`
+      // regardless of the trigger's actual position, making it look like
+      // the panel isn't following the trigger at all.
       fits: (m) =>
         m.viewportWidth - (m.triggerRect.left - horizontalOffsetPx) >=
-        m.panelWidth + m.gap,
+          m.panelWidth + m.gap &&
+        m.triggerRect.top - m.panelHeight - RUN_POPOVER_VERTICAL_GAP_PX >=
+          m.margin,
       place: (m) => ({
         left: m.triggerRect.left - horizontalOffsetPx,
         top: runPopoverRightStartTop(m),
