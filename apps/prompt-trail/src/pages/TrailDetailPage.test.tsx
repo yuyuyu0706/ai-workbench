@@ -1759,33 +1759,38 @@ describe('Step reorder/delete (issue #342)', () => {
     ];
   }
 
-  it('disables "上へ" on the first row and "下へ" on the last row', async () => {
+  it('disables "上へ" on the first row and "下へ" on the last row, inside each row\'s edit popover', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
     const repository = {
       ...baseTrailDeps({ steps: twoSteps(), runs: [] }),
     } as any;
     renderPage(repository);
     await screen.findByText('1. First step');
 
-    const ups = screen.getAllByRole('button', { name: '上へ' });
-    const downs = screen.getAllByRole('button', { name: '下へ' });
-    expect(ups[0]).toBeDisabled();
-    expect(ups[1]).toBeEnabled();
-    expect(downs[0]).toBeEnabled();
-    expect(downs[1]).toBeDisabled();
+    await user.click(screen.getAllByRole('button', { name: 'Stepを編集' })[0]);
+    expect(screen.getByRole('button', { name: '上へ' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '下へ' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: 'キャンセル' }));
+
+    await user.click(screen.getAllByRole('button', { name: 'Stepを編集' })[1]);
+    expect(screen.getByRole('button', { name: '上へ' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '下へ' })).toBeDisabled();
   });
 
   it('disables both "上へ" and "下へ" when there is exactly one Step', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
     const repository = {
       ...baseTrailDeps({ steps: [trailStep], runs: [] }),
     } as any;
     renderPage(repository);
     await screen.findByText('1. Step 1');
 
+    await user.click(screen.getByRole('button', { name: 'Stepを編集' }));
     expect(screen.getByRole('button', { name: '上へ' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '下へ' })).toBeDisabled();
   });
 
-  it('swaps the order when "下へ" is clicked', async () => {
+  it('swaps the order when "下へ" is clicked from the edit popover, and keeps the popover open', async () => {
     const user = (await import('@testing-library/user-event')).default.setup();
     const steps = twoSteps();
     const repository = {
@@ -1794,6 +1799,7 @@ describe('Step reorder/delete (issue #342)', () => {
         const reordered = orderedStepIds.map((id: string, index: number) => ({
           ...steps.find((step) => step.id === id),
           order: index + 1,
+          updatedAt: '2026-01-05T00:00:00.000Z',
         }));
         steps.splice(0, steps.length, ...reordered);
         return reordered;
@@ -1802,7 +1808,8 @@ describe('Step reorder/delete (issue #342)', () => {
     renderPage(repository);
     await screen.findByText('1. First step');
 
-    await user.click(screen.getAllByRole('button', { name: '下へ' })[0]);
+    await user.click(screen.getAllByRole('button', { name: 'Stepを編集' })[0]);
+    await user.click(screen.getByRole('button', { name: '下へ' }));
 
     await waitFor(() =>
       expect(repository.reorderTrailSteps).toHaveBeenCalledWith(
@@ -1813,9 +1820,11 @@ describe('Step reorder/delete (issue #342)', () => {
     );
     expect(await screen.findByText('1. Second step')).toBeInTheDocument();
     expect(screen.getByText('2. First step')).toBeInTheDocument();
+    // The popover follows the Step (row key is the Step id) and stays open.
+    expect(screen.getByRole('button', { name: '変更を保存' })).toBeVisible();
   });
 
-  it('disables all rows’ up/down during reorder submission while edit/delete stay enabled', async () => {
+  it('disables up/down during reorder submission while edit/delete stay enabled', async () => {
     const user = (await import('@testing-library/user-event')).default.setup();
     const steps = twoSteps();
     let resolveReorder: (() => void) | undefined;
@@ -1834,35 +1843,63 @@ describe('Step reorder/delete (issue #342)', () => {
     renderPage(repository);
     await screen.findByText('1. First step');
 
-    await user.click(screen.getAllByRole('button', { name: '下へ' })[0]);
+    // Open the second (last) row's edit popover: "上へ" starts enabled
+    // (it isn't first) and "下へ" starts disabled (it is last), so once the
+    // reorder is pending, "上へ" going disabled is solely due to
+    // `isReordering`, distinguishing it from its position-based disabling.
+    await user.click(screen.getAllByRole('button', { name: 'Stepを編集' })[1]);
+    expect(screen.getByRole('button', { name: '上へ' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: '上へ' }));
 
     await waitFor(() =>
-      expect(screen.getAllByRole('button', { name: '上へ' })[1]).toBeDisabled(),
+      expect(screen.getByRole('button', { name: '上へ' })).toBeDisabled(),
     );
     expect(
-      screen.getAllByRole('button', { name: 'Stepを編集' })[0],
+      screen.getAllByRole('button', { name: 'Stepを編集' })[1],
     ).toBeEnabled();
-    expect(screen.getAllByRole('button', { name: '削除' })[0]).toBeEnabled();
+    expect(screen.getByRole('button', { name: '削除' })).toBeEnabled();
 
     resolveReorder?.();
     await waitFor(() =>
-      expect(
-        screen.getAllByRole('button', { name: '上へ' })[1],
-      ).toBeEnabled(),
+      expect(screen.getByRole('button', { name: '上へ' })).toBeEnabled(),
     );
   });
 
-  it('disables delete for a Step with Runs, with a readable reason', async () => {
+  it('disables delete for a Step with Runs, with a readable, visible reason', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
     const repository = { ...baseTrailDeps() } as any;
     renderPage(repository);
     await screen.findByText('1. Step 1');
 
+    await user.click(screen.getByRole('button', { name: 'Stepを編集' }));
     const deleteButton = screen.getByRole('button', { name: /削除/ });
     expect(deleteButton).toBeDisabled();
-    expect(deleteButton).toHaveAccessibleName(/実行履歴があるため削除できません/);
+    expect(deleteButton).toHaveAccessibleName(
+      /実行履歴があるため削除できません/,
+    );
+    expect(screen.getByText(/実行履歴があるため削除できません/)).toBeVisible();
   });
 
-  it('removes the row after confirming delete, renumbers remaining Steps, and moves focus to "Stepを追加"', async () => {
+  it('disables 上へ/下へ/削除 while the edit form has unsaved changes', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const repository = {
+      ...baseTrailDeps({ steps: twoSteps(), runs: [] }),
+    } as any;
+    renderPage(repository);
+    await screen.findByText('1. First step');
+
+    await user.click(screen.getAllByRole('button', { name: 'Stepを編集' })[0]);
+    expect(screen.getByRole('button', { name: '上へ' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '下へ' })).toBeEnabled();
+
+    await user.type(screen.getByLabelText('Step名'), ' edited');
+
+    expect(screen.getByRole('button', { name: '下へ' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '削除' })).toBeDisabled();
+    expect(screen.getByText('未保存の変更があります')).toBeVisible();
+  });
+
+  it('removes the row after confirming delete from within the edit popover, renumbers remaining Steps, and moves focus to "Stepを追加"', async () => {
     const user = (await import('@testing-library/user-event')).default.setup();
     const steps = twoSteps();
     const repository = {
@@ -1879,8 +1916,14 @@ describe('Step reorder/delete (issue #342)', () => {
     renderPage(repository);
     await screen.findByText('1. First step');
 
-    await user.click(screen.getAllByRole('button', { name: '削除' })[0]);
+    await user.click(screen.getAllByRole('button', { name: 'Stepを編集' })[0]);
+    await user.click(screen.getByRole('button', { name: '削除' }));
     expect(screen.getByText('このStepを削除しますか？')).toBeInTheDocument();
+    // Delete confirmation swaps content within the same popover, not a
+    // second one.
+    expect(
+      screen.queryByRole('button', { name: '変更を保存' }),
+    ).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '削除する' }));
 
     await waitFor(() =>
@@ -1907,7 +1950,8 @@ describe('Step reorder/delete (issue #342)', () => {
     renderPage(repository);
     await screen.findByText('1. First step');
 
-    await user.click(screen.getAllByRole('button', { name: '下へ' })[0]);
+    await user.click(screen.getAllByRole('button', { name: 'Stepを編集' })[0]);
+    await user.click(screen.getByRole('button', { name: '下へ' }));
 
     expect(
       await screen.findByText(
@@ -1929,9 +1973,7 @@ describe('Step reorder/delete (issue #342)', () => {
     await user.click(screen.getByRole('button', { name: 'キャンセル' }));
     expect(screen.getByText('入力内容を破棄しますか？')).toBeInTheDocument();
 
-    expect(
-      screen.getByRole('button', { name: /Stepを編集/ }),
-    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Stepを編集/ })).toBeDisabled();
   });
 
   it('disables the add button while the row edit form is confirming discard', async () => {
@@ -1948,8 +1990,6 @@ describe('Step reorder/delete (issue #342)', () => {
     await user.click(screen.getByRole('button', { name: 'キャンセル' }));
     expect(screen.getByText('入力内容を破棄しますか？')).toBeInTheDocument();
 
-    expect(
-      screen.getByRole('button', { name: /Stepを追加/ }),
-    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Stepを追加/ })).toBeDisabled();
   });
 });
