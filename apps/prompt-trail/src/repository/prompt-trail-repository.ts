@@ -576,6 +576,7 @@ export class PromptTrailRepository {
       'rw',
       this.database.trails,
       this.database.trailSteps,
+      this.database.runs,
       async () => {
         const trail = await this.ensureTrailVersionCurrent(
           input.trailId,
@@ -589,6 +590,8 @@ export class PromptTrailRepository {
             `Trail Step not found for Trail: ${input.trailId}/${input.trailStepId}`,
           );
         }
+
+        await this.ensureTrailStepHasNoRuns(target.id);
 
         const deletedStep: TrailStep = {
           ...target,
@@ -1152,6 +1155,22 @@ export class PromptTrailRepository {
       throw new PromptTrailRepositoryError(
         'reference-unavailable',
         `Trail Step is unavailable: ${trailStep.id}`,
+      );
+    }
+  }
+
+  private async ensureTrailStepHasNoRuns(
+    trailStepId: TrailStepId,
+  ): Promise<void> {
+    const referencingRuns = await this.database.runs
+      .where('trailStepId')
+      .equals(trailStepId)
+      .toArray();
+
+    if (referencingRuns.some((run) => run.deletedAt === null)) {
+      throw new PromptTrailRepositoryError(
+        'reference-unavailable',
+        `Trail Step is referenced by an active Run: ${trailStepId}`,
       );
     }
   }

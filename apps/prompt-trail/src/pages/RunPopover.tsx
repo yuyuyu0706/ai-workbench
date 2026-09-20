@@ -59,10 +59,17 @@ function buildRunPopoverPlacements(
       id: 'right-start',
       // The popover's left edge sits at triggerRect.left - offsetPx (see
       // place() below), so the room needed to its right is measured from
-      // that same anchor rather than from triggerRect.right.
+      // that same anchor rather than from triggerRect.right. Also require
+      // vertical room for runPopoverRightStartTop's desired position (the
+      // panel opening up-and-to-the-right of the trigger): without this,
+      // a tall panel above a low-enough trigger gets clamped to `margin`
+      // regardless of the trigger's actual position, making it look like
+      // the panel isn't following the trigger at all.
       fits: (m) =>
         m.viewportWidth - (m.triggerRect.left - horizontalOffsetPx) >=
-        m.panelWidth + m.gap,
+          m.panelWidth + m.gap &&
+        m.triggerRect.top - m.panelHeight - RUN_POPOVER_VERTICAL_GAP_PX >=
+          m.margin,
       place: (m) => ({
         left: m.triggerRect.left - horizontalOffsetPx,
         top: runPopoverRightStartTop(m),
@@ -109,6 +116,7 @@ export function RunPopover({
   title,
   onClose,
   sheetHeader = true,
+  positionKey,
   children,
 }: {
   triggerRef: RefObject<HTMLElement | null>;
@@ -122,6 +130,13 @@ export function RunPopover({
    * button, so the narrow-viewport sheet doesn't show a duplicate one.
    */
   sheetHeader?: boolean;
+  /**
+   * Forwarded to `ResponsivePopover`: when this value changes while open,
+   * schedules a reposition. Pass something that changes whenever the
+   * trigger itself moves in a way resize/scroll listeners can't catch
+   * (e.g. the row's `order` after a reorder).
+   */
+  positionKey?: string | number;
   children: React.ReactNode;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -150,6 +165,7 @@ export function RunPopover({
       sheetHeader={sheetHeader}
       onClose={onClose}
       closeOnEscape={false}
+      positionKey={positionKey}
     >
       {children}
     </ResponsivePopover>

@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { usePromptTrailRepository } from '../app/PromptTrailRepositoryContext';
 import { PageSection, StateMessage } from '../components/ui';
 import { addTrailStep } from '../trail-detail/add-trail-step';
+import { deleteTrailStep } from '../trail-detail/delete-trail-step';
+import { reorderTrailSteps } from '../trail-detail/reorder-trail-steps';
 import type { TrailDetailStepItem } from '../trail-detail/trail-detail-read-query';
-import type { Prompt, PromptId, Trail } from '../domain';
+import type { Prompt, PromptId, Trail, TrailStepId } from '../domain';
 import { validateTrailStepMetadata } from '../trail-step-metadata';
 import { RunPopover } from './RunPopover';
 import {
@@ -44,6 +46,102 @@ export function TrailStepTable({
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const submissionRef = useRef<symbol | null>(null);
   const [addForm, setAddForm] = useState<AddFormSnapshot | null>(null);
+
+  const rowSubmissionRef = useRef<symbol | null>(null);
+  const [isReordering, setIsReordering] = useState(false);
+  const [notice, setNotice] = useState<{
+    readonly kind: 'stale' | 'failure';
+    readonly message: string;
+  } | null>(null);
+  const [rowsConfirmingDiscard, setRowsConfirmingDiscard] = useState<
+    ReadonlySet<TrailStepId>
+  >(new Set());
+  const isAnyRowConfirmingDiscard = rowsConfirmingDiscard.size > 0;
+
+  function handleDiscardConfirmChange(
+    stepId: TrailStepId,
+    isConfirming: boolean,
+  ) {
+    setRowsConfirmingDiscard((current) => {
+      const hasIt = current.has(stepId);
+      if (isConfirming === hasIt) return current;
+      const next = new Set(current);
+      if (isConfirming) next.add(stepId);
+      else next.delete(stepId);
+      return next;
+    });
+  }
+
+  async function handleMove(stepId: TrailStepId, direction: 'up' | 'down') {
+    if (isReordering) return;
+    const index = steps.findIndex((item) => item.step.id === stepId);
+    if (index === -1) return;
+    const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    if (swapIndex < 0 || swapIndex >= steps.length) return;
+    setNotice(null);
+    const orderedStepIds = steps.map((item) => item.step.id);
+    const target = orderedStepIds[index];
+    orderedStepIds[index] = orderedStepIds[swapIndex];
+    orderedStepIds[swapIndex] = target;
+    const token = Symbol('reorder-trail-steps');
+    rowSubmissionRef.current = token;
+    setIsReordering(true);
+    const result = await reorderTrailSteps(repository, {
+      trailId: trail.id,
+      orderedStepIds,
+      expectedUpdatedAt: trail.updatedAt,
+    });
+    if (rowSubmissionRef.current !== token) return;
+    rowSubmissionRef.current = null;
+    setIsReordering(false);
+    if (result.status === 'success') {
+      onStepSaved();
+    } else if (result.status === 'stale') {
+      onStepSaved();
+      setNotice({
+        kind: 'stale',
+        message:
+          '他の操作で更新されたため再読み込みしました。もう一度操作してください',
+      });
+    } else {
+      setNotice({
+        kind: 'failure',
+        message: '並び替えに失敗しました。もう一度お試しください。',
+      });
+    }
+  }
+
+  async function handleDelete(stepId: TrailStepId) {
+    if (isReordering) return;
+    setNotice(null);
+    const token = Symbol('delete-trail-step');
+    rowSubmissionRef.current = token;
+    setIsReordering(true);
+    const result = await deleteTrailStep(repository, {
+      trailId: trail.id,
+      trailStepId: stepId,
+      expectedUpdatedAt: trail.updatedAt,
+    });
+    if (rowSubmissionRef.current !== token) return;
+    rowSubmissionRef.current = null;
+    setIsReordering(false);
+    if (result.status === 'success') {
+      onStepSaved();
+      requestAnimationFrame(() => addButtonRef.current?.focus());
+    } else if (result.status === 'stale') {
+      onStepSaved();
+      setNotice({
+        kind: 'stale',
+        message:
+          '他の操作で更新されたため再読み込みしました。もう一度操作してください',
+      });
+    } else {
+      setNotice({
+        kind: 'failure',
+        message: '削除に失敗しました。もう一度お試しください。',
+      });
+    }
+  }
 
   const isDirty =
     addForm !== null &&
@@ -162,6 +260,17 @@ export function TrailStepTable({
               ref={addButtonRef}
               className="pt-button pt-button--secondary"
               type="button"
+              disabled={isAnyRowConfirmingDiscard}
+              aria-label={
+                isAnyRowConfirmingDiscard
+                  ? 'Stepを追加（編集中のStepの未保存の変更を先に確定してください）'
+                  : 'Stepを追加'
+              }
+              title={
+                isAnyRowConfirmingDiscard
+                  ? '編集中のStepの未保存の変更を先に確定してください'
+                  : undefined
+              }
               onClick={openAddForm}
             >
               Stepを追加
@@ -218,6 +327,14 @@ export function TrailStepTable({
         ) : null
       }
     >
+      {notice !== null ? (
+        <p
+          className="pt-form__error"
+          role={notice.kind === 'failure' ? 'alert' : 'status'}
+        >
+          {notice.message}
+        </p>
+      ) : null}
       {steps.length === 0 ? (
         <StateMessage
           variant="empty"
@@ -236,13 +353,22 @@ export function TrailStepTable({
               </tr>
             </thead>
             <tbody>
-              {steps.map((stepItem) => (
+              {steps.map((stepItem, index) => (
                 <TrailStepRow
                   key={stepItem.step.id}
                   stepItem={stepItem}
                   availablePrompts={availablePrompts}
                   onChanged={onChanged}
                   onStepSaved={onStepSaved}
+                  isFirst={index === 0}
+                  isLast={index === steps.length - 1}
+                  isReordering={isReordering}
+                  onMove={(stepId, direction) =>
+                    void handleMove(stepId, direction)
+                  }
+                  onDelete={(stepId) => void handleDelete(stepId)}
+                  addFormConfirmingDiscard={addForm?.confirmingDiscard ?? false}
+                  onDiscardConfirmChange={handleDiscardConfirmChange}
                 />
               ))}
             </tbody>

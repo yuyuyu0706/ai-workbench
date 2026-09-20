@@ -7,6 +7,7 @@ import type {
   LinkId,
   Prompt,
   PromptId,
+  TrailStepId,
   UtcDateTimeString,
 } from '../domain';
 import { RunStatusPin } from '../run-status';
@@ -46,6 +47,7 @@ type EditFormSnapshot = {
   readonly validationErrors: readonly string[];
   readonly staleNotice: 'none' | 'refreshed' | 'conflicted';
   readonly confirmingDiscard: boolean;
+  readonly confirmingDelete: boolean;
 };
 
 export function TrailStepRow({
@@ -53,11 +55,25 @@ export function TrailStepRow({
   availablePrompts,
   onChanged,
   onStepSaved,
+  isFirst,
+  isLast,
+  isReordering,
+  onMove,
+  onDelete,
+  addFormConfirmingDiscard,
+  onDiscardConfirmChange,
 }: {
   stepItem: TrailDetailStepItem;
   availablePrompts: readonly Prompt[];
   onChanged: () => void;
   onStepSaved: () => void;
+  isFirst: boolean;
+  isLast: boolean;
+  isReordering: boolean;
+  onMove: (stepId: TrailStepId, direction: 'up' | 'down') => void;
+  onDelete: (stepId: TrailStepId) => void;
+  addFormConfirmingDiscard: boolean;
+  onDiscardConfirmChange: (stepId: TrailStepId, isConfirming: boolean) => void;
 }) {
   const repository = usePromptTrailRepository();
   const uiStateSnapshot = useDeveloperUiStateSnapshot();
@@ -229,6 +245,11 @@ export function TrailStepRow({
   }, [activePopover, isLinkInformationOpen, deleteSnapshot.linkId, editForm]);
 
   useEffect(() => {
+    onDiscardConfirmChange(step.id, editForm?.confirmingDiscard ?? false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editForm?.confirmingDiscard, step.id]);
+
+  useEffect(() => {
     if (resetStatus === 'idle' || resetStatus === 'resetting') return;
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key !== 'Escape') return;
@@ -261,8 +282,26 @@ export function TrailStepRow({
       validationErrors: [],
       staleNotice: 'none',
       confirmingDiscard: false,
+      confirmingDelete: false,
     });
     setActivePopover('edit');
+  }
+
+  // See issue #342 5.5 (fix): once the popover is open, a reorder elsewhere
+  // bumps this Step's `updatedAt` (reordering touches every Step's
+  // `updatedAt`, see the repository's `reorderTrailSteps`). Rebase the edit
+  // form's `expectedUpdatedAt` baseline whenever that happens so the *next*
+  // save doesn't immediately fail as stale. Adjusting state during render
+  // (rather than in an effect) mirrors the pattern React recommends for
+  // "adjusting state when a prop changes".
+  const [lastSeenStepUpdatedAt, setLastSeenStepUpdatedAt] = useState(
+    step.updatedAt,
+  );
+  if (step.updatedAt !== lastSeenStepUpdatedAt) {
+    setLastSeenStepUpdatedAt(step.updatedAt);
+    if (editForm !== null && editForm.status !== 'submitting') {
+      setEditForm({ ...editForm, expectedUpdatedAt: step.updatedAt });
+    }
   }
 
   function editFormIsDirty() {
@@ -277,6 +316,10 @@ export function TrailStepRow({
   function requestCloseEdit() {
     if (editForm === null) return;
     if (editForm.status === 'submitting') return;
+    if (editForm.confirmingDelete) {
+      setEditForm({ ...editForm, confirmingDelete: false });
+      return;
+    }
     if (editFormIsDirty() && !editForm.confirmingDiscard) {
       setEditForm({ ...editForm, confirmingDiscard: true });
       return;
@@ -345,6 +388,24 @@ export function TrailStepRow({
     } else {
       setEditForm({ ...editForm, status: 'failure' });
     }
+  }
+
+  function openDeleteStepConfirm() {
+    setEditForm((current) =>
+      current === null ? current : { ...current, confirmingDelete: true },
+    );
+  }
+
+  function cancelDeleteStep() {
+    setEditForm((current) =>
+      current === null ? current : { ...current, confirmingDelete: false },
+    );
+  }
+
+  function confirmDeleteStep() {
+    setEditForm(null);
+    setActivePopover(null);
+    onDelete(step.id);
   }
 
   function cancelDelete(linkId: LinkId) {
@@ -533,14 +594,65 @@ export function TrailStepRow({
         ? '削除済みのPrompt'
         : prompt.title;
 
+  const deleteButtonRef = useRef<HTMLButtonElement>(null);
+  const moveUpButtonRef = useRef<HTMLButtonElement>(null);
+  const moveDownButtonRef = useRef<HTMLButtonElement>(null);
+
+  // See issue #342 5.5 (fix): "上へ"/"下へ"/"削除" moved from the action
+  // column into the edit popover's header, so they share the edit form's
+  // dirty state as an extra disable condition (on top of their previous
+  // conditions), and a visible reason line explains whichever apply.
+  const editDirty = editForm !== null && editFormIsDirty();
+  const isFirstReason = editDirty
+    ? '未保存の変更があります'
+    : isFirst
+      ? '先頭のStepです'
+      : null;
+  const isLastReason = editDirty
+    ? '未保存の変更があります'
+    : isLast
+      ? '末尾のStepです'
+      : null;
+  const hasRunsReason = editDirty
+    ? '未保存の変更があります'
+    : stepItem.runs.length > 0
+      ? '実行履歴があるため削除できません'
+      : null;
+  const moveUpDisabled = isFirst || isReordering || editDirty;
+  const moveDownDisabled = isLast || isReordering || editDirty;
+  const deleteStepDisabled = stepItem.runs.length > 0 || editDirty;
+  const visibleDisableReasons = editDirty
+    ? ['未保存の変更があります']
+    : Array.from(
+        new Set(
+          [
+            stepItem.runs.length > 0
+              ? '実行履歴があるため削除できません'
+              : null,
+            isFirst ? '先頭のStepです' : null,
+            isLast ? '末尾のStepです' : null,
+          ].filter((reason): reason is string => reason !== null),
+        ),
+      );
+
   const editingGroup = (
     <span className="pt-run-action">
       <button
         ref={editButtonRef}
         type="button"
         className="pt-run-actions__icon-button ti-pencil"
-        aria-label="Stepを編集"
+        aria-label={
+          addFormConfirmingDiscard
+            ? 'Stepを編集（Stepの追加が未確定のため操作できません）'
+            : 'Stepを編集'
+        }
+        title={
+          addFormConfirmingDiscard
+            ? 'Stepの追加が未確定のため操作できません'
+            : undefined
+        }
         aria-expanded={activePopover === 'edit'}
+        disabled={addFormConfirmingDiscard}
         onClick={openEditForm}
       >
         <PencilIcon />
@@ -549,9 +661,33 @@ export function TrailStepRow({
         <RunPopover
           triggerRef={editButtonRef}
           title="Stepを編集"
+          sheetHeader={false}
           onClose={requestCloseEdit}
+          positionKey={step.order}
         >
-          {editForm.confirmingDiscard ? (
+          {editForm.confirmingDelete ? (
+            <div>
+              <p className="pt-run-popover__confirm-message">
+                このStepを削除しますか？
+              </p>
+              <div className="pt-run-execute-confirmation__actions">
+                <button
+                  className="pt-button pt-button--primary"
+                  type="button"
+                  onClick={confirmDeleteStep}
+                >
+                  削除する
+                </button>
+                <button
+                  className="pt-button pt-button--secondary"
+                  type="button"
+                  onClick={cancelDeleteStep}
+                >
+                  キャンセル
+                </button>
+              </div>
+            </div>
+          ) : editForm.confirmingDiscard ? (
             <div>
               <p className="pt-run-popover__confirm-message">
                 入力内容を破棄しますか？
@@ -574,34 +710,87 @@ export function TrailStepRow({
               </div>
             </div>
           ) : (
-            <TrailStepForm
-              mode="edit"
-              values={editForm.values}
-              prompts={availablePrompts}
-              currentPrompt={
-                prompt !== null ? { id: prompt.id, title: prompt.title } : null
-              }
-              status={editForm.status === 'stale' ? 'stale' : editForm.status}
-              validationErrors={editForm.validationErrors}
-              staleNotice={
-                editForm.status === 'stale' ? editForm.staleNotice : 'none'
-              }
-              isDirty={editFormIsDirty()}
-              onChange={(next) =>
-                setEditForm((current) =>
-                  current === null
-                    ? current
-                    : {
-                        ...current,
-                        values: next,
-                        status: 'editing',
-                        validationErrors: [],
-                      },
-                )
-              }
-              onSubmit={(event) => void submitEdit(event)}
-              onCancel={requestCloseEdit}
-            />
+            <>
+              <div className="pt-run-popover__header">
+                <div className="pt-run-popover__header-title">
+                  <h3>Stepを編集</h3>
+                </div>
+                <span className="pt-run-action">
+                  <button
+                    ref={moveUpButtonRef}
+                    type="button"
+                    className="pt-run-actions__icon-button ti-arrow-up"
+                    aria-label="上へ"
+                    title={isFirstReason ?? undefined}
+                    disabled={moveUpDisabled}
+                    onClick={() => onMove(step.id, 'up')}
+                  >
+                    <ArrowUpIcon />
+                  </button>
+                  <button
+                    ref={moveDownButtonRef}
+                    type="button"
+                    className="pt-run-actions__icon-button ti-arrow-down"
+                    aria-label="下へ"
+                    title={isLastReason ?? undefined}
+                    disabled={moveDownDisabled}
+                    onClick={() => onMove(step.id, 'down')}
+                  >
+                    <ArrowDownIcon />
+                  </button>
+                  <button
+                    ref={deleteButtonRef}
+                    type="button"
+                    className="pt-run-actions__icon-button ti-trash"
+                    aria-label={
+                      hasRunsReason && !editDirty
+                        ? `削除（${hasRunsReason}）`
+                        : '削除'
+                    }
+                    title={hasRunsReason ?? undefined}
+                    disabled={deleteStepDisabled}
+                    onClick={openDeleteStepConfirm}
+                  >
+                    <TrashIcon />
+                  </button>
+                </span>
+              </div>
+              {visibleDisableReasons.length > 0 ? (
+                <p className="pt-form__hint">
+                  {visibleDisableReasons.join('／')}
+                </p>
+              ) : null}
+              <TrailStepForm
+                mode="edit"
+                values={editForm.values}
+                prompts={availablePrompts}
+                currentPrompt={
+                  prompt !== null
+                    ? { id: prompt.id, title: prompt.title }
+                    : null
+                }
+                status={editForm.status === 'stale' ? 'stale' : editForm.status}
+                validationErrors={editForm.validationErrors}
+                staleNotice={
+                  editForm.status === 'stale' ? editForm.staleNotice : 'none'
+                }
+                isDirty={editDirty}
+                onChange={(next) =>
+                  setEditForm((current) =>
+                    current === null
+                      ? current
+                      : {
+                          ...current,
+                          values: next,
+                          status: 'editing',
+                          validationErrors: [],
+                        },
+                  )
+                }
+                onSubmit={(event) => void submitEdit(event)}
+                onCancel={requestCloseEdit}
+              />
+            </>
           )}
         </RunPopover>
       ) : null}
@@ -930,6 +1119,34 @@ function ClockIcon() {
     <svg aria-hidden="true" viewBox="0 0 24 24">
       <circle cx="12" cy="12" r="9" />
       <path d="M12 7v5l3.5 2" />
+    </svg>
+  );
+}
+
+function ArrowUpIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M12 19V5" />
+      <path d="M6 11l6-6 6 6" />
+    </svg>
+  );
+}
+
+function ArrowDownIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M12 5v14" />
+      <path d="M18 13l-6 6-6-6" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M5 7h14" />
+      <path d="M9 7V4.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V7" />
+      <path d="M7 7l1 12.5a1 1 0 0 0 1 .9h6a1 1 0 0 0 1-.9L17 7" />
     </svg>
   );
 }
