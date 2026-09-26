@@ -138,15 +138,27 @@ P3-4のLv3-1（[#305](https://github.com/yuyuyu0706/ai-workbench/issues/305)）�
 
 P3-5のLv3-1（[#324](https://github.com/yuyuyu0706/ai-workbench/issues/324)）で、エージェント
 実行基盤の技術構成について合意した。実行環境はGitHub Actions＋公式Claude Code Actionとし、
-トリガーは`repository_dispatch`を主経路・`workflow_dispatch`を手動フォールバックとする。
-権限モデルはSTEP別に`GITHUB_TOKEN`＋`permissions:`を最小権限で宣言し、権限の弱い順
-（STEP4：`contents: read`→STEP5/9/10：`issues: write`→STEP7：`pull-requests: write`→
-STEP6：`contents: write`）に実装する。実行結果はGitHub Source of Truthを基本にPromptTrailが
-Actions APIをPull型で取得し、Push型は採用しない（Local-first、ADR 0002）。STEP8（マージ）は
-エージェント実行の対象外とし、人間承認ゲートとして定義する。ADR 0009の`GITHUB_PAT`は
-Gateway用として存続させ、エージェント実行では`GITHUB_TOKEN`を使う。詳細は
-[Lv3-1設計合意文書](lv3-1-agent-execution-design-agreement.md)、および
-[ADR 0010](../../adr/0010-agent-execution-shape.md)を参照。
+トリガーは`workflow_dispatch`を唯一の経路とする。権限モデルはSTEP別に`GITHUB_TOKEN`＋
+`permissions:`を最小権限で宣言し、権限の弱い順（STEP4：`contents: read`→STEP5/9/10：
+`issues: write`→STEP7：`pull-requests: write`→STEP6：`contents: write`）に実装する。実行結果は
+GitHub Source of Truthを基本にPromptTrailがActions APIをPull型で取得し、Push型は採用しない
+（Local-first、ADR 0002）。STEP8（マージ）はエージェント実行の対象外とし、人間承認ゲートとして
+定義する。ワークフローを起動するManaged Functionは、`Actions: write`のみを持つ専用の
+Fine-grained PAT（`GITHUB_DISPATCH_PAT`）を用い、ワークフロー内部では`GITHUB_TOKEN`＋
+`permissions:`で最小権限を宣言する（ADR 0009の`GITHUB_PAT`はGateway用として別に存続する）。
+詳細は[Lv3-1設計合意文書](lv3-1-agent-execution-design-agreement.md)、および
+[ADR 0010](../../adr/0010-agent-execution-shape.md)を参照。当初は`repository_dispatch`を
+主経路としたが、Lv3-2（Lv4-2）で是正した。経緯はADR 0010のContextを参照。
+
+### P3-6：Trail を Prompt のフロー設計として成立させる
+
+P3-6（[#331](https://github.com/yuyuyu0706/ai-workbench/issues/331)）で、Trailが「Promptの
+並び（フロー）」を直接保持できるようにした。Lv3-1（[#332](https://github.com/yuyuyu0706/ai-workbench/issues/332)）
+で合意したDomainモデルに基づき、Trail配下に順序付きの`TrailStep`を追加し、RunはStepを1回
+実行した結果として`trailStepId`で紐付く。Trail DetailはStepを主軸に再構成し、Stepの追加・
+編集・並び替え・削除ができる。用語は、対話の往復をMessage、Trailを構成する工程をStepと
+整理した。詳細は[Lv3-1設計合意文書](lv3-1-trail-flow-design-agreement.md)、
+[ADR 0011](../../adr/0011-trail-as-prompt-flow.md)を参照。
 
 ### P3-3：Guided Executionの7ステップモデルとスコープ判断
 
@@ -171,6 +183,9 @@ P3-1（Execution Domain再設計）の完了を受け、P3-3（GitHub / AI Execu
 
 この7ステップ全体が1つの**Trail**、各ステップが個別実行可能な**Prompt**、各実行結果が
 **Run/Step**として履歴管理される、という関係モデルとして整理しました。
+
+※P3-6で用語を整理し、各ステップはTrailを構成する**Step**（Promptを参照する工程）、
+各実行結果は**Run**と呼ぶ。詳細はADR 0011。
 
 「マージ」（ステップ5）は、常に自動実行しないという技術的制約ではなく、**「承認」という
 人間の判断ポイントを必ず設ける**という設計原則として扱います。ステップ5自体をPromptとして
@@ -236,8 +251,9 @@ Evidence Backlog の記録場所は、まず本セクション（roadmap.md 内�
 
 Trailモデルの発想起源は、個別管理していたPromptが徐々にテンプレート化し、一連の作業プロセス
 （現在の7ステップ）へ結晶化していった経緯にあります。現状のTrailは「Webアプリ個人開発プロセス」
-に特化していますが、Trailという入れ物の設計（Promptの並び＝作業工程、実行結果＝Run/Stepという
-関係モデル）自体は、中身のPromptを差し替えれば別ドメインへも転用できる形になっています。
+に特化していますが、Trailという入れ物の設計（Stepの並び＝作業工程、各Stepが参照するPrompt、
+実行結果＝Runという関係モデル）自体は、中身のPromptを差し替えれば別ドメインへも転用できる形に
+なっています。
 将来的には、開発以外の用途にも適用できるTrail設計、Trail自体の組み立てを支援するシステム、
 断片的なPrompt実行をTrailへ進化させる思考習慣の醸成といった方向性も考えられます。
 現時点では検討の初期段階のため、実装対象としてではなく、将来立ち返るための記録としてここに残します。
@@ -307,6 +323,12 @@ P3-4 Lv3-3（対話型実行）の実機検証で、「実行結果」ポップ�
 会話UIを収めた結果、体験は成立したものの窮屈さが指摘された。将来的には、Trail Detail画面に
 右ペイン形式の専用チャットスペースを設ける方向性も考えられる。ただしこれは画面構成そのものを
 再設計する規模の変更であり、現時点では実装対象とせず、将来立ち返るための記録としてここに残す。
+
+P3-6 Lv3-3でTrail DetailをStep主軸に再構成した際にも同様の窮屈さが確認された。Step一覧が
+複数行になり、アクション列のポップオーバーはPrompt・実行結果・関連リンク・Step編集の4種類に
+なった。ポップオーバーの中身は表示位置に依存しない子コンポーネントとして分離済み
+（`src/pages/run-panels/`、`src/pages/step-forms/`）のため、右ペイン化の際は入れ物を
+差し替えるだけで移行できる。
 
 ## Phase 4: Workflow & Integration Expansion（確定）
 
