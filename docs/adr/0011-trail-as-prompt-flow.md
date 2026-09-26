@@ -135,3 +135,8 @@ Runを介してしか辿れない間接参照であることを明示してい�
   P3-5側の結論を待って追加する。
 - 用語をMessage / Stepに整理したことで、ERDの表記（`MESSAGE`）がコードの命名
   （`ConversationMessage`）と一致する。
+- `Run.trailStepId`を必須としたため、Runを持つStepを論理削除するとRunが存在しないStepを
+  指す状態になる。これを防ぐため、Runを持つStepは削除できない（repositoryの
+  `softDeleteTrailStep`が`reference-unavailable`を投げる。P3-6 Lv3-4で追加）。誤って
+  作成したStepを実行すると以後削除できなくなるため、実行導線（P3-7）では実行前の確認が
+  必要になる。

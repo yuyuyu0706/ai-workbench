@@ -176,23 +176,26 @@ Canonical Sample Dataset
 
 `AppShell` は header、Global Navigation、main 領域を提供します。`AppRouter` は `/` を Public Alpha Guide へ接続し、各 route を Page へ接続します。現行Global Navigationは「はじめに」「Dashboard」「Prompt Library」の3項目です。`/prompts`、`/prompts/new`、`/prompts/:promptId/edit`はPrompt Libraryの既知Route familyとして同じNavigation項目をactive表示します。New TrailとRun Detailはcontextual route、Not Foundはrecovery routeであり、active項目を持ちません。Context LibraryとRecipe Builderは未完成のため常設Navigationに表示しません。Not FoundはDashboardへの復帰導線を提供します。
 
-| 画面 / Route                        | 現行状態                             | 責務                                                        |
-| ----------------------------------- | ------------------------------------ | ----------------------------------------------------------- |
-| Dashboard (`/dashboard`)            | Repository 接続済み                  | loading / empty / failure / data を実データとして表示する   |
-| Prompt Library (`/prompts`)         | Repository接続済み                   | Default ProjectとGlobalのActive Promptを一覧・簡易検索する  |
-| Context Library (`/contexts`)       | 静的 start state                     | Context 管理の画面入口を示す。Repository 読み取りは未接続   |
-| Recipe Builder (`/recipes/builder`) | 静的 start state                     | Recipe 構築の画面入口を示す。Repository 読み取りは未接続    |
-| New Trail (`/runs/new`)             | Repository接続済み contextual route  | Trail名・Trail種別・Prompt本文から Direct Run を作成する    |
-| Run Detail (`/runs/:runId`)         | Repository 接続済み contextual route | loading / not-found / failure / data と Link 登録を表示する |
-| Not Found (`*`)                     | recovery route                       | 未知 URL を示し、Dashboard へ復帰させる                     |
+| 画面 / Route                        | 現行状態                             | 責務                                                                |
+| ----------------------------------- | ------------------------------------ | ------------------------------------------------------------------- |
+| Dashboard (`/dashboard`)            | Repository 接続済み                  | loading / empty / failure / data を実データとして表示する           |
+| Prompt Library (`/prompts`)         | Repository接続済み                   | Default ProjectとGlobalのActive Promptを一覧・簡易検索する          |
+| Context Library (`/contexts`)       | 静的 start state                     | Context 管理の画面入口を示す。Repository 読み取りは未接続           |
+| Recipe Builder (`/recipes/builder`) | 静的 start state                     | Recipe 構築の画面入口を示す。Repository 読み取りは未接続            |
+| New Trail (`/runs/new`)             | Repository接続済み contextual route  | Trail名・Trail種別・Prompt本文から Direct Run を作成する            |
+| Run Detail (`/runs/:runId`)         | Repository 接続済み contextual route | loading / not-found / failure / data と Link 登録を表示する         |
+| Trail Detail (`/trails/:trailId`)   | Repository 接続済み contextual route | Trail情報の表示・編集と、Step一覧の表示・追加・編集・並び替え・削除 |
+| Not Found (`*`)                     | recovery route                       | 未知 URL を示し、Dashboard へ復帰させる                             |
 
 Prompt LibraryのPrompt本文Popoverは、本文だけをinline編集するPage-local UIです。保存は`PromptLibraryPage → updatePromptBody command → PromptTrailRepository.updatePromptBody → Dexie`の境界で行い、Repository transaction内でPrompt ID、Active状態、`expectedUpdatedAt`を検証して`body`と`updatedAt`のみを更新します。Popoverはdirty/saving状態をPageへ公開し、Page側はFilter／Search／Sort／条件クリアをdisabledにし、外部Linkや別Prompt切替を破棄確認つきpending actionとして1回だけ実行します。staleはdraftを保持して`getPrompt`で最新body/updatedAtをbaselineへ読み込み、not-found/unavailableは保存を無効化してclose後にData Revision通知で一覧を再読込します。保存完了時もData Revisionを1回通知し、Prompt SnapshotやTrail作成契約は変更しません。
+
+Trail DetailのStep編集Popoverは、Stepの`title` / `kind` / `promptId`を編集し、同じPopoverの見出し行から並び替え（上へ・下へ）と削除を行うPage-local UIです。保存は`TrailStepTable` / `TrailStepRow → add/update/reorder/delete command → PromptTrailRepository → Dexie`の境界で行い、Repository transaction内でTrailの`expectedUpdatedAt`を検証します。staleは下書きを保持してTrailの版と対象Stepの現在値を読み直し、対象Stepが別の場所で変更されていた場合だけ上書きの警告を出します。未保存の変更がある間は並び替え・削除を無効化し、閉じる操作では破棄確認を出します。並び替えはPopoverを開いたまま行い、`positionKey`（Stepの`order`）でPopoverをトリガーへ追従させます。Runを持つStepは削除できません。保存・並び替え・削除の完了時にData Revisionを1回通知します。
 
 Prompt / Context / Recipe など、Dashboard 以外で未接続の Page は、Phase 0 の画面骨格です。これらの `StateMessage` は Repository 取得後の empty / failure を表すものではありません。
 
 Phase 2ではPrompt Libraryを実データへ接続し、主要Navigationへ復帰済みです。Global Navigationのactive classと`aria-current="page"`は、現在のpathnameを既知Routeへ照合して得た単一のactive item IDから導出します。単純な`/prompts` prefix判定は行わないため、`/prompts/unknown`を含むNot Foundではactive項目を表示しません。Context Library / Recipe Builderは未完成の間はdirect routeだけを維持し、主要Navigationには表示しません。Trail DomainにはPrompt資産とは独立した必須の`title`と`kind`を実装済みで、Runは`trailId`で所属Trailを参照します（詳細は[Data Model](../../architecture/prompt-trail/data-model.md)、背景は[ADR 0005](../../adr/0005-trail-run-responsibility.md)）。New TrailはTrail名・Trail種別・Prompt本文を個別に受け取り、新しいProject/Trail/Promptと1件のRunを既存Bundleでatomic保存します。過去Run再利用ではTrail名・Trail種別・Prompt本文を初期値として引き継ぎ、元Run・元Trailは変更しません。Run DetailはTrail metadataの表示・編集に対応済みです。
 
-Dexieの現行schemaはversion 5です。Database constructorは歴史的なschema v1定義をupgrade起点として保持し、既存v1 DBをopenすると同一upgrade transaction内で全Runへ`trailTitle = promptSnapshot.title`（正規化なし）、`trailKind = other`を補完します（v1→v2）。v2→v3ではPromptへ`variableValues`が未定義の場合のみ`{}`を補完し、v3→v4では廃止したPromptの`kind` fieldを対応するラベルへ変換して`tags`へ移行し、`kind` fieldを削除します。v4→v5ではDefault Workspaceを作成し、既存Projectへ`workspaceId`を補完したうえで、既存Run 1件につきTrailを1件作成して`trailId`で紐付け、Runの`trailTitle`/`trailKind`を削除します。RepositoryやUIはlegacy fallbackを持たず、open完了後の必須fieldを持つRun/Trailだけを扱います。malformed Runでmigrationが失敗した場合はtransaction全体をrollbackし、DBの削除や部分更新を行いません。詳細は[Data Model](../../architecture/prompt-trail/data-model.md)を参照してください。
+Dexieの現行schemaはversion 10です。Database constructorは歴史的なschema v1定義をupgrade起点として保持し、既存v1 DBをopenすると同一upgrade transaction内で全Runへ`trailTitle = promptSnapshot.title`（正規化なし）、`trailKind = other`を補完します（v1→v2）。v2→v3ではPromptへ`variableValues`が未定義の場合のみ`{}`を補完し、v3→v4では廃止したPromptの`kind` fieldを対応するラベルへ変換して`tags`へ移行し、`kind` fieldを削除します。v4→v5ではDefault Workspaceを作成し、既存Projectへ`workspaceId`を補完したうえで、既存Run 1件につきTrailを1件作成して`trailId`で紐付け、Runの`trailTitle`/`trailKind`を削除します。v5〜v9の内容は本段落に未反映です。v9→v10では`trailSteps` Storeと`runs`の`trailStepId` indexを追加したうえで、既存Runを`trailId`でグループ化して`createdAt`昇順に`order`を1から採番し、Run 1件につきTrailStep 1件を作成して`run.trailStepId`を設定します。RepositoryやUIはlegacy fallbackを持たず、open完了後の必須fieldを持つRun/Trailだけを扱います。malformed Runでmigrationが失敗した場合はtransaction全体をrollbackし、DBの削除や部分更新を行いません。詳細は[Data Model](../../architecture/prompt-trail/data-model.md)を参照してください。
 
 Prompt Repositoryが扱うPromptは編集・論理削除可能な現在の再利用資産です。一方、Run Repositoryが扱う`promptSnapshot`は実行時点の不変な証跡であり、元Promptの編集・削除を伝播させません。Prompt削除後もRunとLinkを維持します。UIはこの境界を越えてDexie / IndexedDBを直接操作しません。
 

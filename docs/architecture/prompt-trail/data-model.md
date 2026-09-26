@@ -1,14 +1,14 @@
 # Prompt Trail Data Model
 
-Prompt Trail の Data Model 正本です。P3-1（Trail Domain 設計 + Schema migration）完了時点の Domain、Dexie 永続化、Repository、Sample Seed の公開契約を、実装に基づいて一続きで記録します。Runtime、画面、Provider、Router の責務は [Application Architecture](../../product/prompt-trail/application-architecture.md) を参照してください。Workspace / Trail の責務分割の背景は [ADR 0004](../../adr/0004-workspace-project-responsibility.md)、[ADR 0005](../../adr/0005-trail-run-responsibility.md) を参照してください。
+Prompt Trail の Data Model 正本です。P3-6（Trail as Prompt Flow）完了時点の Domain、Dexie 永続化、Repository、Sample Seed の公開契約を、実装に基づいて一続きで記録します。schema v6〜v9 の migration 内容、および P3-4 で実装した `Run.output`・`Run.messages` は本書に未反映です。別issueで追随します。Runtime、画面、Provider、Router の責務は [Application Architecture](../../product/prompt-trail/application-architecture.md) を参照してください。Workspace / Trail の責務分割の背景は [ADR 0004](../../adr/0004-workspace-project-responsibility.md)、[ADR 0005](../../adr/0005-trail-run-responsibility.md) を参照してください。
 
 ## 正本の範囲
 
 本書は次を扱います。
 
-- Workspace、Project、Prompt、Context、Recipe、Trail、Run、Link の 8 Domain Model と共通規約
+- Workspace、Project、Prompt、Context、Recipe、Trail、TrailStep、Run、Link の TrailStep を含む 9 Domain Model と共通規約
 - 所有、scope、可変参照、Snapshot
-- `prompt-trail` の schema version 5、Store、主キー、索引、migration、保存境界
+- `prompt-trail` の schema version 10、Store、主キー、索引、migration、保存境界
 - Repository の公開 API、参照整合性、error、transaction、lifecycle
 - Fresh DB と明示的な Sample Seed のデータ契約
 
@@ -24,6 +24,7 @@ flowchart TD
   Context[Context / global or project asset]
   Recipe[Recipe]
   Trail[Trail]
+  TrailStep[TrailStep]
   Run[Run]
   PromptSnapshot[PromptSnapshot]
   ContextSnapshots[ordered ContextSnapshots]
@@ -33,6 +34,9 @@ flowchart TD
   Project -->|owns| Recipe
   Project -->|owns| Trail
   Trail -->|owns| Run
+  Trail -->|owns ordered| TrailStep
+  TrailStep -. optional reference .-> Prompt
+  TrailStep -->|result| Run
   Recipe -->|optional source recipeId| Run
   Recipe -. mutable reference: one .-> Prompt
   Recipe -. ordered mutable references .-> Context
@@ -41,11 +45,11 @@ flowchart TD
   Run -->|owns| Link
 ```
 
-Workspace は Project の所有境界です。現時点では Default Workspace のみが存在し、複数 Workspace の CRUD・切替は未実装です（背景は [ADR 0004](../../adr/0004-workspace-project-responsibility.md)）。Project は Recipe と Trail の所有境界です。Prompt と Context は global または Project 専用の asset です。Recipe は Prompt 本文や Context 本文を複製せず、1 件の `promptId` と順序付き `contextIds` で可変参照します。Trail は Project に直接属する独立した作業単位で、AssetScope は持ちません。Run は Trail に属し、実行時点の Prompt/Context Snapshot、`inputValues`、`finalPrompt` を固定保存します（背景は [ADR 0005](../../adr/0005-trail-run-responsibility.md)）。`Run.projectId` は Trail 経由で導出可能な冗長 field ですが、既存 Repository/Query 実装を変えないため当面維持します。Link は Run に所属し、`projectId` を重複保存しません。Link の Project 所属は `Link → Run → Trail → Project` で解決します。
+Workspace は Project の所有境界です。現時点では Default Workspace のみが存在し、複数 Workspace の CRUD・切替は未実装です（背景は [ADR 0004](../../adr/0004-workspace-project-responsibility.md)）。Project は Recipe と Trail の所有境界です。Prompt と Context は global または Project 専用の asset です。Recipe は Prompt 本文や Context 本文を複製せず、1 件の `promptId` と順序付き `contextIds` で可変参照します。Trail は Project に直接属する独立した作業単位で、AssetScope は持ちません。Run は Trail に属し、実行時点の Prompt/Context Snapshot、`inputValues`、`finalPrompt` を固定保存します（背景は [ADR 0005](../../adr/0005-trail-run-responsibility.md)）。`Run.projectId` は Trail 経由で導出可能な冗長 field ですが、既存 Repository/Query 実装を変えないため当面維持します。Link は Run に所属し、`projectId` を重複保存しません。Link の Project 所属は `Link → Run → Trail → Project` で解決します。Trail は順序付きの TrailStep を持ち、Run は TrailStep を1回実行した結果として `trailStepId` で紐付きます（背景は [ADR 0011](../../adr/0011-trail-as-prompt-flow.md)）。
 
 ## 共通 Domain 規約
 
-`PromptTrailEntityKind` は `workspace`、`project`、`prompt`、`context`、`recipe`、`run`、`link`、`trail` の 8 種別です。`EntityId<Kind>` は TypeScript 上の nominal ID で、実行時と保存時の表現は文字列です。`UtcDateTimeString` は ISO 8601 UTC 文字列です。Domain の唯一の公開入口は `apps/prompt-trail/src/domain/index.ts` です。
+`PromptTrailEntityKind` は `workspace`、`project`、`prompt`、`context`、`recipe`、`run`、`link`、`trail`、`trail-step` の 9 種別です。`EntityId<Kind>` は TypeScript 上の nominal ID で、実行時と保存時の表現は文字列です。`UtcDateTimeString` は ISO 8601 UTC 文字列です。Domain の唯一の公開入口は `apps/prompt-trail/src/domain/index.ts` です。
 
 | Contract           | Rule                                                                                                                                                                                |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -58,20 +62,21 @@ Workspace は Project の所有境界です。現時点では Default Workspace 
 
 保存契約では nominal type 付き文字列を各 Store の主キーに使用し、DB auto increment は使いません。汎用 ID Factory / ID 生成サービスは未実装です。
 
-## 8 Domain Model
+## 9 Domain Model
 
-すべての model は `BaseEntity<Kind>`、すなわち `id: <Model>Id`、`createdAt: UtcDateTimeString`、`updatedAt: UtcDateTimeString`、`deletedAt: UtcDateTimeString | null` を持ちます。Project、Trail、Run はさらに `archivedAt: UtcDateTimeString | null` を持ちます。
+すべての model は `BaseEntity<Kind>`、すなわち `id: <Model>Id`、`createdAt: UtcDateTimeString`、`updatedAt: UtcDateTimeString`、`deletedAt: UtcDateTimeString | null` を持ちます。Project、Trail、Run はさらに `archivedAt: UtcDateTimeString | null` を持ちます。TrailStep は `archivedAt` を持ちません。Trail 経由で archive されるため、Step 単独の archive 状態は不要です。
 
-| Model     | 公開フィールドと型                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Workspace | `name: string`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| Project   | `workspaceId: WorkspaceId`、`name: string`、`description: string \| null`、`tags: readonly string[]`、`repositoryUrl: string \| null`                                                                                                                                                                                                                                                                                                                                                          |
-| Prompt    | `scope: "global"` または `scope: "project"; projectId: ProjectId`、`title: string`、`body: string`、`status: PromptStatus`、`tags: readonly string[]`、`variableValues: Record<string, string>`                                                                                                                                                                                                                                                                                                |
-| Context   | `scope: "global"` または `scope: "project"; projectId: ProjectId`、`title: string`、`body: string`、`kind: ContextKind`、`status: ContextStatus`、`tags: readonly string[]`                                                                                                                                                                                                                                                                                                                    |
-| Recipe    | `projectId: ProjectId`、`title: string`、`description: string \| null`、`promptId: PromptId`、`contextIds: readonly ContextId[]`（順序付き）                                                                                                                                                                                                                                                                                                                                                   |
-| Trail     | `projectId: ProjectId`、`title: string`、`kind: TrailKind`                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| Run       | `projectId: ProjectId`、`trailId: TrailId`、`recipeId: RecipeId \| null`、`promptSnapshot: PromptSnapshot`、`contextSnapshots: readonly ContextSnapshot[]`（順序付き）、`inputValues: { readonly [variableName: string]: JsonValue }`、`finalPrompt: string`、`status: RunStatus`、`evaluation: RunEvaluation \| null`、`improvementNote: string \| null`、`output: string \| null`（計画・未実装。[ADR 0009](../../adr/0009-gateway-external-dependencies-and-domain-representation.md)参照） |
-| Link      | `runId: RunId`、`url: string`、`title: string \| null`、`type: LinkType`、`role: LinkRole`、`summary: string \| null`、`externalId: string \| null`                                                                                                                                                                                                                                                                                                                                            |
+| Model     | 公開フィールドと型                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace | `name: string`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Project   | `workspaceId: WorkspaceId`、`name: string`、`description: string \| null`、`tags: readonly string[]`、`repositoryUrl: string \| null`                                                                                                                                                                                                                                                                                                                                                                                      |
+| Prompt    | `scope: "global"` または `scope: "project"; projectId: ProjectId`、`title: string`、`body: string`、`status: PromptStatus`、`tags: readonly string[]`、`variableValues: Record<string, string>`                                                                                                                                                                                                                                                                                                                            |
+| Context   | `scope: "global"` または `scope: "project"; projectId: ProjectId`、`title: string`、`body: string`、`kind: ContextKind`、`status: ContextStatus`、`tags: readonly string[]`                                                                                                                                                                                                                                                                                                                                                |
+| Recipe    | `projectId: ProjectId`、`title: string`、`description: string \| null`、`promptId: PromptId`、`contextIds: readonly ContextId[]`（順序付き）                                                                                                                                                                                                                                                                                                                                                                               |
+| Trail     | `projectId: ProjectId`、`title: string`、`kind: TrailKind`                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| TrailStep | `trailId: TrailId`、`order: number`（Trail 内で 1 からの連番）、`kind: TrailStepKind`、`title: string`、`promptId: PromptId \| null`、`note: string \| null`                                                                                                                                                                                                                                                                                                                                                               |
+| Run       | `projectId: ProjectId`、`trailId: TrailId`、`trailStepId: TrailStepId`、`recipeId: RecipeId \| null`、`promptSnapshot: PromptSnapshot`、`contextSnapshots: readonly ContextSnapshot[]`（順序付き）、`inputValues: { readonly [variableName: string]: JsonValue }`、`finalPrompt: string`、`status: RunStatus`、`evaluation: RunEvaluation \| null`、`improvementNote: string \| null`、`output: string \| null`（計画・未実装。[ADR 0009](../../adr/0009-gateway-external-dependencies-and-domain-representation.md)参照） |
+| Link      | `runId: RunId`、`url: string`、`title: string \| null`、`type: LinkType`、`role: LinkRole`、`summary: string \| null`、`externalId: string \| null`                                                                                                                                                                                                                                                                                                                                                                        |
 
 `Run.output`は、Guided Executionが生成する成果物のテキストそのもの（例：PLAN生成の出力）を保持するfieldです。実行前の依頼内容を保持する`finalPrompt`、実行後の評価を保持する`evaluation`／`improvementNote`とは責務が異なり、生成物が持つURL付き外部参照（例：ISSUE作成で作られたGitHub Issue）は既存の`Link`で表現します。実装はLv3-4（PLAN生成エンドポイント）以降で行い、本書時点では計画のみを記載します。
 
@@ -83,6 +88,7 @@ Workspace は Project の所有境界です。現時点では Default Workspace 
 | `RunStatus`       | `draft` / `prepared` / `executed` / `in-progress` / `done`                                                  |
 | `RunEvaluation`   | `good` / `needs-improvement` / `failed`                                                                     |
 | `TrailKind`       | `planning-design` / `development` / `research` / `review` / `incident-response` / `other`                   |
+| `TrailStepKind`   | `prompt` / `manual`                                                                                         |
 | `LinkType`        | `chat` / `issue` / `pull-request` / `commit` / `release` / `document` / `external`                          |
 | `LinkRole`        | `source` / `reference` / `execution` / `output` / `result`                                                  |
 | `PromptSnapshot`  | `{ promptId: PromptId; title: string; body: string }`                                                       |
@@ -93,36 +99,38 @@ Prompt の `deprecated`、Context の `disabled`、Project / Run の `archivedAt
 
 ## Domain / Store / Repository 対応
 
-| Model     | Dexie Store  | 主な Repository API                                                                       |
-| --------- | ------------ | ----------------------------------------------------------------------------------------- |
-| Workspace | `workspaces` | `saveWorkspace` / `getWorkspace` / `listActiveWorkspaces` / `softDeleteWorkspace`         |
-| Project   | `projects`   | `saveProject` / `getProject` / `listActiveProjects` / `softDeleteProject`                 |
-| Prompt    | `prompts`    | `savePrompt` / `getPrompt` / `listActivePrompts` / `softDeletePrompt`                     |
-| Context   | `contexts`   | `saveContext` / `getContext` / `listEnabledContexts` / `softDeleteContext`                |
-| Recipe    | `recipes`    | `saveRecipe` / `getRecipe` / `listActiveRecipes` / `softDeleteRecipe`                     |
-| Trail     | `trails`     | `saveTrail` / `getTrail` / `listActiveTrails` / `softDeleteTrail` / `updateTrailMetadata` |
-| Run       | `runs`       | `saveRun` / `getRun` / `listActiveRuns` / `softDeleteRun`                                 |
-| Link      | `links`      | `saveLink` / `getLink` / `listActiveLinks` / `softDeleteLink`                             |
+| Model     | Dexie Store  | 主な Repository API                                                                                                    |
+| --------- | ------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| Workspace | `workspaces` | `saveWorkspace` / `getWorkspace` / `listActiveWorkspaces` / `softDeleteWorkspace`                                      |
+| Project   | `projects`   | `saveProject` / `getProject` / `listActiveProjects` / `softDeleteProject`                                              |
+| Prompt    | `prompts`    | `savePrompt` / `getPrompt` / `listActivePrompts` / `softDeletePrompt`                                                  |
+| Context   | `contexts`   | `saveContext` / `getContext` / `listEnabledContexts` / `softDeleteContext`                                             |
+| Recipe    | `recipes`    | `saveRecipe` / `getRecipe` / `listActiveRecipes` / `softDeleteRecipe`                                                  |
+| Trail     | `trails`     | `saveTrail` / `getTrail` / `listActiveTrails` / `softDeleteTrail` / `updateTrailMetadata`                              |
+| TrailStep | `trailSteps` | `listStepsByTrail` / `getTrailStep` / `addTrailStep` / `updateTrailStep` / `reorderTrailSteps` / `softDeleteTrailStep` |
+| Run       | `runs`       | `saveRun` / `getRun` / `listActiveRuns` / `softDeleteRun`                                                              |
+| Link      | `links`      | `saveLink` / `getLink` / `listActiveLinks` / `softDeleteLink`                                                          |
 
 Project・Prompt・Context・Recipe・Trail・Run・Link の 7 モデルを一括登録する `insertTrailBundle()` に加え、Public Alpha の Direct Run 用に `createDirectRunBundle()` を公開します。`DEFAULT_PROJECT_ID` は `prompt-trail-default-project`、`DEFAULT_WORKSPACE_ID` は `prompt-trail-default-workspace` で、いずれも Sample Dataset の ID とは別です。
 
-## Dexie 永続化: schema version 5
+## Dexie 永続化: schema version 10
 
 - Database name: `prompt-trail`
-- Schema version: `5`
+- Schema version: `10`
 - 1 モデルにつき 1 Store
 - 各 Store の主キーは model の `id`。auto increment は使用しません。
 
-| Store        | Primary key | Index                                                                     | 保存境界                                                    |
-| ------------ | ----------- | ------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `projects`   | `id`        | `updatedAt`, `archivedAt`, `deletedAt`                                    | Project 単体                                                |
-| `prompts`    | `id`        | `scope`, `projectId`, `status`, `updatedAt`, `deletedAt`                  | 本文、tags、状態、scope を record に埋め込み                |
-| `contexts`   | `id`        | `scope`, `projectId`, `status`, `updatedAt`, `deletedAt`                  | 本文、tags、状態、scope を record に埋め込み                |
-| `recipes`    | `id`        | `projectId`, `promptId`, `updatedAt`, `deletedAt`                         | 順序付き `contextIds` を record に埋め込み                  |
-| `runs`       | `id`        | `projectId`, `recipeId`, `status`, `updatedAt`, `archivedAt`, `deletedAt` | Snapshot、`inputValues`、`finalPrompt` を record に埋め込み |
-| `links`      | `id`        | `runId`, `createdAt`, `deletedAt`                                         | Run に属する Link を独立 record として保存                  |
-| `workspaces` | `id`        | `updatedAt`, `deletedAt`                                                  | Workspace 単体                                              |
-| `trails`     | `id`        | `projectId`, `updatedAt`, `deletedAt`                                     | Trail 単体（`title`、`kind` を record に埋め込み）          |
+| Store        | Primary key | Index                                                                                                                          | 保存境界                                                                |
+| ------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `projects`   | `id`        | `updatedAt`, `archivedAt`, `deletedAt`                                                                                         | Project 単体                                                            |
+| `prompts`    | `id`        | `scope`, `projectId`, `status`, `updatedAt`, `deletedAt`                                                                       | 本文、tags、状態、scope を record に埋め込み                            |
+| `contexts`   | `id`        | `scope`, `projectId`, `status`, `updatedAt`, `deletedAt`                                                                       | 本文、tags、状態、scope を record に埋め込み                            |
+| `recipes`    | `id`        | `projectId`, `promptId`, `updatedAt`, `deletedAt`                                                                              | 順序付き `contextIds` を record に埋め込み                              |
+| `runs`       | `id`        | `projectId`, `recipeId`, `trailId`, `trailStepId`, `promptSnapshot.promptId`, `status`, `updatedAt`, `archivedAt`, `deletedAt` | Snapshot、`inputValues`、`finalPrompt` を record に埋め込み             |
+| `links`      | `id`        | `runId`, `createdAt`, `deletedAt`                                                                                              | Run に属する Link を独立 record として保存                              |
+| `workspaces` | `id`        | `updatedAt`, `deletedAt`                                                                                                       | Workspace 単体                                                          |
+| `trails`     | `id`        | `projectId`, `updatedAt`, `deletedAt`                                                                                          | Trail 単体（`title`、`kind` を record に埋め込み）                      |
+| `trailSteps` | `id`        | `trailId`, `promptId`, `updatedAt`, `deletedAt`                                                                                | TrailStep 単体（`order`、`kind`、`title`、`note` を record に埋め込み） |
 
 schema v2 はschema v1と同じ6 Store・主キー・索引を維持し、`trailTitle`と`trailKind`を索引へ追加しません。schema v1定義はupgrade起点として保持します。v1からv2へのupgrade transactionは全Runへ`trailTitle = promptSnapshot.title`（正規化なし）と`trailKind = other`を追加し、他fieldや他Storeを変更しません。不正なPrompt Snapshotを持つRunではupgradeを中断し、transaction全体をrollbackします。
 
@@ -131,6 +139,10 @@ schema v3 はschema v2と同じ6 Store・主キー・索引を維持し、`varia
 schema v4 はschema v3と同じ6 Store・主キー・索引を維持します。schema v3定義はupgrade起点として保持します。v3からv4へのupgrade transactionは、廃止したPromptの`kind` fieldを`tags`へ移行します。`kind`が設定されている場合、対応するラベル（`chat-consultation`→「チャット相談」、`codex-request`→「Codex依頼」、`issue-creation`→「Issue作成」、`design-review`→「設計レビュー」、`incident-analysis`→「障害分析」）を`tags`未登録の場合のみ追加し、`kind` fieldを削除します。他fieldや他Storeを変更しません。
 
 schema v5 は既存 6 Store・主キー・索引を維持したまま `workspaces` と `trails` の 2 Store を追加します。schema v4 定義はupgrade起点として保持します。v4からv5へのupgrade transactionは `version(5).upgrade(tx => ...)` を用い、次を順に行います。(1) `workspaces` Store に Default Workspace を1件作成する、(2) 既存 `projects` の全レコードへ `workspaceId = DEFAULT_WORKSPACE_ID` を補完する、(3) 既存 Run 1件につき `trailTitle`/`trailKind`/`projectId` から Trail レコードを1件作成する（1 Run : 1 Trail backfill）、(4) 既存 `runs` の全レコードへ対応する Trail の `id` を `trailId` として補完し、`trailTitle`/`trailKind` を削除する。途中で`trailTitle`または`trailKind`を欠くRunを検出した場合はupgradeを中断し、transaction全体をrollbackします（DBの削除・部分更新は行いません）。
+
+schema v6〜v9のmigration内容は本書に未反映です（別issueで追随します）。
+
+schema v10 は `trailSteps` Store を追加し、`runs` に `trailStepId` indexを追加します。schema v9 定義はupgrade起点として保持します。v9からv10へのupgrade transactionは次を順に行います。(1) `trailSteps` Storeを追加し、`runs`に`trailStepId` indexを追加する、(2) 既存Runを`trailId`でグループ化し、各グループ内で`createdAt`昇順に`order`を1から採番する、(3) Run 1件につきTrailStep 1件を`trail-step-${run.id}`で作成する、(4) `run.trailStepId`を設定する。すべてを単一のupgrade transaction内で行い、失敗時は全体をrollbackします（背景は[ADR 0011](../../adr/0011-trail-as-prompt-flow.md)）。
 
 ## Repository 公開契約
 
@@ -151,6 +163,7 @@ schema v5 は既存 6 Store・主キー・索引を維持したまま `workspace
 | `listActiveTrails(projectId)`     | 非削除・非 archive・指定 Project                   | `updatedAt` 降順 |
 | `listActiveRuns(projectId)`       | 非削除・非 archive・指定 Project                   | `updatedAt` 降順 |
 | `listActiveLinks(runId)`          | 非削除・指定 Run                                   | `createdAt` 昇順 |
+| `listStepsByTrail(trailId)`       | 非削除・指定 Trail                                 | `order` 昇順     |
 
 ### Soft delete とライフサイクル
 
@@ -158,23 +171,30 @@ schema v5 は既存 6 Store・主キー・索引を維持したまま `workspace
 
 モデル上で表現できる状態と、専用 Repository API は区別します。実装済み操作は完全 Entity の save、ID get、active list、soft delete、TrailBundle atomic insert です。`archiveProject()`、`archiveRun()`、`restore*()`、deleted / archived 一覧、物理削除、cascade delete の専用 API はありません。
 
+### Step の書き込み API
+
+`addTrailStep` / `updateTrailStep` / `reorderTrailSteps` / `softDeleteTrailStep` の4メソッドは、いずれも所属Trailの`expectedUpdatedAt`で楽観ロックし、処理の最後にTrailの`updatedAt`を更新します。`order`の採番はrepositoryの責務であり、追加は末尾へ追加、並び替えと削除は対象Trail配下のStepを1..Nで再採番します。
+
 ## 参照整合性
 
-| 保存対象                         | Repository の検証契約                                                                                                                              |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Project scoped Prompt / Context  | Project が存在し、soft delete されていません。                                                                                                     |
-| Global Prompt / Context          | `projectId` を持ちません。                                                                                                                         |
-| Recipe                           | Project / Prompt / Context が存在し利用可能です。                                                                                                  |
-| Recipe scope                     | Project scoped asset の Project は Recipe と一致します。                                                                                           |
-| Recipe contexts                  | `contextIds` に重複はなく、順序を保持します。                                                                                                      |
-| Recipe Run (`recipeId !== null`) | Project / Recipe が存在し利用可能で、Project が一致します。                                                                                        |
-| Recipe Run Snapshot              | Prompt Snapshot ID と Recipe Prompt が一致し、Context Snapshot の件数・順序が Recipe と一致します。                                                |
-| Direct Run (`recipeId === null`) | active かつ非削除の project-scoped Prompt を参照し、Prompt / Run の Project が一致します。                                                         |
-| Direct Run invariants            | Snapshot の ID、title、body は Prompt と完全一致し、`contextSnapshots` は `[]`、`inputValues` は `{}`、`finalPrompt` は Prompt body と一致します。 |
-| Trail                            | 所属 Project が存在し、soft delete されていません。                                                                                                |
-| Run と Trail                     | `Run.trailId` が参照する Trail が存在し、soft delete されておらず、`Trail.projectId` と `Run.projectId` が一致します。                             |
-| Link                             | 所属 Run が存在し、soft delete されていません。                                                                                                    |
-| TrailBundle                      | 全 ID が未登録です。                                                                                                                               |
+| 保存対象                         | Repository の検証契約                                                                                                                               |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Project scoped Prompt / Context  | Project が存在し、soft delete されていません。                                                                                                      |
+| Global Prompt / Context          | `projectId` を持ちません。                                                                                                                          |
+| Recipe                           | Project / Prompt / Context が存在し利用可能です。                                                                                                   |
+| Recipe scope                     | Project scoped asset の Project は Recipe と一致します。                                                                                            |
+| Recipe contexts                  | `contextIds` に重複はなく、順序を保持します。                                                                                                       |
+| Recipe Run (`recipeId !== null`) | Project / Recipe が存在し利用可能で、Project が一致します。                                                                                         |
+| Recipe Run Snapshot              | Prompt Snapshot ID と Recipe Prompt が一致し、Context Snapshot の件数・順序が Recipe と一致します。                                                 |
+| Direct Run (`recipeId === null`) | active かつ非削除の project-scoped Prompt を参照し、Prompt / Run の Project が一致します。                                                          |
+| Direct Run invariants            | Snapshot の ID、title、body は Prompt と完全一致し、`contextSnapshots` は `[]`、`inputValues` は `{}`、`finalPrompt` は Prompt body と一致します。  |
+| Trail                            | 所属 Project が存在し、soft delete されていません。                                                                                                 |
+| TrailStep                        | 所属 Trail が存在し利用可能です。`kind === 'prompt'` なら `promptId` が非null、`manual` なら null です。                                            |
+| Run と Trail                     | `Run.trailId` が参照する Trail が存在し、soft delete されておらず、`Trail.projectId` と `Run.projectId` が一致します。                              |
+| Run と TrailStep                 | `Run.trailStepId` が参照する Step が存在し、同じ Trail に属します。`promptId` の一致は求めません（Step は設計時点、Run は実行時点のSnapshotです）。 |
+| TrailStep の削除                 | Run を持つ Step は削除できません（`reference-unavailable`）。                                                                                       |
+| Link                             | 所属 Run が存在し、soft delete されていません。                                                                                                     |
+| TrailBundle                      | 全 ID が未登録です。                                                                                                                                |
 
 ## Repository error 契約
 
@@ -188,25 +208,30 @@ schema v5 は既存 6 Store・主キー・索引を維持したまま `workspace
 | `project-mismatch`      | Project scoped asset または Run/Recipe の Project が一致しません。                    |
 | `snapshot-mismatch`     | Run Snapshot の Prompt または Context 件数・順序が Recipe と一致しません。            |
 | `duplicate-id`          | TrailBundle に既登録 ID が含まれます。                                                |
+| `duplicate-step-order`  | 同一 Trail 内で TrailStep の `order` が重複しています。                               |
 
 ## Transaction と rollback
 
-| 操作                    | Transaction 対象                                |
-| ----------------------- | ----------------------------------------------- |
-| `savePrompt`            | projects + prompts                              |
-| `saveContext`           | projects + contexts                             |
-| `saveRecipe`            | projects + prompts + contexts + recipes         |
-| `saveTrail`             | projects + trails                               |
-| `saveRun`               | projects + prompts + recipes + trails + runs    |
-| `saveLink`              | runs + links                                    |
-| `insertTrailBundle`     | 8 Store すべて                                  |
-| `createDirectRunBundle` | workspaces + projects + prompts + trails + runs |
+| 操作                    | Transaction 対象                                             |
+| ----------------------- | ------------------------------------------------------------ |
+| `savePrompt`            | projects + prompts                                           |
+| `saveContext`           | projects + contexts                                          |
+| `saveRecipe`            | projects + prompts + contexts + recipes                      |
+| `saveTrail`             | projects + trails                                            |
+| `saveRun`               | projects + prompts + recipes + trails + runs                 |
+| `saveLink`              | runs + links                                                 |
+| `addTrailStep`          | trails + trailSteps                                          |
+| `updateTrailStep`       | trails + trailSteps                                          |
+| `reorderTrailSteps`     | trails + trailSteps                                          |
+| `softDeleteTrailStep`   | trails + trailSteps + runs                                   |
+| `insertTrailBundle`     | 9 Store すべて                                               |
+| `createDirectRunBundle` | workspaces + projects + prompts + trails + trailSteps + runs |
 
 `insertTrailBundle()` は 1 回の `rw` transaction 内で ID 重複検査、参照検証、Workspace 利用可否確認、Project、Prompt、Context、Recipe、Trail、Run、Links の登録を行います。途中で失敗すると transaction 全体が rollback されます。
 
 `createDirectRunBundle()` は Direct Run 専用の公開契約です。既定 Workspace / Project が未登録なら作成し、既存なら上書きしません。既存 Project が削除または archive 済みなら `reference-unavailable` とし、復活させません。Prompt / Trail / Run の ID 重複と Direct Run の参照・Snapshot 不変条件を同じ transaction で検証するため、失敗時に Project や Prompt だけが残りません。既存の `insertTrailBundle()` は Recipe Run と Sample Dataset 用として維持します。
 
-`recipeId: null` は schema version 5 の既存 `runs` Store に保存します。Direct Run の一覧・取得は `recipeId` index に依存しません。
+`recipeId: null` は schema version 10 の `runs` Store に保存します。Direct Run の一覧・取得は `recipeId` index に依存しません。
 
 ## Fresh DB と Sample Seed
 
@@ -233,6 +258,8 @@ Seed は既存 sample 内容を上書きしません。Prompt 本文などのユ
 | Repository 実装     | `apps/prompt-trail/src/repository/prompt-trail-repository.ts` |
 | Repository errors   | `apps/prompt-trail/src/repository/errors.ts`                  |
 | Sample Seed         | `apps/prompt-trail/src/sample-data/seed-sample-data.ts`       |
+| TrailStep Domain    | `apps/prompt-trail/src/domain/trail-step.ts`                  |
+| v9→v10 migration    | `apps/prompt-trail/src/db/migrations/v9-to-v10.ts`            |
 | Contract tests      | Domain / DB / Repository / Sample Data の関連 `*.test.ts`     |
 
 ## 更新トリガー

@@ -25,8 +25,10 @@
     PROJECT ||--o{ TRAIL : "束ねる（実装済み）"
     TRAIL ||--o{ RUN : "束ねる（実装済み・P3-1）"
     PROMPT ||--o{ RUN : "生成元（実装済み・promptSnapshot.promptId）"
-    RUN ||--o{ MESSAGE : "往復（P3-4 Lv3-3で追加予定）"
-    TRAIL }o..o{ PROMPT : "間接参照・Run経由（現P3-6・#331で直接管理を実施）"
+    RUN ||--o{ MESSAGE : "往復（実装済み・P3-4 Lv3-3）"
+    TRAIL ||--o{ TRAIL_STEP : "工程を持つ（実装済み・P3-6）"
+    TRAIL_STEP }o--o| PROMPT : "参照（任意・実装済み・P3-6）"
+    TRAIL_STEP ||--o{ RUN : "実行結果（実装済み・P3-6）"
 
     PROJECT {
         string title
@@ -46,6 +48,14 @@
         string promptSnapshot
         string output
         string status
+    }
+    TRAIL_STEP {
+        string trailId FK
+        number order
+        string kind
+        string title
+        string promptId FK
+        string note
     }
     MESSAGE {
         string role
