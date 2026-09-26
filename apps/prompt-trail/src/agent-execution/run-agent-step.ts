@@ -215,7 +215,10 @@ export async function pollAgentStep(
     if (signal?.aborted) return;
     elapsedMs += waitMs;
 
-    let result: { readonly status: FetchAgentStatusResult; readonly link: Link };
+    let result: {
+      readonly status: FetchAgentStatusResult;
+      readonly link: Link;
+    };
     try {
       result = await applyAgentStatus(
         repository,

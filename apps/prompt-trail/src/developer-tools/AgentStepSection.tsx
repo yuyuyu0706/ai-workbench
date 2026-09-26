@@ -181,8 +181,7 @@ export function AgentStepSection() {
           ?.run ?? null)
       : null;
 
-  const isExecuting =
-    phase.kind === 'starting' || phase.kind === 'polling';
+  const isExecuting = phase.kind === 'starting' || phase.kind === 'polling';
 
   async function handleExecute() {
     if (selectedRun === null) return;
@@ -268,9 +267,7 @@ export function AgentStepSection() {
       ) : null}
 
       {selectedRun !== null && selectedRun.output !== null ? (
-        <p>
-          このRunには既に実行結果が入っています。実行すると上書きされます。
-        </p>
+        <p>このRunには既に実行結果が入っています。実行すると上書きされます。</p>
       ) : null}
 
       <label className="developer-tools__field">
@@ -336,9 +333,7 @@ export function AgentStepSection() {
       </p>
 
       {phase.kind === 'completed' && phase.status.output !== undefined ? (
-        <p className="developer-tools__execute-result">
-          {phase.status.output}
-        </p>
+        <p className="developer-tools__execute-result">{phase.status.output}</p>
       ) : null}
 
       {phase.kind === 'error' ? <p role="alert">{phase.message}</p> : null}

@@ -146,7 +146,10 @@ describe('startAgentStep', () => {
 describe('pollAgentStep', () => {
   function collectEvents() {
     const events: AgentStepProgressEvent[] = [];
-    return { onProgress: (event: AgentStepProgressEvent) => events.push(event), events };
+    return {
+      onProgress: (event: AgentStepProgressEvent) => events.push(event),
+      events,
+    };
   }
 
   it('does not update the Link while the run stays pending', async () => {
@@ -221,7 +224,10 @@ describe('pollAgentStep', () => {
     );
 
     expect(saveRun).toHaveBeenCalledWith(
-      expect.objectContaining({ output: 'Generated output', status: 'executed' }),
+      expect.objectContaining({
+        output: 'Generated output',
+        status: 'executed',
+      }),
     );
     expect(saveLink).toHaveBeenLastCalledWith(
       expect.objectContaining({ summary: 'success' }),
