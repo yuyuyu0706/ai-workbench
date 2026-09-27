@@ -19,6 +19,7 @@ vi.mock('../agent-execution/run-agent-step', () => ({
 import { findResumableRuns } from '../agent-execution/find-resumable-runs';
 import {
   pollAgentStep,
+  refetchAgentStepStatus,
   startAgentStep,
 } from '../agent-execution/run-agent-step';
 
@@ -257,5 +258,157 @@ describe('AgentStepSection', () => {
       run: resumableRun,
       promptTrailRunId: 'agent-1',
     });
+  });
+
+  it('resolves a poll context and refetches even when auto-resume found nothing', async () => {
+    const run = buildRun({ status: 'in-progress' });
+    const executionLink = {
+      id: 'link-1',
+      runId: run.id,
+      url: 'https://github.com/example/example/actions',
+      title: 'agent-1',
+      type: 'external',
+      role: 'execution',
+      summary: 'in-progress',
+      externalId: '999',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      deletedAt: null,
+    };
+    const repository = buildRepository({
+      listActiveRuns: vi.fn().mockResolvedValue([run]),
+      listActiveLinks: vi.fn().mockResolvedValue([executionLink]),
+    });
+    vi.mocked(findResumableRuns).mockResolvedValue([]);
+    vi.mocked(refetchAgentStepStatus).mockResolvedValue({
+      status: {
+        state: 'success',
+        runId: 999,
+        htmlUrl: 'https://github.com/example/example/actions/runs/999',
+        output: 'Generated output',
+        raw: { status: 'completed', conclusion: 'success' },
+      } as never,
+      link: executionLink as never,
+    });
+
+    renderSection(repository);
+    await openSection();
+
+    const refetchButton = await screen.findByRole('button', {
+      name: '再取得',
+    });
+    expect(refetchButton).toBeDisabled();
+
+    await userEvent.selectOptions(
+      await screen.findByLabelText('対象Run'),
+      run.id,
+    );
+    expect(refetchButton).not.toBeDisabled();
+
+    await userEvent.click(refetchButton);
+
+    await waitFor(() =>
+      expect(repository.listActiveLinks).toHaveBeenCalledWith(run.id),
+    );
+    expect(await screen.findByText(/state: success/)).toBeInTheDocument();
+  });
+
+  it('preserves the last-known state when polling times out', async () => {
+    const repository = buildRepository();
+    vi.mocked(startAgentStep).mockResolvedValue({
+      link: {
+        id: 'link-1',
+        runId: 'run-1',
+        url: 'https://github.com/example/example/actions',
+        title: 'agent-1',
+        type: 'external',
+        role: 'execution',
+        summary: 'pending',
+        externalId: null,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        deletedAt: null,
+      } as never,
+      promptTrailRunId: 'agent-1',
+    });
+    vi.mocked(pollAgentStep).mockImplementation(
+      async (_repository, _input, onProgress) => {
+        onProgress({
+          kind: 'status',
+          state: 'in-progress',
+          runId: 999,
+          htmlUrl: 'https://github.com/example/example/actions/runs/999',
+          raw: { status: 'in_progress', conclusion: null },
+        });
+        onProgress({ kind: 'timeout' });
+      },
+    );
+    renderSection(repository);
+    await openSection();
+
+    await userEvent.selectOptions(
+      await screen.findByLabelText('対象Run'),
+      'run-1',
+    );
+    await userEvent.click(screen.getByRole('button', { name: '実行' }));
+
+    expect(
+      await screen.findByText(
+        /state: in-progress.*ポーリングの上限に達しました/,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Actionsで確認する' }),
+    ).toBeInTheDocument();
+  });
+
+  it('reloads run options after a run completes', async () => {
+    const repository = buildRepository();
+    vi.mocked(startAgentStep).mockResolvedValue({
+      link: {
+        id: 'link-1',
+        runId: 'run-1',
+        url: 'https://github.com/example/example/actions',
+        title: 'agent-1',
+        type: 'external',
+        role: 'execution',
+        summary: 'pending',
+        externalId: null,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        deletedAt: null,
+      } as never,
+      promptTrailRunId: 'agent-1',
+    });
+    vi.mocked(pollAgentStep).mockImplementation(
+      async (_repository, _input, onProgress) => {
+        onProgress({
+          kind: 'status',
+          state: 'success',
+          runId: 999,
+          htmlUrl: 'https://github.com/example/example/actions/runs/999',
+          output: 'Generated output',
+          raw: { status: 'completed', conclusion: 'success' },
+        });
+      },
+    );
+    renderSection(repository);
+    await openSection();
+
+    await waitFor(() =>
+      expect(repository.listActiveRuns).toHaveBeenCalledTimes(1),
+    );
+
+    await userEvent.selectOptions(
+      await screen.findByLabelText('対象Run'),
+      'run-1',
+    );
+    await userEvent.click(screen.getByRole('button', { name: '実行' }));
+
+    await screen.findByText(/state: success/);
+
+    await waitFor(() =>
+      expect(repository.listActiveRuns).toHaveBeenCalledTimes(2),
+    );
   });
 });

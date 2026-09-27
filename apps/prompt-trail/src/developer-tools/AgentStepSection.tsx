@@ -10,7 +10,7 @@ import {
   type PollAgentStepInput,
 } from '../agent-execution/run-agent-step';
 import type { FetchAgentStatusResult } from '../agent-execution/agent-client';
-import { DEFAULT_PROJECT_ID, type Run } from '../domain';
+import { DEFAULT_PROJECT_ID, type Link, type Run } from '../domain';
 import type { PromptTrailRepository } from '../repository';
 
 const FORCE_FAILURE_OPTIONS = ['false', 'true'] as const;
@@ -86,7 +86,7 @@ export function AgentStepSection() {
     };
   }, []);
 
-  useEffect(() => {
+  function reloadRunOptions() {
     const currentRequest = ++requestId.current;
     loadRunOptions(repository)
       .then((options) => {
@@ -97,8 +97,19 @@ export function AgentStepSection() {
         if (requestId.current === currentRequest)
           setRunOptions({ status: 'failed' });
       });
+  }
+
+  useEffect(() => {
+    reloadRunOptions();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once on mount, mirroring ExecuteSection's data loads.
   }, []);
+
+  useEffect(() => {
+    if (phase.kind === 'completed') {
+      reloadRunOptions();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when a run finishes, not on every render.
+  }, [phase.kind]);
 
   function beginPolling(pollInput: PollAgentStepInput) {
     abortControllerRef.current?.abort();
@@ -107,16 +118,19 @@ export function AgentStepSection() {
     setPollContext(pollInput);
     setPhase({ kind: 'polling', status: null });
 
+    let lastStatus: AgentStatusDisplay | null = null;
+
     pollAgentStep(
       repository,
       pollInput,
       (event) => {
         if (controller.signal.aborted) return;
         if (event.kind === 'timeout') {
-          setPhase({ kind: 'timeout', status: null });
+          setPhase({ kind: 'timeout', status: lastStatus });
           return;
         }
         const status: AgentStatusDisplay = event;
+        lastStatus = status;
         setPollContext((current) =>
           current !== null &&
           status.runId !== null &&
@@ -200,9 +214,38 @@ export function AgentStepSection() {
     }
   }
 
+  async function resolvePollContext(): Promise<PollAgentStepInput | null> {
+    if (selectedRun === null) return null;
+    const links = await repository.listActiveLinks(selectedRun.id);
+    const executionLink = links.find(
+      (link: Link) => link.role === 'execution' && link.type === 'external',
+    );
+    if (executionLink === undefined) return null;
+    return {
+      run: selectedRun,
+      link: executionLink,
+      promptTrailRunId: executionLink.title ?? '',
+    };
+  }
+
   async function handleRefetch() {
-    const pollInput = pollContext;
-    if (pollInput === null) return;
+    let pollInput = pollContext;
+    if (pollInput === null) {
+      try {
+        pollInput = await resolvePollContext();
+      } catch (error) {
+        setPhase({
+          kind: 'error',
+          message: describeError(
+            error,
+            'エージェント実行状態の再取得に失敗しました。',
+          ),
+        });
+        return;
+      }
+      if (pollInput === null) return;
+      setPollContext(pollInput);
+    }
     try {
       const { status, link } = await refetchAgentStepStatus(
         repository,
@@ -301,7 +344,9 @@ export function AgentStepSection() {
         <button
           className="pt-button pt-button--secondary"
           type="button"
-          disabled={isExecuting || pollContext === null}
+          disabled={
+            isExecuting || (pollContext === null && selectedRun === null)
+          }
           onClick={() => void handleRefetch()}
         >
           再取得
@@ -311,14 +356,18 @@ export function AgentStepSection() {
       <p role="status">
         {phase.kind === 'starting'
           ? 'ワークフローを起動しています...'
-          : phase.kind === 'timeout'
-            ? `state: pending（ポーリングの上限に達しました。再取得で状態を取り直せます）`
-            : displayedStatus
-              ? `state: ${displayedStatus.state} / run id: ${
-                  displayedStatus.runId ?? '(未確定)'
-                } / status: ${displayedStatus.raw.status ?? '(なし)'} / conclusion: ${
-                  displayedStatus.raw.conclusion ?? '(なし)'
-                }`
+          : displayedStatus
+            ? `state: ${displayedStatus.state}${
+                phase.kind === 'timeout'
+                  ? '（ポーリングの上限に達しました。再取得で状態を取り直せます）'
+                  : ''
+              } / run id: ${
+                displayedStatus.runId ?? '(未確定)'
+              } / status: ${displayedStatus.raw.status ?? '(なし)'} / conclusion: ${
+                displayedStatus.raw.conclusion ?? '(なし)'
+              }`
+            : phase.kind === 'timeout'
+              ? `state: pending（ポーリングの上限に達しました。再取得で状態を取り直せます）`
               : phase.kind === 'idle'
                 ? '未実行です。'
                 : ''}
