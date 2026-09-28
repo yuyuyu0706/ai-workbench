@@ -7,6 +7,7 @@ import {
   PromptTrailDataRevisionProvider,
   usePromptTrailDataRevision,
 } from '../app/PromptTrailDataRevisionContext';
+import { PromptTrailRepositoryProvider } from '../app/PromptTrailRepositoryContext';
 import type {
   DeveloperDataService,
   DeveloperRecordCounts,
@@ -17,6 +18,7 @@ import {
   DEVELOPER_UI_STATE_CATALOG,
   type DeveloperUiStateStorage,
 } from '../developer-ui-state';
+import type { PromptTrailRepository } from '../repository';
 import { DeveloperToolsProvider } from './DeveloperToolsContext';
 import { DeveloperToolsPanel } from './DeveloperToolsPanel';
 
@@ -91,14 +93,22 @@ function renderPanel(
         uiStateStore: createDeveloperUiStateStore(storage),
       } satisfies DeveloperToolsRuntime)
     : null;
+  const repository = {
+    listActiveRuns: vi.fn().mockResolvedValue([]),
+    listActiveLinks: vi.fn().mockResolvedValue([]),
+    getTrail: vi.fn().mockResolvedValue(null),
+    getTrailStep: vi.fn().mockResolvedValue(null),
+  } as unknown as PromptTrailRepository;
   return render(
     <MemoryRouter initialEntries={['/dashboard']}>
-      <PromptTrailDataRevisionProvider>
-        <DeveloperToolsProvider value={developerTools}>
-          <DeveloperToolsPanel />
-          <RevisionProbe />
-        </DeveloperToolsProvider>
-      </PromptTrailDataRevisionProvider>
+      <PromptTrailRepositoryProvider repository={repository}>
+        <PromptTrailDataRevisionProvider>
+          <DeveloperToolsProvider value={developerTools}>
+            <DeveloperToolsPanel />
+            <RevisionProbe />
+          </DeveloperToolsProvider>
+        </PromptTrailDataRevisionProvider>
+      </PromptTrailRepositoryProvider>
     </MemoryRouter>,
   );
 }

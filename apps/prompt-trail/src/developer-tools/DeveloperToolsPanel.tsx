@@ -18,6 +18,7 @@ import {
   GATEWAY_PROVIDERS,
   type GatewayProvider,
 } from '../gateway/execute-client';
+import { AgentStepSection } from './AgentStepSection';
 import {
   useDeveloperTools,
   useDeveloperUiStateSnapshot,
@@ -448,6 +449,8 @@ function DeveloperToolsPanelContent({
       </details>
 
       <ExecuteSection />
+
+      <AgentStepSection />
     </aside>
   );
 }
