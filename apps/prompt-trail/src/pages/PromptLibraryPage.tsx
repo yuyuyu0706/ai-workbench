@@ -864,6 +864,7 @@ function PromptBodyPopover({
   const [isTriggerFocused, setIsTriggerFocused] = useState(false);
   const [suppressFocusTooltip, setSuppressFocusTooltip] = useState(false);
   const [copyState, setCopyState] = useState<'success' | 'error' | null>(null);
+  const [copiedVar, setCopiedVar] = useState<string | null>(null);
   const [varValues, setVarValues] = useState<Record<string, string>>(() => ({
     ...prompt.variableValues,
   }));
@@ -1000,6 +1001,7 @@ function PromptBodyPopover({
         requestDiscard(() => {
           setMode('view');
           setCopyState(null);
+          setCopiedVar(null);
           setSuppressFocusTooltip(true);
           resetVarPanel();
           onClose();
@@ -1009,6 +1011,7 @@ function PromptBodyPopover({
       }
       setMode('view');
       setCopyState(null);
+      setCopiedVar(null);
       setSuppressFocusTooltip(true);
       resetVarPanel();
       onClose();
@@ -1080,16 +1083,19 @@ function PromptBodyPopover({
     };
   }, [effectiveVarPanelOpen]);
 
-  const writeToClipboard = async (text: string) => {
+  const writeToClipboard = async (text: string, variableName?: string) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopyState('success');
+      if (variableName !== undefined) setCopiedVar(variableName);
       if (copyTimeoutRef.current !== null) clearTimeout(copyTimeoutRef.current);
       copyTimeoutRef.current = setTimeout(() => {
         setCopyState(null);
+        setCopiedVar(null);
       }, 2000);
     } catch {
       setCopyState('error');
+      setCopiedVar(null);
     }
   };
 
@@ -1101,7 +1107,17 @@ function PromptBodyPopover({
     void copyResolved();
   };
 
-  const copyResolved = async () => {
+  /**
+   * Persists the current variable panel values (pruned to `detectedVars`)
+   * via the existing `updatePromptBody` path when they differ from the
+   * last-saved baseline. Shared by the body-copy flow (`copyResolved`) and
+   * the per-variable copy flow (`copyVariableValue`), so both save the same
+   * way before copying.
+   */
+  const persistVariableValues = async (): Promise<{
+    status: 'unchanged' | 'success' | 'aborted' | 'error';
+    values: Record<string, string>;
+  }> => {
     const prunedValues = Object.fromEntries(
       detectedVars.filter((v) => v in varValues).map((v) => [v, varValues[v]]),
     );
@@ -1110,10 +1126,8 @@ function PromptBodyPopover({
       baseline.variableValues,
     );
     if (unchanged) {
-      const resolved = resolvePromptVariables(prompt.body, prunedValues);
       setVarValues(prunedValues);
-      await writeToClipboard(resolved);
-      return;
+      return { status: 'unchanged', values: prunedValues };
     }
     const targetRepository = repository;
     const targetPromptId = prompt.id;
@@ -1129,7 +1143,7 @@ function PromptBodyPopover({
         repository !== targetRepository ||
         prompt.id !== targetPromptId
       )
-        return;
+        return { status: 'aborted', values: prunedValues };
       if (result.status === 'success') {
         setBaseline({
           body: result.prompt.body,
@@ -1137,19 +1151,29 @@ function PromptBodyPopover({
           updatedAt: result.prompt.updatedAt,
         });
         onSaved();
-        const resolved = resolvePromptVariables(
-          prompt.body,
-          result.prompt.variableValues,
-        );
         setVarValues(result.prompt.variableValues);
-        await writeToClipboard(resolved);
-      } else {
-        setCopyState('error');
+        return { status: 'success', values: result.prompt.variableValues };
       }
-    } catch {
-      if (!mountedRef.current) return;
       setCopyState('error');
+      return { status: 'error', values: prunedValues };
+    } catch {
+      if (mountedRef.current) setCopyState('error');
+      return { status: 'error', values: prunedValues };
     }
+  };
+
+  const copyResolved = async () => {
+    const result = await persistVariableValues();
+    if (result.status === 'aborted' || result.status === 'error') return;
+    const resolved = resolvePromptVariables(prompt.body, result.values);
+    await writeToClipboard(resolved);
+  };
+
+  const copyVariableValue = async (v: string) => {
+    if ((varValues[v] ?? '') === '') return;
+    const result = await persistVariableValues();
+    if (result.status === 'aborted' || result.status === 'error') return;
+    await writeToClipboard(result.values[v] ?? '', v);
   };
 
   const resetSession = () => {
@@ -1195,6 +1219,7 @@ function PromptBodyPopover({
     pendingDiscardRestoreRef.current = null;
     discardDraft();
     setCopyState(null);
+    setCopiedVar(null);
     setSuppressFocusTooltip(true);
     if (closeOnConfirm) {
       onClose();
@@ -1211,6 +1236,7 @@ function PromptBodyPopover({
       requestDiscard(() => {
         setMode('view');
         setCopyState(null);
+        setCopiedVar(null);
         setSuppressFocusTooltip(true);
         resetVarPanel();
         onClose();
@@ -1220,6 +1246,7 @@ function PromptBodyPopover({
     }
     discardDraft();
     setCopyState(null);
+    setCopiedVar(null);
     setSuppressFocusTooltip(true);
     resetVarPanel();
     onClose();
@@ -1422,6 +1449,7 @@ function PromptBodyPopover({
           onClick={() => {
             if (savingRef.current) return;
             setCopyState(null);
+            setCopiedVar(null);
             setIsTriggerHovered(false);
             if (open) setSuppressFocusTooltip(true);
             if (open && !isDirty) resetSession();
@@ -1480,6 +1508,7 @@ function PromptBodyPopover({
                     disabled={saving}
                     onClick={() => {
                       setCopyState(null);
+                      setCopiedVar(null);
                       setError(null);
                       setMessageKind(null);
                       setDiscardConfirmVisible(false);
@@ -1692,6 +1721,36 @@ function PromptBodyPopover({
                           className="pt-prompt-body-popover__var-badge"
                           htmlFor={`${panelId}-var-${v}`}
                         >{`\${${v}}`}</label>
+                        <button
+                          type="button"
+                          className="pt-prompt-body-popover__var-copy"
+                          data-copied={copiedVar === v}
+                          disabled={(varValues[v] ?? '') === ''}
+                          aria-label={
+                            (varValues[v] ?? '') === ''
+                              ? `\${${v}}の値が未入力のためコピーできません`
+                              : `\${${v}}の値をコピー`
+                          }
+                          onClick={() => void copyVariableValue(v)}
+                        >
+                          <svg
+                            aria-hidden="true"
+                            className="pt-prompt-body-popover__var-copy-icon"
+                            focusable="false"
+                            viewBox="0 0 24 24"
+                          >
+                            <rect x="8" y="8" width="11" height="11" rx="2" />
+                            <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+                          </svg>
+                          <svg
+                            aria-hidden="true"
+                            className="pt-prompt-body-popover__var-copy-check"
+                            focusable="false"
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M5 12l5 5L20 7" />
+                          </svg>
+                        </button>
                         <input
                           id={`${panelId}-var-${v}`}
                           type="text"
