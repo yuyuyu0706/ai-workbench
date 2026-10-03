@@ -434,7 +434,7 @@
 
 .pt-prompt-body-popover__var-panel-field {
   display: grid;
-  grid-template-columns: max-content max-content 1fr;
+  grid-template-columns: max-content 1fr max-content;
   align-items: center;
   gap: var(--pt-space-2);
 }
@@ -527,7 +527,11 @@
 
 @media (max-width: 480px) {
   .pt-prompt-body-popover__var-panel-field {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr max-content;
+  }
+
+  .pt-prompt-body-popover__var-badge {
+    grid-column: 1 / -1;
   }
 }
 

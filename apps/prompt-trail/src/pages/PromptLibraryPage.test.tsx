@@ -759,8 +759,8 @@ describe('PromptLibraryPage', () => {
     );
     const fieldChildren = Array.from(nameField?.children ?? []);
     expect(fieldChildren[0]).toHaveClass('pt-prompt-body-popover__var-badge');
-    expect(fieldChildren[1]).toBe(nameCopyButton);
-    expect(fieldChildren[2]?.tagName).toBe('INPUT');
+    expect(fieldChildren[1]?.tagName).toBe('INPUT');
+    expect(fieldChildren[2]).toBe(nameCopyButton);
 
     await user.type(screen.getByLabelText('${name}'), 'Dave');
     expect(

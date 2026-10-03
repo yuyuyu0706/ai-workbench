@@ -1721,6 +1721,20 @@ function PromptBodyPopover({
                           className="pt-prompt-body-popover__var-badge"
                           htmlFor={`${panelId}-var-${v}`}
                         >{`\${${v}}`}</label>
+                        <input
+                          id={`${panelId}-var-${v}`}
+                          type="text"
+                          value={varValues[v] ?? ''}
+                          onChange={(e) =>
+                            setVarValues((prev) => ({
+                              ...prev,
+                              [v]: e.target.value,
+                            }))
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') e.preventDefault();
+                          }}
+                        />
                         <button
                           type="button"
                           className="pt-prompt-body-popover__var-copy"
@@ -1751,20 +1765,6 @@ function PromptBodyPopover({
                             <path d="M5 12l5 5L20 7" />
                           </svg>
                         </button>
-                        <input
-                          id={`${panelId}-var-${v}`}
-                          type="text"
-                          value={varValues[v] ?? ''}
-                          onChange={(e) =>
-                            setVarValues((prev) => ({
-                              ...prev,
-                              [v]: e.target.value,
-                            }))
-                          }
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') e.preventDefault();
-                          }}
-                        />
                       </div>
                     ))}
                   </div>
