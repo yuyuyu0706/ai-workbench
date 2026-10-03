@@ -830,6 +830,62 @@ describe('PromptLibraryPage', () => {
     }
   });
 
+  it('clears a lingering variable checkmark when the body is copied afterward', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(async () => undefined);
+    const originalClipboard = navigator.clipboard;
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const varPrompt = createPrompt(
+      'mu',
+      'Muテンプレート',
+      'こんにちは ${name}、今日は${topic}について話しましょう。',
+    );
+    const updatePromptBody = vi.fn(async (update) => ({
+      ...varPrompt,
+      body: update.body,
+      variableValues: update.variableValues,
+      updatedAt: '2026-08-02T00:00:00.000Z' as UtcDateTimeString,
+    }));
+    const repository = {
+      listActivePrompts: vi.fn(async () => [varPrompt]),
+      updatePromptBody,
+    } as unknown as PromptTrailRepository;
+    try {
+      renderPromptLibraryPage(repository);
+      await user.click(
+        await screen.findByRole('button', {
+          name: `「${varPrompt.title}」のPrompt本文を表示`,
+        }),
+      );
+
+      await user.type(screen.getByLabelText('${name}'), 'Eve');
+      await user.type(screen.getByLabelText('${topic}'), '天気');
+
+      const nameCopyButton = screen.getByRole('button', {
+        name: '${name}の値をコピー',
+      });
+
+      await user.click(nameCopyButton);
+      expect(nameCopyButton).toHaveAttribute('data-copied', 'true');
+
+      const bodyCopyButton = screen.getByRole('button', {
+        name: `「${varPrompt.title}」のPrompt本文をコピー`,
+      });
+      await user.click(bodyCopyButton);
+
+      expect(nameCopyButton).toHaveAttribute('data-copied', 'false');
+      expect(screen.getByText('コピーしました')).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: originalClipboard,
+      });
+    }
+  });
+
   it('saves variable values via updatePromptBody before a per-variable copy when the value changed', async () => {
     const user = userEvent.setup();
     const writeText = vi.fn(async () => undefined);

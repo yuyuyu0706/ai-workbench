@@ -1087,7 +1087,7 @@ function PromptBodyPopover({
     try {
       await navigator.clipboard.writeText(text);
       setCopyState('success');
-      if (variableName !== undefined) setCopiedVar(variableName);
+      setCopiedVar(variableName ?? null);
       if (copyTimeoutRef.current !== null) clearTimeout(copyTimeoutRef.current);
       copyTimeoutRef.current = setTimeout(() => {
         setCopyState(null);
