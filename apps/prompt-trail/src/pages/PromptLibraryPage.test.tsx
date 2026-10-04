@@ -730,6 +730,272 @@ describe('PromptLibraryPage', () => {
     );
   });
 
+  it('shows a per-variable copy button between the label and the input, disabled while the value is empty', async () => {
+    const user = userEvent.setup();
+    const varPrompt = createPrompt(
+      'iota',
+      'Iotaテンプレート',
+      'こんにちは ${name}、今日は${topic}について話しましょう。',
+    );
+    renderPromptLibraryPage(createRepository([varPrompt]));
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: `「${varPrompt.title}」のPrompt本文を表示`,
+      }),
+    );
+
+    const nameCopyButton = screen.getByRole('button', {
+      name: '${name}の値が未入力のためコピーできません',
+    });
+    expect(nameCopyButton).toBeDisabled();
+    const topicCopyButton = screen.getByRole('button', {
+      name: '${topic}の値が未入力のためコピーできません',
+    });
+    expect(topicCopyButton).toBeDisabled();
+
+    const nameField = nameCopyButton.closest(
+      '.pt-prompt-body-popover__var-panel-field',
+    );
+    const fieldChildren = Array.from(nameField?.children ?? []);
+    expect(fieldChildren[0]).toHaveClass('pt-prompt-body-popover__var-badge');
+    expect(fieldChildren[1]?.tagName).toBe('INPUT');
+    expect(fieldChildren[2]).toBe(nameCopyButton);
+
+    await user.type(screen.getByLabelText('${name}'), 'Dave');
+    expect(
+      screen.getByRole('button', { name: '${name}の値をコピー' }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole('button', {
+        name: '${topic}の値が未入力のためコピーできません',
+      }),
+    ).toBeDisabled();
+  });
+
+  it('copies only the clicked variable value, shows the check only on that row, and announces success', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(async () => undefined);
+    const originalClipboard = navigator.clipboard;
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const varPrompt = createPrompt(
+      'kappa',
+      'Kappaテンプレート',
+      'こんにちは ${name}、今日は${topic}について話しましょう。',
+    );
+    const updatePromptBody = vi.fn(async (update) => ({
+      ...varPrompt,
+      body: update.body,
+      variableValues: update.variableValues,
+      updatedAt: '2026-08-02T00:00:00.000Z' as UtcDateTimeString,
+    }));
+    const repository = {
+      listActivePrompts: vi.fn(async () => [varPrompt]),
+      updatePromptBody,
+    } as unknown as PromptTrailRepository;
+    try {
+      renderPromptLibraryPage(repository);
+      await user.click(
+        await screen.findByRole('button', {
+          name: `「${varPrompt.title}」のPrompt本文を表示`,
+        }),
+      );
+
+      await user.type(screen.getByLabelText('${name}'), 'Eve');
+      await user.type(screen.getByLabelText('${topic}'), '天気');
+
+      const nameCopyButton = screen.getByRole('button', {
+        name: '${name}の値をコピー',
+      });
+      const topicCopyButton = screen.getByRole('button', {
+        name: '${topic}の値をコピー',
+      });
+
+      await user.click(nameCopyButton);
+
+      expect(writeText).toHaveBeenCalledWith('Eve');
+      expect(writeText).not.toHaveBeenCalledWith('天気');
+      expect(writeText).toHaveBeenCalledTimes(1);
+      expect(nameCopyButton).toHaveAttribute('data-copied', 'true');
+      expect(topicCopyButton).toHaveAttribute('data-copied', 'false');
+      expect(screen.getByText('コピーしました')).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: originalClipboard,
+      });
+    }
+  });
+
+  it('clears a lingering variable checkmark when the body is copied afterward', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(async () => undefined);
+    const originalClipboard = navigator.clipboard;
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const varPrompt = createPrompt(
+      'mu',
+      'Muテンプレート',
+      'こんにちは ${name}、今日は${topic}について話しましょう。',
+    );
+    const updatePromptBody = vi.fn(async (update) => ({
+      ...varPrompt,
+      body: update.body,
+      variableValues: update.variableValues,
+      updatedAt: '2026-08-02T00:00:00.000Z' as UtcDateTimeString,
+    }));
+    const repository = {
+      listActivePrompts: vi.fn(async () => [varPrompt]),
+      updatePromptBody,
+    } as unknown as PromptTrailRepository;
+    try {
+      renderPromptLibraryPage(repository);
+      await user.click(
+        await screen.findByRole('button', {
+          name: `「${varPrompt.title}」のPrompt本文を表示`,
+        }),
+      );
+
+      await user.type(screen.getByLabelText('${name}'), 'Eve');
+      await user.type(screen.getByLabelText('${topic}'), '天気');
+
+      const nameCopyButton = screen.getByRole('button', {
+        name: '${name}の値をコピー',
+      });
+
+      await user.click(nameCopyButton);
+      expect(nameCopyButton).toHaveAttribute('data-copied', 'true');
+
+      const bodyCopyButton = screen.getByRole('button', {
+        name: `「${varPrompt.title}」のPrompt本文をコピー`,
+      });
+      await user.click(bodyCopyButton);
+
+      expect(nameCopyButton).toHaveAttribute('data-copied', 'false');
+      expect(screen.getByText('コピーしました')).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: originalClipboard,
+      });
+    }
+  });
+
+  it('saves variable values via updatePromptBody before a per-variable copy when the value changed', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(async () => undefined);
+    const originalClipboard = navigator.clipboard;
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const varPrompt = createPrompt(
+      'lambda',
+      'Lambdaテンプレート',
+      'こんにちは ${name}',
+    );
+    const updatePromptBody = vi.fn(async (update) => ({
+      ...varPrompt,
+      body: update.body,
+      variableValues: update.variableValues,
+      updatedAt: '2026-08-02T00:00:00.000Z' as UtcDateTimeString,
+    }));
+    const repository = {
+      listActivePrompts: vi.fn(async () => [varPrompt]),
+      updatePromptBody,
+    } as unknown as PromptTrailRepository;
+    try {
+      renderPromptLibraryPage(repository);
+      await user.click(
+        await screen.findByRole('button', {
+          name: `「${varPrompt.title}」のPrompt本文を表示`,
+        }),
+      );
+
+      await user.type(screen.getByLabelText('${name}'), 'Frank');
+      await user.click(
+        screen.getByRole('button', { name: '${name}の値をコピー' }),
+      );
+
+      expect(updatePromptBody).toHaveBeenCalledWith(
+        expect.objectContaining({
+          promptId: varPrompt.id,
+          variableValues: { name: 'Frank' },
+        }),
+      );
+      expect(writeText).toHaveBeenCalledWith('Frank');
+    } finally {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: originalClipboard,
+      });
+    }
+  });
+
+  it('does not call updatePromptBody for a per-variable copy when the value is unchanged', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(async () => undefined);
+    const originalClipboard = navigator.clipboard;
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const varPrompt = {
+      ...createPrompt('mu', 'Muテンプレート', 'こんにちは ${name}'),
+      variableValues: { name: 'Grace' },
+    };
+    const updatePromptBody = vi.fn();
+    const repository = {
+      listActivePrompts: vi.fn(async () => [varPrompt]),
+      updatePromptBody,
+    } as unknown as PromptTrailRepository;
+    try {
+      renderPromptLibraryPage(repository);
+      await user.click(
+        await screen.findByRole('button', {
+          name: `「${varPrompt.title}」のPrompt本文を表示`,
+        }),
+      );
+
+      await user.click(
+        screen.getByRole('button', { name: '${name}の値をコピー' }),
+      );
+
+      expect(updatePromptBody).not.toHaveBeenCalled();
+      expect(writeText).toHaveBeenCalledWith('Grace');
+    } finally {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: originalClipboard,
+      });
+    }
+  });
+
+  it('renders no variable panel or per-variable copy buttons for a Prompt without variables', async () => {
+    renderPromptLibraryPage(createRepository(prompts));
+
+    await userEvent.setup().click(
+      await screen.findByRole('button', {
+        name: `「${prompts[0].title}」のPrompt本文を表示`,
+      }),
+    );
+
+    expect(
+      screen.queryByRole('dialog', { name: '変数に値を入力してコピー' }),
+    ).toBeNull();
+    expect(screen.queryByRole('button', { name: /の値をコピー$/ })).toBeNull();
+    expect(
+      screen.queryByRole('button', {
+        name: /の値が未入力のためコピーできません$/,
+      }),
+    ).toBeNull();
+  });
+
   it('closes an open Prompt body when filtering hides its row', async () => {
     const user = userEvent.setup();
     renderPromptLibraryPage(createRepository(prompts));

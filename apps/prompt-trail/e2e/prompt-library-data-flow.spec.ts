@@ -484,15 +484,21 @@ test.describe('Prompt Library data flow', () => {
       name: '変数に値を入力してコピー',
     });
     await expect(varPanel).toBeVisible();
-    await expect(varPanel.getByLabel('${name}')).toBeVisible();
-    await expect(varPanel.getByLabel('${topic}')).toBeVisible();
-    await expect(varPanel.getByLabel('${name}')).not.toBeFocused();
+    await expect(
+      varPanel.getByRole('textbox', { name: '${name}' }),
+    ).toBeVisible();
+    await expect(
+      varPanel.getByRole('textbox', { name: '${topic}' }),
+    ).toBeVisible();
+    await expect(
+      varPanel.getByRole('textbox', { name: '${name}' }),
+    ).not.toBeFocused();
     await expectNoHorizontalOverflow(page);
 
     const copyButton = popover.getByRole('button', {
       name: '「変数テンプレート」のPrompt本文をコピー',
     });
-    const nameInput = varPanel.getByLabel('${name}');
+    const nameInput = varPanel.getByRole('textbox', { name: '${name}' });
     await nameInput.fill('田中');
     await copyButton.click();
 
@@ -503,7 +509,9 @@ test.describe('Prompt Library data flow', () => {
 
     await popover.getByRole('button', { name: 'Prompt本文を閉じる' }).click();
     await trigger.click();
-    await expect(varPanel.getByLabel('${name}')).toHaveValue('田中');
+    await expect(
+      varPanel.getByRole('textbox', { name: '${name}' }),
+    ).toHaveValue('田中');
   });
 
   test('restores saved variable values on reopen and drops stale ones after a body edit', async ({
@@ -524,11 +532,15 @@ test.describe('Prompt Library data flow', () => {
     const varPanel = popover.getByRole('dialog', {
       name: '変数に値を入力してコピー',
     });
-    await expect(varPanel.getByLabel('${name}')).toHaveValue('田中');
+    await expect(
+      varPanel.getByRole('textbox', { name: '${name}' }),
+    ).toHaveValue('田中');
 
     await popover.getByRole('button', { name: 'Prompt本文を閉じる' }).click();
     await trigger.click();
-    await expect(popover.getByLabel('${name}')).toHaveValue('田中');
+    await expect(popover.getByRole('textbox', { name: '${name}' })).toHaveValue(
+      '田中',
+    );
 
     await popover
       .getByRole('button', { name: '「変数テンプレート」のPrompt本文を編集' })
@@ -538,7 +550,9 @@ test.describe('Prompt Library data flow', () => {
       .fill('こんにちは ${name}さん。');
     await popover.getByRole('button', { name: '保存' }).click();
     await expect(page.getByText('Prompt本文を更新しました。')).toBeVisible();
-    await expect(popover.getByLabel('${name}')).toHaveValue('田中');
+    await expect(popover.getByRole('textbox', { name: '${name}' })).toHaveValue(
+      '田中',
+    );
     await expect(popover.getByLabel('${topic}')).toHaveCount(0);
   });
 

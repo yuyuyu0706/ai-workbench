@@ -201,6 +201,7 @@
 .pt-prompt-trail-action:focus-visible,
 .pt-prompt-body-popover__edit:focus-visible,
 .pt-prompt-body-popover__copy:focus-visible,
+.pt-prompt-body-popover__var-copy:focus-visible,
 .pt-prompt-body-popover__close:focus-visible {
   outline: 3px solid var(--pt-color-focus-ring);
   outline-offset: 2px;
@@ -433,7 +434,7 @@
 
 .pt-prompt-body-popover__var-panel-field {
   display: grid;
-  grid-template-columns: max-content 1fr;
+  grid-template-columns: max-content 1fr max-content;
   align-items: center;
   gap: var(--pt-space-2);
 }
@@ -452,6 +453,58 @@
   padding: 0.1em 0.4em;
   white-space: nowrap;
   justify-self: start;
+}
+
+.pt-prompt-body-popover__var-copy {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 1px solid var(--pt-color-border);
+  border-radius: var(--pt-radius-sm);
+  background: var(--pt-color-surface);
+  color: var(--pt-color-accent-strong);
+  cursor: pointer;
+}
+
+.pt-prompt-body-popover__var-copy:hover:not(:disabled) {
+  border-color: var(--pt-color-accent);
+  background: var(--pt-color-surface-subtle);
+}
+
+.pt-prompt-body-popover__var-copy:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.pt-prompt-body-popover__var-copy-icon,
+.pt-prompt-body-popover__var-copy-check {
+  width: 0.9rem;
+  height: 0.9rem;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  transition: opacity 300ms ease;
+}
+
+.pt-prompt-body-popover__var-copy-check {
+  position: absolute;
+  opacity: 0;
+}
+
+.pt-prompt-body-popover__var-copy[data-copied='true']
+  .pt-prompt-body-popover__var-copy-icon {
+  opacity: 0;
+}
+
+.pt-prompt-body-popover__var-copy[data-copied='true']
+  .pt-prompt-body-popover__var-copy-check {
+  opacity: 1;
 }
 
 .pt-prompt-body-popover__tags {
@@ -474,7 +527,11 @@
 
 @media (max-width: 480px) {
   .pt-prompt-body-popover__var-panel-field {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr max-content;
+  }
+
+  .pt-prompt-body-popover__var-badge {
+    grid-column: 1 / -1;
   }
 }
 
