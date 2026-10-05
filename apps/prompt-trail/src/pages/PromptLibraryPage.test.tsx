@@ -23,6 +23,7 @@ import {
   type PromptTrailRepository,
 } from '../repository';
 import { PromptLibraryPage } from './PromptLibraryPage';
+import { promptTagColorIndex } from '../prompt-shared/promptTagColors';
 
 const timestamp = '2026-08-01T00:00:00.000Z' as UtcDateTimeString;
 const longBody = [
@@ -253,6 +254,32 @@ describe('PromptLibraryPage', () => {
     expect(projectFilter).toHaveValue('all');
     expect(search).toHaveValue('');
     expect(screen.getByText('全3件')).toBeVisible();
+  });
+
+  it('gives each visible tag chip a deterministic data-prompt-tag-color, and leaves the +N chip unmarked', async () => {
+    const tagged = [
+      { ...prompts[0], tags: ['チャット相談', 'note', 'extra', 'more'] },
+    ];
+    const repository = createRepository(tagged);
+    renderPromptLibraryPage(repository);
+    await screen.findByRole('heading', { level: 2, name: 'Prompt一覧' });
+
+    const table = screen.getByRole('table', { name: 'Prompt一覧' });
+    const alphaRow = within(table).getByText(tagged[0].title).closest('tr')!;
+
+    const chatChip = within(alphaRow).getByText('チャット相談');
+    const noteChip = within(alphaRow).getByText('note');
+    const moreChip = within(alphaRow).getByText('+2');
+
+    expect(chatChip).toHaveAttribute(
+      'data-prompt-tag-color',
+      String(promptTagColorIndex('チャット相談')),
+    );
+    expect(noteChip).toHaveAttribute(
+      'data-prompt-tag-color',
+      String(promptTagColorIndex('note')),
+    );
+    expect(moreChip).not.toHaveAttribute('data-prompt-tag-color');
   });
 
   it('opens one Prompt body popover and supports toggle, switch, Escape, outside click, and close focus', async () => {
@@ -1737,6 +1764,14 @@ describe('PromptLibraryPage', () => {
     expect(
       within(taggedDialog).queryByRole('button', { name: /削除/ }),
     ).toBeNull();
+    expect(within(taggedDialog).getByText('チャット相談')).toHaveAttribute(
+      'data-prompt-tag-color',
+      String(promptTagColorIndex('チャット相談')),
+    );
+    expect(within(taggedDialog).getByText('note')).toHaveAttribute(
+      'data-prompt-tag-color',
+      String(promptTagColorIndex('note')),
+    );
 
     await user.click(
       screen.getByRole('button', {

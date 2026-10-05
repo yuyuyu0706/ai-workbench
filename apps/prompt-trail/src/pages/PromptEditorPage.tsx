@@ -19,16 +19,17 @@ import {
   type PromptEditorErrors,
   type PromptEditorValues,
 } from '../prompt-editor';
-import {
-  extractPromptVariables,
-  resolvePromptVariables,
-} from '../prompt-shared/promptVariables';
+import { promptTagColorIndex } from '../prompt-shared/promptTagColors';
 import {
   addPromptTag,
   isValidPromptTagLength,
   PROMPT_TAG_MAX_COUNT,
   removePromptTag,
 } from '../prompt-shared/promptTags';
+import {
+  extractPromptVariables,
+  resolvePromptVariables,
+} from '../prompt-shared/promptVariables';
 
 type LoadState =
   | { readonly status: 'loading' }
@@ -550,7 +551,11 @@ export function PromptEditorPage({ mode }: { mode: 'create' | 'edit' }) {
                 <label htmlFor="prompt-tag-input">タグ</label>
                 <div className="pt-prompt-editor__tag-list">
                   {currentForm.values.tags.map((tag) => (
-                    <span key={tag} className="pt-prompt-editor__tag-chip">
+                    <span
+                      key={tag}
+                      className="pt-prompt-editor__tag-chip"
+                      data-prompt-tag-color={promptTagColorIndex(tag)}
+                    >
                       {tag}
                       <button
                         type="button"

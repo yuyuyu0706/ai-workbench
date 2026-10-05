@@ -42,9 +42,9 @@
   align-items: center;
   gap: 0.35em;
   font-size: 0.875rem;
-  background: var(--pt-color-accent-soft, #eef2ff);
-  border: 1px solid var(--pt-color-accent-border, #c7d2fe);
-  color: var(--pt-color-accent-text, #3730a3);
+  background: var(--pt-tag-bg, var(--pt-color-accent-soft, #eef2ff));
+  border: 1px solid var(--pt-tag-border, var(--pt-color-accent-border, #c7d2fe));
+  color: var(--pt-tag-text, var(--pt-color-accent-text, #3730a3));
   border-radius: 999px;
   padding: 0.2em 0.7em;
   white-space: nowrap;

@@ -43,6 +43,7 @@ import {
 } from '../prompt-library';
 import { listTrailsByPromptId, type TrailListItem } from '../trail-list';
 import { updatePromptBody, validatePromptBody } from '../prompt-editor';
+import { promptTagColorIndex } from '../prompt-shared/promptTagColors';
 import {
   extractPromptVariables,
   resolvePromptVariables,
@@ -561,7 +562,11 @@ function PromptTagList({ tags }: { tags: readonly string[] }) {
   return (
     <span className="pt-prompt-body-popover__tags" aria-label="タグ">
       {visibleTags.map((tag) => (
-        <span key={tag} className="pt-prompt-body-popover__tag-chip">
+        <span
+          key={tag}
+          className="pt-prompt-body-popover__tag-chip"
+          data-prompt-tag-color={promptTagColorIndex(tag)}
+        >
           {tag}
         </span>
       ))}
@@ -1776,6 +1781,7 @@ function PromptBodyPopover({
                     <span
                       key={tag}
                       className="pt-prompt-body-popover__tag-chip"
+                      data-prompt-tag-color={promptTagColorIndex(tag)}
                     >
                       {tag}
                     </span>
