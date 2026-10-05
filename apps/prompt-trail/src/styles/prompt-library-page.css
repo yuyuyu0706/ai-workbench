@@ -517,9 +517,9 @@
   display: inline-flex;
   align-items: center;
   font-size: 0.75rem;
-  background: var(--pt-color-accent-soft, #eef2ff);
-  border: 1px solid var(--pt-color-accent-border, #c7d2fe);
-  color: var(--pt-color-accent-text, #3730a3);
+  background: var(--pt-tag-bg, var(--pt-color-accent-soft, #eef2ff));
+  border: 1px solid var(--pt-tag-border, var(--pt-color-accent-border, #c7d2fe));
+  color: var(--pt-tag-text, var(--pt-color-accent-text, #3730a3));
   border-radius: 999px;
   padding: 0.1em 0.6em;
   white-space: nowrap;

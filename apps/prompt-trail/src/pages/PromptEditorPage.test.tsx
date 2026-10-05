@@ -29,6 +29,7 @@ import {
 import type { Prompt, UtcDateTimeString } from '../domain';
 import type { PromptTrailRepository } from '../repository';
 import { PromptEditorPage } from './PromptEditorPage';
+import { promptTagColorIndex } from '../prompt-shared/promptTagColors';
 
 const timestamp = '2026-08-01T00:00:00.000Z' as UtcDateTimeString;
 const prompt: Prompt = {
@@ -868,6 +869,14 @@ describe('PromptEditorPage', () => {
     await user.type(tagInput, 'bar{Enter}');
     expect(screen.getByText('foo')).toBeInTheDocument();
     expect(screen.getByText('bar')).toBeInTheDocument();
+    expect(screen.getByText('foo')).toHaveAttribute(
+      'data-prompt-tag-color',
+      String(promptTagColorIndex('foo')),
+    );
+    expect(screen.getByText('bar')).toHaveAttribute(
+      'data-prompt-tag-color',
+      String(promptTagColorIndex('bar')),
+    );
 
     await user.click(screen.getByLabelText('タグ「foo」を削除'));
     expect(screen.queryByText('foo')).not.toBeInTheDocument();

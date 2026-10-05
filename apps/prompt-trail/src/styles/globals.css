@@ -106,3 +106,59 @@ p {
   padding: var(--pt-space-4);
   overflow-y: auto;
 }
+
+/* Prompt tag color palette, keyed by `data-prompt-tag-color="0"`..`"7"`.
+   Shared by Prompt Library's table (PromptTagList) and body popover tag
+   chips, and by Prompt Editor's tag chips, so the same tag name renders
+   with the same color on every screen. Each rule sets only the custom
+   properties below; the chip rules in prompt-library-page.css and
+   prompt-editor-page.css consume them with the previous fixed values kept
+   as a fallback, so a chip without this attribute (e.g. the `+N` overflow
+   chip) still renders unchanged. */
+[data-prompt-tag-color='0'] {
+  --pt-tag-bg: #eef2ff;
+  --pt-tag-border: #c7d2fe;
+  --pt-tag-text: #3730a3;
+}
+
+[data-prompt-tag-color='1'] {
+  --pt-tag-bg: #eff6ff;
+  --pt-tag-border: #bfdbfe;
+  --pt-tag-text: #1e3a8a;
+}
+
+[data-prompt-tag-color='2'] {
+  --pt-tag-bg: #ecfdf5;
+  --pt-tag-border: #a7f3d0;
+  --pt-tag-text: #065f46;
+}
+
+[data-prompt-tag-color='3'] {
+  --pt-tag-bg: #fffbeb;
+  --pt-tag-border: #fde68a;
+  --pt-tag-text: #92400e;
+}
+
+[data-prompt-tag-color='4'] {
+  --pt-tag-bg: #fef2f2;
+  --pt-tag-border: #fecaca;
+  --pt-tag-text: #991b1b;
+}
+
+[data-prompt-tag-color='5'] {
+  --pt-tag-bg: #faf5ff;
+  --pt-tag-border: #e9d5ff;
+  --pt-tag-text: #6b21a8;
+}
+
+[data-prompt-tag-color='6'] {
+  --pt-tag-bg: #f0fdfa;
+  --pt-tag-border: #99f6e4;
+  --pt-tag-text: #115e59;
+}
+
+[data-prompt-tag-color='7'] {
+  --pt-tag-bg: #fdf2f8;
+  --pt-tag-border: #fbcfe8;
+  --pt-tag-text: #9d174d;
+}
